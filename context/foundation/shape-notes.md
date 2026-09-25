@@ -23,18 +23,18 @@ checkpoint:
     - topic: "admin data visibility"
       decision: "admin ma pełny wgląd w dane użytkowników na MVP; zawężenie widoczności rozważane w v2"
     - topic: "MVP timeline"
-      decision: "6-7 tygodni przy 8h/tydzień; termin 2 (6 grudnia 2026) jako bezpieczny wariant, termin 1 (4 listopada 2026) jako możliwy stretch — koszt świadomie zaakceptowany"
-  frs_drafted: 17
+      decision: "6-7 tygodni przy 8h/tydzień; 6 grudnia 2026 jako bezpieczny termin bazowy, 4 listopada 2026 jako możliwy stretch — koszt świadomie zaakceptowany"
+  frs_drafted: 18
   quality_check_status: accepted
 ---
 
 # SubTracker — Shape Notes
 
-## Seed idea (verbatim)
+## Seed idea
 
 SubTracker — Menedżer subskrypcji z budżetem i wykrywaniem duplikatów.
 
-Aplikacja webowa (Angular + backend). AI wykorzystywane w procesie tworzenia (projektowanie architektury, generowanie kodu przez agenta) — nie jako silnik funkcjonalny aplikacji.
+Aplikacja webowa. AI wykorzystywane w procesie tworzenia (projektowanie architektury, generowanie kodu przez agenta) — nie jako silnik funkcjonalny aplikacji.
 
 Problem: użytkownicy tracą kontrolę nad subskrypcjami — płacą za nakładające się usługi, nie zauważają końca okresów próbnych, nie wiedzą ile realnie wydają miesięcznie.
 
@@ -46,9 +46,9 @@ Zakres MVP:
 
 Odrzucone / poza MVP: scraping promocji od dostawców (ryzyko techniczne/prawne), współdzielone subskrypcje / split kosztów (backlog v2), rekomendacja przejścia na plan roczny (backlog v2), historia zmian cen w czasie (backlog v2).
 
-Przyjęte uzupełnienie z rozmowy wstępnej (do domknięcia w shape): mechanizm kontroli dostępu (np. logowanie) nie był ujęty w oryginalnym opisie — trzeba go dodać do zakresu MVP.
+Uzupełnienie z rozmowy wstępnej: mechanizm kontroli dostępu (np. logowanie) nie był ujęty w oryginalnym opisie — dodany do zakresu MVP.
 
-Otwarte pytanie (do rozstrzygnięcia w shape lub później): czy celujemy w wyróżnienie w pierwszym terminie (4 listopada 2026, wymaga publicznego URL), czy zostawiamy to jako opcję i traktujemy drugi termin (6 grudnia 2026) jako spokojniejszy wariant bazowy. Dostępność: 8h/tydzień.
+Dostępność: 8h/tydzień.
 
 ## Vision & Problem Statement
 
@@ -66,12 +66,13 @@ Logowanie oparte o magic link (e-mail) jako rozwiązanie MVP — bez przechowywa
 
 Role:
 - **User** — widzi wyłącznie własne dane; informacje o subskrypcjach i finansach nie są publiczne ani widoczne dla innych userów.
-- **Admin** — pełny wgląd w dane użytkowników (włącznie z subskrypcjami i kwotami), na potrzeby zarządzania kontami (odblokowanie, reset dostępu, gdy zawiodą standardowe opcje odzyskiwania). Świadomie przyjęte na MVP ze względu na czas wdrożenia; zawężenie widoczności admina do danych operacyjnych (bez wglądu w finanse) rozważane jako możliwe ograniczenie w v2, po fazie testów.
+- **Admin** — pełny wgląd w dane użytkowników (włącznie z subskrypcjami i kwotami), na potrzeby zarządzania kontami (odblokowanie, reset dostępu, gdy zawiodą standardowe opcje odzyskiwania). Świadomie przyjęte na MVP ze względu na czas wdrożenia; zawężenie widoczności admina do danych operacyjnych (bez wglądu w finanse) rozważane jako możliwe ograniczenie w v2, po fazie testów. Rolę admina nadaje ręcznie operator systemu poza aplikacją — nie ma samorejestracji jako administrator.
 
 ## Success Criteria
 
 ### Primary
-- Użytkownik loguje się magic linkiem, dodaje subskrypcje i przegląda je w jednej liście ze szczegółami (nazwa, kategoria, kwota, cykl, karta/bank, status) — działający przepływ end-to-end dowodzi, że produkt działa.
+- Nowy użytkownik przechodzi od wejścia na stronę do pierwszej subskrypcji widocznej na liście (logowanie magic linkiem, dodanie subskrypcji z pełnymi szczegółami) w mniej niż 3 minuty.
+- Sumy miesięczne i roczne na dashboardzie są zgodne z ręcznym wyliczeniem dla 100% wprowadzonych subskrypcji.
 
 ### Secondary
 - Wykrywanie duplikatów/nakładających się subskrypcji w tej samej kategorii.
@@ -83,7 +84,20 @@ Role:
 
 ## Timeline acknowledgment
 
-Acknowledged on 2026-09-25: 6-7-week MVP requires sustained dedication; user accepted. Cel: termin 2 (6 grudnia 2026) jako bezpieczny wariant bazowy, termin 1 (4 listopada 2026) jako możliwy stretch przy szybszym tempie pracy.
+Acknowledged on 2026-09-25: 6-7-week MVP requires sustained dedication; user accepted. Cel: 6 grudnia 2026 jako bezpieczny termin bazowy, 4 listopada 2026 jako możliwy stretch przy szybszym tempie pracy.
+
+## User Stories
+
+### US-01: Użytkownik loguje się i dodaje pierwszą subskrypcję
+
+- **Given** zarejestrowany użytkownik, bez wcześniej dodanych subskrypcji, z dostępem do swojej skrzynki e-mail
+- **When** loguje się przez magic link i dodaje nową subskrypcję (nazwa, kategoria, kwota, cykl, forma płatności, status)
+- **Then** subskrypcja pojawia się na liście subskrypcji użytkownika ze wszystkimi wprowadzonymi szczegółami
+
+#### Acceptance Criteria
+- Magic link jest ważny tylko przez ograniczony czas i tylko do jednorazowego użycia
+- Nowo dodana subskrypcja jest natychmiast widoczna na liście
+- Kwota subskrypcji jest przeliczana do wspólnego mianownika (miesięcznie/rocznie) na dashboardzie
 
 ## Functional Requirements
 
@@ -96,7 +110,7 @@ Acknowledged on 2026-09-25: 6-7-week MVP requires sustained dedication; user acc
   > Socrates: Counter-argument considered: "może okazać się zbędne, jeśli magic link się sprawdzi." Resolution: kept jako nice-to-have; implementowane tylko jeśli starczy czasu, nie blokuje ukończenia MVP.
 
 ### Zarządzanie subskrypcjami
-- FR-004: Użytkownik może dodać nową subskrypcję (nazwa, kategoria, kwota, cykl rozliczeniowy miesięczny/roczny, forma płatności, status). Priority: must-have
+- FR-004: Użytkownik może dodać nową subskrypcję: nazwa, kategoria, kwota w PLN, cykl rozliczeniowy miesięczny/roczny, forma płatności (z zamkniętej listy: karta kredytowa, karta debetowa, BLIK, przelew/zlecenie stałe, portfel elektroniczny, inne), status, data końca okresu próbnego (dla subskrypcji w trialu) i data następnego rozliczenia. Priority: must-have
   > Socrates: Counter-argument considered: "sztywne pole karta/bank nie pasuje do każdej subskrypcji (np. płatność BLIK-iem bez przypisanej karty)." Resolution: zmieniono pole z "karta/bank" na "forma płatności" — pole wymagane, ograniczone do form cyklicznych płatności dostępnych na rynku (tekstowe lub lista wyboru), zamiast wskazania konkretnej karty.
 - FR-005: Użytkownik może edytować istniejącą subskrypcję; zmiana danych wymusza ponowne przeliczenie budżetu i analizy duplikatów. Priority: must-have
   > Socrates: Counter-argument considered: "edycja może zafałszować historię dla analizy budżetu/duplikatów w czasie." Resolution: odrzucony — użytkownik musi móc poprawić własne dane; zamiast blokować edycję, FR doprecyzowany o wymóg ponownego przeliczenia po zmianie.
@@ -106,8 +120,8 @@ Acknowledged on 2026-09-25: 6-7-week MVP requires sustained dedication; user acc
   > Socrates: Counter-argument considered: "bez sortowania/filtrowania lista staje się nieużyteczna przy większej liczbie subskrypcji." Resolution: bazowa lista zostaje must-have; sortowanie/filtrowanie wydzielone jako osobny FR-016 (nice-to-have, planowane na v2/v3).
 - FR-008: System przelicza koszt każdej subskrypcji do wspólnego mianownika i pokazuje na dashboardzie zarówno sumę miesięczną, jak i roczną, z podziałem na kategorie. Priority: must-have
   > Socrates: Counter-argument considered: "uśredniona kwota roczna może wprowadzać w błąd." Resolution: odrzucony i rozszerzony — dashboard pokazuje oba podsumowania (miesięczne i roczne), co pomaga porównać koszt np. z wypłatą.
-
 - FR-016: Użytkownik może sortować i filtrować listę subskrypcji. Priority: nice-to-have (planowane na v2/v3)
+- FR-018: Użytkownik może wybrać kategorię subskrypcji z predefiniowanej listy lub dodać własną. Priority: must-have
 
 ### Wykrywanie duplikatów
 - FR-009: Użytkownik może ustawić konfigurowalny próg liczby aktywnych subskrypcji w danej kategorii (domyślnie: 2), po przekroczeniu którego system oznacza flagą/ostrzeżeniem na dashboardzie. Priority: must-have
@@ -122,18 +136,28 @@ Acknowledged on 2026-09-25: 6-7-week MVP requires sustained dedication; user acc
   > Socrates: Counter-argument considered: "dodatkowa złożoność UX w formularzu dodawania, gdy alert po dodaniu (FR-011) już informuje o przekroczeniu." Resolution: przyjęty — zdegradowany z must-have do nice-to-have, może zjechać do v2, jeśli zabraknie czasu.
 - FR-017: Użytkownik może konfigurować własne progi alertów budżetowych zamiast domyślnych 80%/100%. Priority: nice-to-have (planowane na v2)
 
-## Business Logic
+### Cykl życia subskrypcji
+- FR-013: Subskrypcja przechodzi przez stany trial → active → cancelled_pending → cancelled z logiką przejść między nimi: trial → active po dacie końca okresu próbnego; cancelled_pending → cancelled po dacie następnego rozliczenia (koniec opłaconego okresu). Priority: must-have
+  > Socrates: Counter-argument considered: "ręczne zarządzanie statusem przez użytkownika może wystarczyć, bez formalnej maszyny stanów w kodzie." Resolution: odrzucony — to kluczowa reguła domenowa MVP; formalna maszyna stanów (z automatycznymi przejściami, np. przypomnieniem przed końcem triala) zostaje, bo bez niej cykl życia sprowadza się do zwykłego pola statusu.
+- FR-014: System wysyła przypomnienie e-mail 7 dni przed końcem okresu próbnego. Priority: must-have
+  > Socrates: Counter-argument considered: "wymaga schedulera/cron sprawdzającego zbliżające się końce triali — jeden z bardziej czasochłonnych elementów MVP." Resolution: brak kontrargumentu odrzucającego FR — zostaje jak jest, koszt czasowy już uwzględniony w akceptacji 6-7-tygodniowego terminu.
 
-System pokazuje alert o wielu subskrypcjach tego samego typu oraz o rosnących wydatkach / zbliżającym się limicie budżetowym lub jego przekroczeniu.
-
-Reguła bierze pod uwagę dane wprowadzone przez użytkownika: listę subskrypcji/płatności cyklicznych wraz z ich kategoriami i kwotami, oraz ustawiony budżet (całościowy i per kategoria). Wynikiem jest zmiana statusu poszczególnych kategorii subskrypcji (informacja o zbyt dużej liczbie lub zbyt wysokiej kwocie) oraz podsumowanie na dashboardzie — czy użytkownik mieści się w ustalonych limitach. Analiza wykonywana jest na żądanie oraz automatycznie po zakończonym wprowadzaniu lub edycji subskrypcji.
+### Powiadomienia okresowe
+- FR-015: System wysyła okresowy e-mail podsumowujący, jeśli którekolwiek alerty są aktywne (np. 2+ subskrypcje w tej samej kategorii, przekroczony próg budżetowy). Priority: nice-to-have
+  > Socrates: Counter-argument considered: "druga funkcja mailowa obok przypomnień o trialu to dodatkowy nakład na infrastrukturę i harmonogram." Resolution: brak kontrargumentu odrzucającego FR — zostaje jak jest, jako nice-to-have.
 
 ## Non-Functional Requirements
 
-- Aplikacja działa poprawnie na dwóch najnowszych wersjach głównych przeglądarek desktopowych (Chrome, Edge, Opera i podobne oparte na Chromium/Firefox).
+- Aplikacja działa poprawnie na dwóch najnowszych wersjach głównych przeglądarek desktopowych.
 - Pierwszy widok ładuje się w czasie zgodnym z ogólnie przyjętymi wytycznymi dla portali internetowych (LCP < 3.5s).
 - Dane osobowe/finansowe użytkownika są usuwane lub anonimizowane w ciągu 30 dni od żądania usunięcia konta.
 - Konta nieaktywne (brak logowania) przez 12 miesięcy są zgłaszane użytkownikowi do potwierdzenia dalszego przechowywania lub usunięcia danych.
+
+## Business Logic
+
+System pokazuje alert o wielu subskrypcjach tego samego typu oraz o zbliżaniu się do limitu budżetowego lub jego przekroczeniu.
+
+Reguła bierze pod uwagę dane wprowadzone przez użytkownika: listę subskrypcji/płatności cyklicznych wraz z ich kategoriami i kwotami, oraz ustawiony budżet (całościowy i per kategoria). Wynikiem jest zmiana statusu poszczególnych kategorii subskrypcji (informacja o zbyt dużej liczbie lub zbyt wysokiej kwocie) oraz podsumowanie na dashboardzie — czy użytkownik mieści się w ustalonych limitach. Analiza wykonywana jest na żądanie oraz automatycznie po zakończonym wprowadzaniu lub edycji subskrypcji.
 
 ## Non-Goals
 
@@ -141,31 +165,10 @@ Reguła bierze pod uwagę dane wprowadzone przez użytkownika: listę subskrypcj
 - **Współdzielone subskrypcje / split kosztów** — backlog v2; MVP zakłada pojedynczego użytkownika na konto.
 - **Rekomendacja przejścia na plan roczny** — backlog v2; poza podstawową logiką alertów i budżetu.
 - **Historia zmian cen w czasie** — backlog v2; MVP pokazuje stan bieżący, nie trendy historyczne.
+- **Obsługa wielu walut** — MVP operuje wyłącznie w PLN; subskrypcje w innych walutach użytkownik wprowadza po własnym przeliczeniu.
 
 ## Forward: tech-stack
 
-- Preferowany stack: Angular + NestJS — autor zna go już komercyjnie, brak narzuconego stacku przez kurs. Właściwe potwierdzenie/wybór stacku i miejsca deployu należy do `10x-tech-stack-selector`, po `/10x-prd`.
-- Otwarte pytanie o wyróżnienie (wymaga publicznego URL) w pierwszym terminie (4 listopada 2026) vs. traktowanie drugiego terminu (6 grudnia 2026, ustawionego jako `hard_deadline`) jako spokojniejszego wariantu bazowego — wpływa na decyzję o deployu, do rozstrzygnięcia downstream.
-
-### Cykl życia subskrypcji
-- FR-013: Subskrypcja przechodzi przez stany trial → active → cancelled_pending → cancelled z logiką przejść między nimi. Priority: must-have
-  > Socrates: Counter-argument considered: "ręczne zarządzanie statusem przez użytkownika może wystarczyć, bez formalnej maszyny stanów w kodzie." Resolution: odrzucony — to kluczowa reguła domenowa MVP; formalna maszyna stanów (z automatycznymi przejściami, np. przypomnieniem przed końcem triala) zostaje, bo bez niej cykl życia sprowadza się do zwykłego pola statusu.
-- FR-014: System wysyła przypomnienie e-mail przed końcem okresu próbnego. Priority: must-have
-  > Socrates: Counter-argument considered: "wymaga schedulera/cron sprawdzającego zbliżające się końce triali — jeden z bardziej czasochłonnych elementów MVP." Resolution: brak kontrargumentu odrzucającego FR — zostaje jak jest, koszt czasowy już uwzględniony w akceptacji 6-7-tygodniowego terminu.
-
-### Powiadomienia okresowe
-- FR-015: System wysyła okresowy e-mail podsumowujący, jeśli którekolwiek alerty są aktywne (np. 2+ subskrypcje w tej samej kategorii, przekroczony próg budżetowy). Priority: nice-to-have
-  > Socrates: Counter-argument considered: "druga funkcja mailowa obok przypomnień o trialu to dodatkowy nakład na infrastrukturę i harmonogram." Resolution: brak kontrargumentu odrzucającego FR — zostaje jak jest, jako nice-to-have.
-
-## User Stories
-
-### US-01: Użytkownik loguje się i dodaje pierwszą subskrypcję
-
-- **Given** zarejestrowany użytkownik, bez wcześniej dodanych subskrypcji, z dostępem do swojej skrzynki e-mail
-- **When** loguje się przez magic link i dodaje nową subskrypcję (nazwa, kategoria, kwota, cykl, karta/bank, status)
-- **Then** subskrypcja pojawia się na liście subskrypcji użytkownika ze wszystkimi wprowadzonymi szczegółami
-
-#### Acceptance Criteria
-- Magic link jest ważny tylko przez ograniczony czas i tylko do jednorazowego użycia
-- Nowo dodana subskrypcja jest natychmiast widoczna na liście
-- Kwota subskrypcji jest przeliczana do wspólnego mianownika (miesięcznie/rocznie) na dashboardzie
+- Preferowany stack: Angular + NestJS — autor zna go komercyjnie. Potwierdzenie/wybór stacku i miejsca wdrożenia należy do kroku wyboru stacku, po `/10x-prd`.
+- Otwarta decyzja: czy celować we wcześniejszy termin (4 listopada 2026, wymaga publicznie dostępnej wersji aplikacji), czy w 6 grudnia 2026 (`hard_deadline`) jako spokojniejszy wariant — wpływa na decyzję o wdrożeniu, do rozstrzygnięcia przy wyborze stacku.
+- Preferencja z NFR: wspierane przeglądarki — Chrome, Edge, Opera (w PRD zapisane generycznie jako "główne przeglądarki desktopowe").

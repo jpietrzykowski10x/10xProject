@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 <!-- BEGIN @przeprogramowani/10x-cli -->
 
 ## 10xDevs AI Toolkit — Module 1, Lesson 1
@@ -53,3 +57,31 @@ The shipped skills carry no 10xDevs / cohort / certification references. The mec
 Skills must not write to `context/archive/`. Archived changes are immutable; if a resolved target path starts with `context/archive/`, abort with: "This change is archived. Open a new change with `/10x-new` instead."
 
 <!-- END @przeprogramowani/10x-cli -->
+
+## Repository notes (not synced by 10x-cli — safe to edit)
+
+### Current state
+
+This repository has no application code yet. The project is **SubTracker**, a web app for tracking personal subscriptions, with duplicate detection, budget alerts, and a subscription lifecycle state machine. The shaping chain has run: `context/` is scaffolded, and `context/foundation/` holds `shape-notes.md` and `prd.md`. The next step is stack selection (`10x-tech-stack-selector`), which ships in a later lesson and is not installed here yet.
+
+### Where the skills actually live
+
+- `.claude/skills/10x-init/`, `.claude/skills/10x-shape/`, `.claude/skills/10x-prd/`, `.claude/skills/10x-idea-check/` — the shaping-chain skills plus the pre-shaping idea assessor (`/10x-idea-check`, not mentioned in the synced block above — use it before `/10x-shape` when it's unclear whether an idea is worth shaping at all).
+- `.agents/skills/10x-cli-setup/` — installs/troubleshoots the `10x` CLI itself (npm/npx runner, auth, course access). Unrelated to the shaping chain; only relevant when the CLI or skill downloads are misbehaving.
+- `.claude/skills/10x-shape/references/prd-schema.md` — the single source of truth for `shape-notes.md` and `prd.md` structure. Both `/10x-shape` and `/10x-prd` re-read it at runtime; if it and a SKILL.md ever disagree, the schema wins.
+
+### Skill files are synced, not hand-authored
+
+`skills-lock.json` and `.claude/.10x-cli-manifest.json` track skill provenance (source repo + content hash) for content pulled via the `10x` CLI (`10x get`/`10x sync`). Treat files under `.claude/skills/` and `.agents/skills/` as generated: don't hand-edit them expecting the change to stick — a future sync can overwrite it. If a skill's behavior needs to change, that's an upstream change in `przeprogramowani/10x-cli`.
+
+### Known drift vs. the synced block above
+
+The synced block above describes the toolkit's intended shape but has fallen behind the skill versions actually installed here. When in doubt, read the real `SKILL.md` — it's authoritative, not the summary above:
+
+- `/10x-shape` supports both greenfield and brownfield (auto-detected from repo signals), not "Greenfield only."
+- `/10x-init` scaffolds only `context/{changes,archive,foundation}/` + a `README.md` in each. It does **not** create `lessons.md` or `contract-surfaces.md` — those paths mentioned above are aspirational/not yet implemented by the installed skill.
+- The PRD schema has no `## Data Model` section (retired) — entities emerge from FRs/User Stories and are pinned downstream, not in the PRD.
+
+### No build/lint/test commands
+
+There's no `package.json` or other manifest — nothing to build, lint, or test yet. That arrives once a stack is chosen (the not-yet-shipped `10x-tech-stack-selector` step after `/10x-prd`).
