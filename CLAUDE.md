@@ -12,6 +12,7 @@ Everything between the `BEGIN`/`END @przeprogramowani/10x-cli` markers below is 
 - **Node 24 is required** (Angular CLI 22 refuses Node < 22.22.3 / 24.15.0). The machine uses `fnm`, not `nvm`.
 - **The backend is native ESM** (`"type": "module"`, `module: nodenext`). Relative imports must carry the `.js` extension (`import { AppModule } from './app.module.js'`), and `src/main.ts` uses top-level `await`.
 - **Every frontend route is prerendered at build time** — `src/app/app.routes.server.ts` maps `'**'` to `RenderMode.Prerender`. Routes that depend on the logged-in user or live data need an explicit `RenderMode.Server` (or `Client`) entry, or they will ship stale HTML.
+- **Recurring rules live in @context/foundation/lessons.md** — follow them when planning and implementing.
 - **`.claude/skills/` and `.agents/skills/` are generated** by the `10x` CLI and git-ignored; don't hand-edit them. `skills-lock.json` and `.claude/.10x-cli-manifest.json` track their provenance. Behaviour changes belong upstream in `przeprogramowani/10x-cli`.
 
 ### Project
@@ -44,7 +45,7 @@ Backend (`cd backend-subtracker`):
 - `npm test` — vitest unit tests (`src/**/*.spec.ts`); `npm run test:e2e` — e2e tests in `test/`; `npm run test:cov` — coverage
 - Single test file: `npx vitest run src/app.controller.spec.ts`
 
-Both apps use Prettier with single quotes (frontend: `printWidth: 100`; backend: `trailingComma: all`).
+Formatting: @frontend-subtracker/.prettierrc, @backend-subtracker/.prettierrc.
 
 ### Skills installed here beyond the synced block
 
@@ -55,7 +56,7 @@ Both apps use Prettier with single quotes (frontend: `printWidth: 100`; backend:
 
 When the synced block and an installed `SKILL.md` disagree, the `SKILL.md` wins.
 
-- `/10x-init` creates only `context/{changes,archive,foundation}/` with a `README.md` in each. `docs/reference/contract-surfaces.md` does not exist and nothing here creates it; `context/foundation/lessons.md` appears only after the first `/10x-lesson` run.
+- `/10x-init` creates only `context/{changes,archive,foundation}/` with a `README.md` in each. `docs/reference/contract-surfaces.md` does not exist and nothing here creates it; `context/foundation/lessons.md` is created by `/10x-lesson`.
 - `/10x-bootstrapper` scaffolds a single starter into the repo root; SubTracker's two sibling apps were an adaptation made during the run.
 
 <!-- BEGIN @przeprogramowani/10x-cli -->
