@@ -78,14 +78,26 @@ Skills must not write to `context/archive/`. Archived changes are immutable; if 
 
 ### Current state
 
-This repository has no application code yet. The project is **SubTracker**, a web app for tracking personal subscriptions, with duplicate detection, budget alerts, and a subscription lifecycle state machine. The shaping chain and stack selection have run: `context/foundation/` holds `shape-notes.md`, `prd.md`, and `tech-stack.md`. The chosen stack is an Angular (SSR) frontend plus a NestJS API as two separate apps in this repo (no monorepo tooling), PostgreSQL + TypeORM, self-hosted on MyDevil (FreeBSD) with GitHub Actions auto-deploying over SSH — `tech-stack.md` is the source of truth for the details. The next step is scaffolding with `/10x-bootstrapper`, which ships in a later lesson and is not installed here yet.
+The project is **SubTracker**, a web app for tracking personal subscriptions, with duplicate detection, budget alerts, and a subscription lifecycle state machine. The shaping chain, stack selection and bootstrap have all run: `context/foundation/` holds `shape-notes.md`, `prd.md`, and `tech-stack.md` (the source of truth for stack details), and the bootstrap run is logged in `context/changes/bootstrap-verification/verification.md`.
+
+The repo holds two sibling apps with no monorepo tooling and no root `package.json` — run every `npm` command from inside the app's own folder:
+
+- `frontend-subtracker/` — Angular 22 with SSR (`src/server.ts`, `src/main.server.ts`, `*.server.ts` config/routes), routing, SCSS. Scaffolded with `--skip-tests`.
+- `backend-subtracker/` — NestJS 12 in strict mode, oxlint, vitest. Will own magic-link auth, the admin role, the subscription state machine and scheduled jobs, backed by PostgreSQL + TypeORM (not installed yet).
+
+Both apps self-host on MyDevil (FreeBSD) as separate Node processes on separate subdomains, deployed by GitHub Actions over SSH with per-directory path filters — no CI workflows exist yet.
+
+**Node 24 is required** (Angular CLI 22 needs Node ≥ 22.22.3 or ≥ 24.15.0). The machine uses `fnm`, not `nvm`, with Node 24 as the default.
+
+The root `.gitignore` covers `node_modules/` for both apps, the backend's `dist/` and `coverage/`, `.env` files (`.env.example` stays tracked), and logs; the frontend also has its own `frontend-subtracker/.gitignore`.
 
 ### Where the skills actually live
 
 - `.claude/skills/10x-init/`, `.claude/skills/10x-shape/`, `.claude/skills/10x-prd/`, `.claude/skills/10x-idea-check/` — the shaping-chain skills plus the pre-shaping idea assessor (`/10x-idea-check`, not mentioned in the synced block above — use it before `/10x-shape` when it's unclear whether an idea is worth shaping at all).
 - `.agents/skills/10x-cli-setup/` — installs/troubleshoots the `10x` CLI itself (npm/npx runner, auth, course access). Unrelated to the shaping chain; only relevant when the CLI or skill downloads are misbehaving.
-- `.claude/skills/10x-tech-stack-selector/` — stack selection; its `references/starter-registry.yaml` is the canonical starter registry that `/10x-bootstrapper` will read.
-- `.claude/skills/10x-stack-assess/` — brownfield counterpart: scores an existing stack against the same four agent-friendly gates. Not needed for this greenfield project.
+- `.claude/skills/10x-tech-stack-selector/` — stack selection; its `references/starter-registry.yaml` is the canonical starter registry that `/10x-bootstrapper` reads.
+- `.claude/skills/10x-bootstrapper/` — scaffolding; `references/bootstrapper-config.yaml` holds per-starter cwd strategies and per-language audit commands. It scaffolds a single starter into the repo root; SubTracker's two-app layout was an adaptation made during the run (see the verification log).
+- `.claude/skills/10x-stack-assess/` and `.claude/skills/10x-health-check/` — brownfield counterparts: stack scoring against the four agent-friendly gates, and a dependency/security/CI health report. Not part of this greenfield chain, though `/10x-health-check` can be useful now that code exists.
 - `.claude/skills/10x-shape/references/prd-schema.md` — the single source of truth for `shape-notes.md` and `prd.md` structure. Both `/10x-shape` and `/10x-prd` re-read it at runtime; if it and a SKILL.md ever disagree, the schema wins.
 
 ### Skill files are synced, not hand-authored
@@ -97,8 +109,25 @@ This repository has no application code yet. The project is **SubTracker**, a we
 The synced block above describes the toolkit's intended shape but has fallen behind the skill versions actually installed here. When in doubt, read the real `SKILL.md` — it's authoritative, not the summary above:
 
 - `/10x-init` scaffolds only `context/{changes,archive,foundation}/` + a `README.md` in each. It does **not** create `lessons.md` or `contract-surfaces.md` — those paths mentioned above are aspirational/not yet implemented by the installed skill.
-- `/10x-bootstrapper` is referenced as the next link but is not installed here yet.
+- The synced block mentions a CI validator at `scripts/validate-starter-registry-sync.mjs`; that script lives in the upstream toolkit repo, not here.
 
-### No build/lint/test commands
+### Build, lint and test commands
 
-There's no `package.json` or other manifest — nothing to build, lint, or test yet. That arrives once `/10x-bootstrapper` scaffolds the Angular and NestJS apps from `tech-stack.md`.
+Run from inside each app folder.
+
+**Frontend** (`cd frontend-subtracker`):
+
+- `npm start` — dev server (`ng serve`)
+- `npm run build` — production build to `dist/frontend-subtracker/` (browser + server bundles)
+- `npm run serve:ssr:frontend-subtracker` — run the built SSR server
+- No lint or test target is configured yet (`ng test` has no builder, since the app was scaffolded with `--skip-tests`).
+
+**Backend** (`cd backend-subtracker`):
+
+- `npm run start:dev` — dev server with watch
+- `npm run build` / `npm run start:prod` — build to `dist/` and run it
+- `npm run lint` — oxlint (type-aware)
+- `npm test` — vitest unit tests; `npm run test:e2e` — e2e tests; `npm run test:cov` — coverage
+- Run a single test file: `npx vitest run src/app.controller.spec.ts`
+
+`npm audit` at bootstrap: the frontend is clean; the backend's 5 findings (2 HIGH, all transitive) all come from the dev dependency `@nestjs/mau`, which is unused because the project self-hosts.
