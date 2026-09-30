@@ -130,4 +130,4 @@ Run from inside each app folder.
 - `npm test` — vitest unit tests; `npm run test:e2e` — e2e tests; `npm run test:cov` — coverage
 - Run a single test file: `npx vitest run src/app.controller.spec.ts`
 
-`npm audit` at bootstrap: the frontend is clean; the backend's 5 findings (2 HIGH, all transitive) all come from the dev dependency `@nestjs/mau`, which is unused because the project self-hosts.
+`npm audit` is clean in both apps. The backend's bootstrap findings all came from the dev dependency `@nestjs/mau` (Nest's AWS deploy platform), which was removed together with its `deploy` script because the project self-hosts on MyDevil.

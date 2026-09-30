@@ -8,6 +8,7 @@ node_modules/
 # Backend build & test output
 /backend-subtracker/dist/
 /backend-subtracker/coverage/
+*.tsbuildinfo
 
 # Secrets — keep example files tracked
 .env
