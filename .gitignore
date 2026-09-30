@@ -1,2 +1,27 @@
+# 10x toolkit (synced, not tracked)
 /.claude/skills/10x*
 /.claude/.10x*
+
+# Dependencies (both apps)
+node_modules/
+
+# Backend build & test output
+/backend-subtracker/dist/
+/backend-subtracker/coverage/
+
+# Secrets — keep example files tracked
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Editors & OS
+.idea/
+.DS_Store
+Thumbs.db
+
+# Leftover from a failed bootstrap run
+/.bootstrap-scaffold/
