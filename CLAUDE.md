@@ -2,6 +2,62 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Repository notes (not synced by 10x-cli — safe to edit)
+
+Everything between the `BEGIN`/`END @przeprogramowani/10x-cli` markers below is overwritten by `10x get` / `10x sync`; put project-specific guidance here instead.
+
+### Tripwires
+
+- **No root `package.json`.** Two independent apps, no monorepo tooling — run every `npm` command from inside `frontend-subtracker/` or `backend-subtracker/`.
+- **Node 24 is required** (Angular CLI 22 refuses Node < 22.22.3 / 24.15.0). The machine uses `fnm`, not `nvm`.
+- **The backend is native ESM** (`"type": "module"`, `module: nodenext`). Relative imports must carry the `.js` extension (`import { AppModule } from './app.module.js'`), and `src/main.ts` uses top-level `await`.
+- **Every frontend route is prerendered at build time** — `src/app/app.routes.server.ts` maps `'**'` to `RenderMode.Prerender`. Routes that depend on the logged-in user or live data need an explicit `RenderMode.Server` (or `Client`) entry, or they will ship stale HTML.
+- **`.claude/skills/` and `.agents/skills/` are generated** by the `10x` CLI and git-ignored; don't hand-edit them. `skills-lock.json` and `.claude/.10x-cli-manifest.json` track their provenance. Behaviour changes belong upstream in `przeprogramowani/10x-cli`.
+
+### Project
+
+**SubTracker** — a web app for tracking personal subscriptions, with duplicate detection, budget alerts, and a subscription lifecycle state machine. The root `README.md` is a placeholder; the real specs live in `context/foundation/`:
+
+- `prd.md` — requirements (structure defined by `.claude/skills/10x-shape/references/prd-schema.md`)
+- `tech-stack.md` — stack decisions and the deployment plan; source of truth when this file and it disagree
+- `context/changes/bootstrap-verification/verification.md` — how the apps were scaffolded and the audit at the time
+
+### Architecture
+
+- `frontend-subtracker/` — Angular 22, standalone components, SSR via `@angular/ssr`. `src/server.ts` is an Express server (port `PORT`, default 4000) that serves `dist/.../browser` and renders everything else through `AngularNodeAppEngine`; `app.config.server.ts` merges server providers onto `app.config.ts` (which enables client hydration). Styles are SCSS.
+- `backend-subtracker/` — NestJS 12, strict TypeScript, listens on `PORT` (default 3000). Planned responsibilities per `tech-stack.md`: magic-link auth, the admin role, the subscription state machine, and scheduled jobs (`@nestjs/schedule`) for trial reminders, on PostgreSQL + TypeORM — none of these are installed yet.
+- The two apps run as separate Node processes on separate subdomains of MyDevil (FreeBSD), so the API needs CORS and a session cookie scoped to the parent domain. Deployment is planned as GitHub Actions with per-directory path filters, rsync over SSH, and `npm ci --omit=dev` on the server (never ship Linux-built `node_modules` to FreeBSD). No CI workflows exist yet.
+
+### Commands
+
+Frontend (`cd frontend-subtracker`):
+
+- `npm start` — dev server (`ng serve`)
+- `npm run build` — production build to `dist/frontend-subtracker/` (browser + server bundles)
+- `npm run serve:ssr:frontend-subtracker` — run the built SSR server
+- No lint or test target exists yet — the app was scaffolded with `--skip-tests`, so `ng test` has no builder.
+
+Backend (`cd backend-subtracker`):
+
+- `npm run start:dev` — dev server with watch; `npm run build` then `npm run start:prod` for the built app
+- `npm run lint` — oxlint (type-aware); `npm run format` — prettier
+- `npm test` — vitest unit tests (`src/**/*.spec.ts`); `npm run test:e2e` — e2e tests in `test/`; `npm run test:cov` — coverage
+- Single test file: `npx vitest run src/app.controller.spec.ts`
+
+Both apps use Prettier with single quotes (frontend: `printWidth: 100`; backend: `trailingComma: all`).
+
+### Skills installed here beyond the synced block
+
+- `/10x-idea-check` (`.claude/skills/`) — pre-shaping check of whether an idea is worth shaping at all.
+- `/10x-cli-setup` (`.agents/skills/`) — installs and troubleshoots the `10x` CLI itself; only relevant when downloads or auth misbehave.
+
+### Known drift vs. the synced block
+
+When the synced block and an installed `SKILL.md` disagree, the `SKILL.md` wins.
+
+- `/10x-init` creates only `context/{changes,archive,foundation}/` with a `README.md` in each. `docs/reference/contract-surfaces.md` does not exist and nothing here creates it; `context/foundation/lessons.md` appears only after the first `/10x-lesson` run.
+- `/10x-bootstrapper` scaffolds a single starter into the repo root; SubTracker's two sibling apps were an adaptation made during the run.
+
 <!-- BEGIN @przeprogramowani/10x-cli -->
 
 ## 10xDevs AI Toolkit — Module 1, Lesson 4
@@ -100,59 +156,3 @@ The shipped skills carry no 10xDevs / cohort / certification references. `/10x-a
 Skills must not write to `context/archive/`. Archived changes are immutable; if a resolved target path starts with `context/archive/`, abort with: "This change is archived. Open a new change with `/10x-new` instead."
 
 <!-- END @przeprogramowani/10x-cli -->
-
-## Repository notes (not synced by 10x-cli — safe to edit)
-
-Everything above the `END @przeprogramowani/10x-cli` marker is overwritten by `10x get` / `10x sync`; put project-specific guidance here instead.
-
-### Tripwires
-
-- **No root `package.json`.** Two independent apps, no monorepo tooling — run every `npm` command from inside `frontend-subtracker/` or `backend-subtracker/`.
-- **Node 24 is required** (Angular CLI 22 refuses Node < 22.22.3 / 24.15.0). The machine uses `fnm`, not `nvm`.
-- **The backend is native ESM** (`"type": "module"`, `module: nodenext`). Relative imports must carry the `.js` extension (`import { AppModule } from './app.module.js'`), and `src/main.ts` uses top-level `await`.
-- **Every frontend route is prerendered at build time** — `src/app/app.routes.server.ts` maps `'**'` to `RenderMode.Prerender`. Routes that depend on the logged-in user or live data need an explicit `RenderMode.Server` (or `Client`) entry, or they will ship stale HTML.
-- **`.claude/skills/` and `.agents/skills/` are generated** by the `10x` CLI and git-ignored; don't hand-edit them. `skills-lock.json` and `.claude/.10x-cli-manifest.json` track their provenance. Behaviour changes belong upstream in `przeprogramowani/10x-cli`.
-
-### Project
-
-**SubTracker** — a web app for tracking personal subscriptions, with duplicate detection, budget alerts, and a subscription lifecycle state machine. The root `README.md` is a placeholder; the real specs live in `context/foundation/`:
-
-- `prd.md` — requirements (structure defined by `.claude/skills/10x-shape/references/prd-schema.md`)
-- `tech-stack.md` — stack decisions and the deployment plan; source of truth when this file and it disagree
-- `context/changes/bootstrap-verification/verification.md` — how the apps were scaffolded and the audit at the time
-
-### Architecture
-
-- `frontend-subtracker/` — Angular 22, standalone components, SSR via `@angular/ssr`. `src/server.ts` is an Express server (port `PORT`, default 4000) that serves `dist/.../browser` and renders everything else through `AngularNodeAppEngine`; `app.config.server.ts` merges server providers onto `app.config.ts` (which enables client hydration). Styles are SCSS.
-- `backend-subtracker/` — NestJS 12, strict TypeScript, listens on `PORT` (default 3000). Planned responsibilities per `tech-stack.md`: magic-link auth, the admin role, the subscription state machine, and scheduled jobs (`@nestjs/schedule`) for trial reminders, on PostgreSQL + TypeORM — none of these are installed yet.
-- The two apps run as separate Node processes on separate subdomains of MyDevil (FreeBSD), so the API needs CORS and a session cookie scoped to the parent domain. Deployment is planned as GitHub Actions with per-directory path filters, rsync over SSH, and `npm ci --omit=dev` on the server (never ship Linux-built `node_modules` to FreeBSD). No CI workflows exist yet.
-
-### Commands
-
-Frontend (`cd frontend-subtracker`):
-
-- `npm start` — dev server (`ng serve`)
-- `npm run build` — production build to `dist/frontend-subtracker/` (browser + server bundles)
-- `npm run serve:ssr:frontend-subtracker` — run the built SSR server
-- No lint or test target exists yet — the app was scaffolded with `--skip-tests`, so `ng test` has no builder.
-
-Backend (`cd backend-subtracker`):
-
-- `npm run start:dev` — dev server with watch; `npm run build` then `npm run start:prod` for the built app
-- `npm run lint` — oxlint (type-aware); `npm run format` — prettier
-- `npm test` — vitest unit tests (`src/**/*.spec.ts`); `npm run test:e2e` — e2e tests in `test/`; `npm run test:cov` — coverage
-- Single test file: `npx vitest run src/app.controller.spec.ts`
-
-Both apps use Prettier with single quotes (frontend: `printWidth: 100`; backend: `trailingComma: all`).
-
-### Skills installed here beyond the synced block
-
-- `/10x-idea-check` (`.claude/skills/`) — pre-shaping check of whether an idea is worth shaping at all.
-- `/10x-cli-setup` (`.agents/skills/`) — installs and troubleshoots the `10x` CLI itself; only relevant when downloads or auth misbehave.
-
-### Known drift vs. the synced block
-
-When the synced block and an installed `SKILL.md` disagree, the `SKILL.md` wins.
-
-- `/10x-init` creates only `context/{changes,archive,foundation}/` with a `README.md` in each. `docs/reference/contract-surfaces.md` does not exist and nothing here creates it; `context/foundation/lessons.md` appears only after the first `/10x-lesson` run.
-- `/10x-bootstrapper` scaffolds a single starter into the repo root; SubTracker's two sibling apps were an adaptation made during the run.
