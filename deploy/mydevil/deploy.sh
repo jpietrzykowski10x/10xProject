@@ -7,11 +7,11 @@
 # running; only the final swap (two mv) causes a few seconds of downtime.
 # If the health check fails, the previous version is restored automatically.
 set -eu
-export PATH="/usr/local/bin:/usr/bin:/bin:$HOME/bin:$HOME/.npm-global/bin:$PATH"
+export PATH="/usr/local/bin:/usr/bin:/bin:$HOME/.npm-global/bin:$PATH"
 
 APP="$1"
 SHA="$2"
-BASE="$HOME/apps/subtracker-$APP"
+BASE="$HOME/apps/subtracker/$APP"
 LIVE="$BASE/public_nodejs"
 NEW="$BASE/public_nodejs_new"
 RELEASES="$BASE/releases"
@@ -55,7 +55,7 @@ if [ -d "$LIVE" ]; then
   had_live=1
 fi
 mv "$NEW" "$LIVE"
-"$HOME/bin/start-app.sh" "$APP"
+"$HOME/apps/subtracker/bin/start-app.sh" "$APP"
 
 if ! health_check; then
   if [ "$had_live" -eq 1 ]; then
@@ -63,7 +63,7 @@ if ! health_check; then
     forever stop "subtracker-$APP" >/dev/null 2>&1 || true
     mv "$LIVE" "${RELEASE}_failed"
     mv "$RELEASE" "$LIVE"
-    "$HOME/bin/start-app.sh" "$APP"
+    "$HOME/apps/subtracker/bin/start-app.sh" "$APP"
   fi
   log "check $BASE/logs/err.log"
   exit 1

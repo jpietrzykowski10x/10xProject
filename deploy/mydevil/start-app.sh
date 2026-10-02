@@ -2,10 +2,10 @@
 # (Re)starts one app under forever on Node 24, with env from public_nodejs/.env.
 # Usage: start-app.sh <frontend|api>
 set -eu
-export PATH="/usr/local/bin:/usr/bin:/bin:$HOME/bin:$HOME/.npm-global/bin:$PATH"
+export PATH="/usr/local/bin:/usr/bin:/bin:$HOME/.npm-global/bin:$PATH"
 
 APP="$1"
-BASE="$HOME/apps/subtracker-$APP"
+BASE="$HOME/apps/subtracker/$APP"
 LIVE="$BASE/public_nodejs"
 
 case "$APP" in

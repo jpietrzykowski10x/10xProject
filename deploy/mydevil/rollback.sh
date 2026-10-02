@@ -4,10 +4,10 @@
 # Usage: rollback.sh <frontend|api>
 # Note: this rolls back code only, never the database.
 set -eu
-export PATH="/usr/local/bin:/usr/bin:/bin:$HOME/bin:$HOME/.npm-global/bin:$PATH"
+export PATH="/usr/local/bin:/usr/bin:/bin:$HOME/.npm-global/bin:$PATH"
 
 APP="$1"
-BASE="$HOME/apps/subtracker-$APP"
+BASE="$HOME/apps/subtracker/$APP"
 LIVE="$BASE/public_nodejs"
 RELEASES="$BASE/releases"
 
@@ -20,5 +20,5 @@ fi
 forever stop "subtracker-$APP" >/dev/null 2>&1 || true
 mv "$LIVE" "$RELEASES/$(date +%Y%m%d-%H%M%S)_rolledback"
 mv "$RELEASES/$PREV" "$LIVE"
-"$HOME/bin/start-app.sh" "$APP"
+"$HOME/apps/subtracker/bin/start-app.sh" "$APP"
 echo "rollback: $APP now runs $PREV"

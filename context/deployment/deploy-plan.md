@@ -25,14 +25,14 @@ Cel: obecne „hello world” obu aplikacji pod `https://subtracker.jakubpietrzy
 4. **`.gitignore`** — `.mydevil/`.
 5. **`deploy/mydevil/`** (POSIX `sh`, FreeBSD):
    - `ci-gate.sh` — wymuszona komenda klucza CI: akceptuje tylko `deploy <frontend|api> <40-znakowy sha>`, inaczej exit 1; przekazuje stdin do `deploy.sh`.
-   - `deploy.sh <app> <sha>` — w `~/apps/subtracker-<app>/`:
+   - `deploy.sh <app> <sha>` — w `~/apps/subtracker/<app>/`:
      1. rozpakuj tarball ze stdin do świeżego `public_nodejs_new/`, skopiuj `shared/.env`;
      2. `/usr/local/bin/npm24 ci --omit=dev` w `public_nodejs_new` (stara wersja dalej działa — błąd tu nie dotyka produkcji);
      3. *(miejsce na przyszłość: `pg_dump` do `~/backups/` + `migration:run` — błąd = stop, stara wersja nietknięta)*;
      4. `forever stop` → `mv public_nodejs releases/<YYYYmmdd-HHMM>_<sha7>` → `mv public_nodejs_new public_nodejs` → `start-app.sh`;
      5. health-check `curl` na `localhost:$PORT` (3 próby); porażka → odwrotne `mv` + `start-app.sh` + exit 1;
      6. zostaw 3 ostatnie wydania.
-   - `start-app.sh <app>` — `forever stop subtracker-<app>` (ignoruje błąd), `set -a; . public_nodejs/.env`, `forever start --uid subtracker-<app> -c /usr/local/bin/node24 --minUptime 5000 --spinSleepTime 10000 --workingDir … -a -l/-o/-e ~/apps/subtracker-<app>/logs/… <entry>` (frontend: `app.mjs`, api: `app.js`).
+   - `start-app.sh <app>` — `forever stop subtracker-<app>` (ignoruje błąd), `set -a; . public_nodejs/.env`, `forever start --uid subtracker-<app> -c /usr/local/bin/node24 --minUptime 5000 --spinSleepTime 10000 --workingDir … -a -l/-o/-e ~/apps/subtracker/<app>/logs/… <entry>` (frontend: `app.mjs`, api: `app.js`).
    - `rollback.sh <app>` — najnowsze wydanie z `releases/` wraca na `public_nodejs` (bieżące odkładane do `releases/` z dopiskiem `_failed`), `start-app.sh`.
    - `start-all.sh` — dla `@reboot`: PATH + `start-app.sh api` i `start-app.sh frontend`.
    - `README.md` — układ katalogów, wpis `authorized_keys`, crontab, ręczny rollback.
@@ -54,10 +54,10 @@ Po wklejeniu do GitHuba plik prywatny można usunąć z dysku — w razie potrze
 2. `devil port add tcp random` ×2 → `PORT_FE`, `PORT_API`.
 3. `devil www add subtracker.jakubpietrzykowski.pl proxy localhost <PORT_FE>` i `devil www add apisubtracker.jakubpietrzykowski.pl proxy localhost <PORT_API>`; DNS A obu subdomen na IP z `devil vhost list public` (gdy strefa na MyDevil: `devil dns add jakubpietrzykowski.pl subtracker A <IP>`, analogicznie `apisubtracker`).
 4. `devil ssl www add <IP> le le subtracker.jakubpietrzykowski.pl` i to samo dla `apisubtracker.…` (po propagacji DNS).
-5. `mkdir -p ~/apps/subtracker-{frontend,api}/{releases,shared,logs} ~/bin`; `shared/.env` każdej aplikacji: `PORT=<…>`, `NODE_ENV=production`; `chmod 600`.
-6. Skopiuj `deploy/mydevil/*.sh` do `~/bin`, `chmod 700`.
-7. `~/.ssh/authorized_keys`: `command="/usr/home/<login>/bin/ci-gate.sh",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding ssh-ed25519 AAAA… github-actions-subtracker`.
-8. `crontab -e`: `@reboot /usr/home/<login>/bin/start-all.sh` oraz `0 4 * * 0 find /usr/home/<login>/apps/*/logs -name '*.log' -size +20M -exec truncate -s 0 {} \;`.
+5. `mkdir -p ~/apps/subtracker/{frontend,api}/{releases,shared,logs} ~/apps/subtracker/bin`; `shared/.env` każdej aplikacji: `PORT=<…>`, `NODE_ENV=production`; `chmod 600`.
+6. Skopiuj `deploy/mydevil/*.sh` do `~/apps/subtracker/bin`, `chmod 700`.
+7. `~/.ssh/authorized_keys`: `command="/usr/home/<login>/apps/subtracker/bin/ci-gate.sh",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding ssh-ed25519 AAAA… github-actions-subtracker`.
+8. `crontab -e`: `@reboot /usr/home/<login>/apps/subtracker/bin/start-all.sh` oraz `0 4 * * 0 find /usr/home/<login>/apps/subtracker/*/logs -name '*.log' -size +20M -exec truncate -s 0 {} \;`.
 
 **C. GitHub → Settings → Secrets → Actions** — `MYDEVIL_HOST` (`sN.mydevil.net`), `MYDEVIL_USER`, `MYDEVIL_SSH_KEY`, `MYDEVIL_KNOWN_HOSTS` (`ssh-keyscan sN.mydevil.net`).
 
@@ -75,8 +75,8 @@ Backend serwuje HTTPS sam (jak w poprzednim projekcie), ale certyfikat i klucz c
 - `curl -s https://apisubtracker.jakubpietrzykowski.pl/` → `Hello World!`; certyfikat ważny (`curl` bez `-k`).
 - Serwer: `forever list` — `subtracker-api`, `subtracker-frontend` na `/usr/local/bin/node24`.
 - Klucz CI: `ssh -i ~/.ssh/subtracker_deploy <user>@<host> ls` → odrzucone.
-- Rollback: po drugim deployu `~/bin/rollback.sh api` → poprzednia wersja odpowiada; ponowny `workflow_dispatch` przywraca najnowszą.
-- Restart serwera (symulacja): `forever stopall && ~/bin/start-all.sh` → obie aplikacje wstają.
+- Rollback: po drugim deployu `~/apps/subtracker/bin/rollback.sh api` → poprzednia wersja odpowiada; ponowny `workflow_dispatch` przywraca najnowszą.
+- Restart serwera (symulacja): `forever stopall && ~/apps/subtracker/bin/start-all.sh` → obie aplikacje wstają.
 
 ## Stan wykonania (2026-10-02)
 

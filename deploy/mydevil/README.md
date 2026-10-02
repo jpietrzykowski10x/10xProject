@@ -1,11 +1,11 @@
 # MyDevil deploy scripts
 
-Server-side scripts for deploying SubTracker to MyDevil. Copy them to `~/bin` on the server (`chmod 700 ~/bin/*.sh`). They are not installed automatically: after changing them here, copy them again.
+Server-side scripts for deploying SubTracker to MyDevil. Copy them to `~/apps/subtracker/bin` on the server (`chmod 700 ~/apps/subtracker/bin/*.sh`). They are not installed automatically: after changing them here, copy them again.
 
 ## Server layout
 
 ```
-~/apps/subtracker-frontend/          ~/apps/subtracker-api/
+~/apps/subtracker/frontend/          ~/apps/subtracker/api/
   public_nodejs/      live version (forever runs it)
   public_nodejs_new/  being installed during a deploy
   releases/           previous versions, with node_modules (3 newest kept)
@@ -33,14 +33,14 @@ Domains are MyDevil proxy domains, and TLS terminates on MyDevil:
 `authorized_keys` entry for the GitHub Actions key. Use an absolute path:
 
 ```
-command="/usr/home/<login>/bin/ci-gate.sh",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding ssh-ed25519 AAAA... github-actions-subtracker
+command="/usr/home/<login>/apps/subtracker/bin/ci-gate.sh",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding ssh-ed25519 AAAA... github-actions-subtracker
 ```
 
 crontab:
 
 ```
-@reboot /usr/home/<login>/bin/start-all.sh
-0 4 * * 0 find /usr/home/<login>/apps/*/logs -name '*.log' -size +20M -exec truncate -s 0 {} \;
+@reboot /usr/home/<login>/apps/subtracker/bin/start-all.sh
+0 4 * * 0 find /usr/home/<login>/apps/subtracker/*/logs -name '*.log' -size +20M -exec truncate -s 0 {} \;
 ```
 
-The scripts expect `forever` on `PATH`. They look in `/usr/local/bin`, `~/bin` and `~/.npm-global/bin`. If yours lives elsewhere, adjust the `PATH` line at the top of each script.
+The scripts expect `forever` on `PATH`. They look in `/usr/local/bin` and `~/.npm-global/bin`. If yours lives elsewhere, adjust the `PATH` line at the top of each script.

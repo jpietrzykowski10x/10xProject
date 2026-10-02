@@ -25,4 +25,4 @@ case "$3" in
   *[!0-9a-f]*) reject ;;
 esac
 
-exec "$HOME/bin/deploy.sh" "$2" "$3"
+exec "$HOME/apps/subtracker/bin/deploy.sh" "$2" "$3"
