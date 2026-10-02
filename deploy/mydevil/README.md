@@ -1,6 +1,6 @@
 # MyDevil deploy scripts
 
-Server-side scripts for deploying SubTracker to MyDevil. Copy them to `~/apps/subtracker/bin` on the server (`chmod 700 ~/apps/subtracker/bin/*.sh`). They are not installed automatically: after changing them here, copy them again.
+Server-side scripts for deploying SubTracker to MyDevil. They live in `~/apps/subtracker/bin` on the server and are not installed automatically. After changing them here, upload them again; see [Updating the scripts on the server](#updating-the-scripts-on-the-server).
 
 ## Server layout
 
@@ -27,6 +27,38 @@ Domains are MyDevil proxy domains, and TLS terminates on MyDevil:
 | `start-app.sh <app>` | Restarts the app under `forever` on `/usr/local/bin/node24`, using the env from `.env`. Entry: `app.mjs` (frontend) / `app.js` (api), since MyDevil starts only these names. |
 | `rollback.sh <app>` | Makes the newest entry in `releases/` live again. Rolls back code only, not the database. |
 | `start-all.sh` | Starts both apps after a reboot. |
+
+## Updating the scripts on the server
+
+The scripts are **not** deployed by GitHub Actions: the workflows only ship app packages, and changes under `deploy/` don't trigger them. After changing any script here, upload it by hand.
+
+1. Locally, from the repo root (PowerShell or Git Bash). List the files explicitly, because PowerShell doesn't expand `*.sh` for `scp`:
+
+   ```
+   scp deploy/mydevil/ci-gate.sh deploy/mydevil/deploy.sh deploy/mydevil/start-app.sh deploy/mydevil/rollback.sh deploy/mydevil/start-all.sh <login>@s<N>.mydevil.net:~/apps/subtracker/bin/
+   ```
+
+   You can upload a single changed file the same way, for example only `deploy/mydevil/start-app.sh`.
+
+2. On the server:
+
+   ```
+   chmod 700 ~/apps/subtracker/bin/*.sh
+   ls -l ~/apps/subtracker/bin
+   SSH_ORIGINAL_COMMAND="ls" ~/apps/subtracker/bin/ci-gate.sh
+   ```
+
+   Expected result: every script shows `-rwx------`, and the last command prints `ci-gate: rejected command: ls`. Sizes must match the local files (`wc -c deploy/mydevil/*.sh`). A mismatch usually means CRLF line endings, which `.gitattributes` prevents for `*.sh`.
+
+3. If you changed `start-app.sh`, apply it to the running processes:
+
+   ```
+   ~/apps/subtracker/bin/start-app.sh api
+   ~/apps/subtracker/bin/start-app.sh frontend
+   forever list
+   ```
+
+   Changes to `deploy.sh` and `ci-gate.sh` take effect with the next deploy. Changes to `rollback.sh` and `start-all.sh` take effect the next time they run.
 
 ## One-time setup
 
