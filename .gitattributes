@@ -1,0 +1,2 @@
+# Server scripts run on FreeBSD (MyDevil) — never check them out with CRLF.
+*.sh text eol=lf

@@ -5,9 +5,17 @@ import {
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
 import express from 'express';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-const browserDistFolder = join(import.meta.dirname, '../browser');
+/**
+ * Browser assets live in ../browser in the dist layout, and in ./public in the
+ * flattened MyDevil package (see scripts/prepare-mydevil.mjs).
+ */
+const mydevilBrowserFolder = join(import.meta.dirname, 'public');
+const browserDistFolder = existsSync(mydevilBrowserFolder)
+  ? mydevilBrowserFolder
+  : join(import.meta.dirname, '../browser');
 
 const app = express();
 const angularApp = new AngularNodeAppEngine();

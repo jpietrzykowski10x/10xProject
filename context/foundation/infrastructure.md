@@ -82,20 +82,20 @@ Deploy z GitHub Actions działał kilka tygodni. Potem merge uruchomił `npm ci`
 ## Operational Story
 
 - **Preview deploys**: brak — MyDevil nie ma środowisk preview. Na MVP weryfikacja lokalna (`npm start` / `npm run start:dev`) + ewentualnie ręczna subdomena `staging.` z osobnym portem i bazą, jeśli zajdzie potrzeba.
-- **Secrets**: klucz SSH deployu i host key w GitHub Secrets (`MYDEVIL_SSH_KEY`, `MYDEVIL_KNOWN_HOSTS`); zmienne runtime (`DATABASE_URL`, `SESSION_SECRET`, SMTP) w `~/apps/<app>/shared/.env` z `chmod 600`, linkowane do każdego wydania. Rotacja ręczna: edycja `.env` + `forever restart <uid>`.
-- **Rollback**: `ssh mydevil '~/bin/rollback.sh api'` (lub `frontend`) — przestawia symlink `current` na poprzedni katalog w `releases/` i robi `forever restart`; czas ~10–30 s. Migracje bazy nie cofają się — muszą być wstecznie kompatybilne; ostateczność to dzienny backup Postgresa z MyDevil (utrata do 24 h danych).
+- **Secrets**: klucz SSH deployu i host key w GitHub Secrets (`MYDEVIL_SSH_KEY`, `MYDEVIL_KNOWN_HOSTS`); zmienne runtime (`DATABASE_URL`, `SESSION_SECRET`, SMTP) w `~/apps/subtracker-<app>/shared/.env` z `chmod 600`, kopiowane do każdego wydania (paczka z CI nie zawiera sekretów). Rotacja ręczna: edycja `shared/.env` i `public_nodejs/.env` + `~/bin/start-app.sh <app>`.
+- **Rollback**: automatyczny, gdy health-check po deployu zawiedzie; ręcznie `~/bin/rollback.sh api` (lub `frontend`) — przenosi najnowsze wydanie z `releases/` z powrotem na `public_nodejs` (z `node_modules`, bez `npm install`) i restartuje `forever`; czas ~10–30 s. Migracje bazy nie cofają się — muszą być wstecznie kompatybilne; ostateczność to dzienny backup Postgresa z MyDevil (utrata do 24 h danych).
 - **Approval**: człowiek — merge do `main` (= deploy produkcyjny), zmiany `devil www/ssl/dns/pgsql`, rotacja `SESSION_SECRET`, usuwanie baz i katalogów domen, przywracanie backupu. Agent bez nadzoru — odczyt logów, `forever list`, `gh run view`, przygotowanie PR z poprawką workflow.
-- **Logs**: pipeline — `gh run list --workflow deploy-backend.yml` / `gh run view <id> --log`; runtime — `ssh mydevil 'tail -n 200 ~/apps/api/logs/out.log ~/apps/api/logs/err.log'`, `ssh mydevil 'forever list'`; proxy — `~/domains/<domena>/logs/error.log`.
+- **Logs**: pipeline — `gh run list --workflow deploy-backend.yml` / `gh run view <id> --log`; runtime — `tail -n 200 ~/apps/subtracker-api/logs/out.log ~/apps/subtracker-api/logs/err.log`, `forever list`; proxy — `~/domains/<domena>/logs/error.log`.
 
 ## Risk Register
 
 | Risk | Source | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
-| Nieatomowy deploy (`rsync` w miejscu + `npm ci`) psuje działający proces | Devil's advocate | H | H | Wydania w `~/apps/<app>/releases/<sha>`, `npm24 ci --omit=dev` w nowym katalogu, potem `ln -sfn` na `current` i `forever restart` |
-| Brak rollbacku | Devil's advocate | M | H | `~/bin/rollback.sh` przełączający symlink na poprzednie wydanie; trzymać 5 ostatnich wydań |
-| Migracja TypeORM nie cofa się z rollbackiem | Pre-mortem | M | H | Migracje tylko addytywne (expand/contract); uruchamiane w `deploy.sh` przed przełączeniem symlinka |
+| Nieatomowy deploy (nadpisywanie w miejscu + `npm ci`) psuje działający proces | Devil's advocate | H | H | Nowa wersja instalowana w `public_nodejs_new` obok działającej, zamiana dwoma `mv`, health-check z automatycznym powrotem (`deploy/mydevil/deploy.sh`) |
+| Brak rollbacku | Devil's advocate | M | H | Poprzednie wersje w `releases/` razem z `node_modules`; `~/bin/rollback.sh <app>`; 3 ostatnie wydania |
+| Migracja TypeORM nie cofa się z rollbackiem | Pre-mortem | M | H | Migracje tylko addytywne (expand/contract); w `deploy.sh` `pg_dump` + `migration:run` przed zamianą katalogów (błąd = stop, stara wersja nietknięta) |
 | `forever`/`@reboot` startuje domyślnym Node 22 | Unknown unknowns | H | H | `forever start -c /usr/local/bin/node24`, pełne ścieżki w crontabie, `npm24` przy instalacji |
-| Klucz SSH CI = pełny dostęp do konta z prywatnymi stronami | Devil's advocate | M | H | `command="~/bin/deploy.sh",no-pty,…` w `authorized_keys`; osobny klucz dla agenta tylko do odczytu logów |
+| Klucz SSH CI = pełny dostęp do konta z prywatnymi stronami | Devil's advocate | M | H | `command=".../bin/ci-gate.sh",no-pty,…` w `authorized_keys` (akceptuje tylko `deploy <app> <sha>`); osobny klucz dla agenta tylko do odczytu logów |
 | Przekroczenie RAM/procesów wspólnego konta (MD1 1 GB) | Devil's advocate | M | M | `NODE_OPTIONS=--max-old-space-size=256` per proces, mała pula DB; dokupienie +1 GB (10 zł/mies.) lub migracja na Render |
 | `forever` przestaje restartować, brak alertu | Pre-mortem | M | H | `forever --minUptime 5000 --spinSleepTime 10000`; zewnętrzny darmowy monitor HTTP na `/health` API i frontendu |
 | Logi zapełniają dysk | Pre-mortem | M | M | Rotacja przez cron (`newsyslog`/skrypt z `truncate`) dla `~/apps/*/logs` |
@@ -108,13 +108,15 @@ Deploy z GitHub Actions działał kilka tygodni. Potem merge uruchomił `npm ci`
 
 ## Getting Started
 
-Zweryfikowane wobec: Angular 22.2 SSR (`dist/frontend-subtracker/server/server.mjs`, `PORT`), NestJS 12 ESM (`dist/main.js`), Node 24 na MyDevil jako `/usr/local/bin/node24`.
+Zweryfikowane wobec: Angular 22.2 SSR (paczka `.mydevil/`: `app.mjs` + `public/`, `PORT`), NestJS 12 ESM (paczka `.mydevil/`: `app.js`; MyDevil uruchamia tylko `app.js`/`app.mjs`), Node 24 na MyDevil jako `/usr/local/bin/node24`.
 
-1. **Porty i binaria** (SSH na konto): `devil binexec on` (relogin), potem `devil port add tcp random` dwukrotnie — zanotuj porty dla frontendu i API.
-2. **Domeny, SSL i baza**: `devil www add app.<domena> proxy localhost <PORT_FE>`, `devil www add api.<domena> proxy localhost <PORT_API>`, `devil ssl www add <IP z devil vhost list> le le app.<domena>` (i to samo dla `api.`), `devil pgsql db add subtracker`.
-3. **Układ katalogów i skrypty**: `~/apps/{frontend,api}/{releases,shared,logs}`, `shared/.env` (`chmod 600`), skrypty `~/bin/deploy.sh <app> <sha>` (`npm24 ci --omit=dev`, migracje, `ln -sfn`, `forever restart`) i `~/bin/rollback.sh <app>`.
-4. **Pierwsze uruchomienie procesów**: `PORT=<PORT_API> forever start --uid subtracker-api -c /usr/local/bin/node24 -a -l ~/apps/api/logs/forever.log -o ~/apps/api/logs/out.log -e ~/apps/api/logs/err.log ~/apps/api/current/dist/main.js` (analogicznie `subtracker-fe` dla `~/apps/frontend/current/dist/frontend-subtracker/server/server.mjs`) oraz wpisy `@reboot` w crontabie z pełnymi ścieżkami.
-5. **CI**: workflow GitHub Actions per katalog (`paths: frontend-subtracker/**` / `backend-subtracker/**`) — build na Node 24, `rsync` `dist/` + `package*.json` do `releases/<sha>`, potem `ssh` kluczem zawężonym do `~/bin/deploy.sh`.
+Pełna procedura pierwszego wdrożenia: `context/deployment/deploy-plan.md`; skrypty serwerowe: `deploy/mydevil/`.
+
+1. **Porty**: `devil port add tcp random` dwukrotnie — zanotuj porty dla frontendu i API.
+2. **Domeny i TLS**: obie subdomeny jako proxy — `devil www add subtracker.jakubpietrzykowski.pl proxy localhost <PORT_FE>`, `devil www add apisubtracker.jakubpietrzykowski.pl proxy localhost <PORT_API>`, potem `devil ssl www add <IP z devil vhost list> le le <subdomena>` dla każdej. TLS kończy się na proxy — aplikacje słuchają HTTP na localhost, bez certyfikatów w kodzie. Baza (`devil pgsql db add subtracker`) — razem ze zmianą wprowadzającą TypeORM.
+3. **Układ katalogów i skrypty**: `~/apps/subtracker-{frontend,api}/{releases,shared,logs}`, `shared/.env` (`PORT`, `NODE_ENV`; `chmod 600`), `deploy/mydevil/*.sh` skopiowane do `~/bin`.
+4. **Procesy**: `~/bin/start-app.sh <app>` uruchamia `forever` z `-c /usr/local/bin/node24`; `@reboot ~/bin/start-all.sh` w crontabie (pełne ścieżki).
+5. **CI**: `.github/workflows/deploy-{frontend,backend}.yml` (path filters per katalog) — build na Node 24, `npm run prepare-mydevil` → `.mydevil/`, `tar | ssh` kluczem z wymuszoną komendą `ci-gate.sh` → `deploy.sh` (`npm24 ci --omit=dev` w `public_nodejs_new`, zamiana `mv`, health-check).
 
 ## Out of Scope
 

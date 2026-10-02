@@ -26,3 +26,7 @@ Thumbs.db
 
 # Leftover from a failed bootstrap run
 /.bootstrap-scaffold/
+
+fyi
+# MyDevil deploy packages (both apps)
+.mydevil/

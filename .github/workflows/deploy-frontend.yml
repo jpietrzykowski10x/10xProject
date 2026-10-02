@@ -1,0 +1,54 @@
+name: Deploy frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend-subtracker/**'
+      - '.github/workflows/deploy-frontend.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-frontend
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+    working-directory: frontend-subtracker
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend-subtracker/package-lock.json
+
+      - run: npm ci
+      - run: npm run prepare-mydevil
+
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.MYDEVIL_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.MYDEVIL_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Deploy to MyDevil
+        env:
+          MYDEVIL_HOST: ${{ secrets.MYDEVIL_HOST }}
+          MYDEVIL_USER: ${{ secrets.MYDEVIL_USER }}
+        run: |
+          tar czf - -C .mydevil . \
+            | ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$MYDEVIL_USER@$MYDEVIL_HOST" "deploy frontend $GITHUB_SHA"

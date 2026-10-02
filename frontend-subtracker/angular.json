@@ -57,7 +57,7 @@
             "server": "src/main.server.ts",
             "outputMode": "server",
             "security": {
-              "allowedHosts": []
+              "allowedHosts": ["subtracker.jakubpietrzykowski.pl", "localhost"]
             },
             "ssr": {
               "entry": "src/server.ts"
