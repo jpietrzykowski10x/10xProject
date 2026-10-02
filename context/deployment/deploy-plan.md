@@ -1,5 +1,5 @@
 ---
-status: approved
+status: done
 approved_at: 2026-10-02
 platform: MyDevil
 ---
@@ -83,7 +83,8 @@ Backend serwuje HTTPS sam (jak w poprzednim projekcie), ale certyfikat i klucz c
 - [x] Zmiany w repo (pkt 1–9; entry `app.mjs`/`app.js` po uwadze użytkownika) — `prepare-mydevil` obu aplikacji zweryfikowane lokalnie: czysty `npm ci --omit=dev` w `.mydevil/`, frontend `200` (także `/main-*.js` i `/favicon.ico` z `public/`; Host `subtracker.jakubpietrzykowski.pl` → `200`, obcy Host → `400`), API `Hello World!`; backend lint + testy zielone; `ci-gate.sh` odrzuca wszystko poza `deploy <frontend|api> <sha>`.
 - [x] Bramki A–C (użytkownik) — porty 22722 (frontend) / 59663 (api); domeny proxy i Let's Encrypt dodane w panelu DevilWEB („Użyj HTTPS” odznaczone — proxy łączy się z aplikacją po HTTP); układ przeniesiony do `~/apps/subtracker/{bin,frontend,api}` (`~/bin` zawiera dowiązania node/npm konta); `~/.ssh` trzeba było założyć (700/600); klucz CI zweryfikowany (`ci-gate: rejected command: ls`).
 - [x] Push na `main` i weryfikacja produkcyjna — oba workflowy zielone; `https://subtracker.jakubpietrzykowski.pl` → 200 (SSR, ważny TLS), `https://apisubtracker.jakubpietrzykowski.pl` → `Hello World!` (ważny TLS). Ponowny deploy frontendu przeszedł przez wydania (`releases/` + `mv`) z `health-check OK`.
-- [ ] Test rollbacku (`rollback.sh`) i symulacja restartu (`start-all.sh`)
+- [x] Test rollbacku — `rollback.sh frontend` przywrócił poprzednie wydanie (200 OK), bieżące odłożone jako `_rolledback`; ponowny deploy przywrócił najnowszą wersję.
+- [x] Symulacja restartu — `forever stop` obu procesów SubTrackera po uid, potem `start-all.sh` (wpis `@reboot`): oba wstały przez resolved path, pozostałe aplikacje konta nietknięte.
 
 ### Problemy napotkane przy wdrożeniu
 
