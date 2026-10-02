@@ -44,3 +44,5 @@ crontab:
 ```
 
 The scripts expect `forever` on `PATH`. They look in `/usr/local/bin` and `~/.npm-global/bin`. If yours lives elsewhere, adjust the `PATH` line at the top of each script.
+
+Other apps run under `forever` on this account. Stop SubTracker processes by uid (`forever stop subtracker-frontend`), never with `forever stopall`.

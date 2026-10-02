@@ -76,7 +76,7 @@ Backend serwuje HTTPS sam (jak w poprzednim projekcie), ale certyfikat i klucz c
 - Serwer: `forever list` — `subtracker-api`, `subtracker-frontend` na `/usr/local/bin/node24`.
 - Klucz CI: `ssh -i ~/.ssh/subtracker_deploy <user>@<host> ls` → odrzucone.
 - Rollback: po drugim deployu `~/apps/subtracker/bin/rollback.sh api` → poprzednia wersja odpowiada; ponowny `workflow_dispatch` przywraca najnowszą.
-- Restart serwera (symulacja): `forever stopall && ~/apps/subtracker/bin/start-all.sh` → obie aplikacje wstają.
+- Restart serwera (symulacja): `forever stop subtracker-api; forever stop subtracker-frontend; ~/apps/subtracker/bin/start-all.sh` → obie aplikacje wstają. Nigdy `forever stopall` — na koncie działają też inne aplikacje użytkownika.
 
 ## Stan wykonania (2026-10-02)
 
