@@ -43,9 +43,12 @@ jobs:
           KNOWN_HOSTS: ${{ secrets.MYDEVIL_KNOWN_HOSTS }}
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          # Secrets pasted from Windows may carry CRLF, which OpenSSH rejects.
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf '%s\n' "$KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
+          ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null \
+            || { echo "MYDEVIL_SSH_KEY is not a valid private key"; exit 1; }
 
       - name: Deploy to MyDevil
         env:
