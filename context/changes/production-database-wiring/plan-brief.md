@@ -23,6 +23,8 @@ Obie aplikacje działają na MyDevil jako „Hello World” z deployem przez Git
 | Klucze env | `MODE`, `POSTGRES_*`, `POSTGRES_DATABASE_DEV`, `DATABASE_AUTO_SYNCHRONIZATION`, `APPLICATION_NAME` | Nazwy jak w projektach użytkownika; dodana walidacja (`PROD` + auto-sync = błąd). | User |
 | Konfiguracja | `.env` (dev) i `.env.mydevil` (wzór `shared/.env`) poza gitem, `.env.example` w repo | Zgodne z dotychczasowym zwyczajem użytkownika i z zasadą, że sekrety nie jadą w paczce ani w CI. | Plan |
 | Migracje na produkcji | Jawny krok `deploy.sh` z przestojem: stop API → `pg_dump -Fc` → `migration:run` (jedna transakcja) → `mv` → `/health`; nieudany health-check → `restore-db.sh` + stara wersja | Pewność spójności danych ważniejsza niż ok. minuta dostępności; `migration:revert` bywa zawodny, przywrócenie z kopii nie. | User |
+| Rollback API | `rollback.sh api` cofa kod i przywraca bazę z kopii sprzed deployu cofanego wydania (`.deploy-info`), po potwierdzeniu | Stary kod nigdy nie działa na nowym schemacie; świadomie płacimy utratą danych od deployu. | User |
+| Migracja `Init` | Pusta migracja w F-01 | Pierwszy deploy przećwiczy pełną ścieżkę migracji, zamiast czekać na S-01. | User |
 | Tabela historii i uuid | `migration_history`; `gen_random_uuid()` (`uuidExtension: 'pgcrypto'`) zamiast `uuid-ossp` | Nazwa jak u użytkownika; brak zależności od rozszerzenia, którego zwykły użytkownik MyDevil może nie móc założyć przy przywracaniu. | Plan |
 | Dowód frontend → API | Status API na stronie, pobierany w przeglądarce z credentials | Sprawdza dokładnie ścieżkę, której użyje S-01 (CORS, adres API, baza). | Plan |
 | CORS | `CORS_ORIGINS` (lista po przecinku) w env, `credentials: true`, `*` odrzucane | Parametryzowalne per środowisko i gotowe pod ciasteczko sesji. | Plan |
@@ -39,7 +41,7 @@ Obie aplikacje działają na MyDevil jako „Hello World” z deployem przez Git
 
 **Out of scope:**
 - Encje i tabele domenowe, ciasteczko sesji (S-01)
-- Cofanie migracji przy rollbacku, `.env.mydevil` przez CI, e2e w CI, monitoring, Docker
+- `migration:revert` na produkcji (zamiast tego kopia), `.env.mydevil` przez CI, e2e w CI, monitoring, Docker
 
 ## Architecture / Approach
 
@@ -58,7 +60,7 @@ Jedna funkcja opcji połączenia jest współdzielona przez moduł Nesta i `Data
 | --- | --- | --- |
 | 1. Backend: TypeORM, konfiguracja, `/health`, CORS | Backend z bazą i CORS, zweryfikowany lokalnie | TypeORM CLI może nie załadować ESM `data-source.js` (wtedy mały skrypt zastępczy) |
 | 2. Frontend: adres API i status na stronie | Strona pokazuje status API z przeglądarki | Prerender nie może wołać API — wywołanie dopiero po renderze |
-| 3. Deploy: przestój, kopia, migracje, przywracanie | Produkcja z bazą; każdy deploy API: stop → kopia → migracje → start → `/health`, z automatycznym przywróceniem bazy i kodu | Ręczne kroki na serwerze (baza, `shared/.env`, wgranie `deploy.sh` i `restore-db.sh`) muszą być przed pushem |
+| 3. Deploy: przestój, kopia, migracje, przywracanie | Produkcja z bazą; każdy deploy API: stop → kopia → migracje → start → `/health`, z automatycznym przywróceniem bazy i kodu | Ręczne kroki na serwerze (baza, `shared/.env`, wgranie `deploy.sh`, `restore-db.sh` i `rollback.sh`) muszą być przed pushem |
 
 **Prerequisites:** lokalny PostgreSQL z bazami `subtracker-db` i `subtracker-db-dev` (rola `subtracker-adm`); dostęp SSH do MyDevil; `pg_dump`/`psql` na serwerze.
 **Estimated effort:** ~2–3 sesje po godzinach w 3 fazach (Faza 3 w większości to bramki ręczne).
@@ -67,7 +69,7 @@ Jedna funkcja opcji połączenia jest współdzielona przez moduł Nesta i `Data
 
 - Deploy API ma ok. 30–60 s przestoju; zadania cykliczne (od S-06) muszą nadrabiać pominięte uruchomienia.
 - Przywracanie czyści schemat `public`, więc wymaga, żeby użytkownik MyDevil był jego właścicielem (bramka 3.3); ćwiczone raz na pustej bazie (3.11).
-- `rollback.sh` cofa tylko kod; błąd wykryty po deployu wymaga ręcznego `restore-db.sh`, który traci dane zapisane od deployu.
+- `rollback.sh api` cofa kod razem z bazą (kopia sprzed deployu cofanego wydania, wskazana w `.deploy-info`) i po potwierdzeniu traci dane zapisane od tamtego deployu.
 - Wersja `pg_dump` na MyDevil musi być zgodna z wersją serwera bazy (sprawdzane w bramce 3.3).
 
 ## Success Criteria (Summary)

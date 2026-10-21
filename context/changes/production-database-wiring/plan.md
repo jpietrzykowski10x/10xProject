@@ -50,7 +50,7 @@ Model baz przejęty z innych projektów użytkownika (`fyi/app.module.ts`, `fyi/
 
 - Żadnych encji ani tabel domenowych (użytkownicy, subskrypcje) — zaczynają się w S-01/S-02.
 - Ciasteczko sesji i jego domena (`.jakubpietrzykowski.pl`) — S-01; tu tylko polityka CORS z credentials.
-- `migration:revert` (metody `down()`) na produkcji — z doświadczenia użytkownika bywa zawodne; zamiast tego przywrócenie z kopii. `rollback.sh` uruchamiany ręcznie później dalej cofa tylko kod, a przywrócenie bazy po fakcie robi się ręcznie przez `restore-db.sh` i traci dane zapisane od deployu.
+- `migration:revert` (metody `down()`) na produkcji — z doświadczenia użytkownika bywa zawodne; zamiast tego przywrócenie z kopii. Cofnięcie bazy po fakcie robi `rollback.sh api`, który przywraca kod i kopię sprzed deployu cofanego wydania. Dane zapisane od tamtego deployu przepadają.
 - Deploy bez przestoju (blue-green, migracje zgodne wstecz) — świadomie odrzucony na rzecz pewności spójności danych.
 - Przesyłanie `.env.mydevil` przez CI lub sekrety GitHuba — plik wgrywa użytkownik ręcznie.
 - Uruchamianie e2e w CI (wymagałoby bazy w Actions).
@@ -67,7 +67,7 @@ Jedno źródło opcji połączenia jest współdzielone przez moduł Nesta i prz
 
 **Timing & lifecycle** — deploy API świadomie zatrzymuje usługę na czas kopii, migracji i health-checku (ok. 30–60 s). Stara wersja nie pracuje więc na nowym schemacie, a między `pg_dump` a ewentualnym przywróceniem nic nie zapisuje do bazy. Skutki:
 
-- Migracje nie muszą być zgodne wstecz. Zgodność wstecz zostaje dobrą praktyką, bo ułatwia ręczny `rollback.sh` kodu później.
+- Migracje nie muszą być zgodne wstecz. Zgodność wstecz zostaje dobrą praktyką.
 - Zadania cykliczne (`@nestjs/schedule`, od S-06) stoją podczas deployu. Muszą nadrabiać pominięte uruchomienia, np. „wyślij wszystkie zaległe przypomnienia”, zamiast liczyć na start o konkretnej minucie.
 - Frontend w tym czasie pokazuje „API niedostępne”.
 - `migration:run` biegnie z `transaction: 'all'` (domyślne w TypeORM). PostgreSQL wycofuje zmiany struktury w transakcji, więc nieudana partia nie zostawia śladów. Wyjątek stanowią polecenia, które nie mogą działać w transakcji (np. `CREATE INDEX CONCURRENTLY`). Takich nie używamy.
@@ -124,7 +124,7 @@ Funkcja `validate` przekazana do `ConfigModule.forRoot` zwraca typowany obiekt. 
 
 #### 3. Opcje połączenia i źródło danych dla CLI
 
-**File**: `backend-subtracker/src/database/database.options.ts` (nowy), `backend-subtracker/src/database/data-source.ts` (nowy), `backend-subtracker/src/database/migrations/` (nowy, pusty katalog z `.gitkeep`)
+**File**: `backend-subtracker/src/database/database.options.ts` (nowy), `backend-subtracker/src/database/data-source.ts` (nowy), `backend-subtracker/src/database/migrations/<timestamp>-Init.ts` (nowy)
 
 **Intent**: Jedna funkcja budująca opcje PostgreSQL z env, używana przez moduł Nesta i przez `DataSource` dla CLI. Ścieżki migracji i encji są liczone względem pliku (`import.meta.dirname`), żeby działały w `dist/` i w spłaszczonej paczce `.mydevil/`. Szczegóły w Critical Implementation Details, „Dwie bazy lokalnie”.
 
@@ -136,7 +136,9 @@ Funkcja `validate` przekazana do `ConfigModule.forRoot` zwraca typowany obiekt. 
   - `uuidExtension: 'pgcrypto'`, czyli `gen_random_uuid()` bez rozszerzenia `uuid-ossp`;
   - `extra.max = POSTGRES_POOL_MAX`.
 - `app`: baza `POSTGRES_DATABASE_DEV` przy `MODE=DEV`, inaczej `POSTGRES_DATABASE`. `synchronize = MODE==='DEV' && DATABASE_AUTO_SYNCHRONIZATION`.
-- `cli`: zawsze `POSTGRES_DATABASE`, `synchronize: false`, encje `<dir>/../**/*.entity.js`.
+- `cli`: zawsze `POSTGRES_DATABASE`, `synchronize: false`, encje `<dir>/../!(node_modules)/**/*.entity.js`. W spłaszczonej paczce `.mydevil/` katalog `<dir>/..` to katalog główny wydania z `node_modules`, a bez wykluczenia CLI przeszukiwałby cały `node_modules` i mógł załadować obcy plik `*.entity.js`.
+
+Migracja `Init` (utworzona przez `migration:create -- Init`) ma puste `up()` i `down()`. Dzięki niej katalog `migrations/` istnieje w `dist/` i w paczce od początku, a pierwszy deploy przećwiczy pełną ścieżkę: oczekująca migracja → `migration:run` → wpis w `migration_history`. Bez niej ścieżka zostałaby pierwszy raz sprawdzona dopiero w S-01.
 
 `data-source.ts` eksportuje jako `default` instancję `DataSource` (wymóg TypeORM CLI). Czyta `process.env` bezpośrednio, bo CLI nie uruchamia Nesta. Wcześniej ładuje `.env` przez `process.loadEnvFile()` (Node 24, bez `dotenv`), o ile plik istnieje, i przechodzi tę samą walidację co w punkcie 2.
 
@@ -172,7 +174,7 @@ Funkcja `validate` przekazana do `ConfigModule.forRoot` zwraca typowany obiekt. 
 
 **Contract**: Lokalnie `MODE=DEV`, `POSTGRES_DATABASE=subtracker-db`, `POSTGRES_DATABASE_DEV=subtracker-db-dev`, `POSTGRES_USER=subtracker-adm`, `DATABASE_AUTO_SYNCHRONIZATION=true` i `CORS_ORIGINS=http://localhost:4200`. W komentarzu wartości dla `.env.mydevil`: `MODE=PROD`, brak `POSTGRES_DATABASE_DEV`, `DATABASE_AUTO_SYNCHRONIZATION=false`, `CORS_ORIGINS=https://subtracker.jakubpietrzykowski.pl` oraz przypomnienie o `PORT` i `NODE_ENV`.
 
-#### 8a. Skrypt SQL baz lokalnych
+#### 8. Skrypt SQL baz lokalnych
 
 **File**: `backend-subtracker/database/create-local-databases.sql` (nowy; na podstawie `fyi/db-scripts.txt`)
 
@@ -180,7 +182,7 @@ Funkcja `validate` przekazana do `ConfigModule.forRoot` zwraca typowany obiekt. 
 
 **Contract**: `psql -U postgres -f database/create-local-databases.sql` tworzy rolę `subtracker-adm` z `LOGIN` oraz bazy `subtracker-db` i `subtracker-db-dev`, których właścicielem jest ta rola. Hasło w skrypcie to lokalna wartość deweloperska. Na produkcji bazę i użytkownika zakłada `devil pgsql`.
 
-#### 8. Test e2e
+#### 9. Test e2e
 
 **File**: `backend-subtracker/test/app.e2e-spec.ts`
 
@@ -194,14 +196,14 @@ Funkcja `validate` przekazana do `ConfigModule.forRoot` zwraca typowany obiekt. 
 
 - Lint przechodzi: `cd backend-subtracker && npm run lint`
 - Testy jednostkowe przechodzą (w tym `/health` z zamockowanym `DataSource` i parser `CORS_ORIGINS`): `cd backend-subtracker && npm test`
-- Build przechodzi, a w `dist/database/` są `data-source.js` i katalog `migrations/`: `cd backend-subtracker && npm run build`
+- Build przechodzi, a w `dist/database/` są `data-source.js`, `database.options.js` i `migrations/<timestamp>-Init.js`: `cd backend-subtracker && npm run build`
 - `npm run prepare-mydevil` tworzy paczkę z `database/data-source.js` w korzeniu `.mydevil/`
 
 #### Manual Verification:
 
 - Lokalny PostgreSQL zainstalowany, bazy `subtracker-db` i `subtracker-db-dev` utworzone skryptem `database/create-local-databases.sql`, `backend-subtracker/.env` wypełniony wg `.env.example`
-- `npm run migration:run` lokalnie kończy się sukcesem i tworzy tabelę `migration_history` w `subtracker-db` (nie w `-dev`); `npm run migration:generate -- Probe` bez encji kończy się komunikatem „No changes in database schema were found” i nie tworzy pliku
-- W zbudowanej paczce: `cd .mydevil && npm ci --omit=dev` i uruchomienie TypeORM CLI `migration:run -d database/data-source.js` z env z `.env` kończy się sukcesem (potwierdza ładowanie ESM — patrz Critical Implementation Details)
+- `npm run migration:run` lokalnie kończy się sukcesem, wykonuje `Init` i tworzy tabelę `migration_history` z jednym wpisem w `subtracker-db` (nie w `-dev`); drugie uruchomienie nie ma nic do zrobienia; `npm run migration:generate -- Probe` bez encji kończy się komunikatem „No changes in database schema were found” i nie tworzy pliku
+- W zbudowanej paczce: `cd .mydevil && npm ci --omit=dev` i uruchomienie TypeORM CLI `migration:run -d database/data-source.js` z env z `.env` kończy się sukcesem w ciągu kilku sekund (potwierdza ładowanie ESM — patrz Critical Implementation Details — i to, że wzorzec encji nie przeszukuje `node_modules`)
 - `npm run start:dev`: baner pokazuje `APP MODE: DEV, CURRENT DATABASE: subtracker-db-dev, AUTO SYNCHRONIZATION: YES`; `curl localhost:3000/health` → `200 {"status":"ok","db":"ok"}`; po zatrzymaniu usługi PostgreSQL → `503`
 - `curl -i -H "Origin: http://localhost:4200" localhost:3000/health` zwraca `Access-Control-Allow-Origin: http://localhost:4200` i `Access-Control-Allow-Credentials: true`; obcy `Origin` nie dostaje tych nagłówków
 - `npm run test:e2e` przechodzi z lokalną bazą
@@ -276,13 +278,14 @@ Deploy API zatrzymuje usługę i robi kopię bazy. Potem uruchamia migracje jako
 1. Po `npm ci` w `$NEW`, przy działającej starej wersji: `forever stop subtracker-api`. Od tej chwili nikt nie pisze do bazy.
 2. Wczytać `$NEW/.env` i zrobić `pg_dump -Fc` do `~/apps/subtracker/backups/<YYYYmmdd-HHMMSS>_<sha7>.dump`. Przy błędzie: start starej wersji (`start-app.sh api`), log i `exit 1`.
 3. `migration:run` z `$NEW` na Node 24 jako jawny, logowany krok. Przy błędzie transakcja wycofuje zmiany, więc baza zostaje taka jak przed krokiem. Wtedy start starej wersji, log ze ścieżką kopii i `exit 1`.
-4. Zamiana wersji (`mv`), start nowej, health-check.
+4. Zapis `$NEW/.deploy-info` z `SHA=<sha>` i `BACKUP=<ścieżka kopii z kroku 2>`. Z tego pliku `rollback.sh` wie, którą kopię przywrócić. Potem zamiana wersji (`mv`), start nowej, health-check.
 5. Nieudany health-check: stop nowej wersji, `restore-db.sh <kopia z kroku 2>`, potem dotychczasowe przywrócenie poprzedniego wydania i jego start. Gdy przywrócenie bazy się nie uda, deploy kończy się głośnym błędem i stara wersja nie wstaje. Działanie na niezgodnym schemacie jest gorsze niż przestój.
 
-We wszystkich ścieżkach `public_nodejs_new` zostaje do diagnozy. Trzymamy 10 najnowszych kopii.
+We wszystkich ścieżkach `public_nodejs_new` zostaje do diagnozy. Trzymamy 10 najnowszych kopii. To więcej niż `KEEP=3` wydań, więc każde wydanie w `releases/` ma jeszcze swoją kopię. Komentarz w nagłówku `deploy.sh` („only the final swap causes a few seconds of downtime”) trzeba zaktualizować: dla API przestój obejmuje kopię, migracje i health-check.
 
 **Contract**:
 - Hasło idzie przez `PGPASSWORD` w środowisku polecenia, nie w argumentach.
+- Kopie zawierają dane użytkowników, a serwer jest współdzielony. `backups/` powstaje z `chmod 700`, a `pg_dump` pisze pod `umask 077`, więc plik kopii ma `-rw-------`.
 - Migracje: `/usr/local/bin/node24` + TypeORM CLI z `$NEW/node_modules`, `migration:run -d database/data-source.js`. Jeśli CLI nie załaduje ESM, wchodzi skrypt zastępczy z Fazy 1.
 - `set -eu`. Każdy krok bazy w jawnym `if ! …; then …; fi`, bo POSIX `sh` nie ma `pipefail`, a `pg_dump -Fc` pisze wprost do pliku bez potoku.
 - Pierwszy deploy z `had_live=0`, czyli bez starej wersji: kroki 1 i 5 pomijają start i stop starej wersji, ale kopia i migracje zostają.
@@ -300,7 +303,21 @@ We wszystkich ścieżkach `public_nodejs_new` zostaje do diagnozy. Trzymamy 10 n
 - Nie zatrzymuje ani nie startuje API, robi to wywołujący. Ręczne użycie opisane w README: najpierw `forever stop subtracker-api`, potem restore, potem start.
 - POSIX `sh`, `chmod 700`. Wgrywany na serwer ręcznie jak pozostałe skrypty.
 
-#### 3. Health-check per aplikacja
+#### 3. Rollback kodu razem z bazą
+
+**File**: `deploy/mydevil/rollback.sh`
+
+**Intent**: Ręczny rollback API cofa kod i bazę naraz: po cofnięciu kodu baza wraca z kopii zrobionej tuż przed deployem cofanego wydania. Dzięki temu stary kod nigdy nie działa na nowym schemacie. Ceną jest utrata danych zapisanych od tamtego deployu, więc skrypt mówi o niej wprost i prosi o potwierdzenie. Rollback frontendu bez zmian, tylko kod.
+
+**Contract**: `rollback.sh api [--yes]`:
+1. Czyta `BACKUP` z `$LIVE/.deploy-info`. Brak pliku (wydanie sprzed F-01) albo brak pliku kopii kończy się błędem bez żadnych zmian.
+2. Wypisuje cofane wydanie, wydanie docelowe, kopię i jej datę oraz ostrzeżenie „dane zapisane od <data> zostaną utracone”. Bez `--yes` czeka na wpisanie `TAK`.
+3. `forever stop subtracker-api` → `restore-db.sh "$BACKUP"`. Gdy przywrócenie się nie uda: głośny błąd, kod się nie zmienia, API zostaje zatrzymane.
+4. Dotychczasowa zamiana (`_rolledback`) i start poprzedniego wydania.
+
+Kolejny rollback użyje `.deploy-info` wydania, które właśnie wróciło, czyli kopii sprzed jego deployu, więc kolejne kroki wstecz zostają spójne. Nagłówek skryptu („rolls back code only, never the database”) trzeba zaktualizować.
+
+#### 4. Health-check per aplikacja
 
 **File**: `deploy/mydevil/deploy.sh`
 
@@ -308,7 +325,7 @@ We wszystkich ścieżkach `public_nodejs_new` zostaje do diagnozy. Trzymamy 10 n
 
 **Contract**: Ścieżka zależna od `$APP`: `api` → `/health`, `frontend` → `/`.
 
-#### 4. Dokumentacja serwera
+#### 5. Dokumentacja serwera
 
 **File**: `deploy/mydevil/README.md`
 
@@ -317,12 +334,12 @@ We wszystkich ścieżkach `public_nodejs_new` zostaje do diagnozy. Trzymamy 10 n
 - nowe klucze `shared/.env` dla API (`MODE=PROD`, `POSTGRES_*`, `DATABASE_AUTO_SYNCHRONIZATION=false`, `CORS_ORIGINS`);
 - przebieg deployu API z przestojem i trzy ścieżki błędu;
 - ręczne przywracanie przez `restore-db.sh` i jego koszt: dane zapisane od deployu przepadają;
-- to, że `rollback.sh` cofa tylko kod;
+- `rollback.sh api` cofa kod i bazę (kopia z `.deploy-info`) z potwierdzeniem; frontend tylko kod;
 - zakaz `migration:revert` na produkcji.
 
-**Contract**: Sekcje „Server layout”, „Scripts” (opis `deploy.sh` i `restore-db.sh`) oraz nowa sekcja „Database”.
+**Contract**: Sekcje „Server layout”, „Scripts” (opis `deploy.sh`, `restore-db.sh` i `rollback.sh`) oraz nowa sekcja „Database”.
 
-#### 5. Komendy w CLAUDE.md
+#### 6. Komendy w CLAUDE.md
 
 **File**: `CLAUDE.md` (sekcja „Repository notes” → „Commands”, poza blokiem synchronizowanym)
 
@@ -341,23 +358,24 @@ Usunąć z „Architecture” zdanie, że TypeORM/PostgreSQL nie są zainstalowa
 
 #### Automated Verification:
 
-- Składnia skryptów: `sh -n deploy/mydevil/deploy.sh && sh -n deploy/mydevil/restore-db.sh`
+- Składnia skryptów: `sh -n deploy/mydevil/deploy.sh && sh -n deploy/mydevil/restore-db.sh && sh -n deploy/mydevil/rollback.sh`
 - Lint i testy backendu oraz build frontendu nadal przechodzą: `cd backend-subtracker && npm run lint && npm test`, `cd frontend-subtracker && npm run build`
 
 #### Manual Verification:
 
 - MyDevil: baza PostgreSQL utworzona (`devil pgsql db add …`), `pg_dump`, `pg_restore` i `psql` dostępne (`which pg_dump pg_restore psql`), PostgreSQL ≥ 13 (`SELECT version()`), użytkownik bazy jest właścicielem schematu `public` (`\dn+`), katalog `~/apps/subtracker/backups` istnieje
 - `shared/.env` API uzupełniony z `.env.mydevil` (`MODE=PROD`, `POSTGRES_*` bez `_DEV`, `DATABASE_AUTO_SYNCHRONIZATION=false`, `CORS_ORIGINS=https://subtracker.jakubpietrzykowski.pl`, `PORT`, `NODE_ENV`), `chmod 600`
-- `deploy.sh` i `restore-db.sh` wgrane na serwer wg README (rozmiar zgodny z lokalnym, `-rwx------`)
+- `deploy.sh`, `restore-db.sh` i `rollback.sh` wgrane na serwer wg README (rozmiar zgodny z lokalnym, `-rwx------`)
 - Push na `main` (wykonuje użytkownik): oba workflowy zielone, w logu API widać stop, kopię bazy, migracje, start i `health-check OK` na `/health`
 - `curl -s https://apisubtracker.jakubpietrzykowski.pl/health` → `{"status":"ok","db":"ok"}`
 - `https://subtracker.jakubpietrzykowski.pl` w przeglądarce pokazuje „API i baza działają”, bez błędów CORS w konsoli
 - `curl -i -H "Origin: https://example.com" https://apisubtracker.jakubpietrzykowski.pl/health` nie zwraca `Access-Control-Allow-Origin`
-- W `~/apps/subtracker/backups/` jest plik `.dump` z tego deployu; w bazie istnieje tabela `migration_history`
-- Ćwiczenie przywracania na jeszcze pustej bazie produkcyjnej:
+- W `~/apps/subtracker/backups/` (`drwx------`) jest plik `.dump` (`-rw-------`) z tego deployu; w bazie jest tabela `migration_history` z wpisem `Init`
+- Ćwiczenie rollbacku z przywróceniem bazy, na jeszcze pustej bazie produkcyjnej. Kopia z pierwszego deployu powstała przed migracjami, więc odpowiada pustej bazie.
   1. Założyć tabelę próbną (`CREATE TABLE restore_probe(id int)`).
-  2. `forever stop subtracker-api` → `restore-db.sh <kopia z deployu>` → start.
-  3. Sprawdzić: `restore_probe` zniknęła, `migration_history` jest, `/health` OK.
+  2. `rollback.sh api` i potwierdzić `TAK`.
+  3. Sprawdzić: działa poprzednie wydanie (`GET /` odpowiada), a `restore_probe` i `migration_history` zniknęły. To potwierdza czyszczenie schematu.
+  4. Ponowić workflow API w GitHub Actions („Re-run jobs”) i sprawdzić: `/health` OK, `migration_history` znów ma wpis `Init`.
 
 **Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation from the human that the manual testing was successful before proceeding to the next phase. Phase blocks use plain bullets — the corresponding `- [ ]` checkboxes for these items live in the `## Progress` section at the bottom of the plan.
 
@@ -381,7 +399,7 @@ Usunąć z „Architecture” zdanie, że TypeORM/PostgreSQL nie są zainstalowa
 1. Lokalnie: backend + frontend, strona pokazuje „API i baza działają”; zatrzymanie bazy → „baza niedostępna”.
 2. Paczka `.mydevil/` backendu: migracje przez CLI z paczki.
 3. Produkcja: workflowy zielone, `/health` OK, status na stronie OK, obcy origin bez nagłówków CORS, kopia bazy w `backups/`.
-4. Produkcja, pusta baza: ćwiczenie `restore-db.sh` (tabela próbna znika po przywróceniu).
+4. Produkcja, pusta baza: ćwiczenie `rollback.sh api` z przywróceniem bazy i ponownym deployem.
 
 ## Performance Considerations
 
@@ -389,7 +407,7 @@ Pula połączeń ograniczona do `POSTGRES_POOL_MAX` (domyślnie 5) ze względu n
 
 ## Migration Notes
 
-Pierwszy deploy z tą zmianą tworzy tylko tabelę `migration_history` (brak migracji domenowych). Cykl dla kolejnych slice'ów:
+Pierwszy deploy z tą zmianą wykonuje pustą migrację `Init`, więc w bazie powstaje tylko tabela `migration_history` z jednym wpisem (brak tabel domenowych). Cykl dla kolejnych slice'ów:
 
 1. Encje rozwijane na `subtracker-db-dev` z `synchronize`.
 2. Na koniec funkcji: `migration:generate -- <Nazwa>` względem `subtracker-db`.
@@ -398,7 +416,7 @@ Pierwszy deploy z tą zmianą tworzy tylko tabelę `migration_history` (brak mig
 5. Commit migracji razem z kodem.
 6. Deploy uruchamia ją na produkcji w oknie przestoju, po `pg_dump`.
 
-Dane startowe (np. słowniki) idą jako osobne migracje z `queryRunner.manager.insert`, jak `AddBaseUserRoles` w projektach użytkownika. Rollback kodu (`rollback.sh`) nie cofa schematu. Przywrócenie bazy po fakcie robi `restore-db.sh` i traci dane od deployu.
+Dane startowe (np. słowniki) idą jako osobne migracje z `queryRunner.manager.insert`, jak `AddBaseUserRoles` w projektach użytkownika. `rollback.sh api` cofa kod razem z bazą (kopia sprzed deployu cofanego wydania) i traci dane zapisane od tamtego deployu.
 
 ## References
 
@@ -419,14 +437,14 @@ Dane startowe (np. słowniki) idą jako osobne migracje z `queryRunner.manager.i
 
 - [ ] 1.1 Lint przechodzi: `cd backend-subtracker && npm run lint`
 - [ ] 1.2 Testy jednostkowe przechodzą (w tym `/health` z zamockowanym `DataSource` i parser `CORS_ORIGINS`): `cd backend-subtracker && npm test`
-- [ ] 1.3 Build przechodzi, a w `dist/database/` są `data-source.js` i katalog `migrations/`: `cd backend-subtracker && npm run build`
+- [ ] 1.3 Build przechodzi, a w `dist/database/` są `data-source.js`, `database.options.js` i `migrations/<timestamp>-Init.js`: `cd backend-subtracker && npm run build`
 - [ ] 1.4 `npm run prepare-mydevil` tworzy paczkę z `database/data-source.js` w korzeniu `.mydevil/`
 
 #### Manual
 
 - [ ] 1.5 Lokalny PostgreSQL zainstalowany, bazy `subtracker-db` i `subtracker-db-dev` utworzone skryptem `database/create-local-databases.sql`, `backend-subtracker/.env` wypełniony wg `.env.example`
-- [ ] 1.6 `npm run migration:run` lokalnie kończy się sukcesem i tworzy tabelę `migration_history` w `subtracker-db` (nie w `-dev`); `npm run migration:generate -- Probe` bez encji kończy się komunikatem „No changes in database schema were found” i nie tworzy pliku
-- [ ] 1.7 W zbudowanej paczce: `cd .mydevil && npm ci --omit=dev` i uruchomienie TypeORM CLI `migration:run -d database/data-source.js` z env z `.env` kończy się sukcesem (potwierdza ładowanie ESM — patrz Critical Implementation Details)
+- [ ] 1.6 `npm run migration:run` lokalnie kończy się sukcesem, wykonuje `Init` i tworzy tabelę `migration_history` z jednym wpisem w `subtracker-db` (nie w `-dev`); drugie uruchomienie nie ma nic do zrobienia; `npm run migration:generate -- Probe` bez encji kończy się komunikatem „No changes in database schema were found” i nie tworzy pliku
+- [ ] 1.7 W zbudowanej paczce: `cd .mydevil && npm ci --omit=dev` i uruchomienie TypeORM CLI `migration:run -d database/data-source.js` z env z `.env` kończy się sukcesem w ciągu kilku sekund (potwierdza ładowanie ESM — patrz Critical Implementation Details — i to, że wzorzec encji nie przeszukuje `node_modules`)
 - [ ] 1.8 `npm run start:dev`: baner pokazuje `APP MODE: DEV, CURRENT DATABASE: subtracker-db-dev, AUTO SYNCHRONIZATION: YES`; `curl localhost:3000/health` → `200 {"status":"ok","db":"ok"}`; po zatrzymaniu usługi PostgreSQL → `503`
 - [ ] 1.9 `curl -i -H "Origin: http://localhost:4200" localhost:3000/health` zwraca `Access-Control-Allow-Origin: http://localhost:4200` i `Access-Control-Allow-Credentials: true`; obcy `Origin` nie dostaje tych nagłówków
 - [ ] 1.10 `npm run test:e2e` przechodzi z lokalną bazą
@@ -448,17 +466,17 @@ Dane startowe (np. słowniki) idą jako osobne migracje z `queryRunner.manager.i
 
 #### Automated
 
-- [ ] 3.1 Składnia skryptów: `sh -n deploy/mydevil/deploy.sh && sh -n deploy/mydevil/restore-db.sh`
+- [ ] 3.1 Składnia skryptów: `sh -n deploy/mydevil/deploy.sh && sh -n deploy/mydevil/restore-db.sh && sh -n deploy/mydevil/rollback.sh`
 - [ ] 3.2 Lint i testy backendu oraz build frontendu nadal przechodzą: `cd backend-subtracker && npm run lint && npm test`, `cd frontend-subtracker && npm run build`
 
 #### Manual
 
 - [ ] 3.3 MyDevil: baza PostgreSQL utworzona (`devil pgsql db add …`), `pg_dump`, `pg_restore` i `psql` dostępne, PostgreSQL ≥ 13, użytkownik bazy jest właścicielem schematu `public`, katalog `~/apps/subtracker/backups` istnieje
 - [ ] 3.4 `shared/.env` API uzupełniony z `.env.mydevil` (`MODE=PROD`, `POSTGRES_*` bez `_DEV`, `DATABASE_AUTO_SYNCHRONIZATION=false`, `CORS_ORIGINS=https://subtracker.jakubpietrzykowski.pl`, `PORT`, `NODE_ENV`), `chmod 600`
-- [ ] 3.5 `deploy.sh` i `restore-db.sh` wgrane na serwer wg README (rozmiar zgodny z lokalnym, `-rwx------`)
+- [ ] 3.5 `deploy.sh`, `restore-db.sh` i `rollback.sh` wgrane na serwer wg README (rozmiar zgodny z lokalnym, `-rwx------`)
 - [ ] 3.6 Push na `main` (wykonuje użytkownik): oba workflowy zielone, w logu API widać stop, kopię bazy, migracje, start i `health-check OK` na `/health`
 - [ ] 3.7 `curl -s https://apisubtracker.jakubpietrzykowski.pl/health` → `{"status":"ok","db":"ok"}`
 - [ ] 3.8 `https://subtracker.jakubpietrzykowski.pl` w przeglądarce pokazuje „API i baza działają”, bez błędów CORS w konsoli
 - [ ] 3.9 `curl -i -H "Origin: https://example.com" https://apisubtracker.jakubpietrzykowski.pl/health` nie zwraca `Access-Control-Allow-Origin`
-- [ ] 3.10 W `~/apps/subtracker/backups/` jest plik `.dump` z tego deployu; w bazie istnieje tabela `migration_history`
-- [ ] 3.11 Ćwiczenie przywracania na pustej bazie produkcyjnej: tabela `restore_probe` → stop API → `restore-db.sh <kopia>` → start; `restore_probe` zniknęła, `migration_history` jest, `/health` OK
+- [ ] 3.10 W `~/apps/subtracker/backups/` (`drwx------`) jest plik `.dump` (`-rw-------`) z tego deployu; w bazie jest tabela `migration_history` z wpisem `Init`
+- [ ] 3.11 Ćwiczenie rollbacku z przywróceniem bazy na pustej bazie produkcyjnej: tabela `restore_probe` → `rollback.sh api` (`TAK`) → poprzednie wydanie działa, `restore_probe` i `migration_history` zniknęły → „Re-run jobs” workflow API → `/health` OK, `migration_history` z wpisem `Init`
