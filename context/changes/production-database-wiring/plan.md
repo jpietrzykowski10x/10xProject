@@ -120,6 +120,8 @@ Wygenerowany plik przechodzi przez `prettier`.
 - `POSTGRES_POOL_MAX`: opcjonalny, domyślnie 5.
 - `CORS_ORIGINS`: wymagany, lista originów po przecinku. Pusta lista i `*` są odrzucane, bo `*` z `credentials` przeglądarka i tak odrzuci. To różnica względem `fyi/main.ts`.
 
+Klucze poczty (`SMTP_*`, `NOTIFICATION_*`, patrz punkt 7) nie są walidowane w F-01. Wejdą do `validate` w S-01 razem z modułem maila, żeby F-01 nie wymagał działającego SMTP.
+
 Funkcja `validate` przekazana do `ConfigModule.forRoot` zwraca typowany obiekt. Na produkcji zmienne są już w środowisku procesu (eksportuje je `start-app.sh`), a `.env` w katalogu wydania jest ich kopią — oba źródła dają to samo.
 
 #### 3. Opcje połączenia i źródło danych dla CLI
@@ -173,6 +175,10 @@ Migracja `Init` (utworzona przez `migration:create -- Init`) ma puste `up()` i `
 **Intent**: Udokumentować klucze z punktu 2 z wartościami lokalnymi; komentarz, że `.env` = dev, `.env.mydevil` = wzór `shared/.env` na serwerze (oba poza gitem).
 
 **Contract**: Lokalnie `MODE=DEV`, `POSTGRES_DATABASE=subtracker-db`, `POSTGRES_DATABASE_DEV=subtracker-db-dev`, `POSTGRES_USER=subtracker-adm`, `DATABASE_AUTO_SYNCHRONIZATION=true` i `CORS_ORIGINS=http://localhost:4200`. W komentarzu wartości dla `.env.mydevil`: `MODE=PROD`, brak `POSTGRES_DATABASE_DEV`, `DATABASE_AUTO_SYNCHRONIZATION=false`, `CORS_ORIGINS=https://subtracker.jakubpietrzykowski.pl` oraz przypomnienie o `PORT` i `NODE_ENV`.
+
+Plik dokumentuje też klucze poczty z pustymi wartościami i komentarzem „używane od S-01”. Nazwy wzorowane na projektach użytkownika, z poprawioną literówką `ADMINISTATOR`:
+- poczta do użytkowników (magic link, przypomnienia o trialach): `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_SECURE` (`false` = STARTTLS na 587, `true` = TLS na 465), `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME`;
+- powiadomienia systemowe do operatora: `NOTIFICATION_ADMINISTRATOR_MAIL`, `NOTIFICATION_SMTP_HOST`, `NOTIFICATION_SMTP_PORT`, `NOTIFICATION_SMTP_SECURE`, `NOTIFICATION_SMTP_USERNAME`, `NOTIFICATION_SMTP_PASSWORD`, `NOTIFICATION_SMTP_FROM_EMAIL`.
 
 #### 8. Skrypt SQL baz lokalnych
 

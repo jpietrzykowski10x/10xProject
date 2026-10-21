@@ -56,7 +56,11 @@
 - Przejmujemy:
   - osobne transportery `nodemailer` dla maili do użytkowników i powiadomień systemowych;
   - zapis wysłanych maili w tabeli `mail` z `MailType`, jako audyt;
-  - klucze `SMTP_*` w env.
+  - klucze w env, udokumentowane w `backend-subtracker/.env.example` od F-01:
+    - poczta do użytkowników: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME`;
+    - powiadomienia do operatora: `NOTIFICATION_ADMINISTRATOR_MAIL`, `NOTIFICATION_SMTP_*` z tym samym zestawem pól.
+    
+    Walidacja przy starcie dochodzi w S-01. Puste `NOTIFICATION_SMTP_*` oznaczają, że powiadomienia idą przez transporter `SMTP_*`.
 - Poprawki:
   - zapis do bazy z `await` i obsługą błędu;
   - treść HTML z szablonu z escapowaniem danych użytkownika (boilerplate wstawiał `${text}` do HTML wprost);
