@@ -12,20 +12,22 @@ Obie aplikacje działają na MyDevil jako „Hello World” z deployem przez Git
 
 ## Desired End State
 
-`/health` na produkcji odpowiada `{"status":"ok","db":"ok"}` (503 przy awarii bazy), a strona główna frontendu pokazuje w przeglądarce status API pobrany z drugiej subdomeny z credentials. Każdy deploy API robi kopię bazy i migracje, zanim podmieni wersję; błąd zostawia starą wersję nietkniętą.
+`/health` na produkcji odpowiada `{"status":"ok","db":"ok"}` (503 przy awarii bazy), a strona główna frontendu pokazuje w przeglądarce status API pobrany z drugiej subdomeny z credentials. Każdy deploy API zatrzymuje usługę, robi kopię bazy i uruchamia migracje jako jawny krok, zanim podmieni wersję. Błąd migracji albo health-checku przywraca bazę i kod do stanu sprzed deployu.
 
 ## Key Decisions Made
 
 | Decision | Choice | Why (1 sentence) | Source |
 | --- | --- | --- | --- |
 | ORM | TypeORM w NestJS | Wybór z `tech-stack.md`, potwierdzony przez użytkownika. | Plan |
-| Bazy | Lokalny PostgreSQL (dev) + baza na MyDevil (prod) | Ta sama baza co produkcja, bez Dockera. | Plan |
+| Bazy | Lokalnie `subtracker-db-dev` (praca, `synchronize` przy `MODE=DEV`) + `subtracker-db` (referencja dla `migration:generate`, zmieniana tylko migracjami); na MyDevil jedna baza (`MODE=PROD`) | Model z innych projektów użytkownika (`fyi/app.module.ts`): szybka iteracja na encjach, migracje generowane raz na koniec funkcji. | User |
+| Klucze env | `MODE`, `POSTGRES_*`, `POSTGRES_DATABASE_DEV`, `DATABASE_AUTO_SYNCHRONIZATION`, `APPLICATION_NAME` | Nazwy jak w projektach użytkownika; dodana walidacja (`PROD` + auto-sync = błąd). | User |
 | Konfiguracja | `.env` (dev) i `.env.mydevil` (wzór `shared/.env`) poza gitem, `.env.example` w repo | Zgodne z dotychczasowym zwyczajem użytkownika i z zasadą, że sekrety nie jadą w paczce ani w CI. | Plan |
-| Migracje na produkcji | W `deploy.sh`: `pg_dump` → migracje → `mv` | Błąd migracji nie dotyka działającej wersji, a kopia jest zawsze przed zmianą schematu. | Plan |
+| Migracje na produkcji | Jawny krok `deploy.sh` z przestojem: stop API → `pg_dump -Fc` → `migration:run` (jedna transakcja) → `mv` → `/health`; nieudany health-check → `restore-db.sh` + stara wersja | Pewność spójności danych ważniejsza niż ok. minuta dostępności; `migration:revert` bywa zawodny, przywrócenie z kopii nie. | User |
+| Tabela historii i uuid | `migration_history`; `gen_random_uuid()` (`uuidExtension: 'pgcrypto'`) zamiast `uuid-ossp` | Nazwa jak u użytkownika; brak zależności od rozszerzenia, którego zwykły użytkownik MyDevil może nie móc założyć przy przywracaniu. | Plan |
 | Dowód frontend → API | Status API na stronie, pobierany w przeglądarce z credentials | Sprawdza dokładnie ścieżkę, której użyje S-01 (CORS, adres API, baza). | Plan |
 | CORS | `CORS_ORIGINS` (lista po przecinku) w env, `credentials: true`, `*` odrzucane | Parametryzowalne per środowisko i gotowe pod ciasteczko sesji. | Plan |
 | Health-check API w deployu | `/health` z `SELECT 1` zamiast `/` | Brak połączenia z bazą automatycznie cofa deploy. | Plan |
-| Pula połączeń | `DB_POOL_MAX`, domyślnie 5 | Współdzielony serwer bazy MyDevil (`infrastructure.md`). | Research (infrastructure.md) |
+| Pula połączeń | `POSTGRES_POOL_MAX`, domyślnie 5 | Współdzielony serwer bazy MyDevil (`infrastructure.md`). | Research (infrastructure.md) |
 
 ## Scope
 
@@ -44,7 +46,8 @@ Obie aplikacje działają na MyDevil jako „Hello World” z deployem przez Git
 ```
 przeglądarka ──GET /health (credentials)──► API (NestJS, CORS_ORIGINS) ──SELECT 1──► PostgreSQL
                                                    ▲
-deploy.sh (api): npm ci → pg_dump → migracje (TypeORM CLI z nowej paczki) → mv → health-check /health
+deploy.sh (api): npm ci → stop API → pg_dump -Fc → migration:run (TypeORM CLI z nowej paczki) → mv → start → /health
+                 (błąd health-checku → restore-db.sh + poprzednie wydanie)
 ```
 
 Jedna funkcja opcji połączenia jest współdzielona przez moduł Nesta i `DataSource` dla CLI, więc migracje łączą się tak samo jak aplikacja.
@@ -55,19 +58,20 @@ Jedna funkcja opcji połączenia jest współdzielona przez moduł Nesta i `Data
 | --- | --- | --- |
 | 1. Backend: TypeORM, konfiguracja, `/health`, CORS | Backend z bazą i CORS, zweryfikowany lokalnie | TypeORM CLI może nie załadować ESM `data-source.js` (wtedy mały skrypt zastępczy) |
 | 2. Frontend: adres API i status na stronie | Strona pokazuje status API z przeglądarki | Prerender nie może wołać API — wywołanie dopiero po renderze |
-| 3. Deploy: kopia, migracje, health-check | Produkcja z bazą, migracjami i kopią przed każdym deployem | Ręczne kroki na serwerze (baza, `shared/.env`, wgranie `deploy.sh`) muszą być przed pushem |
+| 3. Deploy: przestój, kopia, migracje, przywracanie | Produkcja z bazą; każdy deploy API: stop → kopia → migracje → start → `/health`, z automatycznym przywróceniem bazy i kodu | Ręczne kroki na serwerze (baza, `shared/.env`, wgranie `deploy.sh` i `restore-db.sh`) muszą być przed pushem |
 
-**Prerequisites:** lokalny PostgreSQL z bazą `subtracker`; dostęp SSH do MyDevil; `pg_dump`/`psql` na serwerze.
+**Prerequisites:** lokalny PostgreSQL z bazami `subtracker-db` i `subtracker-db-dev` (rola `subtracker-adm`); dostęp SSH do MyDevil; `pg_dump`/`psql` na serwerze.
 **Estimated effort:** ~2–3 sesje po godzinach w 3 fazach (Faza 3 w większości to bramki ręczne).
 
 ## Open Risks & Assumptions
 
-- Migracje biegną, gdy stara wersja działa — od teraz muszą być addytywne.
-- `rollback.sh` cofa tylko kod; przywrócenie bazy to ręczne odtworzenie z `backups/`.
+- Deploy API ma ok. 30–60 s przestoju; zadania cykliczne (od S-06) muszą nadrabiać pominięte uruchomienia.
+- Przywracanie czyści schemat `public`, więc wymaga, żeby użytkownik MyDevil był jego właścicielem (bramka 3.3); ćwiczone raz na pustej bazie (3.11).
+- `rollback.sh` cofa tylko kod; błąd wykryty po deployu wymaga ręcznego `restore-db.sh`, który traci dane zapisane od deployu.
 - Wersja `pg_dump` na MyDevil musi być zgodna z wersją serwera bazy (sprawdzane w bramce 3.3).
 
 ## Success Criteria (Summary)
 
 - `https://apisubtracker.jakubpietrzykowski.pl/health` → `{"status":"ok","db":"ok"}`, a obcy origin nie dostaje nagłówków CORS.
 - `https://subtracker.jakubpietrzykowski.pl` pokazuje „API i baza działają”, bez błędów CORS.
-- Deploy API tworzy kopię bazy w `backups/` i tabelę `migrations`; błąd migracji nie zatrzymuje działającej wersji.
+- Deploy API tworzy kopię bazy w `backups/` i tabelę `migration_history`; błąd migracji albo health-checku zostawia bazę i kod w stanie sprzed deployu.
