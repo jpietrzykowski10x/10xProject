@@ -1,3 +1,10 @@
+import type { INestApplication } from '@nestjs/common';
+
+// Shared by main.ts and the e2e test, so the test covers the production CORS policy.
+export function applyCors(app: INestApplication, origins: string[]): void {
+  app.enableCors({ origin: origins, credentials: true });
+}
+
 // Parses CORS_ORIGINS (comma-separated). The API sends credentials (session cookie from S-01),
 // so a wildcard is rejected: browsers refuse `*` together with credentials anyway.
 export function parseCorsOrigins(value: string): string[] {

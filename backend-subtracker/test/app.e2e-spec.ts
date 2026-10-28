@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { ConfigService } from '@nestjs/config';
+import { applyCors } from './../src/config/cors.js';
 import { type EnvConfig, envFromConfig } from './../src/config/env.js';
 
 // Boots the full AppModule, so it needs the local PostgreSQL from .env (not run in CI).
@@ -22,7 +23,7 @@ describe('AppController (e2e)', () => {
     allowedOrigin = env.CORS_ORIGINS[0];
 
     app = moduleFixture.createNestApplication();
-    app.enableCors({ origin: env.CORS_ORIGINS, credentials: true });
+    applyCors(app, env.CORS_ORIGINS);
     await app.init();
   });
 

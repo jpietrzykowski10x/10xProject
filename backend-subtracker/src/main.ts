@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
+import { applyCors } from './config/cors.js';
 import {
   appDatabaseName,
   type EnvConfig,
@@ -15,7 +16,7 @@ async function bootstrap() {
   );
 
   // No HTTPS here: the MyDevil proxy terminates TLS.
-  app.enableCors({ origin: env.CORS_ORIGINS, credentials: true });
+  applyCors(app, env.CORS_ORIGINS);
 
   await app.listen(env.PORT);
 
