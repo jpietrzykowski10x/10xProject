@@ -31,7 +31,7 @@ DATABASE_AUTO_SYNCHRONIZATION=false   # true is rejected at startup in PROD
 CORS_ORIGINS=https://subtracker.jakubpietrzykowski.pl
 ```
 
-The scripts source this file with `sh`, so quote values that contain spaces.
+The scripts source this file with `sh` (`. .env`) and export it, so the app gets whatever `sh` made of each line. Keep values plain or in single quotes (`KEY='two words'`); never leave `$`, `` ` ``, `"`, `\` or `#` unquoted. Use letters and digits for passwords (`openssl rand -hex 16`). The keys must not repeat: `deploy.sh` reads `PORT` with `sed` and a second `PORT=` line breaks the health check.
 
 Domains are MyDevil proxy domains, and TLS terminates on MyDevil:
 
@@ -44,10 +44,10 @@ Domains are MyDevil proxy domains, and TLS terminates on MyDevil:
 |---|---|
 | `ci-gate.sh` | Forced command for the CI key. It accepts only `deploy <frontend\|api> <sha>`. |
 | `deploy.sh <app> <sha>` | Unpacks the tarball from stdin into `public_nodejs_new`, runs `npm24 ci --omit=dev`, swaps it in with `mv`, and runs a health check (`/health` for the api, `/` for the frontend). For the api it first stops the live version, backs up the database and runs migrations (see [Database](#database)). If the health check fails, it restores the previous version automatically. |
-| `restore-db.sh <file.dump>` | Restores the api database from a backup: drops and recreates the `public` schema and restores the dump, in one transaction. Does not stop or start the api. |
+| `restore-db.sh <file.dump>` | Restores the api database from a backup: first dumps the current state to `backups/<time>_pre-restore.dump` (10 kept), then drops and recreates the `public` schema and restores the dump, in one transaction. Does not stop or start the api. |
 | `stop-app.sh <app>` | Stops the app: `forever stop` capped at 30 s, then the forever monitor and the app are killed by their path. `forever stop` can hang for good while the app is crash-looping. Every other script stops apps through it. |
 | `start-app.sh <app>` | Restarts the app under `forever` on `/usr/local/bin/node24`, using the env from `.env`. Entry: `app.mjs` (frontend) / `app.js` (api), since MyDevil starts only these names. |
-| `rollback.sh <app> [--yes]` | Makes the newest entry in `releases/` live again. For the api it also restores the database from the backup taken before the rolled-back release (asks for `TAK`). The frontend rolls back code only. |
+| `rollback.sh <app> [--yes]` | Makes the newest entry in `releases/` live again. For the api it also restores the database from the backup taken before the rolled-back release (asks for `TAK`). The frontend rolls back code only. Ends with a health check. |
 | `start-all.sh` | Starts both apps after a reboot. |
 
 ## Database
@@ -74,7 +74,9 @@ Restoring by hand, e.g. when a problem shows up hours after a deploy:
 ~/apps/subtracker/bin/start-app.sh api
 ```
 
-`rollback.sh api` does this together with the code: it restores the backup listed in the live release's `.deploy-info`, i.e. the database from right before that release was deployed, then makes the previous release live. **Data written since that deploy is lost.** A release deployed before the backups existed has no `.deploy-info`, and the rollback refuses to run.
+`rollback.sh api` does this together with the code: it restores the backup listed in the live release's `.deploy-info`, i.e. the database from right before that release was deployed, then makes the previous release live. **Data written since that deploy disappears from the live database.** `restore-db.sh` keeps it in `backups/<time>_pre-restore.dump`, so a mistaken rollback can be undone by restoring that file (stop the api first). A release deployed before the backups existed has no `.deploy-info`, and the rollback refuses to run.
+
+Releases in `releases/` are named `<time>_<sha7>` after the SHA they contain (`.deploy-info`); failed deploys end in `_failed`, rolled-back ones in `_rolledback`. Deploy, rollback and a manual restore of one app take a lock (`~/apps/subtracker/<app>/.ops.lock`), so they never overlap; the frontend and the api can still deploy at the same time. A lock left behind by a killed process is removed with `rmdir`.
 
 Never run `migration:revert` in production: `down()` methods are unreliable. Going back is always a restore from a backup.
 
@@ -95,10 +97,11 @@ The scripts are **not** deployed by GitHub Actions: the workflows only ship app 
    ```
    chmod 700 ~/apps/subtracker/bin/*.sh
    ls -l ~/apps/subtracker/bin
+   sha256 ~/apps/subtracker/bin/*.sh
    SSH_ORIGINAL_COMMAND="ls" ~/apps/subtracker/bin/ci-gate.sh
    ```
 
-   Expected result: every script shows `-rwx------`, and the last command prints `ci-gate: rejected command: ls`. Sizes must match the local files (`wc -c deploy/mydevil/*.sh`). A mismatch usually means CRLF line endings, which `.gitattributes` prevents for `*.sh`.
+   Expected result: every script shows `-rwx------`, and the last command prints `ci-gate: rejected command: ls`. The checksums must match the repo: locally run `sha256sum deploy/mydevil/*.sh` (Git Bash) on the commit you uploaded from. Compare **all** scripts, not only the ones you changed: the server copy is updated by hand and can drift. A mismatch usually means CRLF line endings, which `.gitattributes` prevents for `*.sh`, or a forgotten upload.
 
 3. If you changed `start-app.sh`, apply it to the running processes:
 

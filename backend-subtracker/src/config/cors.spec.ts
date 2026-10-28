@@ -32,4 +32,27 @@ describe('parseCorsOrigins', () => {
   it('rejects a wildcard', () => {
     expect(() => parseCorsOrigins('https://example.com,*')).toThrow(/"\*"/);
   });
+
+  it('rejects null', () => {
+    expect(() => parseCorsOrigins('null')).toThrow(/"null"/);
+  });
+
+  it('rejects entries that are not bare origins', () => {
+    expect(() => parseCorsOrigins('example.com')).toThrow(/not a valid origin/);
+    expect(() => parseCorsOrigins('https://example.com/app')).toThrow(
+      /bare origin/,
+    );
+    expect(() => parseCorsOrigins('ftp://example.com')).toThrow(
+      /http or https/,
+    );
+  });
+
+  it('requires https when asked (PROD)', () => {
+    expect(() => parseCorsOrigins('http://example.com', true)).toThrow(
+      /https in PROD/,
+    );
+    expect(parseCorsOrigins('https://example.com', true)).toEqual([
+      'https://example.com',
+    ]);
+  });
 });
