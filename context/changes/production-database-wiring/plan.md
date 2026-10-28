@@ -477,12 +477,12 @@ Dane startowe (np. słowniki) idą jako osobne migracje z `queryRunner.manager.i
 
 #### Manual
 
-- [x] 3.3 MyDevil: baza PostgreSQL utworzona (`devil pgsql db add …`), `pg_dump`, `pg_restore` i `psql` dostępne, PostgreSQL ≥ 13, użytkownik bazy jest właścicielem schematu `public`, katalog `~/apps/subtracker/backups` istnieje
-- [x] 3.4 `shared/.env` API uzupełniony z `.env.mydevil` (`MODE=PROD`, `POSTGRES_*` bez `_DEV`, `DATABASE_AUTO_SYNCHRONIZATION=false`, `CORS_ORIGINS=https://subtracker.jakubpietrzykowski.pl`, `PORT`, `NODE_ENV`), `chmod 600`
-- [x] 3.5 `deploy.sh`, `restore-db.sh` i `rollback.sh` wgrane na serwer wg README (rozmiar zgodny z lokalnym, `-rwx------`)
-- [x] 3.6 Push na `main` (wykonuje użytkownik): oba workflowy zielone, w logu API widać stop, kopię bazy, migracje, start i `health-check OK` na `/health`
-- [x] 3.7 `curl -s https://apisubtracker.jakubpietrzykowski.pl/health` → `{"status":"ok","db":"ok"}`
-- [x] 3.8 `https://subtracker.jakubpietrzykowski.pl` w przeglądarce pokazuje „API i baza działają”, bez błędów CORS w konsoli
-- [x] 3.9 `curl -i -H "Origin: https://example.com" https://apisubtracker.jakubpietrzykowski.pl/health` nie zwraca `Access-Control-Allow-Origin`
-- [x] 3.10 W `~/apps/subtracker/backups/` (`drwx------`) jest plik `.dump` (`-rw-------`) z tego deployu; w bazie jest tabela `migration_history` z wpisem `Init`
-- [x] 3.11 Ćwiczenie rollbacku z przywróceniem bazy na pustej bazie produkcyjnej: tabela `restore_probe` → `rollback.sh api` (`TAK`) → poprzednie wydanie działa, `restore_probe` i `migration_history` zniknęły → „Re-run jobs” workflow API → `/health` OK, `migration_history` z wpisem `Init`
+- [x] 3.3 MyDevil: baza PostgreSQL utworzona (`devil pgsql db add …`), `pg_dump`, `pg_restore` i `psql` dostępne, PostgreSQL ≥ 13, użytkownik bazy jest właścicielem schematu `public`, katalog `~/apps/subtracker/backups` istnieje — 605086f
+- [x] 3.4 `shared/.env` API uzupełniony z `.env.mydevil` (`MODE=PROD`, `POSTGRES_*` bez `_DEV`, `DATABASE_AUTO_SYNCHRONIZATION=false`, `CORS_ORIGINS=https://subtracker.jakubpietrzykowski.pl`, `PORT`, `NODE_ENV`), `chmod 600` — 605086f
+- [x] 3.5 `deploy.sh`, `restore-db.sh` i `rollback.sh` wgrane na serwer wg README (rozmiar zgodny z lokalnym, `-rwx------`) — 605086f
+- [x] 3.6 Push na `main` (wykonuje użytkownik): oba workflowy zielone, w logu API widać stop, kopię bazy, migracje, start i `health-check OK` na `/health` — 983a8e2
+- [x] 3.7 `curl -s https://apisubtracker.jakubpietrzykowski.pl/health` → `{"status":"ok","db":"ok"}` — 983a8e2
+- [x] 3.8 `https://subtracker.jakubpietrzykowski.pl` w przeglądarce pokazuje „API i baza działają”, bez błędów CORS w konsoli — 983a8e2
+- [x] 3.9 `curl -i -H "Origin: https://example.com" https://apisubtracker.jakubpietrzykowski.pl/health` nie zwraca `Access-Control-Allow-Origin` — 983a8e2
+- [x] 3.10 W `~/apps/subtracker/backups/` (`drwx------`) jest plik `.dump` (`-rw-------`) z tego deployu; w bazie jest tabela `migration_history` z wpisem `Init` — 983a8e2
+- [x] 3.11 Ćwiczenie rollbacku z przywróceniem bazy na pustej bazie produkcyjnej: tabela `restore_probe` → `rollback.sh api` (`TAK`) → poprzednie wydanie działa, `restore_probe` i `migration_history` zniknęły → „Re-run jobs” workflow API → `/health` OK, `migration_history` z wpisem `Init` — 983a8e2
