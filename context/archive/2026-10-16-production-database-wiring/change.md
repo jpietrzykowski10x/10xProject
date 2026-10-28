@@ -1,10 +1,10 @@
 ---
 change_id: production-database-wiring
 title: Production database wiring
-status: impl_reviewed
+status: archived
 created: 2026-10-16
 updated: 2026-10-28
-archived_at: null
+archived_at: 2026-10-28T15:58:00Z
 ---
 
 ## Notes
