@@ -1,0 +1,19 @@
+.api-status {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-family: system-ui, sans-serif;
+  background: #eee;
+  color: #333;
+}
+
+.api-status--ok {
+  background: #e3f6e8;
+  color: #1b5e20;
+}
+
+.api-status--db-error,
+.api-status--unreachable {
+  background: #fdecea;
+  color: #b71c1c;
+}

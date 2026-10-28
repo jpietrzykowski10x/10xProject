@@ -1,0 +1,16 @@
+<p class="api-status" [class]="'api-status--' + state()" role="status">
+  @switch (state()) {
+    @case ('checking') {
+      sprawdzam…
+    }
+    @case ('ok') {
+      API i baza działają
+    }
+    @case ('db-error') {
+      baza niedostępna
+    }
+    @case ('unreachable') {
+      API niedostępne
+    }
+  }
+</p>
