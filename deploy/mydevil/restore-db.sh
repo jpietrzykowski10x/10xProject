@@ -31,8 +31,10 @@ trap 'rm -f "$SQL"' EXIT
 
 pg_restore --no-owner -f "$SQL" "$DUMP"
 
-psql -X -q -v ON_ERROR_STOP=1 --single-transaction -d "$POSTGRES_DATABASE" \
-  -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;' \
+# -o /dev/null drops query results echoed from the dump (e.g. set_config) and
+# client_min_messages hides the "drop cascades" notices; errors still go to stderr.
+psql -X -q -o /dev/null -v ON_ERROR_STOP=1 --single-transaction -d "$POSTGRES_DATABASE" \
+  -c 'SET client_min_messages TO warning; DROP SCHEMA public CASCADE; CREATE SCHEMA public;' \
   -f "$SQL"
 
 echo "restore-db: $POSTGRES_DATABASE restored from $DUMP"

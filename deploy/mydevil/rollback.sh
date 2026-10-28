@@ -40,7 +40,7 @@ if [ "$APP" = api ]; then
   BACKUP_TIME=$(basename "$BACKUP" | cut -c1-15)
 
   echo "rollback: api $LIVE_SHA -> $PREV"
-  echo "rollback: database restored from $BACKUP"
+  echo "rollback: database will be restored from $BACKUP"
   echo "rollback: dane zapisane od $BACKUP_TIME zostaną utracone"
   if [ "$CONFIRM" != "--yes" ]; then
     printf 'Wpisz TAK, aby kontynuować: '
