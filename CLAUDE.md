@@ -27,8 +27,10 @@ Everything between the `BEGIN`/`END @przeprogramowani/10x-cli` markers below is 
 ### Architecture
 
 - `frontend-subtracker/` — Angular 22, standalone components, SSR via `@angular/ssr`. `src/server.ts` is an Express server (port `PORT`, default 4000) that serves `dist/.../browser` and renders everything else through `AngularNodeAppEngine`; `app.config.server.ts` merges server providers onto `app.config.ts` (which enables client hydration). Styles are SCSS.
-- `backend-subtracker/` — NestJS 12, strict TypeScript, listens on `PORT` (default 3000). Planned responsibilities per `tech-stack.md`: magic-link auth, the admin role, the subscription state machine, and scheduled jobs (`@nestjs/schedule`) for trial reminders, on PostgreSQL + TypeORM — none of these are installed yet.
-- The two apps run as separate Node processes on separate subdomains of MyDevil (FreeBSD), so the API needs CORS and a session cookie scoped to the parent domain. Deployment is planned as GitHub Actions with per-directory path filters, rsync over SSH, and `npm ci --omit=dev` on the server (never ship Linux-built `node_modules` to FreeBSD). No CI workflows exist yet.
+- `backend-subtracker/` — NestJS 12, strict TypeScript, listens on `PORT` (default 3000), PostgreSQL via TypeORM (`src/database/`), env validated at startup (`src/config/env.ts`), `GET /health` checks the database, CORS from `CORS_ORIGINS` with credentials. Still planned per `tech-stack.md`: magic-link auth, the admin role, the subscription state machine, and scheduled jobs (`@nestjs/schedule`) for trial reminders.
+- The two apps run as separate Node processes on separate subdomains of MyDevil (FreeBSD), so the API needs CORS and a session cookie scoped to the parent domain. GitHub Actions: `ci.yml` checks every branch except `main` and PRs into `main`; `deploy-*.yml` deploy on push to `main` (i.e. after a merge) by piping the `.mydevil/` package over SSH to `deploy/mydevil/deploy.sh`, which runs `npm ci --omit=dev` on the server (never ship Linux-built `node_modules` to FreeBSD). Work on a `change/<change-id>` branch, never commit straight to `main`.
+- **API deploy has a short downtime**: stop the API, `pg_dump`, `migration:run`, swap, health-check on `/health`; on failure the database is restored from the dump and the previous version starts. Details and manual restore: `deploy/mydevil/README.md`. The server scripts are uploaded by hand (`scp`), not by CI.
+- **Config files**: `backend-subtracker/.env` (local dev) and `.env.mydevil` (template for the server's `~/apps/subtracker/api/shared/.env`) are both git-ignored; `.env.example` documents the keys.
 
 ### Commands
 
@@ -45,6 +47,14 @@ Backend (`cd backend-subtracker`):
 - `npm run lint` — oxlint (type-aware); `npm run format` — prettier
 - `npm test` — vitest unit tests (`src/**/*.spec.ts`); `npm run test:e2e` — e2e tests in `test/`; `npm run test:cov` — coverage
 - Single test file: `npx vitest run src/app.controller.spec.ts`
+- `start:dev` and `test:e2e` need the local PostgreSQL (`database/create-local-databases.sql`) and `.env`.
+
+Database (`cd backend-subtracker`) — two local databases with the same owner:
+
+- `subtracker-db-dev`: the app's database in `MODE=DEV`; `DATABASE_AUTO_SYNCHRONIZATION=true` lets TypeORM rebuild the schema from entities.
+- `subtracker-db`: reference database, changed only by migrations; every `migration:*` script targets it (`POSTGRES_DATABASE`).
+- `npm run migration:generate -- <Name>` — diff entities vs `subtracker-db` into `src/database/migrations/` (exit 1 with "No changes in database schema were found" when nothing changed); `npm run migration:create -- <Name>` — empty migration
+- `npm run migration:run` / `migration:show` — apply / list on `subtracker-db`; `migration:revert` locally only, never in production
 
 Formatting: @frontend-subtracker/.prettierrc, @backend-subtracker/.prettierrc.
 

@@ -1,0 +1,70 @@
+name: CI
+
+# Checks only: no secrets, no SSH, nothing reaches MyDevil. Runs on every branch except main
+# and on pull requests into main, so a PR shows green/red before the merge that deploys.
+# Deploys stay in deploy-*.yml and run on push to main (i.e. after a merge).
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend-subtracker
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend-subtracker/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run prepare-mydevil
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend-subtracker
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend-subtracker/package-lock.json
+
+      - run: npm ci
+      - run: npm run prepare-mydevil
+
+  deploy-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Syntax check of the MyDevil scripts
+        run: |
+          for f in deploy/mydevil/*.sh; do
+            sh -n "$f" || exit 1
+            echo "ok $f"
+          done

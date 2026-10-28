@@ -472,14 +472,14 @@ Dane startowe (np. słowniki) idą jako osobne migracje z `queryRunner.manager.i
 
 #### Automated
 
-- [ ] 3.1 Składnia skryptów: `sh -n deploy/mydevil/deploy.sh && sh -n deploy/mydevil/restore-db.sh && sh -n deploy/mydevil/rollback.sh`
-- [ ] 3.2 Lint i testy backendu oraz build frontendu nadal przechodzą: `cd backend-subtracker && npm run lint && npm test`, `cd frontend-subtracker && npm run build`
+- [x] 3.1 Składnia skryptów: `sh -n deploy/mydevil/deploy.sh && sh -n deploy/mydevil/restore-db.sh && sh -n deploy/mydevil/rollback.sh` — f6a1760
+- [x] 3.2 Lint i testy backendu oraz build frontendu nadal przechodzą: `cd backend-subtracker && npm run lint && npm test`, `cd frontend-subtracker && npm run build` — f6a1760
 
 #### Manual
 
-- [ ] 3.3 MyDevil: baza PostgreSQL utworzona (`devil pgsql db add …`), `pg_dump`, `pg_restore` i `psql` dostępne, PostgreSQL ≥ 13, użytkownik bazy jest właścicielem schematu `public`, katalog `~/apps/subtracker/backups` istnieje
-- [ ] 3.4 `shared/.env` API uzupełniony z `.env.mydevil` (`MODE=PROD`, `POSTGRES_*` bez `_DEV`, `DATABASE_AUTO_SYNCHRONIZATION=false`, `CORS_ORIGINS=https://subtracker.jakubpietrzykowski.pl`, `PORT`, `NODE_ENV`), `chmod 600`
-- [ ] 3.5 `deploy.sh`, `restore-db.sh` i `rollback.sh` wgrane na serwer wg README (rozmiar zgodny z lokalnym, `-rwx------`)
+- [x] 3.3 MyDevil: baza PostgreSQL utworzona (`devil pgsql db add …`), `pg_dump`, `pg_restore` i `psql` dostępne, PostgreSQL ≥ 13, użytkownik bazy jest właścicielem schematu `public`, katalog `~/apps/subtracker/backups` istnieje
+- [x] 3.4 `shared/.env` API uzupełniony z `.env.mydevil` (`MODE=PROD`, `POSTGRES_*` bez `_DEV`, `DATABASE_AUTO_SYNCHRONIZATION=false`, `CORS_ORIGINS=https://subtracker.jakubpietrzykowski.pl`, `PORT`, `NODE_ENV`), `chmod 600`
+- [x] 3.5 `deploy.sh`, `restore-db.sh` i `rollback.sh` wgrane na serwer wg README (rozmiar zgodny z lokalnym, `-rwx------`)
 - [ ] 3.6 Push na `main` (wykonuje użytkownik): oba workflowy zielone, w logu API widać stop, kopię bazy, migracje, start i `health-check OK` na `/health`
 - [ ] 3.7 `curl -s https://apisubtracker.jakubpietrzykowski.pl/health` → `{"status":"ok","db":"ok"}`
 - [ ] 3.8 `https://subtracker.jakubpietrzykowski.pl` w przeglądarce pokazuje „API i baza działają”, bez błędów CORS w konsoli
