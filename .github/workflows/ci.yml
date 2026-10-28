@@ -68,3 +68,9 @@ jobs:
             sh -n "$f" || exit 1
             echo "ok $f"
           done
+
+      # shellcheck ships with the ubuntu-latest runner image.
+      - name: shellcheck of the MyDevil scripts
+        run: |
+          shellcheck --version
+          shellcheck --shell=sh -S warning deploy/mydevil/*.sh

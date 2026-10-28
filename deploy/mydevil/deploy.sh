@@ -34,8 +34,24 @@ log() { echo "[deploy $APP] $*"; }
 
 case "$APP" in
   api) HEALTH_PATH=/health ;;
-  *) HEALTH_PATH=/ ;;
+  frontend) HEALTH_PATH=/ ;;
+  *)
+    echo "deploy: unknown app '$APP'" >&2
+    exit 1
+    ;;
 esac
+
+# One deploy/rollback/restore per app at a time (the frontend and the api may
+# deploy in parallel). restore-db.sh sees SUBTRACKER_LOCKED and does not re-lock.
+LOCK="$BASE/.ops.lock"
+mkdir -p "$BASE"
+if ! mkdir "$LOCK" 2>/dev/null; then
+  log "another deploy, rollback or restore of $APP is running ($LOCK exists; rmdir it if stale)"
+  exit 1
+fi
+trap 'rmdir "$LOCK"' EXIT
+trap 'exit 1' INT TERM HUP
+export SUBTRACKER_LOCKED=1
 
 health_check() {
   port=$(sed -n 's/^PORT=//p' "$LIVE/.env" | tr -d '"\r')
@@ -74,11 +90,24 @@ log "installing production dependencies"
 had_live=0
 [ -d "$LIVE" ] && had_live=1
 
+# File the outgoing release under its own SHA (from its .deploy-info; "prev" for
+# releases from before .deploy-info existed), so each releases/ name matches its
+# content. A failed new version is parked under the new SHA.
+if [ "$had_live" -eq 1 ]; then
+  OLD_SHA=$(sed -n 's/^SHA=//p' "$LIVE/.deploy-info" 2>/dev/null | cut -c1-7)
+  RELEASE="$RELEASES/${STAMP}_${OLD_SHA:-prev}"
+fi
+FAILED="$RELEASES/${STAMP}_${SHORT_SHA}_failed"
+
 BACKUP=""
 if [ "$APP" = api ]; then
   if [ "$had_live" -eq 1 ]; then
     log "stopping the live version (downtime starts)"
-    "$BIN/stop-app.sh" "$APP"
+    if ! "$BIN/stop-app.sh" "$APP"; then
+      log "could not stop the live version; nothing changed (database untouched)"
+      log "deploy aborted; $NEW kept for diagnosis"
+      exit 1
+    fi
   fi
 
   mkdir -p "$BACKUPS"
@@ -115,34 +144,58 @@ if [ "$APP" = api ]; then
     start_old_and_fail
   fi
 
-  # rollback.sh reads BACKUP from here to restore the database with the code.
-  printf 'SHA=%s\nBACKUP=%s\n' "$SHA" "$BACKUP" > "$NEW/.deploy-info"
 fi
 
-if [ "$had_live" -eq 1 ]; then
-  "$BIN/stop-app.sh" "$APP"
-  mv "$LIVE" "$RELEASE"
-fi
-mv "$NEW" "$LIVE"
-"$BIN/start-app.sh" "$APP"
+# Every release records its SHA (used to name it in releases/ later); for the
+# api, rollback.sh also reads BACKUP to restore the database with the code.
+printf 'SHA=%s\nBACKUP=%s\n' "$SHA" "$BACKUP" > "$NEW/.deploy-info"
 
-if ! health_check; then
+# Runs after the migrations committed, so a failure here must take the same
+# recovery path as a failed health check. Explicit returns: `set -e` does not
+# apply inside a function called from an `if` condition.
+swap_and_start() {
+  if [ "$had_live" -eq 1 ]; then
+    "$BIN/stop-app.sh" "$APP" || return 1
+    mv "$LIVE" "$RELEASE" || return 1
+  fi
+  mv "$NEW" "$LIVE" || return 1
+  "$BIN/start-app.sh" "$APP" || return 1
+}
+
+if ! swap_and_start; then
+  log "swap or start FAILED"
+  deploy_ok=0
+elif ! health_check; then
+  deploy_ok=0
+else
+  deploy_ok=1
+fi
+
+if [ "$deploy_ok" -eq 0 ]; then
   if [ -n "$BACKUP" ]; then
     "$BIN/stop-app.sh" "$APP"
     log "restoring the database from $BACKUP"
     if ! "$BIN/restore-db.sh" "$BACKUP"; then
       log "DATABASE RESTORE FAILED. The api stays stopped: running on a mismatched schema"
       log "is worse than downtime. Restore by hand: $BIN/restore-db.sh $BACKUP"
-      [ "$had_live" -eq 1 ] && log "then: mv $LIVE ${RELEASE}_failed && mv $RELEASE $LIVE && $BIN/start-app.sh $APP"
+      [ "$had_live" -eq 1 ] && log "then: mv $LIVE $FAILED && mv $RELEASE $LIVE && $BIN/start-app.sh $APP"
       exit 1
     fi
   fi
   if [ "$had_live" -eq 1 ]; then
-    log "restoring previous version from $RELEASE"
+    log "restoring previous version"
     "$BIN/stop-app.sh" "$APP"
-    mv "$LIVE" "${RELEASE}_failed"
-    mv "$RELEASE" "$LIVE"
+    # The swap may have stopped half-way: move only what is actually there.
+    if [ -d "$RELEASE" ]; then
+      [ -d "$LIVE" ] && mv "$LIVE" "$FAILED"
+      mv "$RELEASE" "$LIVE"
+    fi
     "$BIN/start-app.sh" "$APP"
+  else
+    # First deploy: nothing to go back to. Park the failed build, so the next
+    # deploy does not file it as a normal release that rollback.sh could pick.
+    "$BIN/stop-app.sh" "$APP"
+    [ -d "$LIVE" ] && mv "$LIVE" "$FAILED"
   fi
   log "check $BASE/logs/err.log"
   exit 1
@@ -153,10 +206,13 @@ ls -1 "$RELEASES" | sort -r | tail -n +$((KEEP + 1)) | while read -r old; do
   rm -rf "${RELEASES:?}/$old"
 done
 
-# Keep the newest $KEEP_BACKUPS dumps: more than $KEEP releases, so every
+# Keep the newest $KEEP_BACKUPS deploy dumps: more than $KEEP releases, so every
 # release in releases/ still has the backup taken right before it.
+# restore-db.sh rotates its own *_pre-restore.dump files.
 if [ -d "$BACKUPS" ]; then
-  ls -1 "$BACKUPS" | grep '\.dump$' | sort -r | tail -n +$((KEEP_BACKUPS + 1)) | while read -r old; do
+  # names are written by these scripts (timestamp_sha)
+  # shellcheck disable=SC2010
+  ls -1 "$BACKUPS" | grep '\.dump$' | grep -v '_pre-restore\.dump$' | sort -r | tail -n +$((KEEP_BACKUPS + 1)) | while read -r old; do
     rm -f "${BACKUPS:?}/$old"
   done
 fi

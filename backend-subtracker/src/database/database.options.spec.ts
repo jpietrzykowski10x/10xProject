@@ -62,11 +62,20 @@ describe('buildDatabaseOptions', () => {
         migrationsTableName: 'migration_history',
         migrationsTransactionMode: 'all',
         uuidExtension: 'pgcrypto',
+        connectTimeoutMS: 5000,
         extra: { max: 5 },
       });
       expect(options.migrations).toEqual([
         expect.stringMatching(/migrations[\\/]\*\.js$/),
       ]);
     }
+  });
+
+  it('limits statement time for the app only, never for migrations', () => {
+    expect(buildDatabaseOptions(prodEnv, 'app').extra).toEqual({
+      max: 5,
+      statement_timeout: 5000,
+    });
+    expect(buildDatabaseOptions(prodEnv, 'cli').extra).toEqual({ max: 5 });
   });
 });

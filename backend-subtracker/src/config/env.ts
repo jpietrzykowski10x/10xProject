@@ -105,7 +105,10 @@ export function validateEnv(raw: RawEnv): EnvConfig {
     POSTGRES_DATABASE_DEV: mode === 'DEV' ? devDatabase : undefined,
     DATABASE_AUTO_SYNCHRONIZATION: autoSynchronization,
     POSTGRES_POOL_MAX: readPositiveInt(raw, 'POSTGRES_POOL_MAX', 5),
-    CORS_ORIGINS: parseCorsOrigins(requireString(raw, 'CORS_ORIGINS')),
+    CORS_ORIGINS: parseCorsOrigins(
+      requireString(raw, 'CORS_ORIGINS'),
+      mode === 'PROD',
+    ),
   };
 }
 

@@ -12,6 +12,9 @@ export type DatabaseTarget = 'app' | 'cli';
 // .mydevil/ package, whatever the working directory.
 const databaseDir = import.meta.dirname;
 
+const CONNECT_TIMEOUT_MS = 5000;
+const APP_STATEMENT_TIMEOUT_MS = 5000;
+
 // Single source of connection options for the Nest app and the TypeORM CLI.
 // The app uses the -dev database in DEV (optionally synchronized); the CLI always targets
 // POSTGRES_DATABASE, the reference database locally and the only database in production.
@@ -30,6 +33,8 @@ export function buildDatabaseOptions(
     migrationsTransactionMode: 'all' as const,
     migrationsRun: false,
     uuidExtension: 'pgcrypto' as const,
+    // Also bounds the wait for a free client when the pool is exhausted.
+    connectTimeoutMS: CONNECT_TIMEOUT_MS,
     extra: { max: env.POSTGRES_POOL_MAX },
   };
 
@@ -38,6 +43,9 @@ export function buildDatabaseOptions(
       ...common,
       database: appDatabaseName(env),
       synchronize: isAutoSynchronization(env),
+      // A stalled database makes /health answer 503 instead of hanging. App only:
+      // migrations may legitimately run longer, so the cli target has no limit.
+      extra: { ...common.extra, statement_timeout: APP_STATEMENT_TIMEOUT_MS },
     };
   }
 

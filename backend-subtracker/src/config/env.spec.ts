@@ -80,4 +80,13 @@ describe('validateEnv', () => {
       /POSTGRES_POOL_MAX/,
     );
   });
+
+  it('rejects a plain http origin in PROD', () => {
+    expect(() =>
+      validateEnv({
+        ...prodEnv,
+        CORS_ORIGINS: 'http://subtracker.jakubpietrzykowski.pl',
+      }),
+    ).toThrow(/https in PROD/);
+  });
 });
