@@ -23,6 +23,8 @@ defaults:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Approval gate if required reviewers are set for this environment in GitHub settings.
+    environment: production
     steps:
       - uses: actions/checkout@v5
 
