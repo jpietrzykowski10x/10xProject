@@ -3,7 +3,7 @@ project: SubTracker
 version: 1
 status: draft
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-28
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -41,7 +41,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 
 | ID   | Change ID                         | Outcome (user can …)                                                              | Prerequisites | PRD refs                      | Status   |
 | ---- | --------------------------------- | --------------------------------------------------------------------------------- | ------------- | ----------------------------- | -------- |
-| F-01 | production-database-wiring        | (foundation) API ma produkcyjną bazę z migracjami w deployu; frontend woła API    | —             | Access Control, Guardrails    | planning |
+| F-01 | production-database-wiring        | (foundation) API ma produkcyjną bazę z migracjami w deployu; frontend woła API    | —             | Access Control, Guardrails    | in-progress |
 | S-01 | magic-link-sign-in                | użytkownik loguje się magic linkiem i widzi swoją (pustą) listę subskrypcji       | F-01          | FR-001, US-01                 | proposed |
 | S-02 | first-subscription-in-list        | użytkownik dodaje subskrypcję ze wszystkimi szczegółami i widzi ją na liście      | S-01          | FR-004, FR-007, FR-018, US-01 | proposed |
 | S-03 | edit-and-delete-subscription      | użytkownik poprawia lub usuwa błędnie dodaną subskrypcję                          | S-02          | FR-005, FR-006                | proposed |
@@ -89,7 +89,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - Jakie są limity połączeń współdzielonej bazy na koncie MyDevil (nieudokumentowane wg `infrastructure.md`)? — Owner: user. Block: no.
 - **Risk:** Stoi pierwsza, bo bez trwałego zapisu i migracji w deployu nie da się zweryfikować na produkcji ani logowania, ani gwiazdy przewodniej; zakres celowo minimalny (połączenie + migracje + CORS), żeby nie budować warstwy danych na zapas.
-- **Status:** planning
+- **Status:** in-progress
 
 ## Slices
 

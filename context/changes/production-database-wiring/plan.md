@@ -441,19 +441,19 @@ Dane startowe (np. słowniki) idą jako osobne migracje z `queryRunner.manager.i
 
 #### Automated
 
-- [ ] 1.1 Lint przechodzi: `cd backend-subtracker && npm run lint`
-- [ ] 1.2 Testy jednostkowe przechodzą (w tym `/health` z zamockowanym `DataSource` i parser `CORS_ORIGINS`): `cd backend-subtracker && npm test`
-- [ ] 1.3 Build przechodzi, a w `dist/database/` są `data-source.js`, `database.options.js` i `migrations/<timestamp>-Init.js`: `cd backend-subtracker && npm run build`
-- [ ] 1.4 `npm run prepare-mydevil` tworzy paczkę z `database/data-source.js` w korzeniu `.mydevil/`
+- [x] 1.1 Lint przechodzi: `cd backend-subtracker && npm run lint`
+- [x] 1.2 Testy jednostkowe przechodzą (w tym `/health` z zamockowanym `DataSource` i parser `CORS_ORIGINS`): `cd backend-subtracker && npm test`
+- [x] 1.3 Build przechodzi, a w `dist/database/` są `data-source.js`, `database.options.js` i `migrations/<timestamp>-Init.js`: `cd backend-subtracker && npm run build`
+- [x] 1.4 `npm run prepare-mydevil` tworzy paczkę z `database/data-source.js` w korzeniu `.mydevil/`
 
 #### Manual
 
-- [ ] 1.5 Lokalny PostgreSQL zainstalowany, bazy `subtracker-db` i `subtracker-db-dev` utworzone skryptem `database/create-local-databases.sql`, `backend-subtracker/.env` wypełniony wg `.env.example`
-- [ ] 1.6 `npm run migration:run` lokalnie kończy się sukcesem, wykonuje `Init` i tworzy tabelę `migration_history` z jednym wpisem w `subtracker-db` (nie w `-dev`); drugie uruchomienie nie ma nic do zrobienia; `npm run migration:generate -- Probe` bez encji kończy się komunikatem „No changes in database schema were found” i nie tworzy pliku
-- [ ] 1.7 W zbudowanej paczce: `cd .mydevil && npm ci --omit=dev` i uruchomienie TypeORM CLI `migration:run -d database/data-source.js` z env z `.env` kończy się sukcesem w ciągu kilku sekund (potwierdza ładowanie ESM — patrz Critical Implementation Details — i to, że wzorzec encji nie przeszukuje `node_modules`)
-- [ ] 1.8 `npm run start:dev`: baner pokazuje `APP MODE: DEV, CURRENT DATABASE: subtracker-db-dev, AUTO SYNCHRONIZATION: YES`; `curl localhost:3000/health` → `200 {"status":"ok","db":"ok"}`; po zatrzymaniu usługi PostgreSQL → `503`
-- [ ] 1.9 `curl -i -H "Origin: http://localhost:4200" localhost:3000/health` zwraca `Access-Control-Allow-Origin: http://localhost:4200` i `Access-Control-Allow-Credentials: true`; obcy `Origin` nie dostaje tych nagłówków
-- [ ] 1.10 `npm run test:e2e` przechodzi z lokalną bazą
+- [x] 1.5 Lokalny PostgreSQL zainstalowany, bazy `subtracker-db` i `subtracker-db-dev` utworzone skryptem `database/create-local-databases.sql`, `backend-subtracker/.env` wypełniony wg `.env.example`
+- [x] 1.6 `npm run migration:run` lokalnie kończy się sukcesem, wykonuje `Init` i tworzy tabelę `migration_history` z jednym wpisem w `subtracker-db` (nie w `-dev`); drugie uruchomienie nie ma nic do zrobienia; `npm run migration:generate -- Probe` bez encji kończy się komunikatem „No changes in database schema were found” i nie tworzy pliku
+- [x] 1.7 W zbudowanej paczce: `cd .mydevil && npm ci --omit=dev` i uruchomienie TypeORM CLI `migration:run -d database/data-source.js` z env z `.env` kończy się sukcesem w ciągu kilku sekund (potwierdza ładowanie ESM — patrz Critical Implementation Details — i to, że wzorzec encji nie przeszukuje `node_modules`)
+- [x] 1.8 `npm run start:dev`: baner pokazuje `APP MODE: DEV, CURRENT DATABASE: subtracker-db-dev, AUTO SYNCHRONIZATION: YES`; `curl localhost:3000/health` → `200 {"status":"ok","db":"ok"}`; po zatrzymaniu usługi PostgreSQL → `503`
+- [x] 1.9 `curl -i -H "Origin: http://localhost:4200" localhost:3000/health` zwraca `Access-Control-Allow-Origin: http://localhost:4200` i `Access-Control-Allow-Credentials: true`; obcy `Origin` nie dostaje tych nagłówków
+- [x] 1.10 `npm run test:e2e` przechodzi z lokalną bazą
 
 ### Phase 2: Frontend — adres API i status na stronie
 

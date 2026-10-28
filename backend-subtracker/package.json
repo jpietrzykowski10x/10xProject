@@ -14,6 +14,11 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "prepare-mydevil": "nest build && node scripts/prepare-mydevil.mjs",
+    "migration:generate": "nest build && node scripts/migration-file.mjs generate",
+    "migration:create": "node scripts/migration-file.mjs create",
+    "migration:run": "nest build && typeorm migration:run -d dist/database/data-source.js",
+    "migration:revert": "nest build && typeorm migration:revert -d dist/database/data-source.js",
+    "migration:show": "nest build && typeorm migration:show -d dist/database/data-source.js",
     "lint": "oxlint --type-aware src/ test/",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -23,10 +28,14 @@
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
+    "@nestjs/config": "^12.0.1",
     "@nestjs/core": "^12.0.1",
     "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/typeorm": "^12.0.2",
+    "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "typeorm": "^1.1.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^12.0.0",
