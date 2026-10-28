@@ -472,8 +472,8 @@ Dane startowe (np. słowniki) idą jako osobne migracje z `queryRunner.manager.i
 
 #### Automated
 
-- [x] 3.1 Składnia skryptów: `sh -n deploy/mydevil/deploy.sh && sh -n deploy/mydevil/restore-db.sh && sh -n deploy/mydevil/rollback.sh`
-- [x] 3.2 Lint i testy backendu oraz build frontendu nadal przechodzą: `cd backend-subtracker && npm run lint && npm test`, `cd frontend-subtracker && npm run build`
+- [x] 3.1 Składnia skryptów: `sh -n deploy/mydevil/deploy.sh && sh -n deploy/mydevil/restore-db.sh && sh -n deploy/mydevil/rollback.sh` — f6a1760
+- [x] 3.2 Lint i testy backendu oraz build frontendu nadal przechodzą: `cd backend-subtracker && npm run lint && npm test`, `cd frontend-subtracker && npm run build` — f6a1760
 
 #### Manual
 
