@@ -78,7 +78,7 @@ BACKUP=""
 if [ "$APP" = api ]; then
   if [ "$had_live" -eq 1 ]; then
     log "stopping the live version (downtime starts)"
-    forever stop "subtracker-$APP" >/dev/null 2>&1 || true
+    "$BIN/stop-app.sh" "$APP"
   fi
 
   mkdir -p "$BACKUPS"
@@ -120,7 +120,7 @@ if [ "$APP" = api ]; then
 fi
 
 if [ "$had_live" -eq 1 ]; then
-  forever stop "subtracker-$APP" >/dev/null 2>&1 || true
+  "$BIN/stop-app.sh" "$APP"
   mv "$LIVE" "$RELEASE"
 fi
 mv "$NEW" "$LIVE"
@@ -128,7 +128,7 @@ mv "$NEW" "$LIVE"
 
 if ! health_check; then
   if [ -n "$BACKUP" ]; then
-    forever stop "subtracker-$APP" >/dev/null 2>&1 || true
+    "$BIN/stop-app.sh" "$APP"
     log "restoring the database from $BACKUP"
     if ! "$BIN/restore-db.sh" "$BACKUP"; then
       log "DATABASE RESTORE FAILED. The api stays stopped: running on a mismatched schema"
@@ -139,7 +139,7 @@ if ! health_check; then
   fi
   if [ "$had_live" -eq 1 ]; then
     log "restoring previous version from $RELEASE"
-    forever stop "subtracker-$APP" >/dev/null 2>&1 || true
+    "$BIN/stop-app.sh" "$APP"
     mv "$LIVE" "${RELEASE}_failed"
     mv "$RELEASE" "$LIVE"
     "$BIN/start-app.sh" "$APP"

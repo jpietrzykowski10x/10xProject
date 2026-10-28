@@ -17,7 +17,7 @@ case "$APP" in
     ;;
 esac
 
-forever stop "subtracker-$APP" >/dev/null 2>&1 || true
+"$HOME/apps/subtracker/bin/stop-app.sh" "$APP"
 
 set -a
 . "$LIVE/.env"

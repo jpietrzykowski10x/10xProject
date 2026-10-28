@@ -45,6 +45,7 @@ Domains are MyDevil proxy domains, and TLS terminates on MyDevil:
 | `ci-gate.sh` | Forced command for the CI key. It accepts only `deploy <frontend\|api> <sha>`. |
 | `deploy.sh <app> <sha>` | Unpacks the tarball from stdin into `public_nodejs_new`, runs `npm24 ci --omit=dev`, swaps it in with `mv`, and runs a health check (`/health` for the api, `/` for the frontend). For the api it first stops the live version, backs up the database and runs migrations (see [Database](#database)). If the health check fails, it restores the previous version automatically. |
 | `restore-db.sh <file.dump>` | Restores the api database from a backup: drops and recreates the `public` schema and restores the dump, in one transaction. Does not stop or start the api. |
+| `stop-app.sh <app>` | Stops the app: `forever stop` capped at 30 s, then the forever monitor and the app are killed by their path. `forever stop` can hang for good while the app is crash-looping. Every other script stops apps through it. |
 | `start-app.sh <app>` | Restarts the app under `forever` on `/usr/local/bin/node24`, using the env from `.env`. Entry: `app.mjs` (frontend) / `app.js` (api), since MyDevil starts only these names. |
 | `rollback.sh <app> [--yes]` | Makes the newest entry in `releases/` live again. For the api it also restores the database from the backup taken before the rolled-back release (asks for `TAK`). The frontend rolls back code only. |
 | `start-all.sh` | Starts both apps after a reboot. |
@@ -68,7 +69,7 @@ Failure paths:
 Restoring by hand, e.g. when a problem shows up hours after a deploy:
 
 ```
-forever stop subtracker-api
+~/apps/subtracker/bin/stop-app.sh api
 ~/apps/subtracker/bin/restore-db.sh ~/apps/subtracker/backups/<time>_<sha7>.dump
 ~/apps/subtracker/bin/start-app.sh api
 ```
@@ -84,7 +85,7 @@ The scripts are **not** deployed by GitHub Actions: the workflows only ship app 
 1. Locally, from the repo root (PowerShell or Git Bash). List the files explicitly, because PowerShell doesn't expand `*.sh` for `scp`:
 
    ```
-   scp deploy/mydevil/ci-gate.sh deploy/mydevil/deploy.sh deploy/mydevil/restore-db.sh deploy/mydevil/start-app.sh deploy/mydevil/rollback.sh deploy/mydevil/start-all.sh <login>@s<N>.mydevil.net:~/apps/subtracker/bin/
+   scp deploy/mydevil/ci-gate.sh deploy/mydevil/deploy.sh deploy/mydevil/restore-db.sh deploy/mydevil/stop-app.sh deploy/mydevil/start-app.sh deploy/mydevil/rollback.sh deploy/mydevil/start-all.sh <login>@s<N>.mydevil.net:~/apps/subtracker/bin/
    ```
 
    You can upload a single changed file the same way, for example only `deploy/mydevil/start-app.sh`.
@@ -107,7 +108,7 @@ The scripts are **not** deployed by GitHub Actions: the workflows only ship app 
    forever list
    ```
 
-   Changes to `deploy.sh` and `ci-gate.sh` take effect with the next deploy. Changes to `restore-db.sh`, `rollback.sh` and `start-all.sh` take effect the next time they run.
+   Changes to `deploy.sh` and `ci-gate.sh` take effect with the next deploy. Changes to `stop-app.sh`, `restore-db.sh`, `rollback.sh` and `start-all.sh` take effect the next time they run.
 
 ## One-time setup
 
@@ -126,4 +127,4 @@ crontab:
 
 The scripts expect `forever` on `PATH`. They look in `/usr/local/bin` and `~/.npm-global/bin`. If yours lives elsewhere, adjust the `PATH` line at the top of each script.
 
-Other apps run under `forever` on this account. Stop SubTracker processes by uid (`forever stop subtracker-frontend`), never with `forever stopall`.
+Other apps run under `forever` on this account. Stop SubTracker processes with `stop-app.sh <app>` (by uid, with a fallback kill by path), never with `forever stopall`. The scripts need `timeout` and `pkill`, both in FreeBSD's base system.

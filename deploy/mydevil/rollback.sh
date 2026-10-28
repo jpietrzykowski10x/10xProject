@@ -51,14 +51,14 @@ if [ "$APP" = api ]; then
     fi
   fi
 
-  forever stop "subtracker-$APP" >/dev/null 2>&1 || true
+  "$BIN/stop-app.sh" "$APP"
   if ! "$BIN/restore-db.sh" "$BACKUP"; then
     echo "rollback: DATABASE RESTORE FAILED; code unchanged, api left stopped" >&2
     exit 1
   fi
 fi
 
-forever stop "subtracker-$APP" >/dev/null 2>&1 || true
+"$BIN/stop-app.sh" "$APP"
 mv "$LIVE" "$RELEASES/$(date +%Y%m%d-%H%M%S)_rolledback"
 mv "$RELEASES/$PREV" "$LIVE"
 "$BIN/start-app.sh" "$APP"
