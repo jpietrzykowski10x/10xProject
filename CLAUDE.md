@@ -72,55 +72,45 @@ When the synced block and an installed `SKILL.md` disagree, the `SKILL.md` wins.
 
 <!-- BEGIN @przeprogramowani/10x-cli -->
 
-## 10xDevs AI Toolkit - Module 2, Lesson 2
+## Zestaw narzędzi AI 10xDevs — Moduł 2, Lekcja 3
 
-Turn one roadmap item into the first implementation cycle with the **change planning chain**:
+Przejrzyj kod wygenerowany przez AI przed scaleniem, korzystając z **łańcucha przeglądu implementacji**:
 
 ```
-/10x-roadmap -> /10x-new -> /10x-plan -> /10x-plan-review -> /10x-implement
+/10x-implement -> /10x-impl-review -> triage -> (/10x-lesson | fix | skip | disagree)
 ```
 
-`/10x-new`, `/10x-plan`, `/10x-plan-review`, and `/10x-implement` are the lesson focus. `/10x-frame` and `/10x-research` are not required rituals here; they are escalation paths introduced in the next lesson.
+`/10x-impl-review` jest głównym tematem lekcji. Przegląd jest bramką jakości, a nie poleceniem naprawienia każdego znaleziska.
 
-### Task Router - Where to start
+### Router zadań — od czego zacząć
 
-| Skill | Use it when |
+| Umiejętność | Użyj jej, gdy |
 | --- | --- |
-| **Change setup (lesson focus)** | |
-| `/10x-new <change-id>` | You selected a roadmap item and need a stable change folder. Creates `context/changes/<change-id>/change.md` so planning, implementation, progress, commits, and later review all share one identity. Use AFTER roadmap selection, BEFORE `/10x-plan`. |
-| **Planning (lesson focus)** | |
-| `/10x-plan <change-id>` | You have a change folder and need a reviewable implementation plan. Reads roadmap context, foundation docs, codebase evidence, and any existing change notes; writes `plan.md` and `plan-brief.md` with phases, file contracts, success criteria, and `## Progress`. |
-| **Plan readiness (lesson focus)** | |
-| `/10x-plan-review <change-id>` | You have `plan.md` and need a light pre-code readiness check. Use it to catch missing end state, weak contracts, malformed progress, scope drift, or blind spots before code changes begin. |
-| **Implementation (lesson focus)** | |
-| `/10x-implement <change-id> phase <n>` | You have an approved plan and want to execute one phase with verification, manual gate, commit ritual, and SHA write-back to `## Progress`. |
-| **Lifecycle closure** | |
-| `/10x-archive <change-id>` | A change is merged or intentionally closed. Move it out of active `context/changes/` into archive state. |
+| **Przegląd kodu (główny temat lekcji)** | |
+| `/10x-impl-review <change-id>` | Zaimplementowano kod i chcesz przeprowadzić ustrukturyzowany przegląd przed scaleniem. Umiejętność sprawdza zgodność z planem, dyscyplinę zakresu, bezpieczeństwo i jakość, architekturę, spójność wzorców oraz kryteria sukcesu, a następnie przedstawia ustalenia do selekcji. |
+| **Wynik powtarzającej się lekcji** | |
+| `/10x-lesson` | Ustalenie ujawnia powtarzającą się regułę projektu lub wzorzec błędów agenta. Zapisz je w `context/foundation/lessons.md` zamiast traktować je jako jednorazową notatkę. |
 
-### How the chain hands off
+### Dyscyplina selekcji
 
-- `/10x-new` creates the durable change identity.
-- `/10x-plan` turns that identity into an implementation contract.
-- `/10x-plan-review` checks the plan before the agent mutates code.
-- `/10x-implement` executes one planned phase, verifies, asks for manual confirmation when needed, commits, and records progress.
+- Dotkliwość określa, jak poważne jest ustalenie. Wpływ określa, jak duże znaczenie ma teraz decyzja.
+- Prawidłowe wyniki: napraw teraz, napraw inaczej, pomiń, zaakceptuj jako ryzyko, zapisz jako powtarzającą się regułę (`/10x-lesson`), nie zgódź się.
+- Naprawiaj krytyczne ustalenia. Nie poświęcaj godzin na obserwacje o niskim wpływie tylko dlatego, że agent je znalazł.
+- Świadome pomijanie ustaleń o niskim wpływie jest prawidłowym wynikiem przeglądu, a nie zaniedbaniem.
+- Jeśli nie zgadzasz się z ustaleniem, zapisz dlaczego. Błędne rozumowanie agenta również jest sygnałem.
 
-### Lesson boundaries
+### Granice przeglądu
 
-- Plan is the default router after roadmap selection. Start with `/10x-plan` unless the problem is unclear or external evidence is blocking.
-- Do not run `/10x-frame + /10x-research` as ceremony for every change.
-- Do not turn this lesson into a full end-to-end product build. A checkpoint with a planned and partially or fully implemented stream is valid.
-- Code review of the implemented diff belongs to Lesson 3 via `/10x-impl-review`.
-- Lifecycle closure via `/10x-archive` after a change is merged or intentionally closed.
+- Ta lekcja dotyczy przeglądu zaimplementowanego kodu. Nie tworzy planu, nie wykonuje nowych faz ani nie uczy przeglądu CI.
+- Strategia testowania i bramki jakości zostaną wprowadzone w Module 3.
+- Nie używaj `/10x-contract` jako wyniku selekcji w tej lekcji.
 
-### Paths used by this lesson
+### Ścieżki używane przez tę lekcję
 
-- `context/foundation/roadmap.md` - upstream roadmap
-- `context/changes/<change-id>/change.md` - change identity
-- `context/changes/<change-id>/plan.md` - implementation contract
-- `context/changes/<change-id>/plan-brief.md` - compressed handoff
-- `context/foundation/lessons.md` - recurring rules and pitfalls
-- `docs/reference/contract-surfaces.md` - load-bearing names registry
+- `context/changes/<change-id>/plan.md` — oczekiwany kontrakt implementacji
+- `context/changes/<change-id>/reviews/` — wynik przeglądu
+- `context/foundation/lessons.md` — powtarzające się lekcje
 
-Skills must not write to `context/archive/`. Archived changes are immutable; if a resolved target path starts with `context/archive/`, abort with: "This change is archived. Open a new change with `/10x-new` instead."
+Umiejętności nie mogą zapisywać do `context/archive/`. Zarchiwizowane zmiany są niezmienne; jeśli rozwiązana ścieżka docelowa zaczyna się od `context/archive/`, przerwij z komunikatem: "Ta zmiana jest zarchiwizowana. Zamiast tego otwórz nową zmianę za pomocą `/10x-new`."
 
 <!-- END @przeprogramowani/10x-cli -->
