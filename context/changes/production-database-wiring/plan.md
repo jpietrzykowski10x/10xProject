@@ -459,14 +459,14 @@ Dane startowe (np. słowniki) idą jako osobne migracje z `queryRunner.manager.i
 
 #### Automated
 
-- [x] 2.1 Build produkcyjny przechodzi (w tym prerender): `cd frontend-subtracker && npm run build`
-- [x] 2.2 Wyrenderowany `dist/frontend-subtracker/browser/index.html` zawiera stan „sprawdzam…” (prerender nie wywołał API)
-- [x] 2.3 `npm run prepare-mydevil` przechodzi
+- [x] 2.1 Build produkcyjny przechodzi (w tym prerender): `cd frontend-subtracker && npm run build` — 92923bd
+- [x] 2.2 Wyrenderowany `dist/frontend-subtracker/browser/index.html` zawiera stan „sprawdzam…” (prerender nie wywołał API) — 92923bd
+- [x] 2.3 `npm run prepare-mydevil` przechodzi — 92923bd
 
 #### Manual
 
-- [x] 2.4 `npm start` + backend z Fazy 1: strona pokazuje „API i baza działają”; w DevTools żądanie do `localhost:3000/health` ma `credentials: include` i brak błędu CORS
-- [x] 2.5 Po zatrzymaniu backendu: „API niedostępne”; po zatrzymaniu bazy: „baza niedostępna”
+- [x] 2.4 `npm start` + backend z Fazy 1: strona pokazuje „API i baza działają”; w DevTools żądanie do `localhost:3000/health` ma `credentials: include` i brak błędu CORS — 92923bd
+- [x] 2.5 Po zatrzymaniu backendu: „API niedostępne”; po zatrzymaniu bazy: „baza niedostępna” — 92923bd
 
 ### Phase 3: Deploy — przestój, kopia, migracje, przywracanie i health-check w `deploy.sh`
 
