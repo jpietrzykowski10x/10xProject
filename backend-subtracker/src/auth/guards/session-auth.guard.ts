@@ -6,13 +6,9 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Public } from '../../shared/decorators/public.decorator.js';
-import type {
-  AuthenticatedRequest,
-  AuthUser,
-} from '../../shared/types/auth-user.js';
-import type { User } from '../../users/entities/user.entity.js';
+import type { AuthenticatedRequest } from '../../shared/types/auth-user.js';
 import type { Session } from '../entities/session.entity.js';
-import { SessionService } from '../services/session.service.js';
+import { SessionService, toAuthUser } from '../services/session.service.js';
 
 function isValid(session: Session): boolean {
   return (
@@ -20,16 +16,6 @@ function isValid(session: Session): boolean {
     session.expiresAt.getTime() > Date.now() &&
     session.user.isActive
   );
-}
-
-function toAuthUser(user: User): AuthUser {
-  return {
-    id: user.id,
-    email: user.email,
-    roles: user.userRoles
-      .filter((userRole) => userRole.role.isActive)
-      .map((userRole) => userRole.role.code),
-  };
 }
 
 // Registered globally: every route requires a session unless it carries @Public().

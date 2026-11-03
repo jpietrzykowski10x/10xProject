@@ -430,6 +430,15 @@ Na produkcji są tylko migracje `Init`, nowe tabele są puste. Migracje uruchami
 - Deploy: `deploy/mydevil/deploy.sh:133`, `deploy/mydevil/README.md`
 - Poprzednia zmiana: `context/archive/2026-10-16-production-database-wiring/`
 
+## Follow-ups
+
+Poza kryteriami faz, dopisane na prośbę użytkownika w trakcie fazy 3.
+
+- **Do sprawdzenia w `/10x-impl-review`: możliwy deadlock w `verify`.** `verify` blokuje wiersz tokenu, a potem użytkownika, a wystawienie linku odwrotnie: użytkownika (`FOR UPDATE`), potem tokeny. Przy jednoczesnych żądaniach dla jednego konta PostgreSQL przerwie jedną transakcję i odpowiedzią będzie `500`. Do oceny: czy zostawić, czy ujednolicić kolejność blokad.
+- **Nice to have: dopracowanie treści korespondencji.** Obecne maile są wystarczające, ale ich treść można dopracować w późniejszym kroku.
+- **S-09: dezaktywacja konta.** Dziś nic nie ustawia `is_active`, a `is_active = false` tylko blokuje sesje: po ponownej aktywacji niewygasłe sesje i niezużyty link znów działają. Dezaktywacja powinna w jednej transakcji ustawić `is_active = false`, usunąć niezużyte tokeny i unieważnić sesje konta. Przy okazji warto rozważyć „wyloguj wszędzie”, bo dziś wylogowanie kończy tylko bieżącą sesję.
+- **S-05: sprzątanie tokenów i sesji.** Wygasłe i zużyte wiersze `magic_link_token` oraz stare wiersze `session` (z `user_agent`) nie są usuwane. Weryfikacja je odrzuca, ale tabele rosną. Gdy pojawi się scheduler, dodać idempotentne zadanie czyszczące (`lessons.md`).
+
 ## Progress
 
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles. See `references/progress-format.md`.
@@ -450,29 +459,29 @@ Na produkcji są tylko migracje `Init`, nowe tabele są puste. Migracje uruchami
 
 #### Automated
 
-- [x] 2.1 Testy jednostkowe przechodzą: `npm test` (guard sesji: brak ciasteczka, wygasła, unieważniona, nieaktywny użytkownik, nieaktywna rola; guard ról: bez metadanych, z rolą, bez roli)
-- [x] 2.2 Lint przechodzi: `npm run lint`
-- [x] 2.3 Build przechodzi: `npm run build`
-- [x] 2.4 Test e2e `/health` bez ciasteczka zwraca 200, a `/auth/me` bez ciasteczka 401: `npm run test:e2e`
+- [x] 2.1 Testy jednostkowe przechodzą: `npm test` (guard sesji: brak ciasteczka, wygasła, unieważniona, nieaktywny użytkownik, nieaktywna rola; guard ról: bez metadanych, z rolą, bez roli) — 50bb811
+- [x] 2.2 Lint przechodzi: `npm run lint` — 50bb811
+- [x] 2.3 Build przechodzi: `npm run build` — 50bb811
+- [x] 2.4 Test e2e `/health` bez ciasteczka zwraca 200, a `/auth/me` bez ciasteczka 401: `npm run test:e2e` — 50bb811
 
 #### Manual
 
-- [x] 2.5 Lokalny start z pustą bazą dev zakłada tabele i obie role
+- [x] 2.5 Lokalny start z pustą bazą dev zakłada tabele i obie role — 50bb811
 
 ### Phase 3: Rejestracja i magic link
 
 #### Automated
 
-- [ ] 3.1 Testy jednostkowe przechodzą: `npm test` (normalizacja adresu, brak wysyłki dla nieznanego i nieaktywnego adresu, usuwanie starszych tokenów)
-- [ ] 3.2 Testy e2e przechodzą: `npm run test:e2e`, z atrapą transportu, we wszystkich scenariuszach z fazy 3:
-- [ ] 3.3 Wiersz w `mail` po wysyłce nie zawiera tokenu: asercja w teście e2e
-- [ ] 3.4 Migracje są zastosowane i brak różnicy względem encji: `npm run migration:show`, a `npm run migration:generate -- Check` kończy się „No changes in database schema were found”
-- [ ] 3.5 Lint i build przechodzą: `npm run lint`, `npm run build`
+- [x] 3.1 Testy jednostkowe przechodzą: `npm test` (normalizacja adresu, brak wysyłki dla nieznanego i nieaktywnego adresu, usuwanie starszych tokenów)
+- [x] 3.2 Testy e2e przechodzą: `npm run test:e2e`, z atrapą transportu, we wszystkich scenariuszach z fazy 3:
+- [x] 3.3 Wiersz w `mail` po wysyłce nie zawiera tokenu: asercja w teście e2e
+- [x] 3.4 Migracje są zastosowane i brak różnicy względem encji: `npm run migration:show`, a `npm run migration:generate -- Check` kończy się „No changes in database schema were found”
+- [x] 3.5 Lint i build przechodzą: `npm run lint`, `npm run build`
 
 #### Manual
 
-- [ ] 3.6 Przegląd wygenerowanej migracji: indeksy unique na `email` i `token_hash`, poprawne klucze obce, brak operacji poza zakresem
-- [ ] 3.7 Prawdziwy mail lokalnie: z danymi SMTP w `.env` link dociera na Gmaila
+- [x] 3.6 Przegląd wygenerowanej migracji: indeksy unique na `email` i `token_hash`, poprawne klucze obce, brak operacji poza zakresem
+- [x] 3.7 Prawdziwy mail lokalnie: z danymi SMTP w `.env` link dociera na Gmaila
 
 ### Phase 4: Frontend
 

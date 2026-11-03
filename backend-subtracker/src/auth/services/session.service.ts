@@ -6,6 +6,8 @@ import { parseCookie } from 'cookie';
 import type { CookieOptions, Request, Response } from 'express';
 import { type EntityManager, IsNull, Repository } from 'typeorm';
 import { type EnvConfig, envFromConfig } from '../../config/env.js';
+import type { AuthUser } from '../../shared/types/auth-user.js';
+import type { User } from '../../users/entities/user.entity.js';
 import { SESSION_COOKIE_NAME, SESSION_TTL } from '../auth.constants.js';
 import {
   Session,
@@ -17,6 +19,17 @@ const SESSION_TOKEN_BYTES = 32;
 // A random high-entropy token does not need a slow hash.
 export function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
+}
+
+// Expects user.userRoles with their roles loaded. Only active roles count towards permissions.
+export function toAuthUser(user: User): AuthUser {
+  return {
+    id: user.id,
+    email: user.email,
+    roles: user.userRoles
+      .filter((userRole) => userRole.role.isActive)
+      .map((userRole) => userRole.role.code),
+  };
 }
 
 @Injectable()

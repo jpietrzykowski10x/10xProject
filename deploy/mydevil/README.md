@@ -52,6 +52,8 @@ Domains are MyDevil proxy domains, and TLS terminates on MyDevil:
 
 ## Database
 
+PostgreSQL on the server is version 16.10. Migrations use `gen_random_uuid()`, which needs version 13 or newer.
+
 The api deploy is a deliberate step with a short downtime (about 30–60 s), in this order:
 
 1. The new version is installed next to the live one (`npm24 ci`).
