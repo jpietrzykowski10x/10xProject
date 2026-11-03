@@ -28,10 +28,10 @@ Weryfikacja: testy backendu z tego planu przechodzą, a na produkcji przechodzi 
 ### Key Discoveries:
 
 - `validateEnv` obsługuje też CLI migracji (`backend-subtracker/src/database/data-source.ts:15`), a `deploy.sh:141` uruchamia je z `shared/.env`. Brak wymaganego klucza zatrzyma więc deploy już na kroku migracji.
-- `database.options.spec.ts:13` buduje środowisko PROD przez `validateEnv`, więc nowe klucze wymagane w PROD wymagają aktualizacji tego testu.
-- `DATABASE_AUTO_SYNCHRONIZATION` buduje schemat bazy dev z encji, ale nie uruchamia migracji (`database.options.ts:30`). Baza dev nie dostanie więc seedu ról z migracji.
+- `database.options.spec.ts:14` buduje środowisko PROD przez `validateEnv`, więc nowe klucze wymagane w PROD wymagają aktualizacji tego testu.
+- `DATABASE_AUTO_SYNCHRONIZATION` buduje schemat bazy dev z encji, ale nie uruchamia migracji (`database.options.ts:45`). Baza dev nie dostanie więc seedu ról z migracji.
 - `prepare-mydevil.mjs` spłaszcza `dist/` do korzenia pakietu, więc na serwerze ścieżka to `cli/admin-grant.js`, a nie `dist/cli/admin-grant.js`.
-- CLI migracji szuka encji po wzorcu `*.entity.js` (`database.options.ts:61`), więc pliki encji muszą trzymać tę nazwę.
+- CLI migracji szuka encji po wzorcu `*.entity.js` (`database.options.ts:58`), więc pliki encji muszą trzymać tę nazwę.
 - `health_check` w `deploy.sh:60` woła `/health` bez ciasteczka, a `deploy.sh:174` cofa deploy po niepowodzeniu. Brak `@Public()` na tej trasie cofałby każdy deploy.
 - `api-status.ts:12` ma adnotację, że S-01 zastępuje tę tymczasową stronę.
 
@@ -43,7 +43,7 @@ Weryfikacja: testy backendu z tego planu przechodzą, a na produkcji przechodzi 
 - Encji `Subscription` i endpointu listy (S-02). Pusta lista jest statycznym stanem widoku.
 - Paneli i tras `/admin/...` (S-09); powstaje tylko skrypt `admin:grant`.
 - Czyszczenia niepotwierdzonych kont, wygasłych tokenów i sesji. Scheduler pojawia się dopiero w S-05.
-- Logowania hasłem (FR-003), usuwania konta i anonimizacji danych (pytanie otwarte roadmapy #1).
+- Logowania hasłem (FR-003), usuwania konta i anonimizacji danych (pytanie otwarte roadmapy #1). Przyszłe usuwanie konta musi objąć też adresy w tabeli `mail`, bo nie ma ona klucza obcego do `user`.
 - Przedłużania sesji aktywnością.
 - Runnera testów frontendu. Frontend sprawdzamy buildem i ręcznie.
 
@@ -126,14 +126,14 @@ Każda trasa domyślnie wymaga sesji. Działają `GET /auth/me`, `POST /auth/log
 
 #### 1. Encje użytkowników i ról
 
-**File**: `backend-subtracker/src/users/` — `entities/user.entity.ts`, `entities/role.entity.ts`, `entities/user-role.entity.ts`, `users.module.ts`, `services/users.service.ts`; `src/shared/types/role-code.ts`
+**File**: `backend-subtracker/src/users/` — `entities/user.entity.ts`, `entities/role.entity.ts`, `entities/user-role.entity.ts`, `users.module.ts`, `services/users.service.ts`, `services/roles-seeder.ts`; `src/shared/types/role-code.ts`
 
 **Intent**: Założyć schemat z `backend-patterns.md`, uzupełniony o potwierdzenie adresu i zgody.
 
 **Contract**:
 - `user`: `id` (uuid), `email` (varchar 254, unique, zapis znormalizowany: trim + małe litery), `is_active` (domyślnie true), `email_verified_at` (nullable), `consents_accepted_at`, `privacy_policy_version` (varchar 20), `created_at`.
 - `role` i `user_role` dokładnie jak we wzorcach; relacje jako `Relation<T>` i `() => Encja`.
-- Stałe UUID ról są w jednym module kodu. W trybie auto-synchronizacji start aplikacji zakłada role idempotentnie.
+- Stałe UUID ról są w jednym module kodu. `RolesSeeder` w `OnApplicationBootstrap` działa tylko przy `isAutoSynchronization(env)` i zakłada role przez `INSERT ... ON CONFLICT DO NOTHING`.
 
 #### 2. Sesje i dekoratory
 
@@ -169,11 +169,11 @@ Każda trasa domyślnie wymaga sesji. Działają `GET /auth/me`, `POST /auth/log
 
 #### 5. Skrypt `admin:grant`
 
-**File**: `backend-subtracker/src/cli/admin-grant.ts`, `package.json`
+**File**: `backend-subtracker/src/users/grant-admin.ts`, `src/cli/admin-grant.ts`, `package.json`
 
 **Intent**: Nadać rolę `ADMIN` poza aplikacją (PRD: Access Control), bez endpointu.
 
-**Contract**: `npm run admin:grant -- <mail>` = `nest build && node dist/cli/admin-grant.js`. Eksportuje `grantAdmin(dataSource, email)`, idempotentne. Baza to cel `'app'` bez synchronizacji, czyli `-dev` lokalnie i jedyna baza na serwerze. Nieznany adres daje exit 1 z czytelnym komunikatem.
+**Contract**: `npm run admin:grant -- <mail>` = `nest build && node dist/cli/admin-grant.js`. `grant-admin.ts` eksportuje `grantAdmin(dataSource, email)`, idempotentne i bez efektów przy imporcie, więc test e2e może go użyć. `cli/admin-grant.ts` tylko czyta argument, łączy się z bazą i wywołuje tę funkcję. Baza to cel `'app'` bez synchronizacji, czyli `-dev` lokalnie i jedyna baza na serwerze. Nieznany adres daje exit 1 z czytelnym komunikatem.
 
 ### Success Criteria:
 
@@ -215,8 +215,9 @@ Pełny przepływ działa przez API, ma testy e2e i migracje gotowe do deployu.
 **Intent**: Wdrożyć zasady ustalone z użytkownikiem bez ujawniania, czy adres ma konto.
 
 **Contract**:
-- `register`: nowy adres → w jednej transakcji `user` (ze zgodami i `privacy_policy_version` = stała `0-placeholder`), rola `USER` i token; po commicie wysyłka. Adres istniejący (także po przegranym wyścigu o unique) → zwykły link logowania, bez zmiany istniejących zgód.
+- `register`: nowy adres → w jednej transakcji `user` (ze zgodami i `privacy_policy_version` = stała `0-placeholder`), rola `USER` i token; po commicie wysyłka. Adres istniejący (także po przegranym wyścigu o unique) → ta sama logika co `requestLink`. Jeśli konto ma puste `email_verified_at`, rejestracja najpierw odświeża `consents_accepted_at` i `privacy_policy_version`; konta potwierdzonego nie zmienia.
 - `requestLink`: aktywny użytkownik, także niepotwierdzony → nowy token i wysyłka. Nieznany adres lub `is_active = false` → nic się nie dzieje, odpowiedź taka sama.
+- Mail do konta z pustym `email_verified_at` mówi dodatkowo, że użycie linku potwierdza oświadczenie 18+ i akceptację polityki. Zgodę złożoną przez osobę bez dostępu do skrzynki potwierdza dopiero właściciel adresu.
 - Tylko najnowszy link: wystawienie tokenu blokuje wiersz użytkownika (`FOR UPDATE`), usuwa jego niezużyte tokeny i wstawia nowy.
 - `verify`: atomowy `UPDATE ... SET used_at = now() WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now() RETURNING user_id`, potem w tej samej transakcji sprawdzenie `is_active`, ustawienie `email_verified_at` (jeśli puste) i utworzenie sesji. Każda porażka daje ten sam `401`.
 - Link: `${FRONTEND_URL}/auth/potwierdz#token=<token>`, z informacją w mailu o ważności 15 minut.
@@ -241,13 +242,22 @@ Pełny przepływ działa przez API, ma testy e2e i migracje gotowe do deployu.
 
 **Contract**: `npm run migration:generate -- AuthAndMailSchema`, przegląd pliku, potem `npm run migration:create -- SeedRoles` ze stałymi UUID i kodami `USER`, `ADMIN` wpisanymi dosłownie w migracji, `npm run migration:run` na `subtracker-db`, commit razem z kodem.
 
+#### 5. Konfiguracja testów e2e
+
+**File**: `backend-subtracker/vitest.config.e2e.ts`
+
+**Intent**: Pliki e2e uruchamiają `AppModule` i synchronizację na tej samej bazie dev, więc nie mogą działać równolegle.
+
+**Contract**: `fileParallelism: false` w sekcji `test`.
+
 ### Success Criteria:
 
 #### Automated Verification:
 
 - Testy jednostkowe przechodzą: `npm test` (normalizacja adresu, brak wysyłki dla nieznanego i nieaktywnego adresu, usuwanie starszych tokenów)
-- Testy e2e przechodzą: `npm run test:e2e`, z atrapą transportu, w scenariuszach:
+- Testy e2e przechodzą: `npm run test:e2e`, z atrapą transportu, we wszystkich scenariuszach z fazy 3:
   - rejestracja → token z maila → `verify` → `/auth/me` zwraca użytkownika z rolą `USER`, `email_verified_at` ustawione
+  - ponowna rejestracja odświeża zgody konta niepotwierdzonego, a potwierdzonego nie zmienia
   - token użyty drugi raz → 401; token po terminie → 401; starszy token po wydaniu nowego → 401
   - logowanie na nieznany adres i rejestracja na zajęty dają odpowiedź identyczną z sukcesem
   - rejestracja bez zgód → 400; pole spoza DTO → 400
@@ -281,7 +291,7 @@ Użytkownik przechodzi cały przepływ w przeglądarce, a trasy zalogowanych nie
 
 **Intent**: Jedno miejsce dla wywołań API i ochrony tras.
 
-**Contract**: Serwis ma `register`, `requestLink`, `verify`, `logout`, `me`. Interceptor dodaje `withCredentials` tylko do żądań na `environment.apiUrl`. `authGuard` woła `me`, a `401` przekierowuje na `/logowanie`.
+**Contract**: Serwis ma `register`, `requestLink`, `verify`, `logout`, `me`. Interceptor dodaje `withCredentials` tylko do żądań na `environment.apiUrl`. `authGuard` woła `me`: `401` przekierowuje na `/logowanie`, a błąd sieci lub `5xx` pokazuje komunikat o niedostępności bez przekierowania, bo przestój API przy deployu nie oznacza utraty sesji. `logout` traktuje `401` jak udane wylogowanie.
 
 #### 2. Trasy i strony
 
@@ -319,6 +329,7 @@ Użytkownik przechodzi cały przepływ w przeglądarce, a trasy zalogowanych nie
 - Wejście na `/subskrypcje` bez sesji przekierowuje na `/logowanie`
 - Formularz rejestracji nie wysyła się bez obu zgód
 - Konsola przeglądarki bez błędów hydratacji
+- Przy wyłączonym API odświeżenie `/subskrypcje` pokazuje komunikat o niedostępności, bez przekierowania na `/logowanie`
 
 **Implementation Note**: Po przejściu automatycznych kontroli zatrzymaj się na ręczne potwierdzenie przed kolejną fazą.
 
@@ -393,7 +404,7 @@ Serwer i dokumentacja są przygotowane, zmiana jest zmergowana i sprawdzona na p
 
 ### Integration Tests:
 
-- `test/auth.e2e-spec.ts`: scenariusze z fazy 3 na lokalnej bazie dev z atrapą transportu, z unikalnymi adresami, żeby przebiegi się nie zderzały
+- `test/auth.e2e-spec.ts`: scenariusze z fazy 3 na lokalnej bazie dev z atrapą transportu, z unikalnymi adresami, żeby kolejne przebiegi się nie zderzały; pliki e2e działają po kolei (`fileParallelism: false`)
 - E2E wymagają lokalnego PostgreSQL i nie działają w CI (`app.e2e-spec.ts:10`), więc trzeba je uruchomić lokalnie przed PR
 
 ### Manual Testing Steps:
@@ -453,7 +464,7 @@ Na produkcji są tylko migracje `Init`, nowe tabele są puste. Migracje uruchami
 #### Automated
 
 - [ ] 3.1 Testy jednostkowe przechodzą: `npm test` (normalizacja adresu, brak wysyłki dla nieznanego i nieaktywnego adresu, usuwanie starszych tokenów)
-- [ ] 3.2 Testy e2e przechodzą: `npm run test:e2e`, z atrapą transportu, we wszystkich scenariuszach z fazy 3
+- [ ] 3.2 Testy e2e przechodzą: `npm run test:e2e`, z atrapą transportu, we wszystkich scenariuszach z fazy 3:
 - [ ] 3.3 Wiersz w `mail` po wysyłce nie zawiera tokenu: asercja w teście e2e
 - [ ] 3.4 Migracje są zastosowane i brak różnicy względem encji: `npm run migration:show`, a `npm run migration:generate -- Check` kończy się „No changes in database schema were found”
 - [ ] 3.5 Lint i build przechodzą: `npm run lint`, `npm run build`
@@ -479,6 +490,7 @@ Na produkcji są tylko migracje `Init`, nowe tabele są puste. Migracje uruchami
 - [ ] 4.7 Wejście na `/subskrypcje` bez sesji przekierowuje na `/logowanie`
 - [ ] 4.8 Formularz rejestracji nie wysyła się bez obu zgód
 - [ ] 4.9 Konsola przeglądarki bez błędów hydratacji
+- [ ] 4.10 Przy wyłączonym API odświeżenie `/subskrypcje` pokazuje komunikat o niedostępności, bez przekierowania na `/logowanie`
 
 ### Phase 5: Wdrożenie
 

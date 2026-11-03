@@ -20,6 +20,7 @@ Nowa osoba rejestruje się adresem i dwiema zgodami, dostaje jeden mail, klika l
 | --- | --- | --- |
 | Konta | Osobna rejestracja; link tylko dla zarejestrowanych | Wymaganie użytkownika, zgodne z US-01 |
 | Pola rejestracji | E-mail, oświadczenie 18+, akceptacja polityki, z datą i wersją zgody | Wybór użytkownika; dane są finansowe |
+| Potwierdzenie zgód | Mail do niepotwierdzonego konta mówi, że użycie linku potwierdza zgody; ponowna rejestracja je odświeża | Formularz może wypełnić ktoś inny niż właściciel skrzynki |
 | Po rejestracji | Jeden mail: link potwierdza adres i loguje | Pasuje do celu 3 minut |
 | Ujawnianie kont | Neutralne komunikaty; rejestracja na zajęty adres wysyła link logowania | Nie da się sprawdzić, kto korzysta z aplikacji |
 | Skanery poczty | Strona z przyciskiem „Zaloguj”, token zużywa `POST` | Skaner otwierający link go nie spali |
