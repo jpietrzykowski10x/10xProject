@@ -438,26 +438,26 @@ Na produkcji są tylko migracje `Init`, nowe tabele są puste. Migracje uruchami
 
 #### Automated
 
-- [x] 1.1 Testy jednostkowe przechodzą: `npm test` (env: wymagane klucze w PROD i DEV bez SMTP; `MailService`: `SENT`, `FAILED`, powiadomienie z limitem, brak pętli)
-- [x] 1.2 Lint przechodzi: `npm run lint`
-- [x] 1.3 Build przechodzi: `npm run build`
+- [x] 1.1 Testy jednostkowe przechodzą: `npm test` (env: wymagane klucze w PROD i DEV bez SMTP; `MailService`: `SENT`, `FAILED`, powiadomienie z limitem, brak pętli) — 10883c9
+- [x] 1.2 Lint przechodzi: `npm run lint` — 10883c9
+- [x] 1.3 Build przechodzi: `npm run build` — 10883c9
 
 #### Manual
 
-- [x] 1.4 Start lokalny bez `SMTP_HOST` działa, a `MODE=PROD` bez `SMTP_HOST` kończy się czytelnym błędem o brakującym kluczu
+- [x] 1.4 Start lokalny bez `SMTP_HOST` działa, a `MODE=PROD` bez `SMTP_HOST` kończy się czytelnym błędem o brakującym kluczu — 10883c9
 
 ### Phase 2: Encje, sesje i guardy
 
 #### Automated
 
-- [ ] 2.1 Testy jednostkowe przechodzą: `npm test` (guard sesji: brak ciasteczka, wygasła, unieważniona, nieaktywny użytkownik, nieaktywna rola; guard ról: bez metadanych, z rolą, bez roli)
-- [ ] 2.2 Lint przechodzi: `npm run lint`
-- [ ] 2.3 Build przechodzi: `npm run build`
-- [ ] 2.4 Test e2e `/health` bez ciasteczka zwraca 200, a `/auth/me` bez ciasteczka 401: `npm run test:e2e`
+- [x] 2.1 Testy jednostkowe przechodzą: `npm test` (guard sesji: brak ciasteczka, wygasła, unieważniona, nieaktywny użytkownik, nieaktywna rola; guard ról: bez metadanych, z rolą, bez roli)
+- [x] 2.2 Lint przechodzi: `npm run lint`
+- [x] 2.3 Build przechodzi: `npm run build`
+- [x] 2.4 Test e2e `/health` bez ciasteczka zwraca 200, a `/auth/me` bez ciasteczka 401: `npm run test:e2e`
 
 #### Manual
 
-- [ ] 2.5 Lokalny start z pustą bazą dev zakłada tabele i obie role
+- [x] 2.5 Lokalny start z pustą bazą dev zakłada tabele i obie role
 
 ### Phase 3: Rejestracja i magic link
 

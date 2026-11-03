@@ -52,6 +52,26 @@ describe('AppController (e2e)', () => {
     expect(response.headers['access-control-allow-origin']).toBeUndefined();
   });
 
+  // deploy.sh calls /health without a cookie and rolls the deploy back when it fails.
+  it('/health (GET) does not require a session', () => {
+    return request(app.getHttpServer()).get('/health').expect(200);
+  });
+
+  it('/auth/me (GET) answers 401 without a cookie', () => {
+    return request(app.getHttpServer()).get('/auth/me').expect(401);
+  });
+
+  it('/auth/me (GET) answers 401 for an unknown session token', () => {
+    return request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Cookie', 'subtracker_session=nieznany-token')
+      .expect(401);
+  });
+
+  it('/auth/logout (POST) answers 401 without a cookie', () => {
+    return request(app.getHttpServer()).post('/auth/logout').expect(401);
+  });
+
   afterEach(async () => {
     await app.close();
   });
