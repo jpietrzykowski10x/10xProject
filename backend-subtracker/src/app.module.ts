@@ -6,6 +6,7 @@ import { AppService } from './app.service.js';
 import { type EnvConfig, envFromConfig, validateEnv } from './config/env.js';
 import { buildDatabaseOptions } from './database/database.options.js';
 import { HealthController } from './health/health.controller.js';
+import { MailModule } from './mail/mail.module.js';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { HealthController } from './health/health.controller.js';
         retryDelay: 3000,
       }),
     }),
+    MailModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],

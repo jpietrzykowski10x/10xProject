@@ -1,7 +1,7 @@
 ---
 change_id: magic-link-sign-in
 title: Magic link sign in
-status: plan_reviewed
+status: implementing
 created: 2026-11-03
 updated: 2026-11-03
 archived_at: null

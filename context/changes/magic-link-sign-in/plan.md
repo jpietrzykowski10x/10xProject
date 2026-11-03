@@ -438,13 +438,13 @@ Na produkcji są tylko migracje `Init`, nowe tabele są puste. Migracje uruchami
 
 #### Automated
 
-- [ ] 1.1 Testy jednostkowe przechodzą: `npm test` (env: wymagane klucze w PROD i DEV bez SMTP; `MailService`: `SENT`, `FAILED`, powiadomienie z limitem, brak pętli)
-- [ ] 1.2 Lint przechodzi: `npm run lint`
-- [ ] 1.3 Build przechodzi: `npm run build`
+- [x] 1.1 Testy jednostkowe przechodzą: `npm test` (env: wymagane klucze w PROD i DEV bez SMTP; `MailService`: `SENT`, `FAILED`, powiadomienie z limitem, brak pętli)
+- [x] 1.2 Lint przechodzi: `npm run lint`
+- [x] 1.3 Build przechodzi: `npm run build`
 
 #### Manual
 
-- [ ] 1.4 Start lokalny bez `SMTP_HOST` działa, a `MODE=PROD` bez `SMTP_HOST` kończy się czytelnym błędem o brakującym kluczu
+- [x] 1.4 Start lokalny bez `SMTP_HOST` działa, a `MODE=PROD` bez `SMTP_HOST` kończy się czytelnym błędem o brakującym kluczu
 
 ### Phase 2: Encje, sesje i guardy
 
