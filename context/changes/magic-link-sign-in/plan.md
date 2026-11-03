@@ -472,16 +472,16 @@ Poza kryteriami faz, dopisane na prośbę użytkownika w trakcie fazy 3.
 
 #### Automated
 
-- [x] 3.1 Testy jednostkowe przechodzą: `npm test` (normalizacja adresu, brak wysyłki dla nieznanego i nieaktywnego adresu, usuwanie starszych tokenów)
-- [x] 3.2 Testy e2e przechodzą: `npm run test:e2e`, z atrapą transportu, we wszystkich scenariuszach z fazy 3:
-- [x] 3.3 Wiersz w `mail` po wysyłce nie zawiera tokenu: asercja w teście e2e
-- [x] 3.4 Migracje są zastosowane i brak różnicy względem encji: `npm run migration:show`, a `npm run migration:generate -- Check` kończy się „No changes in database schema were found”
-- [x] 3.5 Lint i build przechodzą: `npm run lint`, `npm run build`
+- [x] 3.1 Testy jednostkowe przechodzą: `npm test` (normalizacja adresu, brak wysyłki dla nieznanego i nieaktywnego adresu, usuwanie starszych tokenów) — 3837cf7
+- [x] 3.2 Testy e2e przechodzą: `npm run test:e2e`, z atrapą transportu, we wszystkich scenariuszach z fazy 3: — 3837cf7
+- [x] 3.3 Wiersz w `mail` po wysyłce nie zawiera tokenu: asercja w teście e2e — 3837cf7
+- [x] 3.4 Migracje są zastosowane i brak różnicy względem encji: `npm run migration:show`, a `npm run migration:generate -- Check` kończy się „No changes in database schema were found” — 3837cf7
+- [x] 3.5 Lint i build przechodzą: `npm run lint`, `npm run build` — 3837cf7
 
 #### Manual
 
-- [x] 3.6 Przegląd wygenerowanej migracji: indeksy unique na `email` i `token_hash`, poprawne klucze obce, brak operacji poza zakresem
-- [x] 3.7 Prawdziwy mail lokalnie: z danymi SMTP w `.env` link dociera na Gmaila
+- [x] 3.6 Przegląd wygenerowanej migracji: indeksy unique na `email` i `token_hash`, poprawne klucze obce, brak operacji poza zakresem — 3837cf7
+- [x] 3.7 Prawdziwy mail lokalnie: z danymi SMTP w `.env` link dociera na Gmaila — 3837cf7
 
 ### Phase 4: Frontend
 
