@@ -489,19 +489,19 @@ Poza kryteriami faz, dopisane na prośbę użytkownika w trakcie fazy 3.
 
 #### Automated
 
-- [x] 4.1 Build produkcyjny przechodzi: `npm run build`
-- [x] 4.2 Pakiet deployu buduje się: `npm run prepare-mydevil`
-- [x] 4.3 W wyniku buildu jest prerenderowany `index.html` dla `/rejestracja` i `/logowanie`, a nie ma go dla `/subskrypcje` i `/auth/potwierdz`
+- [x] 4.1 Build produkcyjny przechodzi: `npm run build` — 4ac2ab0
+- [x] 4.2 Pakiet deployu buduje się: `npm run prepare-mydevil` — 4ac2ab0
+- [x] 4.3 W wyniku buildu jest prerenderowany `index.html` dla `/rejestracja` i `/logowanie`, a nie ma go dla `/subskrypcje` i `/auth/potwierdz` — 4ac2ab0
 
 #### Manual
 
-- [x] 4.4 Pełny przepływ lokalnie: rejestracja → link z konsoli → „Zaloguj” → pusta lista
-- [x] 4.5 Samo otwarcie linku bez kliknięcia „Zaloguj” nie zużywa tokenu
-- [x] 4.6 Odświeżenie `/subskrypcje` zachowuje sesję, a wylogowanie przekierowuje przy kolejnym wejściu
-- [x] 4.7 Wejście na `/subskrypcje` bez sesji przekierowuje na `/logowanie`
-- [x] 4.8 Formularz rejestracji nie wysyła się bez obu zgód
-- [x] 4.9 Konsola przeglądarki bez błędów hydratacji
-- [x] 4.10 Przy wyłączonym API odświeżenie `/subskrypcje` pokazuje komunikat o niedostępności, bez przekierowania na `/logowanie`
+- [x] 4.4 Pełny przepływ lokalnie: rejestracja → link z konsoli → „Zaloguj” → pusta lista — 4ac2ab0
+- [x] 4.5 Samo otwarcie linku bez kliknięcia „Zaloguj” nie zużywa tokenu — 4ac2ab0
+- [x] 4.6 Odświeżenie `/subskrypcje` zachowuje sesję, a wylogowanie przekierowuje przy kolejnym wejściu — 4ac2ab0
+- [x] 4.7 Wejście na `/subskrypcje` bez sesji przekierowuje na `/logowanie` — 4ac2ab0
+- [x] 4.8 Formularz rejestracji nie wysyła się bez obu zgód — 4ac2ab0
+- [x] 4.9 Konsola przeglądarki bez błędów hydratacji — 4ac2ab0
+- [x] 4.10 Przy wyłączonym API odświeżenie `/subskrypcje` pokazuje komunikat o niedostępności, bez przekierowania na `/logowanie` — 4ac2ab0
 
 ### Phase 5: Wdrożenie
 
