@@ -1,17 +1,17 @@
 import { Transform } from 'class-transformer';
 import { IsEmail, MaxLength } from 'class-validator';
-
-// The length of user.email: a longer address would fail at the database instead of validation.
-export const EMAIL_MAX_LENGTH = 254;
+import { EMAIL_MAX_LENGTH } from '../../users/entities/user.entity.js';
+import { normalizeEmail } from '../../users/services/users.service.js';
 
 // Runs before validation, which would refuse spaces copied around an otherwise correct address.
-export const TrimEmail = () =>
+// Validating the stored form matters too: lowercasing can lengthen an address past the column.
+export const NormalizedEmail = () =>
   Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim() : value,
+    typeof value === 'string' ? normalizeEmail(value) : value,
   );
 
 export class RequestLinkDto {
-  @TrimEmail()
+  @NormalizedEmail()
   @IsEmail()
   @MaxLength(EMAIL_MAX_LENGTH)
   email: string;

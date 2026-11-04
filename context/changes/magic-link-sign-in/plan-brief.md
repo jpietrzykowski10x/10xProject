@@ -75,7 +75,8 @@ Frontend woła API z `withCredentials`. `POST /auth/register` lub `/auth/request
 - **Zgoda na tekst, którego nie ma:** do czasu publikacji polityki zapisana zgoda niewiele znaczy. Zapisujemy wersję `0-placeholder`, żeby dało się później rozpoznać, kto akceptował wersję zastępczą. Przed publicznym startem trzeba mieć tekst.
 - **Ciasteczko na domenie nadrzędnej:** trafia do każdej subdomeny `jakubpietrzykowski.pl`, także innych projektów, jeśli działają pod tą domeną. To świadomy koszt możliwości SSR.
 - **Utracone maile:** wysyłka nie jest ponawiana, więc restart procesu w trakcie wysyłki gubi mail. Użytkownik prosi wtedy o link ponownie.
-- **Reszta różnicy czasów:** założenie konta trwa nieco dłużej niż obsługa zajętego adresu, więc pomiar czasu daje słaby sygnał o istnieniu konta. Akceptowalne na MVP.
+- **Reszta różnicy czasów:** założenie konta trwa nieco dłużej niż obsługa zajętego adresu, a `request-link` dla znanego adresu wykonuje zapisy, których nieznany nie wykonuje. Pomiar czasu daje więc sygnał o istnieniu konta; jego wielkości nie zmierzono, a próby na znany adres wysyłają mail do właściciela. Akceptowalne na MVP (przegląd fazy 3, F1). Warto wrócić do tego razem z limitem wysyłki przed publicznym startem.
+- **Obciążenie przez wysyłkę:** każda prośba o link to osobna wysyłka SMTP w tle bez limitu równoległości, a potem zapis audytu przez pulę 5 połączeń. Zalew żądań może wyczerpać proces i pulę, dając `500` na trasach auth. `pool: true` i timeouty transportu dodać razem z limitem wysyłki (przegląd fazy 3, F6).
 - **Założenia do sprawdzenia w fazie 5:** Outlook oraz SPF/DKIM dla `jakubpietrzykowski.pl`. Doręczanie na Gmaila potwierdzono tylko z innych projektów.
 
 ## Success Criteria (Summary)

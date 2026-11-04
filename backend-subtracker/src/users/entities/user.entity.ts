@@ -8,13 +8,15 @@ import {
 } from 'typeorm';
 import { UserRole } from './user-role.entity.js';
 
+export const EMAIL_MAX_LENGTH = 254;
+
 @Entity('user')
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   // Always stored through normalizeEmail().
-  @Column({ type: 'varchar', length: 254, unique: true })
+  @Column({ type: 'varchar', length: EMAIL_MAX_LENGTH, unique: true })
   email: string;
 
   @Column({ name: 'is_active', type: 'boolean', default: true })

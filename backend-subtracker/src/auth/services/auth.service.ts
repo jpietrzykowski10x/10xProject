@@ -186,8 +186,9 @@ export class AuthService {
     };
   }
 
-  // Not awaited, so a taken address answers about as fast as a free one and an SMTP failure
-  // cannot affect the response. sendToUser never rejects: failures go to the audit and the logs.
+  // Not awaited, so SMTP time does not show in the response and an SMTP failure cannot affect it.
+  // Database work still differs by branch, a timing signal accepted in plan-brief.md for the MVP.
+  // sendToUser never rejects: failures go to the audit and the logs.
   private sendLink(link: IssuedLink | null): void {
     if (link === null) {
       return;

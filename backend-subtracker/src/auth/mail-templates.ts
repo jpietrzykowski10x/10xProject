@@ -25,7 +25,7 @@ export function magicLinkMail({
   ];
 
   return {
-    subject: 'Logowanie do Subtrackera',
+    subject: 'Logowanie do SubTrackera',
     text: [`Otwórz link, aby się zalogować:\n${link}`, ...paragraphs].join(
       '\n\n',
     ),

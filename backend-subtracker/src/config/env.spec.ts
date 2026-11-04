@@ -110,6 +110,17 @@ describe('validateEnv', () => {
     expect(env.NOTIFICATION_SMTP_HOST).toBeUndefined();
   });
 
+  it('logs error stacks unless turned off', () => {
+    expect(validateEnv(devEnv).LOG_ERROR_STACKS).toBe(true);
+    expect(validateEnv(prodEnv).LOG_ERROR_STACKS).toBe(true);
+    expect(
+      validateEnv({ ...prodEnv, LOG_ERROR_STACKS: 'false' }).LOG_ERROR_STACKS,
+    ).toBe(false);
+    expect(() => validateEnv({ ...devEnv, LOG_ERROR_STACKS: 'nie' })).toThrow(
+      /LOG_ERROR_STACKS/,
+    );
+  });
+
   it('accepts a complete PROD environment', () => {
     const env = validateEnv(prodEnv);
     expect(env.FRONTEND_URL).toBe('https://subtracker.jakubpietrzykowski.pl');

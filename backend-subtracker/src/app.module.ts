@@ -1,6 +1,6 @@
 import { Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -9,6 +9,7 @@ import { type EnvConfig, envFromConfig, validateEnv } from './config/env.js';
 import { buildDatabaseOptions } from './database/database.options.js';
 import { HealthController } from './health/health.controller.js';
 import { MailModule } from './mail/mail.module.js';
+import { SafeLoggingExceptionFilter } from './shared/filters/safe-logging-exception.filter.js';
 import { UsersModule } from './users/users.module.js';
 
 @Module({
@@ -31,7 +32,7 @@ import { UsersModule } from './users/users.module.js';
   controllers: [AppController, HealthController],
   providers: [
     AppService,
-    // Through APP_PIPE, not main.ts, so that e2e tests booting AppModule inherit it.
+    // Through APP_PIPE and APP_FILTER, not main.ts, so that e2e tests booting AppModule inherit them.
     {
       provide: APP_PIPE,
       useValue: new ValidationPipe({
@@ -40,6 +41,7 @@ import { UsersModule } from './users/users.module.js';
         transform: true,
       }),
     },
+    { provide: APP_FILTER, useClass: SafeLoggingExceptionFilter },
   ],
 })
 export class AppModule {}

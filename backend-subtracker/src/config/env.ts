@@ -32,6 +32,7 @@ export interface EnvConfig {
   NOTIFICATION_SMTP_USERNAME: string | undefined;
   NOTIFICATION_SMTP_PASSWORD: string | undefined;
   NOTIFICATION_SMTP_FROM_EMAIL: string | undefined;
+  LOG_ERROR_STACKS: boolean;
 }
 
 type RawEnv = Record<string, unknown>;
@@ -183,6 +184,7 @@ export function validateEnv(raw: RawEnv): EnvConfig {
     NOTIFICATION_SMTP_FROM_EMAIL: readNotificationField(
       'NOTIFICATION_SMTP_FROM_EMAIL',
     ),
+    LOG_ERROR_STACKS: readBoolean(raw, 'LOG_ERROR_STACKS', true),
   };
 }
 
@@ -232,6 +234,7 @@ export function envFromConfig(
     NOTIFICATION_SMTP_USERNAME: getOptional('NOTIFICATION_SMTP_USERNAME'),
     NOTIFICATION_SMTP_PASSWORD: getOptional('NOTIFICATION_SMTP_PASSWORD'),
     NOTIFICATION_SMTP_FROM_EMAIL: getOptional('NOTIFICATION_SMTP_FROM_EMAIL'),
+    LOG_ERROR_STACKS: get('LOG_ERROR_STACKS'),
   };
 }
 

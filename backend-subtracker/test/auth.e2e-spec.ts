@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import request, { type Response } from 'supertest';
@@ -8,6 +8,7 @@ import { AppModule } from './../src/app.module.js';
 import { PRIVACY_POLICY_VERSION } from './../src/auth/auth.constants.js';
 import { MagicLinkToken } from './../src/auth/entities/magic-link-token.entity.js';
 import { Session } from './../src/auth/entities/session.entity.js';
+import { AuthService } from './../src/auth/services/auth.service.js';
 import { hashToken } from './../src/auth/services/session.service.js';
 import { type EnvConfig, envFromConfig } from './../src/config/env.js';
 import { Mail } from './../src/mail/entities/mail.entity.js';
@@ -17,7 +18,7 @@ import type { AuthUser } from './../src/shared/types/auth-user.js';
 import { RoleCode } from './../src/shared/types/role-code.js';
 import { grantAdmin } from './../src/users/grant-admin.js';
 import { UserRole } from './../src/users/entities/user-role.entity.js';
-import { User } from './../src/users/entities/user.entity.js';
+import { EMAIL_MAX_LENGTH, User } from './../src/users/entities/user.entity.js';
 
 // Runs against the local dev database with a fake transport: no real mail goes out. Every row
 // these tests create hangs off a recognisable address and is removed at the end.
@@ -319,6 +320,22 @@ describe('Auth flow (e2e)', () => {
       await postVerify(token).expect(401);
     });
 
+    it('lets only one of two simultaneous requests use a token', async () => {
+      const address = newAddress();
+      await postRegister(address).expect(202);
+      const token = await latestToken(address);
+
+      const responses = await Promise.all([
+        postVerify(token),
+        postVerify(token),
+      ]);
+
+      const statuses = responses.map((response) => response.status);
+      expect(statuses.sort((a, b) => a - b)).toEqual([200, 401]);
+      const user = await findUser(address);
+      expect(await repository(Session).countBy({ userId: user.id })).toBe(1);
+    });
+
     it('refuses an expired token', async () => {
       const address = newAddress();
       await postRegister(address).expect(202);
@@ -452,6 +469,23 @@ describe('Auth flow (e2e)', () => {
       }
     });
 
+    it('refuses an address that lowercasing lengthens past the column', async () => {
+      const consents = { confirmedAdult: true, acceptedPrivacyPolicy: true };
+      const email = `${'a'.repeat(64)}@${'İ'.repeat(5)}${'b'.repeat(50)}.${'c'.repeat(63)}.${'d'.repeat(63)}.pl`;
+      expect(email.length).toBeLessThanOrEqual(EMAIL_MAX_LENGTH);
+      expect(email.toLowerCase().length).toBeGreaterThan(EMAIL_MAX_LENGTH);
+
+      await http()
+        .post('/auth/register')
+        .send({ email, ...consents })
+        .expect(400);
+      await http().post('/auth/request-link').send({ email }).expect(400);
+    });
+
+    it('refuses an overlong token', async () => {
+      await postVerify('x'.repeat(65)).expect(400);
+    });
+
     it('refuses a field outside the DTO', async () => {
       await http()
         .post('/auth/register')
@@ -498,6 +532,44 @@ describe('Auth flow (e2e)', () => {
       );
 
       await getMe(cookie).expect(401);
+    });
+  });
+
+  describe('unexpected errors', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('answers with a generic 500 and keeps query parameters out of the log', async () => {
+      const address = newAddress();
+      const failure = Object.assign(new Error('awaria bazy'), {
+        code: '57P01',
+        parameters: [address],
+      });
+      vi.spyOn(app.get(AuthService), 'requestLink').mockRejectedValue(failure);
+      const logged = vi
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+
+      const response = await postRequestLink(address).expect(500);
+
+      expect(response.body).toEqual({
+        statusCode: 500,
+        message: 'Internal server error',
+      });
+      expect(JSON.stringify(response.body)).not.toContain(address);
+      expect(logged.mock.calls).toHaveLength(1);
+      expect(logged.mock.calls[0][0]).toBe('awaria bazy (code: 57P01)');
+      expect(JSON.stringify(logged.mock.calls)).not.toContain(address);
+    });
+
+    it('keeps the status of a body parser error', async () => {
+      vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+
+      await http()
+        .post('/auth/request-link')
+        .send({ email: 'a'.repeat(200 * 1024) })
+        .expect(413);
     });
   });
 
