@@ -198,7 +198,7 @@ export class AuthService {
       link.address,
       magicLinkMail({
         // In the fragment, so the token reaches neither proxy logs nor the Referer header.
-        link: `${this.frontendUrl}/auth/potwierdz#token=${link.token}`,
+        link: `${this.frontendUrl}/auth/verify#token=${link.token}`,
         needsConsentConfirmation: link.needsConsentConfirmation,
       }),
     );

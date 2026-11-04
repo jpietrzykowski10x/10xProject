@@ -179,10 +179,10 @@ describe('AuthService', () => {
       expect(to).toBe(ADDRESS);
       const token = /#token=([\w-]+)/.exec(content.text)?.[1] ?? '';
       expect(content.text).toContain(
-        `${FRONTEND_URL}/auth/potwierdz#token=${token}`,
+        `${FRONTEND_URL}/auth/verify#token=${token}`,
       );
       expect(content.html).toContain(
-        `${FRONTEND_URL}/auth/potwierdz#token=${token}`,
+        `${FRONTEND_URL}/auth/verify#token=${token}`,
       );
       expect(tokens.insert.mock.calls[0][0].tokenHash).toBe(hashToken(token));
     });

@@ -8,8 +8,8 @@ export interface HealthStatus {
   db: 'ok' | 'error';
 }
 
-// Used by the deploy health-check and by the frontend status badge. Must stay @Public(): the
-// deploy calls it without a cookie and rolls back when it fails.
+// Used by the deploy health-check. Must stay @Public(): the deploy calls it without a cookie and
+// rolls back when it fails.
 @Controller('health')
 export class HealthController {
   private readonly logger = new Logger(HealthController.name);

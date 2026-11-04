@@ -435,6 +435,7 @@ Na produkcji są tylko migracje `Init`, nowe tabele są puste. Migracje uruchami
 Poza kryteriami faz, dopisane na prośbę użytkownika w trakcie fazy 3.
 
 - **S-09: ujednolicić kolejność blokad w `verify` (przegląd fazy 3, F2; na MVP zostaje).** `verify` blokuje wiersz tokenu, a potem użytkownika, a wystawienie linku odwrotnie: użytkownika (`FOR UPDATE`), potem tokeny. Przy jednoczesnych żądaniach dla jednego konta PostgreSQL przerwie jedną transakcję i odpowiedzią będzie `500`; dane zostają spójne, bo wszystko jest w jednej transakcji. Dotyczy też kont potwierdzonych, bo blokadę bierze klucz obcy przy `INSERT session`. Wynika to z analizy SQL, scenariusza nie odtworzono na bazie. Przepis: odczyt `user_id` po hashu (brak daje `401`), blokada użytkownika osobnym zapytaniem (bez `relations`), atomowy `UPDATE` tokenu (0 wierszy daje `401`), odczyt ról. S-09 i tak tego wymaga: dziś `is_active` jest czytane bez blokady, więc `verify` mogłoby utworzyć sesję tuż po dezaktywacji.
+- **Zmiany po testach ręcznych fazy 4, na prośbę użytkownika.** Trasy frontendu są po angielsku, a bloki faz i tytuły w Progress zachowują nazwy pierwotne: `/rejestracja` → `/register`, `/logowanie` → `/sign-in`, `/polityka-prywatnosci` → `/privacy-policy`, `/auth/potwierdz` → `/auth/verify` (także w linku w mailu), `/subskrypcje` → `/subscriptions`, a strona niedostępności, dodana w fazie 4 poza planem, to `/unavailable`. Zalogowany wchodzący na `/`, `/register` lub `/sign-in` trafia na `/subscriptions` (`guestGuard`, tylko w przeglądarce; przy błędzie API lub po 3 s strona się otwiera).
 - **Odstępstwa od fazy 3 przyjęte w przeglądzie (F8), bez zmian w kodzie.** Nieaktywne, niepotwierdzone konto nie dostaje odświeżenia zgód przy ponownej rejestracji, zgodnie z „tą samą logiką co `requestLink`”. Pusty, nietekstowy lub za długi token daje `400` z walidacji, a nie `401`, i nic nie ujawnia. Nowy użytkownik ma zgody zapisane dwa razy w jednej transakcji. `deploy/mydevil/README.md` dostał linię o wersji PostgreSQL.
 - **Nice to have: dopracowanie treści korespondencji.** Obecne maile są wystarczające, ale ich treść można dopracować w późniejszym kroku.
 - **S-09: dezaktywacja konta.** Dziś nic nie ustawia `is_active`, a `is_active = false` tylko blokuje sesje: po ponownej aktywacji niewygasłe sesje i niezużyty link znów działają. Dezaktywacja powinna w jednej transakcji ustawić `is_active = false`, usunąć niezużyte tokeny i unieważnić sesje konta. Przy okazji warto rozważyć „wyloguj wszędzie”, bo dziś wylogowanie kończy tylko bieżącą sesję.
@@ -488,19 +489,19 @@ Poza kryteriami faz, dopisane na prośbę użytkownika w trakcie fazy 3.
 
 #### Automated
 
-- [ ] 4.1 Build produkcyjny przechodzi: `npm run build`
-- [ ] 4.2 Pakiet deployu buduje się: `npm run prepare-mydevil`
-- [ ] 4.3 W wyniku buildu jest prerenderowany `index.html` dla `/rejestracja` i `/logowanie`, a nie ma go dla `/subskrypcje` i `/auth/potwierdz`
+- [x] 4.1 Build produkcyjny przechodzi: `npm run build`
+- [x] 4.2 Pakiet deployu buduje się: `npm run prepare-mydevil`
+- [x] 4.3 W wyniku buildu jest prerenderowany `index.html` dla `/rejestracja` i `/logowanie`, a nie ma go dla `/subskrypcje` i `/auth/potwierdz`
 
 #### Manual
 
-- [ ] 4.4 Pełny przepływ lokalnie: rejestracja → link z konsoli → „Zaloguj” → pusta lista
-- [ ] 4.5 Samo otwarcie linku bez kliknięcia „Zaloguj” nie zużywa tokenu
-- [ ] 4.6 Odświeżenie `/subskrypcje` zachowuje sesję, a wylogowanie przekierowuje przy kolejnym wejściu
-- [ ] 4.7 Wejście na `/subskrypcje` bez sesji przekierowuje na `/logowanie`
-- [ ] 4.8 Formularz rejestracji nie wysyła się bez obu zgód
-- [ ] 4.9 Konsola przeglądarki bez błędów hydratacji
-- [ ] 4.10 Przy wyłączonym API odświeżenie `/subskrypcje` pokazuje komunikat o niedostępności, bez przekierowania na `/logowanie`
+- [x] 4.4 Pełny przepływ lokalnie: rejestracja → link z konsoli → „Zaloguj” → pusta lista
+- [x] 4.5 Samo otwarcie linku bez kliknięcia „Zaloguj” nie zużywa tokenu
+- [x] 4.6 Odświeżenie `/subskrypcje` zachowuje sesję, a wylogowanie przekierowuje przy kolejnym wejściu
+- [x] 4.7 Wejście na `/subskrypcje` bez sesji przekierowuje na `/logowanie`
+- [x] 4.8 Formularz rejestracji nie wysyła się bez obu zgód
+- [x] 4.9 Konsola przeglądarki bez błędów hydratacji
+- [x] 4.10 Przy wyłączonym API odświeżenie `/subskrypcje` pokazuje komunikat o niedostępności, bez przekierowania na `/logowanie`
 
 ### Phase 5: Wdrożenie
 

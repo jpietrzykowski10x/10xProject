@@ -214,7 +214,7 @@ describe('Auth flow (e2e)', () => {
       const [mail] = await mailsTo(address);
 
       expect(mail.text).toContain(
-        `${env.FRONTEND_URL}/auth/potwierdz#token=${tokenIn(mail)}`,
+        `${env.FRONTEND_URL}/auth/verify#token=${tokenIn(mail)}`,
       );
       expect(mail.text).toContain('15 minut');
     });

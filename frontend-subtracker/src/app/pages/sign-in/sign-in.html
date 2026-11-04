@@ -1,0 +1,41 @@
+<main class="page">
+  <h1>Logowanie</h1>
+
+  @if (state() === 'sent') {
+    <p class="message message--success" role="status">Jeśli konto istnieje, wysłaliśmy link.</p>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="field">
+        <label for="sign-in-email">Adres e-mail</label>
+        <input
+          id="sign-in-email"
+          type="email"
+          autocomplete="email"
+          formControlName="email"
+          [attr.aria-invalid]="submitted() && form.controls.email.invalid"
+          [attr.aria-describedby]="
+            submitted() && form.controls.email.invalid ? 'sign-in-email-error' : null
+          "
+        />
+        @if (submitted() && form.controls.email.invalid) {
+          <p id="sign-in-email-error" class="field-error">Podaj poprawny adres e-mail.</p>
+        }
+      </div>
+
+      @if (state() === 'invalid') {
+        <p class="message message--error" role="alert">
+          Sprawdź adres e-mail: wygląda na niepoprawny.
+        </p>
+      }
+      @if (state() === 'unavailable') {
+        <p class="message message--error" role="alert">
+          Serwis jest chwilowo niedostępny. Spróbuj ponownie za chwilę.
+        </p>
+      }
+
+      <button type="submit" [disabled]="state() === 'sending'">Wyślij link</button>
+    </form>
+  }
+
+  <p>Nie masz konta? <a routerLink="/register">Zarejestruj się</a></p>
+</main>

@@ -26,8 +26,8 @@ const OPERATOR = 'operator@example.com';
 const USER = 'jan@example.com';
 const content: MailContent = {
   subject: 'Link logowania',
-  text: 'https://example.com/auth/potwierdz#token=sekret',
-  html: '<a href="https://example.com/auth/potwierdz#token=sekret">Zaloguj</a>',
+  text: 'https://example.com/auth/verify#token=sekret',
+  html: '<a href="https://example.com/auth/verify#token=sekret">Zaloguj</a>',
 };
 
 function configFor(operatorMail: string | null) {
