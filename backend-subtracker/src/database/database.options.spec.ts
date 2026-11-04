@@ -69,6 +69,7 @@ describe('buildDatabaseOptions', () => {
         migrationsTableName: 'migration_history',
         migrationsTransactionMode: 'all',
         uuidExtension: 'pgcrypto',
+        installExtensions: false,
         connectTimeoutMS: 5000,
         extra: { max: 5 },
       });

@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { ConfigService } from '@nestjs/config';
-import { applyCors } from './../src/config/cors.js';
+import { applyHttpSecurity } from './../src/config/http-security.js';
 import { type EnvConfig, envFromConfig } from './../src/config/env.js';
 
 // Boots the full AppModule, so it needs the local PostgreSQL from .env (not run in CI).
@@ -23,7 +23,7 @@ describe('AppController (e2e)', () => {
     allowedOrigin = env.CORS_ORIGINS[0];
 
     app = moduleFixture.createNestApplication();
-    applyCors(app, env.CORS_ORIGINS);
+    applyHttpSecurity(app, env.CORS_ORIGINS);
     await app.init();
   });
 
@@ -52,6 +52,14 @@ describe('AppController (e2e)', () => {
     expect(response.headers['access-control-allow-origin']).toBeUndefined();
   });
 
+  it('sends security headers and hides the framework', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/health')
+      .expect(200)
+      .expect('X-Content-Type-Options', 'nosniff');
+    expect(response.headers['x-powered-by']).toBeUndefined();
+  });
+
   // deploy.sh calls /health without a cookie and rolls the deploy back when it fails.
   it('/health (GET) does not require a session', () => {
     return request(app.getHttpServer()).get('/health').expect(200);
@@ -68,8 +76,12 @@ describe('AppController (e2e)', () => {
       .expect(401);
   });
 
-  it('/auth/logout (POST) answers 401 without a cookie', () => {
-    return request(app.getHttpServer()).post('/auth/logout').expect(401);
+  it('/auth/logout (POST) succeeds without a session', async () => {
+    await request(app.getHttpServer()).post('/auth/logout').expect(204);
+    await request(app.getHttpServer())
+      .post('/auth/logout')
+      .set('Cookie', 'subtracker_session=nieznany-token')
+      .expect(204);
   });
 
   afterEach(async () => {

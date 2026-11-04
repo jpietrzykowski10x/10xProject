@@ -86,7 +86,26 @@ describe('SafeLoggingExceptionFilter', () => {
     );
   });
 
-  it('keeps the status of a middleware error but not its raw body in the log', () => {
+  it('logs a middleware server error without its raw body', () => {
+    const failure = Object.assign(new Error('bad gateway'), {
+      expose: false,
+      statusCode: 502,
+      status: 502,
+      body: ADDRESS,
+    });
+
+    createFilter(true).catch(failure, host);
+
+    expect(logged).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(logged.mock.calls)).not.toContain(ADDRESS);
+    expect(reply).toHaveBeenCalledWith(
+      response,
+      { statusCode: 502, message: 'bad gateway' },
+      502,
+    );
+  });
+
+  it('keeps the status of a client error from middleware and does not log it', () => {
     const failure = Object.assign(new Error('request entity too large'), {
       expose: true,
       statusCode: 413,
@@ -96,7 +115,7 @@ describe('SafeLoggingExceptionFilter', () => {
 
     createFilter(true).catch(failure, host);
 
-    expect(JSON.stringify(logged.mock.calls)).not.toContain(ADDRESS);
+    expect(logged).not.toHaveBeenCalled();
     expect(reply).toHaveBeenCalledWith(
       response,
       { statusCode: 413, message: 'request entity too large' },

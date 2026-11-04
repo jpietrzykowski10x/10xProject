@@ -482,6 +482,21 @@ describe('Auth flow (e2e)', () => {
       await http().post('/auth/request-link').send({ email }).expect(400);
     });
 
+    it('refuses an address with a quoted local part', async () => {
+      const consents = { confirmedAdult: true, acceptedPrivacyPolicy: true };
+
+      for (const email of [
+        `"a b"${ADDRESS_DOMAIN}`,
+        `"a\nb"${ADDRESS_DOMAIN}`,
+      ]) {
+        await http()
+          .post('/auth/register')
+          .send({ email, ...consents })
+          .expect(400);
+        await http().post('/auth/request-link').send({ email }).expect(400);
+      }
+    });
+
     it('refuses an overlong token', async () => {
       await postVerify('x'.repeat(65)).expect(400);
     });
@@ -507,6 +522,54 @@ describe('Auth flow (e2e)', () => {
     });
   });
 
+  describe('GET /auth/session', () => {
+    const getSession = (cookie?: string) => {
+      const pending = http().get('/auth/session');
+      return cookie === undefined ? pending : pending.set('Cookie', cookie);
+    };
+
+    it('answers 200 with no user for a signed-out visitor, without caching', async () => {
+      const response = await getSession()
+        .expect(200)
+        .expect('Cache-Control', 'no-store');
+
+      expect(response.body).toEqual({ user: null });
+    });
+
+    it('answers with the user for a valid session', async () => {
+      const address = newAddress();
+      const cookie = await signIn(address);
+
+      const response = await getSession(cookie).expect(200);
+
+      expect(response.body).toEqual({
+        user: {
+          id: expect.any(String) as string,
+          email: address,
+          roles: [RoleCode.USER],
+        },
+      });
+    });
+
+    it('answers with no user for an unknown, signed-out or expired session', async () => {
+      await getSession('subtracker_session=nieznany')
+        .expect(200)
+        .expect({ user: null });
+
+      const signedOut = await signIn(newAddress());
+      await http().post('/auth/logout').set('Cookie', signedOut).expect(204);
+      await getSession(signedOut).expect(200).expect({ user: null });
+
+      const address = newAddress();
+      const expired = await signIn(address);
+      await repository(Session).update(
+        { userId: (await findUser(address)).id },
+        { expiresAt: PAST },
+      );
+      await getSession(expired).expect(200).expect({ user: null });
+    });
+  });
+
   describe('session lifetime', () => {
     it('refuses the cookie after signing out', async () => {
       const cookie = await signIn(newAddress());
@@ -519,6 +582,22 @@ describe('Auth flow (e2e)', () => {
 
       expect(setCookieOf(loggedOut)).toMatch(/^subtracker_session=;/);
       await getMe(cookie).expect(401);
+    });
+
+    it('signs out of an expired session without an error and clears the cookie', async () => {
+      const address = newAddress();
+      const cookie = await signIn(address);
+      await repository(Session).update(
+        { userId: (await findUser(address)).id },
+        { expiresAt: PAST },
+      );
+
+      const loggedOut = await http()
+        .post('/auth/logout')
+        .set('Cookie', cookie)
+        .expect(204);
+
+      expect(setCookieOf(loggedOut)).toMatch(/^subtracker_session=;/);
     });
 
     it('refuses the cookie after the session expires', async () => {
@@ -563,13 +642,17 @@ describe('Auth flow (e2e)', () => {
       expect(JSON.stringify(logged.mock.calls)).not.toContain(address);
     });
 
-    it('keeps the status of a body parser error', async () => {
-      vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    it('keeps the status of a body parser error and does not log it', async () => {
+      const logged = vi
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
 
       await http()
         .post('/auth/request-link')
         .send({ email: 'a'.repeat(200 * 1024) })
         .expect(413);
+
+      expect(logged).not.toHaveBeenCalled();
     });
   });
 

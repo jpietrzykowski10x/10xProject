@@ -32,6 +32,14 @@ export function toAuthUser(user: User): AuthUser {
   };
 }
 
+function isValid(session: Session): boolean {
+  return (
+    session.revokedAt === null &&
+    session.expiresAt.getTime() > Date.now() &&
+    session.user.isActive
+  );
+}
+
 @Injectable()
 export class SessionService {
   private readonly cookieOptions: CookieOptions;
@@ -74,13 +82,19 @@ export class SessionService {
       : parseCookie(header)[SESSION_COOKIE_NAME];
   }
 
-  // Loads the owner and their roles too, so the guard needs no further queries. Deciding whether
-  // the session is still valid is up to the caller.
-  findByToken(token: string): Promise<Session | null> {
-    return this.sessions.findOne({
+  // The user behind the request's cookie, or null without a valid session.
+  async authenticate(request: Request): Promise<AuthUser | null> {
+    const token = this.readToken(request);
+    if (token === undefined) {
+      return null;
+    }
+    const session = await this.sessions.findOne({
       where: { tokenHash: hashToken(token) },
       relations: { user: { userRoles: { role: true } } },
     });
+    return session !== null && isValid(session)
+      ? toAuthUser(session.user)
+      : null;
   }
 
   async revoke(token: string): Promise<void> {

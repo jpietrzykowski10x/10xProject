@@ -1,6 +1,6 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
-import { catchError, Observable, of, tap, throwError } from 'rxjs';
+import { map, Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface AuthUser {
@@ -21,7 +21,7 @@ export class AuthService {
   private readonly apiUrl = `${environment.apiUrl}/auth`;
   private readonly user = signal<AuthUser | null>(null);
 
-  // Set by me(), so a page behind authGuard can read the user the guard has just fetched.
+  // Set by session(), so a page behind authGuard can read the user the guard has just fetched.
   readonly currentUser = this.user.asReadonly();
 
   register(request: RegisterRequest): Observable<void> {
@@ -36,17 +36,15 @@ export class AuthService {
     return this.http.post<AuthUser>(`${this.apiUrl}/verify`, { token });
   }
 
-  me(): Observable<AuthUser> {
-    return this.http.get<AuthUser>(`${this.apiUrl}/me`).pipe(tap((user) => this.user.set(user)));
+  // Not /auth/me: its 401 for a signed-out visitor would show as an error in the browser console.
+  session(): Observable<AuthUser | null> {
+    return this.http.get<{ user: AuthUser | null }>(`${this.apiUrl}/session`).pipe(
+      map(({ user }) => user),
+      tap((user) => this.user.set(user)),
+    );
   }
 
   logout(): Observable<void> {
-    return this.http.post<void>(`${this.apiUrl}/logout`, null).pipe(
-      // 401 means the session is already gone, which is what logging out asks for.
-      catchError((error: HttpErrorResponse) =>
-        error.status === 401 ? of(undefined) : throwError(() => error),
-      ),
-      tap(() => this.user.set(null)),
-    );
+    return this.http.post<void>(`${this.apiUrl}/logout`, null).pipe(tap(() => this.user.set(null)));
   }
 }

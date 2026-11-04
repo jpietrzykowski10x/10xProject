@@ -3,7 +3,6 @@ import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MailModule } from '../mail/mail.module.js';
 import { RolesGuard } from '../shared/guards/roles.guard.js';
-import { UsersModule } from '../users/users.module.js';
 import { AuthController } from './controllers/auth.controller.js';
 import { MagicLinkToken } from './entities/magic-link-token.entity.js';
 import { Session } from './entities/session.entity.js';
@@ -12,11 +11,7 @@ import { AuthService } from './services/auth.service.js';
 import { SessionService } from './services/session.service.js';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Session, MagicLinkToken]),
-    MailModule,
-    UsersModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Session, MagicLinkToken]), MailModule],
   controllers: [AuthController],
   providers: [
     SessionService,

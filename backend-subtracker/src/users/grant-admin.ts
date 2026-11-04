@@ -3,7 +3,7 @@ import { RoleCode } from '../shared/types/role-code.js';
 import { Role } from './entities/role.entity.js';
 import { UserRole } from './entities/user-role.entity.js';
 import { User } from './entities/user.entity.js';
-import { normalizeEmail } from './services/users.service.js';
+import { normalizeEmail } from './normalize-email.js';
 
 // Idempotent: granting the role twice leaves a single row. Throws on an unknown address.
 export async function grantAdmin(

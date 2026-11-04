@@ -59,19 +59,30 @@ export class AuthController {
     return user;
   }
 
+  // For the frontend's routing decisions. A signed-out visitor is a normal case there, and a 401
+  // would appear as an error in the browser console on every public page.
+  @Public()
+  @Get('session')
+  @Header('Cache-Control', 'no-store')
+  async session(@Req() request: Request): Promise<{ user: AuthUser | null }> {
+    return { user: await this.sessions.authenticate(request) };
+  }
+
   @Get('me')
   @Header('Cache-Control', 'no-store')
   me(@CurrentUser() user: AuthUser): AuthUser {
     return user;
   }
 
+  // Public and idempotent: a session that has already ended is what signing out asks for, not an
+  // error. It can only end the session whose token the request carries.
+  @Public()
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
-    // The guard has already accepted this cookie, so the token is present.
     const token = this.sessions.readToken(request);
     if (token !== undefined) {
       await this.sessions.revoke(token);

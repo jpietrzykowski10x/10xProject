@@ -110,6 +110,35 @@ describe('validateEnv', () => {
     expect(env.NOTIFICATION_SMTP_HOST).toBeUndefined();
   });
 
+  it.each([
+    ['.jakubpietrzykowski.pl'],
+    ['jakubpietrzykowski.pl'],
+    ['subtracker.jakubpietrzykowski.pl'],
+  ])('accepts cookie domain %s, which covers the frontend', (domain) => {
+    expect(() =>
+      validateEnv({ ...prodEnv, SESSION_COOKIE_DOMAIN: domain }),
+    ).not.toThrow();
+  });
+
+  it.each([
+    ['.example.com'],
+    ['.pietrzykowski.pl'],
+    ['.other.jakubpietrzykowski.pl'],
+  ])(
+    'rejects cookie domain %s, which does not cover the frontend in PROD',
+    (domain) => {
+      expect(() =>
+        validateEnv({ ...prodEnv, SESSION_COOKIE_DOMAIN: domain }),
+      ).toThrow(/does not cover/);
+    },
+  );
+
+  it('requires FRONTEND_URL among CORS_ORIGINS in PROD', () => {
+    expect(() =>
+      validateEnv({ ...prodEnv, CORS_ORIGINS: 'https://other.example.com' }),
+    ).toThrow(/must include FRONTEND_URL/);
+  });
+
   it('logs error stacks unless turned off', () => {
     expect(validateEnv(devEnv).LOG_ERROR_STACKS).toBe(true);
     expect(validateEnv(prodEnv).LOG_ERROR_STACKS).toBe(true);

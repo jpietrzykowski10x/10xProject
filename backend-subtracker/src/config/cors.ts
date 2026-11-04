@@ -1,6 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
 
-// Shared by main.ts and the e2e test, so the test covers the production CORS policy.
 export function applyCors(app: INestApplication, origins: string[]): void {
   app.enableCors({ origin: origins, credentials: true });
 }

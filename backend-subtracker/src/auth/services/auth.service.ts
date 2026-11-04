@@ -10,7 +10,7 @@ import { RoleCode } from '../../shared/types/role-code.js';
 import { Role } from '../../users/entities/role.entity.js';
 import { UserRole } from '../../users/entities/user-role.entity.js';
 import { User } from '../../users/entities/user.entity.js';
-import { normalizeEmail } from '../../users/services/users.service.js';
+import { normalizeEmail } from '../../users/normalize-email.js';
 import { MAGIC_LINK_TTL, PRIVACY_POLICY_VERSION } from '../auth.constants.js';
 import { MagicLinkToken } from '../entities/magic-link-token.entity.js';
 import { magicLinkMail } from '../mail-templates.js';

@@ -24,8 +24,8 @@ function describeError(exception: unknown): string {
 }
 
 // Nest's default filter logs the whole error object: the parameters of a failed query, which hold
-// e-mail addresses, or the raw body of a refused request. This one logs the message and code, plus
-// the stack under LOG_ERROR_STACKS. Responses stay the same as the default's.
+// e-mail addresses, or the raw body of a refused request. This one logs server errors only, as the
+// message and code, plus the stack under LOG_ERROR_STACKS. Responses stay the same as the default's.
 @Catch()
 export class SafeLoggingExceptionFilter extends BaseExceptionFilter {
   private readonly logger = new Logger('ExceptionsHandler');
@@ -42,15 +42,22 @@ export class SafeLoggingExceptionFilter extends BaseExceptionFilter {
       return;
     }
 
+    // Errors from middleware such as the body parser carry their own status.
+    const [statusCode, message] = this.isHttpError(exception)
+      ? [exception.statusCode, exception.message]
+      : [HttpStatus.INTERNAL_SERVER_ERROR, UNKNOWN_ERROR_MESSAGE];
+    // Like a 400 from validation, a client's mistake is not logged: anyone could grow the log.
+    if (statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
+      this.logFailure(exception);
+    }
+    super.catch(new HttpException({ statusCode, message }, statusCode), host);
+  }
+
+  private logFailure(exception: unknown): void {
     if (this.logStacks && exception instanceof Error && exception.stack) {
       this.logger.error(describeError(exception), exception.stack);
     } else {
       this.logger.error(describeError(exception));
     }
-    // Errors from middleware such as the body parser carry their own status.
-    const [statusCode, message] = this.isHttpError(exception)
-      ? [exception.statusCode, exception.message]
-      : [HttpStatus.INTERNAL_SERVER_ERROR, UNKNOWN_ERROR_MESSAGE];
-    super.catch(new HttpException({ statusCode, message }, statusCode), host);
   }
 }

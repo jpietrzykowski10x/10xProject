@@ -98,6 +98,25 @@ function readFrontendUrl(raw: RawEnv, mode: AppMode): string {
   return origin;
 }
 
+// A mistake here would pass every other check and only show on production: the browser drops the
+// session cookie, or CORS blocks the frontend, right after the sign-in link was used up.
+function assertFrontendFits(
+  frontendUrl: string,
+  cookieDomain: string,
+  corsOrigins: string[],
+): void {
+  const host = new URL(frontendUrl).hostname;
+  const domain = cookieDomain.replace(/^\./, '').toLowerCase();
+  if (host !== domain && !host.endsWith(`.${domain}`)) {
+    throw new Error(
+      `SESSION_COOKIE_DOMAIN "${cookieDomain}" does not cover the FRONTEND_URL host "${host}"`,
+    );
+  }
+  if (!corsOrigins.includes(frontendUrl)) {
+    throw new Error(`CORS_ORIGINS must include FRONTEND_URL "${frontendUrl}"`);
+  }
+}
+
 // Validates the process environment once at startup (ConfigModule `validate`) and in the
 // TypeORM CLI data source.
 export function validateEnv(raw: RawEnv): EnvConfig {
@@ -138,6 +157,17 @@ export function validateEnv(raw: RawEnv): EnvConfig {
   const readNotificationField = (key: string): string | undefined =>
     notificationHost !== undefined ? requireString(raw, key) : undefined;
 
+  const corsOrigins = parseCorsOrigins(
+    requireString(raw, 'CORS_ORIGINS'),
+    mode === 'PROD',
+  );
+  const frontendUrl = readFrontendUrl(raw, mode);
+  const sessionCookieDomain =
+    mode === 'PROD' ? requireString(raw, 'SESSION_COOKIE_DOMAIN') : undefined;
+  if (sessionCookieDomain !== undefined) {
+    assertFrontendFits(frontendUrl, sessionCookieDomain, corsOrigins);
+  }
+
   return {
     APPLICATION_NAME: readString(raw, 'APPLICATION_NAME') ?? 'subtracker-api',
     MODE: mode,
@@ -150,13 +180,9 @@ export function validateEnv(raw: RawEnv): EnvConfig {
     POSTGRES_DATABASE_DEV: mode === 'DEV' ? devDatabase : undefined,
     DATABASE_AUTO_SYNCHRONIZATION: autoSynchronization,
     POSTGRES_POOL_MAX: readPositiveInt(raw, 'POSTGRES_POOL_MAX', 5),
-    CORS_ORIGINS: parseCorsOrigins(
-      requireString(raw, 'CORS_ORIGINS'),
-      mode === 'PROD',
-    ),
-    FRONTEND_URL: readFrontendUrl(raw, mode),
-    SESSION_COOKIE_DOMAIN:
-      mode === 'PROD' ? requireString(raw, 'SESSION_COOKIE_DOMAIN') : undefined,
+    CORS_ORIGINS: corsOrigins,
+    FRONTEND_URL: frontendUrl,
+    SESSION_COOKIE_DOMAIN: sessionCookieDomain,
     SMTP_HOST: smtpHost,
     SMTP_PORT: readPositiveInt(raw, 'SMTP_PORT', 587),
     SMTP_SECURE: readBoolean(raw, 'SMTP_SECURE', false),

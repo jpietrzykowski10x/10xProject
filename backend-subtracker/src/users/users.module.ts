@@ -4,11 +4,9 @@ import { Role } from './entities/role.entity.js';
 import { UserRole } from './entities/user-role.entity.js';
 import { User } from './entities/user.entity.js';
 import { RolesSeeder } from './services/roles-seeder.js';
-import { UsersService } from './services/users.service.js';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User, Role, UserRole])],
-  providers: [UsersService, RolesSeeder],
-  exports: [UsersService],
+  providers: [RolesSeeder],
 })
 export class UsersModule {}

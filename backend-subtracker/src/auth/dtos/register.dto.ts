@@ -1,11 +1,8 @@
-import { Equals, IsEmail, MaxLength } from 'class-validator';
-import { EMAIL_MAX_LENGTH } from '../../users/entities/user.entity.js';
-import { NormalizedEmail } from './request-link.dto.js';
+import { Equals } from 'class-validator';
+import { ValidEmail } from './request-link.dto.js';
 
 export class RegisterDto {
-  @NormalizedEmail()
-  @IsEmail()
-  @MaxLength(EMAIL_MAX_LENGTH)
+  @ValidEmail()
   email: string;
 
   @Equals(true)

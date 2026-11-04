@@ -72,6 +72,20 @@ describe('createMailTransport', () => {
     );
   });
 
+  it('requires STARTTLS unless the connection is already TLS', () => {
+    createMailTransport(validateEnv({ ...devEnv, ...smtp }));
+    expect(createTransport).toHaveBeenLastCalledWith(
+      expect.objectContaining({ secure: false, requireTLS: true }),
+    );
+
+    createMailTransport(
+      validateEnv({ ...devEnv, ...smtp, SMTP_SECURE: 'true' }),
+    );
+    expect(createTransport).toHaveBeenLastCalledWith(
+      expect.objectContaining({ secure: true, requireTLS: false }),
+    );
+  });
+
   it('sends operator mail through SMTP_* when NOTIFICATION_SMTP_HOST is empty', async () => {
     const transport = createMailTransport(
       validateEnv({ ...devEnv, ...smtp, NOTIFICATION_SMTP_HOST: '' }),

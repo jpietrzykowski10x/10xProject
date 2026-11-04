@@ -63,12 +63,15 @@ function setup(operatorMail: string | null = OPERATOR) {
 
 describe('MailService', () => {
   let logError: ReturnType<typeof vi.spyOn>;
+  let logWarn: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     logError = vi
       .spyOn(Logger.prototype, 'error')
       .mockImplementation(() => undefined);
-    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    logWarn = vi
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -132,6 +135,61 @@ describe('MailService', () => {
         type: MailType.OPERATOR_ALERT,
         recipient: OPERATOR,
         status: MailStatus.SENT,
+      });
+    });
+
+    describe('recognising who caused a failure', () => {
+      const refused = (command: string, responseCode: number) =>
+        Object.assign(new Error(`550 refused ${USER}`), {
+          code: 'EENVELOPE',
+          command,
+          responseCode,
+        });
+
+      it('does not alert about a permanently rejected recipient, but audits it', async () => {
+        const { service, send, rows } = setup();
+        send.mockRejectedValueOnce(refused('RCPT TO', 550));
+
+        await service.sendToUser(MailType.MAGIC_LINK, USER, content);
+
+        expect(send).toHaveBeenCalledTimes(1);
+        expect(rows[0]).toMatchObject({
+          status: MailStatus.FAILED,
+          errorMessage: `550 refused ${USER}`,
+        });
+        expect(logWarn).toHaveBeenCalledExactlyOnceWith(
+          expect.stringContaining('code: EENVELOPE, audit row: row-1'),
+        );
+        expect(logError).not.toHaveBeenCalled();
+      });
+
+      it.each([
+        ['a refused sender', 'MAIL FROM', 550],
+        ['a temporarily refused recipient', 'RCPT TO', 450],
+      ])('alerts about %s', async (_name, command, responseCode) => {
+        const { service, send } = setup();
+        send.mockRejectedValueOnce(refused(command, responseCode));
+
+        await service.sendToUser(MailType.MAGIC_LINK, USER, content);
+
+        expect(send).toHaveBeenCalledTimes(2);
+        expect(logError).toHaveBeenCalledExactlyOnceWith(
+          expect.stringContaining('code: EENVELOPE, audit row: row-1'),
+        );
+      });
+
+      it('keeps the address out of the log', async () => {
+        const { service, send } = setup();
+        send.mockRejectedValueOnce(refused('RCPT TO', 550));
+        await service.sendToUser(MailType.MAGIC_LINK, USER, content);
+        send.mockRejectedValueOnce(new Error(`auth failed for ${USER}`));
+        await service.sendToUser(MailType.MAGIC_LINK, USER, content);
+
+        const logged = JSON.stringify([
+          ...logWarn.mock.calls,
+          ...logError.mock.calls,
+        ]);
+        expect(logged).not.toContain(USER);
       });
     });
 

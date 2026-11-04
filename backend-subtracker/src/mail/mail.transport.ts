@@ -27,6 +27,8 @@ function smtpSender(settings: SmtpSettings): Send {
     host: settings.host,
     port: settings.port,
     secure: settings.secure,
+    // Without this nodemailer falls back to plaintext when STARTTLS is not offered or gets stripped.
+    requireTLS: !settings.secure,
     auth: { user: settings.username, pass: settings.password },
   });
   return async (message) => {

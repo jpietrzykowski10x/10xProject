@@ -3,6 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
+import { emailValidators } from '../../auth/email-validators';
 
 type RegisterState = 'idle' | 'sending' | 'sent' | 'invalid' | 'unavailable';
 
@@ -15,7 +16,7 @@ export class Register {
   private readonly auth = inject(AuthService);
 
   protected readonly form = inject(NonNullableFormBuilder).group({
-    email: ['', [Validators.required, Validators.email]],
+    email: ['', emailValidators],
     confirmedAdult: [false, Validators.requiredTrue],
     acceptedPrivacyPolicy: [false, Validators.requiredTrue],
   });

@@ -1,8 +1,9 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
-import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
+import { emailValidators } from '../../auth/email-validators';
 
 type SignInState = 'idle' | 'sending' | 'sent' | 'invalid' | 'unavailable';
 
@@ -15,7 +16,7 @@ export class SignIn {
   private readonly auth = inject(AuthService);
 
   protected readonly form = inject(NonNullableFormBuilder).group({
-    email: ['', [Validators.required, Validators.email]],
+    email: ['', emailValidators],
   });
   protected readonly state = signal<SignInState>('idle');
   protected readonly submitted = signal(false);

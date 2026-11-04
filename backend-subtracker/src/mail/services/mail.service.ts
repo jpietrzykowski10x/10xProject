@@ -23,6 +23,28 @@ function errorMessageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+interface SmtpErrorFields {
+  code?: unknown;
+  command?: unknown;
+  responseCode?: unknown;
+}
+
+function smtpFieldsOf(error: unknown): SmtpErrorFields {
+  return typeof error === 'object' && error !== null ? error : {};
+}
+
+// The server permanently refused this address, most likely a typo. Anything else, including a
+// refused sender or a temporary refusal, points at our side or the server.
+function isRecipientRejected(error: unknown): boolean {
+  const { code, command, responseCode } = smtpFieldsOf(error);
+  return (
+    code === 'EENVELOPE' &&
+    command === 'RCPT TO' &&
+    typeof responseCode === 'number' &&
+    responseCode >= 500
+  );
+}
+
 // Neither public method rejects: callers fire mail after their response or transaction, and a
 // mail problem must not change their outcome. Failures end up in the audit row and in the logs.
 @Injectable()
@@ -44,8 +66,8 @@ export class MailService {
     to: string,
     content: MailContent,
   ): Promise<void> {
-    const { failed, rowId } = await this.deliver('user', type, to, content);
-    if (failed) {
+    const { needsAlert, rowId } = await this.deliver('user', type, to, content);
+    if (needsAlert) {
       await this.alertOperatorAboutFailure(type, rowId);
     }
   }
@@ -71,19 +93,37 @@ export class MailService {
     type: MailType,
     to: string,
     content: MailContent,
-  ): Promise<{ failed: boolean; rowId: string | null }> {
-    let errorMessage: string | null = null;
+  ): Promise<{ needsAlert: boolean; rowId: string | null }> {
     try {
       await this.transport.send({ channel, to, ...content });
     } catch (error) {
-      errorMessage = errorMessageOf(error).slice(
+      const errorMessage = errorMessageOf(error).slice(
         0,
         MAIL_ERROR_MESSAGE_MAX_LENGTH,
       );
-      this.logger.error(`Sending ${type} mail failed: ${errorMessage}`);
+      const rowId = await this.saveAudit(type, to, errorMessage);
+      const recipientRejected = isRecipientRejected(error);
+      this.logFailure(type, error, rowId, recipientRejected);
+      return { needsAlert: !recipientRejected, rowId };
     }
-    const rowId = await this.saveAudit(type, to, errorMessage);
-    return { failed: errorMessage !== null, rowId };
+    const rowId = await this.saveAudit(type, to, null);
+    return { needsAlert: false, rowId };
+  }
+
+  // SMTP messages can quote the address, so the full text stays in the audit row, next to it.
+  private logFailure(
+    type: MailType,
+    error: unknown,
+    rowId: string | null,
+    recipientRejected: boolean,
+  ): void {
+    const { code } = smtpFieldsOf(error);
+    const details = `code: ${typeof code === 'string' ? code : 'unknown'}, audit row: ${rowId ?? 'none'}`;
+    if (recipientRejected) {
+      this.logger.warn(`Recipient of ${type} mail rejected (${details})`);
+    } else {
+      this.logger.error(`Sending ${type} mail failed (${details})`);
+    }
   }
 
   private async saveAudit(
