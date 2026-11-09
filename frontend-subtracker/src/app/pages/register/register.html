@@ -1,0 +1,82 @@
+<main class="page">
+  <h1>Rejestracja</h1>
+
+  @if (state() === 'sent') {
+    <p class="message message--success" role="status">
+      Sprawdź skrzynkę. Znajdziesz w niej wiadomość z linkiem ważnym przez 15 minut.
+    </p>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="field">
+        <label for="register-email">Adres e-mail</label>
+        <input
+          id="register-email"
+          type="email"
+          autocomplete="email"
+          formControlName="email"
+          [attr.aria-invalid]="submitted() && form.controls.email.invalid"
+          [attr.aria-describedby]="
+            submitted() && form.controls.email.invalid ? 'register-email-error' : null
+          "
+        />
+        @if (submitted() && form.controls.email.invalid) {
+          <p id="register-email-error" class="field-error">Podaj poprawny adres e-mail.</p>
+        }
+      </div>
+
+      <div class="field">
+        <label class="checkbox">
+          <input
+            type="checkbox"
+            formControlName="confirmedAdult"
+            [attr.aria-invalid]="submitted() && form.controls.confirmedAdult.invalid"
+            [attr.aria-describedby]="
+              submitted() && form.controls.confirmedAdult.invalid ? 'register-adult-error' : null
+            "
+          />
+          <span>Oświadczam, że mam ukończone 18 lat.</span>
+        </label>
+        @if (submitted() && form.controls.confirmedAdult.invalid) {
+          <p id="register-adult-error" class="field-error">To oświadczenie jest wymagane.</p>
+        }
+      </div>
+
+      <div class="field">
+        <label class="checkbox">
+          <input
+            type="checkbox"
+            formControlName="acceptedPrivacyPolicy"
+            [attr.aria-invalid]="submitted() && form.controls.acceptedPrivacyPolicy.invalid"
+            [attr.aria-describedby]="
+              submitted() && form.controls.acceptedPrivacyPolicy.invalid
+                ? 'register-policy-error'
+                : null
+            "
+          />
+          <span>
+            Akceptuję
+            <a routerLink="/privacy-policy" target="_blank">politykę prywatności</a>.
+          </span>
+        </label>
+        @if (submitted() && form.controls.acceptedPrivacyPolicy.invalid) {
+          <p id="register-policy-error" class="field-error">Akceptacja polityki jest wymagana.</p>
+        }
+      </div>
+
+      @if (state() === 'invalid') {
+        <p class="message message--error" role="alert">
+          Sprawdź adres e-mail: wygląda na niepoprawny.
+        </p>
+      }
+      @if (state() === 'unavailable') {
+        <p class="message message--error" role="alert">
+          Serwis jest chwilowo niedostępny. Spróbuj ponownie za chwilę.
+        </p>
+      }
+
+      <button type="submit" [disabled]="state() === 'sending'">Załóż konto</button>
+    </form>
+
+    <p>Masz już konto? <a routerLink="/sign-in">Zaloguj się</a></p>
+  }
+</main>

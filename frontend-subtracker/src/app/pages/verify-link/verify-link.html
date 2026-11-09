@@ -1,0 +1,20 @@
+<main class="page">
+  <h1>Potwierdzenie logowania</h1>
+
+  @if (state() === 'invalid') {
+    <p class="message message--error" role="alert">
+      Ten link jest nieprawidłowy, wygasł albo został już użyty.
+    </p>
+    <p><a routerLink="/sign-in">Poproś o nowy link</a></p>
+  } @else {
+    <p>Kliknij przycisk, aby się zalogować.</p>
+
+    @if (state() === 'unavailable') {
+      <p class="message message--error" role="alert">
+        Serwis jest chwilowo niedostępny. Spróbuj ponownie za chwilę.
+      </p>
+    }
+
+    <button type="button" [disabled]="state() === 'sending'" (click)="signIn()">Zaloguj</button>
+  }
+</main>

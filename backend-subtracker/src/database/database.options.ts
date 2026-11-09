@@ -32,7 +32,11 @@ export function buildDatabaseOptions(
     migrationsTableName: 'migration_history',
     migrationsTransactionMode: 'all' as const,
     migrationsRun: false,
+    // Selects the built-in gen_random_uuid() (PostgreSQL 13+), so no extension is needed. Without
+    // installExtensions: false TypeORM would create pgcrypto when connecting: a schema change
+    // outside migrations, which would also end up in the dumps restore-db.sh has to replay.
     uuidExtension: 'pgcrypto' as const,
+    installExtensions: false,
     // Also bounds the wait for a free client when the pool is exhausted.
     connectTimeoutMS: CONNECT_TIMEOUT_MS,
     extra: { max: env.POSTGRES_POOL_MAX },

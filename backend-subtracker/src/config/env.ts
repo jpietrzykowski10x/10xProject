@@ -1,5 +1,5 @@
 import type { ConfigService } from '@nestjs/config';
-import { parseCorsOrigins } from './cors.js';
+import { assertExactOrigin, parseCorsOrigins } from './cors.js';
 
 export type AppMode = 'DEV' | 'PROD';
 
@@ -16,9 +16,30 @@ export interface EnvConfig {
   DATABASE_AUTO_SYNCHRONIZATION: boolean;
   POSTGRES_POOL_MAX: number;
   CORS_ORIGINS: string[];
+  FRONTEND_URL: string;
+  SESSION_COOKIE_DOMAIN: string | undefined;
+  SMTP_HOST: string | undefined;
+  SMTP_PORT: number;
+  SMTP_SECURE: boolean;
+  SMTP_USERNAME: string | undefined;
+  SMTP_PASSWORD: string | undefined;
+  SMTP_FROM_EMAIL: string | undefined;
+  SMTP_FROM_NAME: string;
+  NOTIFICATION_ADMINISTRATOR_MAIL: string | undefined;
+  NOTIFICATION_SMTP_HOST: string | undefined;
+  NOTIFICATION_SMTP_PORT: number;
+  NOTIFICATION_SMTP_SECURE: boolean;
+  NOTIFICATION_SMTP_USERNAME: string | undefined;
+  NOTIFICATION_SMTP_PASSWORD: string | undefined;
+  NOTIFICATION_SMTP_FROM_EMAIL: string | undefined;
+  LOG_ERROR_STACKS: boolean;
 }
 
 type RawEnv = Record<string, unknown>;
+
+type OptionalStringKey = {
+  [K in keyof EnvConfig]: undefined extends EnvConfig[K] ? K : never;
+}[keyof EnvConfig];
 
 function readString(raw: RawEnv, key: string): string | undefined {
   const value = raw[key];
@@ -67,8 +88,37 @@ function readBoolean(raw: RawEnv, key: string, fallback: boolean): boolean {
   throw new Error(`${key} must be "true" or "false", got "${value}"`);
 }
 
+function readFrontendUrl(raw: RawEnv, mode: AppMode): string {
+  const value =
+    mode === 'PROD'
+      ? requireString(raw, 'FRONTEND_URL')
+      : (readString(raw, 'FRONTEND_URL') ?? 'http://localhost:4200');
+  const origin = value.replace(/\/+$/, '');
+  assertExactOrigin(origin, mode === 'PROD', 'FRONTEND_URL');
+  return origin;
+}
+
+// A mistake here would pass every other check and only show on production: the browser drops the
+// session cookie, or CORS blocks the frontend, right after the sign-in link was used up.
+function assertFrontendFits(
+  frontendUrl: string,
+  cookieDomain: string,
+  corsOrigins: string[],
+): void {
+  const host = new URL(frontendUrl).hostname;
+  const domain = cookieDomain.replace(/^\./, '').toLowerCase();
+  if (host !== domain && !host.endsWith(`.${domain}`)) {
+    throw new Error(
+      `SESSION_COOKIE_DOMAIN "${cookieDomain}" does not cover the FRONTEND_URL host "${host}"`,
+    );
+  }
+  if (!corsOrigins.includes(frontendUrl)) {
+    throw new Error(`CORS_ORIGINS must include FRONTEND_URL "${frontendUrl}"`);
+  }
+}
+
 // Validates the process environment once at startup (ConfigModule `validate`) and in the
-// TypeORM CLI data source. Mail keys (SMTP_*, NOTIFICATION_*) join this list in S-01.
+// TypeORM CLI data source.
 export function validateEnv(raw: RawEnv): EnvConfig {
   const mode = requireString(raw, 'MODE');
   if (mode !== 'DEV' && mode !== 'PROD') {
@@ -93,6 +143,31 @@ export function validateEnv(raw: RawEnv): EnvConfig {
     );
   }
 
+  // SMTP_HOST decides whether real mail goes out: required in PROD, and in DEV its absence
+  // selects the console transport. Once a host is set, its credentials are required too.
+  const smtpHost =
+    mode === 'PROD'
+      ? requireString(raw, 'SMTP_HOST')
+      : readString(raw, 'SMTP_HOST');
+  const readSmtpField = (key: string): string | undefined =>
+    smtpHost !== undefined ? requireString(raw, key) : undefined;
+
+  // An empty NOTIFICATION_SMTP_HOST means operator mail uses the SMTP_* transporter.
+  const notificationHost = readString(raw, 'NOTIFICATION_SMTP_HOST');
+  const readNotificationField = (key: string): string | undefined =>
+    notificationHost !== undefined ? requireString(raw, key) : undefined;
+
+  const corsOrigins = parseCorsOrigins(
+    requireString(raw, 'CORS_ORIGINS'),
+    mode === 'PROD',
+  );
+  const frontendUrl = readFrontendUrl(raw, mode);
+  const sessionCookieDomain =
+    mode === 'PROD' ? requireString(raw, 'SESSION_COOKIE_DOMAIN') : undefined;
+  if (sessionCookieDomain !== undefined) {
+    assertFrontendFits(frontendUrl, sessionCookieDomain, corsOrigins);
+  }
+
   return {
     APPLICATION_NAME: readString(raw, 'APPLICATION_NAME') ?? 'subtracker-api',
     MODE: mode,
@@ -105,21 +180,52 @@ export function validateEnv(raw: RawEnv): EnvConfig {
     POSTGRES_DATABASE_DEV: mode === 'DEV' ? devDatabase : undefined,
     DATABASE_AUTO_SYNCHRONIZATION: autoSynchronization,
     POSTGRES_POOL_MAX: readPositiveInt(raw, 'POSTGRES_POOL_MAX', 5),
-    CORS_ORIGINS: parseCorsOrigins(
-      requireString(raw, 'CORS_ORIGINS'),
-      mode === 'PROD',
+    CORS_ORIGINS: corsOrigins,
+    FRONTEND_URL: frontendUrl,
+    SESSION_COOKIE_DOMAIN: sessionCookieDomain,
+    SMTP_HOST: smtpHost,
+    SMTP_PORT: readPositiveInt(raw, 'SMTP_PORT', 587),
+    SMTP_SECURE: readBoolean(raw, 'SMTP_SECURE', false),
+    SMTP_USERNAME: readSmtpField('SMTP_USERNAME'),
+    SMTP_PASSWORD: readSmtpField('SMTP_PASSWORD'),
+    SMTP_FROM_EMAIL: readSmtpField('SMTP_FROM_EMAIL'),
+    SMTP_FROM_NAME: readString(raw, 'SMTP_FROM_NAME') ?? 'SubTracker',
+    NOTIFICATION_ADMINISTRATOR_MAIL:
+      mode === 'PROD'
+        ? requireString(raw, 'NOTIFICATION_ADMINISTRATOR_MAIL')
+        : readString(raw, 'NOTIFICATION_ADMINISTRATOR_MAIL'),
+    NOTIFICATION_SMTP_HOST: notificationHost,
+    NOTIFICATION_SMTP_PORT: readPositiveInt(raw, 'NOTIFICATION_SMTP_PORT', 587),
+    NOTIFICATION_SMTP_SECURE: readBoolean(
+      raw,
+      'NOTIFICATION_SMTP_SECURE',
+      false,
     ),
+    NOTIFICATION_SMTP_USERNAME: readNotificationField(
+      'NOTIFICATION_SMTP_USERNAME',
+    ),
+    NOTIFICATION_SMTP_PASSWORD: readNotificationField(
+      'NOTIFICATION_SMTP_PASSWORD',
+    ),
+    NOTIFICATION_SMTP_FROM_EMAIL: readNotificationField(
+      'NOTIFICATION_SMTP_FROM_EMAIL',
+    ),
+    LOG_ERROR_STACKS: readBoolean(raw, 'LOG_ERROR_STACKS', true),
   };
 }
 
 // Reads the object returned by validateEnv back from ConfigService. ConfigModule copies only
 // primitive values to process.env (CORS_ORIGINS stays behind), so the app must not re-read
-// process.env after startup.
+// process.env after startup. A key the validated object leaves undefined falls through
+// ConfigService to the raw process.env, where the server scripts may have exported an empty
+// value, so optional keys are normalized here: empty never reads as "configured".
 export function envFromConfig(
   config: ConfigService<EnvConfig, true>,
 ): EnvConfig {
   const get = <K extends keyof EnvConfig>(key: K): EnvConfig[K] =>
     config.get(key, { infer: true });
+  const getOptional = (key: OptionalStringKey): string | undefined =>
+    get(key)?.trim() || undefined;
   const mode = get('MODE');
   return {
     APPLICATION_NAME: get('APPLICATION_NAME'),
@@ -135,6 +241,26 @@ export function envFromConfig(
     DATABASE_AUTO_SYNCHRONIZATION: get('DATABASE_AUTO_SYNCHRONIZATION'),
     POSTGRES_POOL_MAX: get('POSTGRES_POOL_MAX'),
     CORS_ORIGINS: get('CORS_ORIGINS'),
+    FRONTEND_URL: get('FRONTEND_URL'),
+    SESSION_COOKIE_DOMAIN:
+      mode === 'PROD' ? get('SESSION_COOKIE_DOMAIN') : undefined,
+    SMTP_HOST: getOptional('SMTP_HOST'),
+    SMTP_PORT: get('SMTP_PORT'),
+    SMTP_SECURE: get('SMTP_SECURE'),
+    SMTP_USERNAME: getOptional('SMTP_USERNAME'),
+    SMTP_PASSWORD: getOptional('SMTP_PASSWORD'),
+    SMTP_FROM_EMAIL: getOptional('SMTP_FROM_EMAIL'),
+    SMTP_FROM_NAME: get('SMTP_FROM_NAME'),
+    NOTIFICATION_ADMINISTRATOR_MAIL: getOptional(
+      'NOTIFICATION_ADMINISTRATOR_MAIL',
+    ),
+    NOTIFICATION_SMTP_HOST: getOptional('NOTIFICATION_SMTP_HOST'),
+    NOTIFICATION_SMTP_PORT: get('NOTIFICATION_SMTP_PORT'),
+    NOTIFICATION_SMTP_SECURE: get('NOTIFICATION_SMTP_SECURE'),
+    NOTIFICATION_SMTP_USERNAME: getOptional('NOTIFICATION_SMTP_USERNAME'),
+    NOTIFICATION_SMTP_PASSWORD: getOptional('NOTIFICATION_SMTP_PASSWORD'),
+    NOTIFICATION_SMTP_FROM_EMAIL: getOptional('NOTIFICATION_SMTP_FROM_EMAIL'),
+    LOG_ERROR_STACKS: get('LOG_ERROR_STACKS'),
   };
 }
 

@@ -19,6 +19,13 @@ const prodEnv = validateEnv({
   POSTGRES_PASSWORD: 'secret',
   POSTGRES_DATABASE: 'p_subtracker',
   CORS_ORIGINS: 'https://subtracker.jakubpietrzykowski.pl',
+  FRONTEND_URL: 'https://subtracker.jakubpietrzykowski.pl',
+  SESSION_COOKIE_DOMAIN: '.jakubpietrzykowski.pl',
+  SMTP_HOST: 'mail.example.com',
+  SMTP_USERNAME: 'noreply@example.com',
+  SMTP_PASSWORD: 'smtp-secret',
+  SMTP_FROM_EMAIL: 'noreply@example.com',
+  NOTIFICATION_ADMINISTRATOR_MAIL: 'operator@example.com',
 });
 
 describe('buildDatabaseOptions', () => {
@@ -62,6 +69,7 @@ describe('buildDatabaseOptions', () => {
         migrationsTableName: 'migration_history',
         migrationsTransactionMode: 'all',
         uuidExtension: 'pgcrypto',
+        installExtensions: false,
         connectTimeoutMS: 5000,
         extra: { max: 5 },
       });

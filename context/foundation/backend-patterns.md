@@ -27,8 +27,9 @@
 
 - `role`: `id uuid` (`gen_random_uuid()`), `code varchar(30) unique` (`USER`, `ADMIN`), `name`, `is_active boolean`.
 - `user_role`: jawna encja łącząca (`user_id`, `role_id`, `granted_at`, `granted_by` nullable), klucz główny `(user_id, role_id)`. Wybraliśmy ją zamiast `@ManyToMany` z automatycznym `@JoinTable`, żeby później dało się dopisać kolumny (kto, kiedy, do kiedy) bez przebudowy.
-- Role startowe zakłada migracja danych ze stałymi UUID i `code`, jak `AddBaseUserRoles` w boilerplate. Nowy użytkownik dostaje `USER` w tej samej transakcji, w której powstaje konto.
-- `ADMIN` nadaje operator poza aplikacją (PRD: Access Control), skryptem `npm run admin:grant -- <mail>` uruchamianym na serwerze. Nie ma API do zarządzania adminami ani roli superadmina na MVP.
+- Role startowe zakłada migracja danych ze stałymi UUID i `code` (`SeedRoles`), jak `AddBaseUserRoles` w boilerplate. Nowy użytkownik dostaje `USER` w tej samej transakcji, w której powstaje konto.
+- Baza dev powstaje z encji przez `synchronize`, więc migracja danych do niej nie dociera. Tam role zakłada `RolesSeeder` przy starcie aplikacji, idempotentnie i tylko gdy działa `synchronize` (`MODE=DEV` i `DATABASE_AUTO_SYNCHRONIZATION=true`).
+- `ADMIN` nadaje operator poza aplikacją (PRD: Access Control), skryptem CLI. Lokalnie to `npm run admin:grant -- <mail>`. Na serwerze ta komenda nie zadziała, bo `prepare-mydevil.mjs` spłaszcza `dist/` do korzenia paczki, więc uruchamiamy `cli/admin-grant.js` z katalogu `public_nodejs` (komenda: `deploy/mydevil/README.md`). Skrypt jest idempotentny, a nieznany adres kończy się kodem wyjścia 1. Nie ma API do zarządzania adminami ani roli superadmina na MVP.
 - Do uprawnień liczą się tylko role z `is_active = true`. Boilerplate tego pola nie sprawdzał.
 - Kod porównuje `code` przez unię typów / enum `RoleCode`, nigdy przez nazwę wyświetlaną.
 - Rozszerzenie na później, bez łamania schematu: tabela `permission` i `role_permission` oraz dekorator `@RequirePermission()`.
@@ -37,8 +38,23 @@
 
 - Tabela `session`: `id`, `user_id`, `token_hash` (sha256, unique), `created_at`, `expires_at`, `revoked_at`, opcjonalnie `user_agent`. Każde urządzenie ma osobną sesję. W boilerplate był jeden wiersz tokenów na użytkownika, więc zalogowanie na drugim urządzeniu wylogowywało z pierwszego.
 - Token jest losowy (`crypto.randomBytes(32)`) i ma wysoką entropię, więc wystarczy sha256. Argon2 zostaje dla haseł (FR-003, nice-to-have). Boilerplate weryfikował argon2 przy każdym żądaniu, a to celowo wolny algorytm.
-- Ciasteczko: `httpOnly`, `Secure`, `SameSite=Lax`, `Domain=.jakubpietrzykowski.pl`, `Path=/`. Wylogowanie i blokada konta (S-09) ustawiają `revoked_at`.
-- Magic link: tabela `magic_link_token` (`token_hash`, `user_id`, `expires_at`, `used_at`). Jednorazowość zapewnia atomowy `UPDATE … SET used_at = now() WHERE used_at IS NULL AND expires_at > now()`.
+- Sesja trwa stałe 30 dni od utworzenia (`SESSION_TTL`). `expires_at` nie jest przedłużane.
+- Ciasteczko `subtracker_session`, atrybuty według `MODE`:
+  - zawsze `httpOnly`, `SameSite=Lax`, `Path=/`;
+  - `Secure` tylko przy `MODE=PROD`;
+  - `Domain` z `SESSION_COOKIE_DOMAIN` tylko przy `MODE=PROD` (na produkcji `.jakubpietrzykowski.pl`), w DEV ciasteczko jest host-only.
+  - `validateEnv` zatrzymuje start w PROD, gdy `SESSION_COOKIE_DOMAIN` nie obejmuje hosta `FRONTEND_URL` albo `CORS_ORIGINS` nie zawiera `FRONTEND_URL`.
+- Wylogowanie i blokada konta (S-09) ustawiają `revoked_at`.
+- Magic link: tabela `magic_link_token` (`token_hash`, `user_id`, `expires_at`, `used_at`). Jednorazowość zapewnia atomowy `UPDATE … SET used_at = now() WHERE used_at IS NULL AND expires_at > now()`. Link działa 15 minut (`MAGIC_LINK_TTL`), a nowy link unieważnia poprzednie.
+- **Token we fragmencie adresu**: link w mailu to `${FRONTEND_URL}/auth/verify#token=...`, więc token nie trafia do logów proxy ani nagłówka `Referer`. Zużywa go wyłącznie `POST /auth/verify`, bo skanery poczty otwierają linki przez GET.
+- **`email_verified_at`**: `NULL` do pierwszego udanego `POST /auth/verify`, potem ustawione raz i niezmieniane. Dopóki jest `NULL`, mail z linkiem zawiera dodatkowy akapit o tym, że użycie linku potwierdza zgody.
+- **Zgody**: `POST /auth/register` wymaga `confirmedAdult` i `acceptedPrivacyPolicy` równych `true`. Zapisujemy `consents_accepted_at` i `privacy_policy_version` (`PRIVACY_POLICY_VERSION`). Formularz mógł wypełnić ktoś, kto nie jest właścicielem skrzynki, więc do potwierdzenia adresu liczą się ostatnie zgody, a potwierdzone konto zachowuje te, które dał jego właściciel.
+- `POST /auth/register` i `POST /auth/request-link` odpowiadają tak samo (202), niezależnie od tego, czy adres ma konto.
+- Trasy sesji:
+  - `GET /auth/session` jest publiczne, zwraca 200 `{ user: AuthUser | null }` z `Cache-Control: no-store` i z niego korzysta frontend. Niezalogowany gość to tam normalny przypadek, a 401 pokazywałby się jako błąd w konsoli przeglądarki na każdej publicznej stronie.
+  - `GET /auth/me` zostaje chronione: bez sesji zwraca 401.
+  - `POST /auth/logout` jest publiczne i idempotentne, zawsze zwraca 204. Kończy tylko sesję, której token niesie żądanie.
+- **Ochrona CSRF jest odłożona do czasu przed S-02.** Obca strona może automatycznym POST-em na `/auth/verify` z tokenem atakującego zalogować ofiarę na jego konto, a dane wpisane potem byłyby dla niego widoczne. Poprawka: `app.enableCsrfProtection({ trustedOrigins: corsOrigins })` w `applyHttpSecurity` (parametr to `env.CORS_ORIGINS`) i test e2e.
 
 ## CORS
 
@@ -60,7 +76,7 @@
     - poczta do użytkowników: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME`;
     - powiadomienia do operatora: `NOTIFICATION_ADMINISTRATOR_MAIL`, `NOTIFICATION_SMTP_*` z tym samym zestawem pól.
     
-    Walidacja przy starcie dochodzi w S-01. Puste `NOTIFICATION_SMTP_*` oznaczają, że powiadomienia idą przez transporter `SMTP_*`.
+    Klucze sprawdza przy starcie `validateEnv` (`src/config/env.ts`). W PROD wymagane są `SMTP_HOST` i `NOTIFICATION_ADMINISTRATOR_MAIL`. Ustawiony host, `SMTP_HOST` albo `NOTIFICATION_SMTP_HOST`, wymaga kompletu pól: `*_USERNAME`, `*_PASSWORD`, `*_FROM_EMAIL`. W DEV pusty `SMTP_HOST` kieruje maile na konsolę. Puste `NOTIFICATION_SMTP_*` oznaczają, że powiadomienia idą przez transporter `SMTP_*`.
 - Poprawki:
   - zapis do bazy z `await` i obsługą błędu;
   - treść HTML z szablonu z escapowaniem danych użytkownika (boilerplate wstawiał `${text}` do HTML wprost);

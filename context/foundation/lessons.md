@@ -33,3 +33,10 @@
 - **Problem**: Przy dwóch encjach importujących się nawzajem (np. `User` ↔ `Subscription`) metadane dekoratorów odwołują się do klasy, zanim moduł ją zainicjalizuje. Kończy się to błędem `ReferenceError: Cannot access 'User' before initialization`. W CommonJS ten sam kod działał.
 - **Rule**: Typ pola relacji zapisujemy jako `Relation<User>` (z `typeorm`), a cel relacji zawsze jako funkcję `() => User`. Importy względne kończymy rozszerzeniem `.js`.
 - **Applies to**: plan, implement
+
+## Trasy zapisujemy po angielsku
+
+- **Context**: `frontend-subtracker/` (`app.routes.ts`, `app.routes.server.ts`) i trasy API w `backend-subtracker/`
+- **Problem**: W S-01 trasy frontendu powstały po polsku (`/rejestracja`, `/logowanie`), więc trzeba było je zmieniać razem z linkiem w mailu. Po wdrożeniu taka zmiana psuje wysłane linki i zakładki.
+- **Rule**: Ścieżki tras są zawsze po angielsku, także nowe. Po polsku zostają tylko teksty w interfejsie.
+- **Applies to**: plan, plan-review, implement, impl-review

@@ -1,13 +1,13 @@
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
-import { applyCors } from './config/cors.js';
 import {
   appDatabaseName,
   type EnvConfig,
   envFromConfig,
   isAutoSynchronization,
 } from './config/env.js';
+import { applyHttpSecurity } from './config/http-security.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -16,7 +16,7 @@ async function bootstrap() {
   );
 
   // No HTTPS here: the MyDevil proxy terminates TLS.
-  applyCors(app, env.CORS_ORIGINS);
+  applyHttpSecurity(app, env.CORS_ORIGINS);
 
   await app.listen(env.PORT);
 

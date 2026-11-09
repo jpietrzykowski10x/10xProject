@@ -1,6 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
 
-// Shared by main.ts and the e2e test, so the test covers the production CORS policy.
 export function applyCors(app: INestApplication, origins: string[]): void {
   app.enableCors({ origin: origins, credentials: true });
 }
@@ -27,30 +26,33 @@ export function parseCorsOrigins(
   return origins;
 }
 
-function assertExactOrigin(origin: string, requireHttps: boolean): void {
+// Also validates FRONTEND_URL, hence the key used in the error messages.
+export function assertExactOrigin(
+  origin: string,
+  requireHttps: boolean,
+  key = 'CORS_ORIGINS',
+): void {
   if (origin === '*') {
-    throw new Error(
-      'CORS_ORIGINS must not contain "*" (credentials are enabled)',
-    );
+    throw new Error(`${key} must not contain "*" (credentials are enabled)`);
   }
   if (origin === 'null') {
-    throw new Error('CORS_ORIGINS must not contain "null"');
+    throw new Error(`${key} must not contain "null"`);
   }
   let url: URL;
   try {
     url = new URL(origin);
   } catch {
-    throw new Error(`CORS_ORIGINS entry "${origin}" is not a valid origin`);
+    throw new Error(`${key} entry "${origin}" is not a valid origin`);
   }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-    throw new Error(`CORS_ORIGINS entry "${origin}" must use http or https`);
+    throw new Error(`${key} entry "${origin}" must use http or https`);
   }
   if (url.origin !== origin) {
     throw new Error(
-      `CORS_ORIGINS entry "${origin}" must be a bare origin like "${url.origin}"`,
+      `${key} entry "${origin}" must be a bare origin like "${url.origin}"`,
     );
   }
   if (requireHttps && url.protocol !== 'https:') {
-    throw new Error(`CORS_ORIGINS entry "${origin}" must use https in PROD`);
+    throw new Error(`${key} entry "${origin}" must use https in PROD`);
   }
 }
