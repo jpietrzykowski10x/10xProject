@@ -102,7 +102,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** —
 - **Blockers:** —
 - **Unknowns:**
-  - Czy e-maile z poczty MyDevil docierają do Gmaila/Outlooka (SPF/DKIM/DMARC domeny, reputacja współdzielonego IP)? Gmail potwierdzony prawdziwą wysyłką lokalną przez SMTP MyDevil 2026-11-03; Outlook, SPF i DKIM otwarte do testów 5.7 i 5.8. — Owner: user. Block: no.
+  - Czy e-maile z poczty MyDevil docierają do Gmaila/Outlooka (SPF/DKIM/DMARC domeny, reputacja współdzielonego IP)? Sprawdzone na produkcji 2026-11-09: maile dochodzą na Gmaila i Outlooka, SPF PASS, DKIM brak, DMARC FAIL. Ryzyko przyjęte na MVP; DKIM i DMARC do naprawy przed publicznym startem. — Owner: user. Block: no.
   - Rozstrzygnięte: jak długo ważny jest link i jak długo trwa sesja? Link 15 minut, sesja stałe 30 dni bez przedłużania. — Owner: user. Block: no.
 - **Risk:** Pierwszy slice użytkowy, bo wszystko inne wymaga zalogowanego użytkownika; ryzyko w dostarczalności e-maila i w ciasteczku sesji między subdomenami — widoki dla zalogowanego nie mogą być prerenderowane statycznie.
 - **Status:** in-progress
@@ -227,7 +227,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 ## Open Roadmap Questions
 
 1. **Jak w MVP realizujemy usunięcie lub anonimizację danych w ciągu 30 dni od żądania (NFR)?** Ręcznie przez administratora (rozszerzenie S-09) czy samoobsługowo? — Owner: user. Block: — (nie blokuje planowania; dotyczy S-09).
-2. **Czy poczta MyDevil wystarczy dla magic linku i przypomnień, czy potrzebny jest zewnętrzny dostawca e-maili?** Test dostarczalności przed startem. Gmail potwierdzony 2026-11-03; Outlook, SPF i DKIM otwarte do testów 5.7 i 5.8. — Owner: user. Block: — (dotyczy S-01, S-06).
+2. **Czy poczta MyDevil wystarczy dla magic linku i przypomnień, czy potrzebny jest zewnętrzny dostawca e-maili?** Test dostarczalności przed startem. Na produkcji 2026-11-09 maile dochodzą na Gmaila i Outlooka, SPF PASS, DKIM brak, DMARC FAIL; pytanie zostaje otwarte do naprawy DKIM i DMARC. — Owner: user. Block: — (dotyczy S-01, S-06).
 3. **Czy MVP potrzebuje choćby minimalnego alarmu, gdy backend lub zadania cykliczne przestaną działać?** Wg pre-mortem w `infrastructure.md` o awarii dowiemy się od użytkownika. — Owner: user. Block: — (dotyczy S-06).
 
 ## Parked
