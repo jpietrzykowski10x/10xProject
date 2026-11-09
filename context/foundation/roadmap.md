@@ -3,7 +3,7 @@ project: SubTracker
 version: 1
 status: draft
 created: 2026-10-16
-updated: 2026-11-03
+updated: 2026-11-09
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -42,7 +42,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | ID   | Change ID                         | Outcome (user can …)                                                              | Prerequisites | PRD refs                      | Status   |
 | ---- | --------------------------------- | --------------------------------------------------------------------------------- | ------------- | ----------------------------- | -------- |
 | F-01 | production-database-wiring        | (foundation) API ma produkcyjną bazę z migracjami w deployu; frontend woła API    | —             | Access Control, Guardrails    | done |
-| S-01 | magic-link-sign-in                | użytkownik loguje się magic linkiem i widzi swoją (pustą) listę subskrypcji       | F-01          | FR-001, US-01                 | in-progress |
+| S-01 | magic-link-sign-in                | użytkownik rejestruje się i loguje magic linkiem i widzi swoją (pustą) listę subskrypcji | F-01          | FR-001, US-01                 | in-progress |
 | S-02 | first-subscription-in-list        | użytkownik dodaje subskrypcję ze wszystkimi szczegółami i widzi ją na liście      | S-01          | FR-004, FR-007, FR-018, US-01 | proposed |
 | S-03 | edit-and-delete-subscription      | użytkownik poprawia lub usuwa błędnie dodaną subskrypcję                          | S-02          | FR-005, FR-006                | proposed |
 | S-04 | dashboard-cost-totals             | użytkownik widzi sumę miesięczną i roczną z podziałem na kategorie                | S-02          | FR-008, US-01                 | proposed |
@@ -95,15 +95,15 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ### S-01: Logowanie magic linkiem
 
-- **Outcome:** użytkownik wpisuje e-mail, dostaje jednorazowy, ograniczony czasowo link, loguje się nim i widzi swoją (na razie pustą) listę subskrypcji; inni użytkownicy nie mają do niej dostępu.
+- **Outcome:** użytkownik rejestruje się e-mailem (z oświadczeniem o pełnoletności i akceptacją polityki prywatności) albo przy kolejnym wejściu wpisuje e-mail, dostaje jednorazowy, ograniczony czasowo link, loguje się nim i widzi swoją (na razie pustą) listę subskrypcji; inni użytkownicy nie mają do niej dostępu.
 - **Change ID:** magic-link-sign-in
 - **PRD refs:** FR-001, US-01
 - **Prerequisites:** F-01
 - **Parallel with:** —
 - **Blockers:** —
 - **Unknowns:**
-  - Czy e-maile z poczty MyDevil docierają do Gmaila/Outlooka (SPF/DKIM/DMARC domeny, reputacja współdzielonego IP)? — Owner: user. Block: no.
-  - Jak długo ważny jest link i jak długo trwa sesja? — Owner: user. Block: no.
+  - Czy e-maile z poczty MyDevil docierają do Gmaila/Outlooka (SPF/DKIM/DMARC domeny, reputacja współdzielonego IP)? Gmail potwierdzony prawdziwą wysyłką lokalną przez SMTP MyDevil 2026-11-03; Outlook, SPF i DKIM otwarte do testów 5.7 i 5.8. — Owner: user. Block: no.
+  - Rozstrzygnięte: jak długo ważny jest link i jak długo trwa sesja? Link 15 minut, sesja stałe 30 dni bez przedłużania. — Owner: user. Block: no.
 - **Risk:** Pierwszy slice użytkowy, bo wszystko inne wymaga zalogowanego użytkownika; ryzyko w dostarczalności e-maila i w ciasteczku sesji między subdomenami — widoki dla zalogowanego nie mogą być prerenderowane statycznie.
 - **Status:** in-progress
 
@@ -114,7 +114,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **PRD refs:** FR-004, FR-007, FR-018, US-01
 - **Prerequisites:** S-01
 - **Parallel with:** —
-- **Blockers:** —
+- **Blockers:** Ochrona CSRF przed startem S-02 (follow-up z S-01): `app.enableCsrfProtection` w `applyHttpSecurity` i test e2e.
 - **Unknowns:**
   - Jaka jest predefiniowana lista kategorii na start? — Owner: user. Block: no.
 - **Risk:** Gwiazda przewodnia — stoi zaraz po logowaniu; ryzyko w czasie przejścia (< 3 min wg kryterium sukcesu), więc formularz musi być krótki mimo wielu pól.
@@ -227,7 +227,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 ## Open Roadmap Questions
 
 1. **Jak w MVP realizujemy usunięcie lub anonimizację danych w ciągu 30 dni od żądania (NFR)?** Ręcznie przez administratora (rozszerzenie S-09) czy samoobsługowo? — Owner: user. Block: — (nie blokuje planowania; dotyczy S-09).
-2. **Czy poczta MyDevil wystarczy dla magic linku i przypomnień, czy potrzebny jest zewnętrzny dostawca e-maili?** Test dostarczalności przed startem. — Owner: user. Block: — (dotyczy S-01, S-06).
+2. **Czy poczta MyDevil wystarczy dla magic linku i przypomnień, czy potrzebny jest zewnętrzny dostawca e-maili?** Test dostarczalności przed startem. Gmail potwierdzony 2026-11-03; Outlook, SPF i DKIM otwarte do testów 5.7 i 5.8. — Owner: user. Block: — (dotyczy S-01, S-06).
 3. **Czy MVP potrzebuje choćby minimalnego alarmu, gdy backend lub zadania cykliczne przestaną działać?** Wg pre-mortem w `infrastructure.md` o awarii dowiemy się od użytkownika. — Owner: user. Block: — (dotyczy S-06).
 
 ## Parked

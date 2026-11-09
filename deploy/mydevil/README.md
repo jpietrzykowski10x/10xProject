@@ -16,7 +16,7 @@ Server-side scripts for deploying SubTracker to MyDevil. They live in `~/apps/su
                              <YYYYmmdd-HHMMSS>_<sha7>.dump (-rw-------), 10 newest kept
 ```
 
-`shared/.env` of the api also holds the database and CORS settings (template: `backend-subtracker/.env.example`, local copy `.env.mydevil`):
+`shared/.env` of the api also holds the database, CORS, session cookie and mail settings (template: `backend-subtracker/.env.example`, local copy `backend-subtracker/.env.mydevil`):
 
 ```
 MODE=PROD
@@ -29,7 +29,25 @@ POSTGRES_PASSWORD=...
 POSTGRES_DATABASE=...
 DATABASE_AUTO_SYNCHRONIZATION=false   # true is rejected at startup in PROD
 CORS_ORIGINS=https://subtracker.jakubpietrzykowski.pl
+FRONTEND_URL=https://subtracker.jakubpietrzykowski.pl   # bare https origin, target of the magic links
+SESSION_COOKIE_DOMAIN=.jakubpietrzykowski.pl
+SMTP_HOST=...
+SMTP_PORT=587
+SMTP_SECURE=false                     # false = STARTTLS on 587, true = TLS on 465
+SMTP_USERNAME=...
+SMTP_PASSWORD=...
+SMTP_FROM_EMAIL=...
+SMTP_FROM_NAME=SubTracker
+NOTIFICATION_ADMINISTRATOR_MAIL=...
+LOG_ERROR_STACKS=true                 # optional, default true; false hides stack traces in error logs
 ```
+
+The app and the migrations validate these settings at startup, so a missing or inconsistent key stops the deploy at the migration step and the previous version starts again. In `MODE=PROD`:
+
+- `FRONTEND_URL`, `SESSION_COOKIE_DOMAIN`, `SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL` and `NOTIFICATION_ADMINISTRATOR_MAIL` are required.
+- `CORS_ORIGINS` must include `FRONTEND_URL`.
+- `SESSION_COOKIE_DOMAIN` must cover the `FRONTEND_URL` host.
+- Leave `NOTIFICATION_SMTP_*` unset unless operator notifications need a separate transporter; unset, they go through `SMTP_*`. A set `NOTIFICATION_SMTP_HOST` requires `NOTIFICATION_SMTP_USERNAME`, `NOTIFICATION_SMTP_PASSWORD` and `NOTIFICATION_SMTP_FROM_EMAIL` too.
 
 The scripts source this file with `sh` (`. .env`) and export it, so the app gets whatever `sh` made of each line. Keep values plain or in single quotes (`KEY='two words'`); never leave `$`, `` ` ``, `"`, `\` or `#` unquoted. Use letters and digits for passwords (`openssl rand -hex 16`). The keys must not repeat: `deploy.sh` reads `PORT` with `sed` and a second `PORT=` line breaks the health check.
 
@@ -81,6 +99,17 @@ Restoring by hand, e.g. when a problem shows up hours after a deploy:
 Releases in `releases/` are named `<time>_<sha7>` after the SHA they contain (`.deploy-info`); failed deploys end in `_failed`, rolled-back ones in `_rolledback`. Deploy, rollback and a manual restore of one app take a lock (`~/apps/subtracker/<app>/.ops.lock`), so they never overlap; the frontend and the api can still deploy at the same time. A lock left behind by a killed process is removed with `rmdir`.
 
 Never run `migration:revert` in production: `down()` methods are unreliable. Going back is always a restore from a backup.
+
+## Granting the admin role
+
+The `ADMIN` role is granted on the server, once the user has registered. `npm run admin:grant` is for local use only: `prepare-mydevil.mjs` flattens `dist/` into the package root, so the script lives at `cli/admin-grant.js`. Run it from the live release with its env exported, the same way `deploy.sh` runs the migrations:
+
+```
+cd ~/apps/subtracker/api/public_nodejs
+sh -c 'set -a; . ./.env; set +a; exec /usr/local/bin/node24 cli/admin-grant.js "$1"' sh <mail>
+```
+
+Granting the role twice is harmless. An unknown address prints an error and exits with code 1.
 
 ## Updating the scripts on the server
 

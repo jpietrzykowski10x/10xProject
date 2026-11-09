@@ -345,11 +345,11 @@ Serwer i dokumentacja są przygotowane, zmiana jest zmergowana i sprawdzona na p
 
 #### 1. Konfiguracja serwera (przed merge'em, wykonuje użytkownik)
 
-**File**: `~/apps/subtracker/api/shared/.env`, lokalny `.env.mydevil`
+**File**: `~/apps/subtracker/api/shared/.env`, lokalny `backend-subtracker/.env.mydevil` (poza gitem, wzór dla serwera)
 
 **Intent**: Bez tych kluczy deploy zatrzyma się na migracjach i wróci do poprzedniej wersji.
 
-**Contract**: Dopisać `FRONTEND_URL=https://subtracker.jakubpietrzykowski.pl`, `SESSION_COOKIE_DOMAIN=.jakubpietrzykowski.pl`, `SMTP_*`, `NOTIFICATION_ADMINISTRATOR_MAIL`. Wartości proste albo w `'...'`, bez powtórzonych kluczy.
+**Contract**: Dopisać `FRONTEND_URL=https://subtracker.jakubpietrzykowski.pl`, `SESSION_COOKIE_DOMAIN=.jakubpietrzykowski.pl`, `SMTP_*`, `NOTIFICATION_ADMINISTRATOR_MAIL`. Sprawdzić, że `CORS_ORIGINS` na serwerze zawiera `FRONTEND_URL`, bo `validateEnv` w PROD inaczej zatrzyma deploy. `NOTIFICATION_SMTP_*` zostawić nieustawione: powiadomienia pójdą wtedy przez `SMTP_*`, a ustawiony `NOTIFICATION_SMTP_HOST` wymaga kompletu pól. Wartości proste albo w `'...'`, bez powtórzonych kluczy.
 
 #### 2. Dokumentacja
 
@@ -361,7 +361,7 @@ Serwer i dokumentacja są przygotowane, zmiana jest zmergowana i sprawdzona na p
 - `backend-patterns.md`: `email_verified_at`, zgody, token we fragmencie, seed ról w bazie dev, stałe `SameSite`/`Secure` według `MODE`.
 - `CLAUDE.md`: usunąć magic-link auth i rolę admina z „Still planned”.
 - `README` deployu: komenda serwerowa `cli/admin-grant.js` uruchamiana z `public_nodejs`, tak jak migracje w `deploy.sh`, oraz nowe klucze env.
-- `roadmap.md`: dopisać rejestrację do Outcome S-01 i zapisać rozstrzygnięte Unknowns oraz pytanie otwarte #2.
+- `roadmap.md`: dopisać rejestrację do Outcome S-01 i zapisać rozstrzygnięty Unknown o czasie życia linku i sesji. Dostarczalność (Unknown S-01 i pytanie otwarte #2): przed merge'em wpisać tylko „Gmail potwierdzony”, a zamknąć po testach 5.7 i 5.8. Do Blockers w S-02 dopisać ochronę CSRF (follow-up „Przed S-02”).
 
 #### 3. Merge i weryfikacja
 
@@ -369,7 +369,7 @@ Serwer i dokumentacja są przygotowane, zmiana jest zmergowana i sprawdzona na p
 
 **Intent**: Potwierdzić działanie na produkcji przed `/10x-archive`.
 
-**Contract**: `/10x-impl-review` i triage przed merge'em, potem PR, merge i test ręczny poniżej.
+**Contract**: `/10x-impl-review` i triage przed merge'em, potem lokalnie `npm run test:e2e` (nie działa w CI), PR, merge i test ręczny poniżej. Odhaczenie 5.1-5.10 i `/10x-archive` idą po merge'u przez osobny branch `chore/...` i PR, bo `main` przyjmuje tylko PR-y.
 
 ### Success Criteria:
 
