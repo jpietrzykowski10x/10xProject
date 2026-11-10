@@ -1,0 +1,98 @@
+// Desktop: navy column on the left. Below 840px the column becomes a header above the content.
+// CSS only, so prerendered pages lay out correctly before (or without) JavaScript.
+app-public-layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--mat-sys-surface);
+
+  .public-layout__column {
+    display: flex;
+    flex: 0 0 var(--st-column-width);
+    flex-direction: column;
+    box-sizing: border-box;
+    padding: 24px;
+    background: var(--st-navy);
+    color: #fff;
+  }
+
+  .public-layout__wordmark {
+    align-self: flex-start;
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  // The global focus outline is navy, which disappears on the navy column.
+  .public-layout__column a:focus-visible {
+    outline-color: #fff;
+  }
+
+  // The page title lives in the column; the explanation lives under the form.
+  .public-layout__aside {
+    margin-top: auto;
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 2.4vw, 36px);
+      font-weight: 700;
+      line-height: 1.1;
+      overflow-wrap: break-word;
+    }
+  }
+
+  .public-layout__content {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 72px 64px 48px;
+  }
+
+  .public-layout__inner {
+    max-width: 420px;
+  }
+
+  // Why the page works the way it does, shown under the form.
+  .public-note {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--st-line);
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    p {
+      margin: 0;
+      color: var(--st-muted);
+      line-height: 1.5;
+    }
+  }
+
+  @media (max-width: 839.98px) {
+    flex-direction: column;
+
+    .public-layout__column {
+      flex: none;
+      padding: 16px 16px 24px;
+    }
+
+    .public-layout__aside {
+      margin-top: 24px;
+
+      &:empty {
+        display: none;
+      }
+
+      h1 {
+        font-size: 26px;
+      }
+    }
+
+    .public-layout__content {
+      flex: 1 1 auto;
+      padding: 24px 16px;
+    }
+  }
+}

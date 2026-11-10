@@ -1,0 +1,132 @@
+// Desktop: navy column on the left. Below 840px a navy header with a menu button replaces it.
+:host {
+  display: flex;
+  min-height: 100vh;
+  background: var(--st-page);
+}
+
+.shell__column {
+  display: flex;
+  flex: 0 0 var(--st-column-width);
+  flex-direction: column;
+  gap: 32px;
+  box-sizing: border-box;
+  padding: 24px;
+  background: var(--st-navy);
+  color: #fff;
+}
+
+.shell__wordmark {
+  align-self: flex-start;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.shell__nav-link {
+  display: block;
+  padding: 11px 0;
+  border-bottom: 1px solid #33486c;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.shell__account {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.shell__email {
+  margin: 0;
+  color: var(--st-navy-soft);
+  overflow-wrap: anywhere;
+}
+
+.shell__logout {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+// The global focus outline is navy, which disappears on the navy column and header.
+.shell__column a:focus-visible,
+.shell__column button:focus-visible,
+.shell__bar a:focus-visible,
+.shell__menu-button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.shell__bar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 16px 16px;
+  background: var(--st-navy);
+  color: #fff;
+}
+
+.shell__wordmark--bar {
+  font-size: 18px;
+}
+
+.shell__menu-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-right: -10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+}
+
+// Rendered in the overlay, but declared in this template, so it keeps the component styles.
+.shell__menu-email {
+  margin: 0;
+  padding: 8px 12px;
+  color: var(--st-muted);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.shell__content {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 28px 32px 40px;
+}
+
+@media (max-width: 839.98px) {
+  :host {
+    flex-direction: column;
+  }
+
+  .shell__column {
+    display: none;
+  }
+
+  .shell__bar {
+    display: flex;
+  }
+
+  .shell__content {
+    flex: 1 1 auto;
+    padding: 16px;
+  }
+}

@@ -96,7 +96,7 @@ html {
       outline: $outline,
       outline-variant: $line,
       shadow: #000000,
-      scrim: #000000,
+      scrim: #000000
     )
   );
 
@@ -131,6 +131,8 @@ html {
 
 // App-specific colours outside Material's token set, from the same palette.
 :root {
+  // One width for the navy column in every layout, so it never jumps between pages.
+  --st-column-width: clamp(260px, 22vw, 300px);
   --st-navy: #{$navy};
   --st-navy-soft: #{$navy-soft};
   --st-green: #{$green};

@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { PublicLayout } from '../../layout/public-layout/public-layout';
 import { AuthService } from '../../auth/auth.service';
 import { emailValidators } from '../../auth/email-validators';
 
@@ -9,7 +10,7 @@ type RegisterState = 'idle' | 'sending' | 'sent' | 'invalid' | 'unavailable';
 
 @Component({
   selector: 'app-register',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [PublicLayout, ReactiveFormsModule, RouterLink],
   templateUrl: './register.html',
 })
 export class Register {

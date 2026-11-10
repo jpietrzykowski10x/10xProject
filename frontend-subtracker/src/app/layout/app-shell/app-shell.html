@@ -1,0 +1,47 @@
+<!-- Desktop column and phone header both stay in the DOM; CSS shows exactly one of them. -->
+<header class="shell__column">
+  <a class="shell__wordmark" routerLink="/subscriptions">SubTracker</a>
+
+  <nav class="shell__nav" aria-label="Główna nawigacja">
+    <a
+      class="shell__nav-link"
+      routerLink="/subscriptions"
+      routerLinkActive="shell__nav-link--active"
+      ariaCurrentWhenActive="page"
+      >Subskrypcje</a
+    >
+  </nav>
+
+  <div class="shell__account">
+    <p class="shell__email">{{ user()?.email }}</p>
+    <button type="button" class="shell__logout" [disabled]="loggingOut()" (click)="logout()">
+      Wyloguj
+    </button>
+  </div>
+</header>
+
+<header class="shell__bar">
+  <a class="shell__wordmark shell__wordmark--bar" routerLink="/subscriptions">SubTracker</a>
+  <button type="button" class="shell__menu-button" aria-label="Menu" [matMenuTriggerFor]="menu">
+    <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" focusable="false">
+      <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" fill="none" />
+    </svg>
+  </button>
+</header>
+
+<mat-menu #menu="matMenu" xPosition="before">
+  <a mat-menu-item routerLink="/subscriptions" routerLinkActive ariaCurrentWhenActive="page"
+    >Subskrypcje</a
+  >
+  <p class="shell__menu-email">{{ user()?.email }}</p>
+  <button mat-menu-item type="button" [disabled]="loggingOut()" (click)="logout()">Wyloguj</button>
+</mat-menu>
+
+<main class="shell__content">
+  @if (logoutFailed()) {
+    <p class="message message--error" role="alert">
+      Serwis jest chwilowo niedostępny. Nie udało się wylogować, spróbuj ponownie za chwilę.
+    </p>
+  }
+  <ng-content />
+</main>

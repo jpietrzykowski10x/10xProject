@@ -1,5 +1,8 @@
-<main class="page">
-  <h1>Potwierdzenie logowania</h1>
+<app-public-layout>
+  <!-- Same column title as the sign-in page, so the step from the e-mail link feels continuous. -->
+  <h1 layoutAside>Logowanie</h1>
+
+  <h2>Ostatni krok</h2>
 
   @if (state() === 'invalid') {
     <p class="message message--error" role="alert">
@@ -16,5 +19,13 @@
     }
 
     <button type="button" [disabled]="state() === 'sending'" (click)="signIn()">Zaloguj</button>
+
+    <section class="public-note">
+      <h2>Dlaczego trzeba kliknąć</h2>
+      <p>
+        Programy pocztowe same otwierają linki, żeby sprawdzić, czy są bezpieczne. Logowanie
+        przyciskiem sprawia, że nie zużyją linku za Ciebie.
+      </p>
+    </section>
   }
-</main>
+</app-public-layout>

@@ -1,5 +1,5 @@
-<main class="page">
-  <h1>Rejestracja</h1>
+<app-public-layout>
+  <h1 layoutAside>Rejestracja</h1>
 
   @if (state() === 'sent') {
     <p class="message message--success" role="status">
@@ -79,4 +79,9 @@
 
     <p>Masz już konto? <a routerLink="/sign-in">Zaloguj się</a></p>
   }
-</main>
+
+  <section class="public-note">
+    <h2>Bez hasła</h2>
+    <p>Na podany adres wyślemy link do logowania. Działa przez 15 minut i można go użyć raz.</p>
+  </section>
+</app-public-layout>
