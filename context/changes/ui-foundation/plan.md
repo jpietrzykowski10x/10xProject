@@ -385,15 +385,15 @@ Brak danych do migracji. Wycofanie to `rollback.sh frontend` na serwerze, bez wp
 
 #### Automated
 
-- [x] 2.1 Build przechodzi bez błędów budżetu, także `anyComponentStyle` (8 kB): `npm run build`
-- [x] 2.2 Prerenderowane `/privacy-policy` i `/unavailable` zawierają granatową kolumnę w HTML (`dist/frontend-subtracker/browser/privacy-policy/index.html`)
+- [x] 2.1 Build przechodzi bez błędów budżetu, także `anyComponentStyle` (8 kB): `npm run build` — b0be979
+- [x] 2.2 Prerenderowane `/privacy-policy` i `/unavailable` zawierają granatową kolumnę w HTML (`dist/frontend-subtracker/browser/privacy-policy/index.html`) — b0be979
 
 #### Manual
 
-- [x] 2.3 Na desktopie strony publiczne i `/subscriptions` mają kolumnę po lewej, zgodnie z makietami F2
-- [x] 2.4 Przy szerokości poniżej 840 px i na telefonie (DevTools, 390 px) kolumna zamienia się w nagłówek, bez poziomego przewijania strony
-- [x] 2.5 Menu na telefonie otwiera się, a „Wyloguj” z menu i z kolumny wylogowuje; przy wyłączonym API pojawia się dotychczasowy komunikat błędu
-- [x] 2.6 Klawiatura: Tab przechodzi przez nawigację, menu i „Wyloguj” w logicznej kolejności, fokus jest widoczny
+- [x] 2.3 Na desktopie strony publiczne i `/subscriptions` mają kolumnę po lewej, zgodnie z makietami F2 — b0be979
+- [x] 2.4 Przy szerokości poniżej 840 px i na telefonie (DevTools, 390 px) kolumna zamienia się w nagłówek, bez poziomego przewijania strony — b0be979
+- [x] 2.5 Menu na telefonie otwiera się, a „Wyloguj” z menu i z kolumny wylogowuje; przy wyłączonym API pojawia się dotychczasowy komunikat błędu — b0be979
+- [x] 2.6 Klawiatura: Tab przechodzi przez nawigację, menu i „Wyloguj” w logicznej kolejności, fokus jest widoczny — b0be979
 
 ### Phase 3: Ekrany S-01 na Materialu
 
