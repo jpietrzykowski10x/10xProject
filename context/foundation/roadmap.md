@@ -42,7 +42,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | ID   | Change ID                         | Outcome (user can …)                                                              | Prerequisites | PRD refs                      | Status   |
 | ---- | --------------------------------- | --------------------------------------------------------------------------------- | ------------- | ----------------------------- | -------- |
 | F-01 | production-database-wiring        | (foundation) API ma produkcyjną bazę z migracjami w deployu; frontend woła API    | —             | Access Control, Guardrails    | done |
-| S-01 | magic-link-sign-in                | użytkownik rejestruje się i loguje magic linkiem i widzi swoją (pustą) listę subskrypcji | F-01          | FR-001, US-01                 | in-progress |
+| S-01 | magic-link-sign-in                | użytkownik rejestruje się i loguje magic linkiem i widzi swoją (pustą) listę subskrypcji | F-01          | FR-001, US-01                 | done |
 | S-02 | first-subscription-in-list        | użytkownik dodaje subskrypcję ze wszystkimi szczegółami i widzi ją na liście      | S-01          | FR-004, FR-007, FR-018, US-01 | proposed |
 | S-03 | edit-and-delete-subscription      | użytkownik poprawia lub usuwa błędnie dodaną subskrypcję                          | S-02          | FR-005, FR-006                | proposed |
 | S-04 | dashboard-cost-totals             | użytkownik widzi sumę miesięczną i roczną z podziałem na kategorie                | S-02          | FR-008, US-01                 | proposed |
@@ -102,10 +102,10 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** —
 - **Blockers:** —
 - **Unknowns:**
-  - Czy e-maile z poczty MyDevil docierają do Gmaila/Outlooka (SPF/DKIM/DMARC domeny, reputacja współdzielonego IP)? Gmail potwierdzony prawdziwą wysyłką lokalną przez SMTP MyDevil 2026-11-03; Outlook, SPF i DKIM otwarte do testów 5.7 i 5.8. — Owner: user. Block: no.
+  - Czy e-maile z poczty MyDevil docierają do Gmaila/Outlooka (SPF/DKIM/DMARC domeny, reputacja współdzielonego IP)? Sprawdzone na produkcji 2026-11-09: maile dochodzą na Gmaila i Outlooka, SPF PASS, DKIM brak, DMARC FAIL. Ryzyko przyjęte na MVP; DKIM i DMARC do naprawy przed publicznym startem. — Owner: user. Block: no.
   - Rozstrzygnięte: jak długo ważny jest link i jak długo trwa sesja? Link 15 minut, sesja stałe 30 dni bez przedłużania. — Owner: user. Block: no.
 - **Risk:** Pierwszy slice użytkowy, bo wszystko inne wymaga zalogowanego użytkownika; ryzyko w dostarczalności e-maila i w ciasteczku sesji między subdomenami — widoki dla zalogowanego nie mogą być prerenderowane statycznie.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-02: Pierwsza subskrypcja na liście
 
@@ -227,7 +227,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 ## Open Roadmap Questions
 
 1. **Jak w MVP realizujemy usunięcie lub anonimizację danych w ciągu 30 dni od żądania (NFR)?** Ręcznie przez administratora (rozszerzenie S-09) czy samoobsługowo? — Owner: user. Block: — (nie blokuje planowania; dotyczy S-09).
-2. **Czy poczta MyDevil wystarczy dla magic linku i przypomnień, czy potrzebny jest zewnętrzny dostawca e-maili?** Test dostarczalności przed startem. Gmail potwierdzony 2026-11-03; Outlook, SPF i DKIM otwarte do testów 5.7 i 5.8. — Owner: user. Block: — (dotyczy S-01, S-06).
+2. **Czy poczta MyDevil wystarczy dla magic linku i przypomnień, czy potrzebny jest zewnętrzny dostawca e-maili?** Test dostarczalności przed startem. Na produkcji 2026-11-09 maile dochodzą na Gmaila i Outlooka, SPF PASS, DKIM brak, DMARC FAIL; pytanie zostaje otwarte do naprawy DKIM i DMARC. — Owner: user. Block: — (dotyczy S-01, S-06).
 3. **Czy MVP potrzebuje choćby minimalnego alarmu, gdy backend lub zadania cykliczne przestaną działać?** Wg pre-mortem w `infrastructure.md` o awarii dowiemy się od użytkownika. — Owner: user. Block: — (dotyczy S-06).
 
 ## Parked
@@ -250,3 +250,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 ## Done
 
 - **F-01: (foundation) API łączy się z produkcyjną bazą danych, deploy robi kopię bazy i uruchamia migracje przed przełączeniem wersji, a frontend z innej subdomeny może wywołać API (pierwsze wywołanie potwierdzone na produkcji). Bez tabel domenowych — te dochodzą w slice'ach.** — Archived 2026-10-28 → `context/archive/2026-10-16-production-database-wiring/`. Lesson: —.
+- **S-01: użytkownik rejestruje się e-mailem (z oświadczeniem o pełnoletności i akceptacją polityki prywatności) albo przy kolejnym wejściu wpisuje e-mail, dostaje jednorazowy, ograniczony czasowo link, loguje się nim i widzi swoją (na razie pustą) listę subskrypcji; inni użytkownicy nie mają do niej dostępu.** — Archived 2026-11-09 → `context/archive/2026-11-03-magic-link-sign-in/`. Lesson: —.

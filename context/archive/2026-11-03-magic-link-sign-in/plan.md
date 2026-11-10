@@ -443,6 +443,7 @@ Poza kryteriami faz, dopisane na prośbę użytkownika w trakcie fazy 3.
 - **Odstępstwa od fazy 3 przyjęte w przeglądzie (F8), bez zmian w kodzie.** Nieaktywne, niepotwierdzone konto nie dostaje odświeżenia zgód przy ponownej rejestracji, zgodnie z „tą samą logiką co `requestLink`”. Pusty, nietekstowy lub za długi token daje `400` z walidacji, a nie `401`, i nic nie ujawnia. Nowy użytkownik ma zgody zapisane dwa razy w jednej transakcji. `deploy/mydevil/README.md` dostał linię o wersji PostgreSQL.
 - **Nice to have: dopracowanie treści korespondencji.** Obecne maile są wystarczające, ale ich treść można dopracować w późniejszym kroku.
 - **S-09: dezaktywacja konta.** Dziś nic nie ustawia `is_active`, a `is_active = false` tylko blokuje sesje: po ponownej aktywacji niewygasłe sesje i niezużyty link znów działają. Dezaktywacja powinna w jednej transakcji ustawić `is_active = false`, usunąć niezużyte tokeny i unieważnić sesje konta. Przy okazji warto rozważyć „wyloguj wszędzie”, bo dziś wylogowanie kończy tylko bieżącą sesję.
+- **Przed publicznym startem: DKIM i DMARC (kryterium 5.8 przyjęte z zastrzeżeniem, decyzja użytkownika 2026-11-09).** Test produkcyjny: `SPF: PASS`, DKIM brak (maile bez podpisu), `DMARC: FAIL`. W DNS nie ma klucza DKIM ani rekordu `v=DMARC1`, bo `_dmarc` i `*._domainkey` trafiają w wildcard CNAME na domenę główną. Maile dochodzą na Gmaila i Outlooka. Naprawa bez kodu i deployu: włączyć podpisywanie DKIM na MyDevil i dodać osobny TXT `_dmarc` z `v=DMARC1; p=none`. Ważne dla przypomnień w S-06.
 - **S-05: sprzątanie tokenów i sesji.** Wygasłe i zużyte wiersze `magic_link_token` oraz stare wiersze `session` (z `user_agent`) nie są usuwane. Weryfikacja je odrzuca, ale tabele rosną. Gdy pojawi się scheduler, dodać idempotentne zadanie czyszczące (`lessons.md`).
 
 ## Progress
@@ -511,16 +512,16 @@ Poza kryteriami faz, dopisane na prośbę użytkownika w trakcie fazy 3.
 
 #### Automated
 
-- [ ] 5.1 CI na PR jest zielone: joby `backend`, `frontend`, `deploy-scripts`
-- [ ] 5.2 Deploy API i frontendu na `main` przeszedł, wraz z health-checkiem
+- [x] 5.1 CI na PR jest zielone: joby `backend`, `frontend`, `deploy-scripts` — dd24d3b
+- [x] 5.2 Deploy API i frontendu na `main` przeszedł, wraz z health-checkiem — dd24d3b
 
 #### Manual
 
-- [ ] 5.3 `/health` zwraca `{"status":"ok","db":"ok"}`, a `/auth/me` bez ciasteczka 401
-- [ ] 5.4 Rejestracja na Gmailu działa od wejścia na stronę do pustej listy, w mniej niż 3 minuty
-- [ ] 5.5 Ciasteczko w przeglądarce ma `HttpOnly`, `Secure`, `SameSite=Lax`, `Domain=.jakubpietrzykowski.pl`
-- [ ] 5.6 Sesja działa po ponownym wejściu na stronę, a wylogowanie ją kończy
-- [ ] 5.7 Link dociera na skrzynkę Outlook, a otwarcie go przez skaner nie spala tokenu
-- [ ] 5.8 Nagłówki maila pokazują wynik SPF i DKIM dla `jakubpietrzykowski.pl`
-- [ ] 5.9 `cli/admin-grant.js` nadaje rolę `ADMIN` na serwerze, a `/auth/me` ją pokazuje
-- [ ] 5.10 Powiadomienie o błędzie maila dociera do operatora (test chwilowo złym hasłem SMTP albo lokalnie)
+- [x] 5.3 `/health` zwraca `{"status":"ok","db":"ok"}`, a `/auth/me` bez ciasteczka 401 — dd24d3b
+- [x] 5.4 Rejestracja na Gmailu działa od wejścia na stronę do pustej listy, w mniej niż 3 minuty — dd24d3b
+- [x] 5.5 Ciasteczko w przeglądarce ma `HttpOnly`, `Secure`, `SameSite=Lax`, `Domain=.jakubpietrzykowski.pl` — dd24d3b
+- [x] 5.6 Sesja działa po ponownym wejściu na stronę, a wylogowanie ją kończy — dd24d3b
+- [x] 5.7 Link dociera na skrzynkę Outlook, a otwarcie go przez skaner nie spala tokenu — dd24d3b
+- [x] 5.8 Nagłówki maila pokazują wynik SPF i DKIM dla `jakubpietrzykowski.pl` — dd24d3b
+- [x] 5.9 `cli/admin-grant.js` nadaje rolę `ADMIN` na serwerze, a `/auth/me` ją pokazuje — dd24d3b
+- [x] 5.10 Powiadomienie o błędzie maila dociera do operatora (test chwilowo złym hasłem SMTP albo lokalnie) — dd24d3b
