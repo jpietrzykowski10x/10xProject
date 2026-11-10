@@ -2,9 +2,28 @@
 @use '@angular/material' as mat;
 @use './theme-colors';
 
-$navy: #14284b;
-$green: #0b6b4d;
 $shape: 4px;
+
+// The F2 palette from the mockups (context/changes/ui-foundation/change.md). Every Material
+// system colour is pinned below, so components never fall back to the generated tonal palette.
+$navy: #14284b;
+$navy-tint: #dce3f0;
+$navy-soft: #c5d1e2;
+$green: #0b6b4d;
+$green-dark: #0b5a3f;
+$green-tint: #e3f4ea;
+$ink: #16202c;
+$ink-soft: #33404e;
+$muted: #4f5d6c;
+$outline: #767680;
+$line: #d5dce3;
+$line-soft: #e4e9ee;
+$page: #f3f5f7;
+$white: #ffffff;
+$error: #a1191a;
+$error-tint: #fdecea;
+$warning-text: #6b4100;
+$warning-tint: #fdf1dc;
 
 html {
   color-scheme: light;
@@ -23,11 +42,61 @@ html {
     )
   );
 
-  // The generated palette approximates the brand colour; pin the exact value.
   @include mat.theme-overrides(
     (
+      // Primary: navy. Fields, checkboxes, focus and selections.
       primary: $navy,
-      on-primary: #ffffff,
+      on-primary: $white,
+      primary-container: $navy-tint,
+      on-primary-container: $navy,
+      primary-fixed: $navy-tint,
+      primary-fixed-dim: $navy-soft,
+      on-primary-fixed: $navy,
+      on-primary-fixed-variant: $navy,
+      inverse-primary: $navy-soft,
+      surface-tint: $navy,
+      // Secondary: slate. The selected button-toggle uses secondary-container.
+      secondary: $muted,
+      on-secondary: $white,
+      secondary-container: $navy-tint,
+      on-secondary-container: $navy,
+      secondary-fixed: $navy-tint,
+      secondary-fixed-dim: $navy-soft,
+      on-secondary-fixed: $ink,
+      on-secondary-fixed-variant: $ink-soft,
+      // Tertiary: green, the main-action and "active" colour.
+      tertiary: $green,
+      on-tertiary: $white,
+      tertiary-container: $green-tint,
+      on-tertiary-container: $green-dark,
+      tertiary-fixed: $green-tint,
+      tertiary-fixed-dim: $green-tint,
+      on-tertiary-fixed: $green-dark,
+      on-tertiary-fixed-variant: $green-dark,
+      error: $error,
+      on-error: $white,
+      error-container: $error-tint,
+      on-error-container: $error,
+      // Surfaces: white panels on a light grey page. Menus and select panels sit on surface-container.
+      background: $page,
+      on-background: $ink,
+      surface: $white,
+      on-surface: $ink,
+      surface-variant: $line-soft,
+      on-surface-variant: $muted,
+      surface-bright: $white,
+      surface-dim: $line,
+      surface-container-lowest: $white,
+      surface-container-low: $white,
+      surface-container: $white,
+      surface-container-high: $page,
+      surface-container-highest: $line-soft,
+      inverse-surface: $ink,
+      inverse-on-surface: $page,
+      outline: $outline,
+      outline-variant: $line,
+      shadow: #000000,
+      scrim: #000000,
     )
   );
 
@@ -44,7 +113,7 @@ html {
   @include mat.button-overrides(
     (
       filled-container-color: $green,
-      filled-label-text-color: #ffffff,
+      filled-label-text-color: $white,
       filled-container-height: 48px,
       filled-container-shape: $shape,
       outlined-container-shape: $shape,
@@ -60,16 +129,18 @@ html {
   );
 }
 
+// App-specific colours outside Material's token set, from the same palette.
 :root {
   --st-navy: #{$navy};
+  --st-navy-soft: #{$navy-soft};
   --st-green: #{$green};
-  --st-warning-bg: #fdf1dc;
-  --st-warning-text: #6b4100;
-  --st-success-bg: #e3f4ea;
-  --st-success-text: #0b5a3f;
-  --st-error-bg: #fdecea;
-  --st-error-text: #a1191a;
-  --st-muted: #4f5d6c;
-  --st-line: #d5dce3;
-  --st-page: #f3f5f7;
+  --st-warning-bg: #{$warning-tint};
+  --st-warning-text: #{$warning-text};
+  --st-success-bg: #{$green-tint};
+  --st-success-text: #{$green-dark};
+  --st-error-bg: #{$error-tint};
+  --st-error-text: #{$error};
+  --st-muted: #{$muted};
+  --st-line: #{$line};
+  --st-page: #{$page};
 }

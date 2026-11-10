@@ -373,13 +373,13 @@ Brak danych do migracji. Wycofanie to `rollback.sh frontend` na serwerze, bez wp
 
 #### Automated
 
-- [x] 1.1 Build produkcyjny z prerenderem przechodzi bez błędów budżetu: `cd frontend-subtracker && npm run build`
-- [x] 1.2 Paczka deployu buduje się i zawiera pliki `.woff2`: `npm run prepare-mydevil`
-- [x] 1.3 Zbudowane pliki nie odwołują się do Google Fonts: brak trafień `fonts.googleapis.com` i `fonts.gstatic.com` w `dist/`
+- [x] 1.1 Build produkcyjny z prerenderem przechodzi bez błędów budżetu: `cd frontend-subtracker && npm run build` — 0ae9a9b
+- [x] 1.2 Paczka deployu buduje się i zawiera pliki `.woff2`: `npm run prepare-mydevil` — 0ae9a9b
+- [x] 1.3 Zbudowane pliki nie odwołują się do Google Fonts: brak trafień `fonts.googleapis.com` i `fonts.gstatic.com` w `dist/` — 0ae9a9b
 
 #### Manual
 
-- [x] 1.4 `npm start`: strony S-01 działają jak dotąd, tekst jest w IBM Plex Sans (DevTools, Computed font), a w zakładce Network nie ma żądań do Google
+- [x] 1.4 `npm start`: strony S-01 działają jak dotąd, tekst jest w IBM Plex Sans (DevTools, Computed font), a w zakładce Network nie ma żądań do Google — 0ae9a9b
 
 ### Phase 2: Szkielety stron
 

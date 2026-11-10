@@ -8,7 +8,9 @@ body {
   color: var(--mat-sys-on-surface);
 }
 
-:focus-visible {
+/* Material components draw their own focus indicator; this covers plain links and buttons only. */
+a:focus-visible,
+button:not(.mat-mdc-button-base):focus-visible {
   outline: 2px solid var(--st-navy);
   outline-offset: 2px;
 }
