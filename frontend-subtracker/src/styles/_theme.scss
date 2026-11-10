@@ -1,0 +1,75 @@
+// The single application theme: Material system tokens, component shapes and semantic colours.
+@use '@angular/material' as mat;
+@use './theme-colors';
+
+$navy: #14284b;
+$green: #0b6b4d;
+$shape: 4px;
+
+html {
+  color-scheme: light;
+
+  @include mat.theme(
+    (
+      color: (
+        primary: theme-colors.$primary-palette,
+        tertiary: theme-colors.$tertiary-palette,
+        theme-type: light,
+      ),
+      typography: (
+        plain-family: 'IBM Plex Sans',
+        brand-family: 'IBM Plex Sans',
+      ),
+    )
+  );
+
+  // The generated palette approximates the brand colour; pin the exact value.
+  @include mat.theme-overrides(
+    (
+      primary: $navy,
+      on-primary: #ffffff,
+    )
+  );
+
+  // Density is set per component, not in mat.theme, so buttons and checkboxes keep their size.
+  @include mat.form-field-density(-2);
+
+  @include mat.form-field-overrides(
+    (
+      outlined-container-shape: $shape,
+    )
+  );
+
+  // Only the main action (mat-flat-button) is green; secondary actions use stroked/text buttons.
+  @include mat.button-overrides(
+    (
+      filled-container-color: $green,
+      filled-label-text-color: #ffffff,
+      filled-container-height: 48px,
+      filled-container-shape: $shape,
+      outlined-container-shape: $shape,
+      text-container-shape: $shape,
+      protected-container-shape: $shape,
+    )
+  );
+
+  @include mat.button-toggle-overrides(
+    (
+      shape: $shape,
+    )
+  );
+}
+
+:root {
+  --st-navy: #{$navy};
+  --st-green: #{$green};
+  --st-warning-bg: #fdf1dc;
+  --st-warning-text: #6b4100;
+  --st-success-bg: #e3f4ea;
+  --st-success-text: #0b5a3f;
+  --st-error-bg: #fdecea;
+  --st-error-text: #a1191a;
+  --st-muted: #4f5d6c;
+  --st-line: #d5dce3;
+  --st-page: #f3f5f7;
+}

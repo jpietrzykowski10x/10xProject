@@ -1,8 +1,21 @@
+@use 'styles/theme';
+
 /* Shared by all pages: their markup is simple enough not to need component styles yet. */
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
-  color: #222;
+  font-family: var(--mat-sys-body-large-font), sans-serif;
+  background: var(--st-page);
+  color: var(--mat-sys-on-surface);
+}
+
+:focus-visible {
+  outline: 2px solid var(--st-navy);
+  outline-offset: 2px;
+}
+
+/* Amounts line up in columns. */
+.st-amount {
+  font-variant-numeric: tabular-nums;
 }
 
 .page {
