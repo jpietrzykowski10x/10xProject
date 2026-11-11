@@ -430,15 +430,15 @@ Brak danych do migracji. Wycofanie to `rollback.sh frontend` na serwerze, bez wp
 
 #### Automated
 
-- [ ] 5.1 CI na PR jest zielone: joby `backend`, `frontend`, `deploy-scripts`
-- [ ] 5.2 Deploy frontendu na `main` przeszedł, wraz z health-checkiem
+- [x] 5.1 CI na PR jest zielone: joby `backend`, `frontend`, `deploy-scripts` — fcd49d9
+- [x] 5.2 Deploy frontendu na `main` przeszedł, wraz z health-checkiem — fcd49d9
 
 #### Manual
 
-- [ ] 5.3 Na produkcji wszystkie strony mają nowy wygląd, a czcionka ładuje się z domeny aplikacji (Network, brak żądań do Google)
-- [ ] 5.4 Pełny przepływ na produkcji: strona startowa → rejestracja → link z maila → pusta lista → wylogowanie
-- [ ] 5.5 Na prawdziwym telefonie: strona startowa, rejestracja, logowanie i lista są czytelne, menu działa, nie ma poziomego przewijania
-- [ ] 5.6 Pomiar na produkcji: zalogowany widzi stronę startową krócej niż 1 s (mediana z 5 przeładowań); jeśli nie, wariant SSR z fazy 4 i ponowny deploy przed archiwizacją
+- [x] 5.3 Na produkcji wszystkie strony mają nowy wygląd, a czcionka ładuje się z domeny aplikacji (Network, brak żądań do Google) — fcd49d9
+- [x] 5.4 Pełny przepływ na produkcji: strona startowa → rejestracja → link z maila → pusta lista → wylogowanie
+- [x] 5.5 Na prawdziwym telefonie: strona startowa, rejestracja, logowanie i lista są czytelne, menu działa, nie ma poziomego przewijania
+- [x] 5.6 Pomiar na produkcji: zalogowany widzi stronę startową krócej niż 1 s (mediana z 5 przeładowań); jeśli nie, wariant SSR z fazy 4 i ponowny deploy przed archiwizacją — f677ed3
 
 ## Follow-ups
 
