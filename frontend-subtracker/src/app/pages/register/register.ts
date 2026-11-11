@@ -1,6 +1,10 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatButton } from '@angular/material/button';
+import { MatCheckbox } from '@angular/material/checkbox';
+import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
+import { MatInput } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 import { PublicLayout } from '../../layout/public-layout/public-layout';
 import { AuthService } from '../../auth/auth.service';
@@ -10,7 +14,17 @@ type RegisterState = 'idle' | 'sending' | 'sent' | 'invalid' | 'unavailable';
 
 @Component({
   selector: 'app-register',
-  imports: [PublicLayout, ReactiveFormsModule, RouterLink],
+  imports: [
+    MatButton,
+    MatCheckbox,
+    MatError,
+    MatFormField,
+    MatInput,
+    MatLabel,
+    PublicLayout,
+    ReactiveFormsModule,
+    RouterLink,
+  ],
   templateUrl: './register.html',
 })
 export class Register {

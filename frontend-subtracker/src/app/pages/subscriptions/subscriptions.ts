@@ -5,5 +5,6 @@ import { AppShell } from '../../layout/app-shell/app-shell';
   selector: 'app-subscriptions',
   imports: [AppShell],
   templateUrl: './subscriptions.html',
+  styleUrl: './subscriptions.scss',
 })
 export class Subscriptions {}

@@ -1,0 +1,16 @@
+.subscriptions__title {
+  margin: 0 0 24px;
+  font: var(--mat-sys-headline-small);
+  font-weight: 700;
+}
+
+// Empty state: a white panel in the content area, like the table that replaces it in S-02.
+.subscriptions__empty {
+  margin: 0;
+  padding: 32px 24px;
+  border: 1px solid var(--st-line);
+  border-radius: 4px;
+  background: var(--mat-sys-surface);
+  color: var(--st-muted);
+  text-align: center;
+}

@@ -2,38 +2,29 @@
   <h1 layoutAside>Logowanie</h1>
 
   @if (state() === 'sent') {
-    <p class="message message--success" role="status">Jeśli konto istnieje, wysłaliśmy link.</p>
+    <p class="st-notice st-notice--success" role="status">Jeśli konto istnieje, wysłaliśmy link.</p>
   } @else {
-    <form [formGroup]="form" (ngSubmit)="submit()">
-      <div class="field">
-        <label for="sign-in-email">Adres e-mail</label>
-        <input
-          id="sign-in-email"
-          type="email"
-          autocomplete="email"
-          formControlName="email"
-          [attr.aria-invalid]="submitted() && form.controls.email.invalid"
-          [attr.aria-describedby]="
-            submitted() && form.controls.email.invalid ? 'sign-in-email-error' : null
-          "
-        />
-        @if (submitted() && form.controls.email.invalid) {
-          <p id="sign-in-email-error" class="field-error">Podaj poprawny adres e-mail.</p>
-        }
-      </div>
+    <form class="st-form" [formGroup]="form" (ngSubmit)="submit()">
+      <!-- mat-error shows after the field is left or the form is submitted, and Material links it
+           to the input through aria-describedby. -->
+      <mat-form-field>
+        <mat-label>Adres e-mail</mat-label>
+        <input matInput type="email" autocomplete="email" formControlName="email" />
+        <mat-error>Podaj poprawny adres e-mail.</mat-error>
+      </mat-form-field>
 
       @if (state() === 'invalid') {
-        <p class="message message--error" role="alert">
+        <p class="st-notice st-notice--error" role="alert">
           Sprawdź adres e-mail: wygląda na niepoprawny.
         </p>
       }
       @if (state() === 'unavailable') {
-        <p class="message message--error" role="alert">
+        <p class="st-notice st-notice--error" role="alert">
           Serwis jest chwilowo niedostępny. Spróbuj ponownie za chwilę.
         </p>
       }
 
-      <button type="submit" [disabled]="state() === 'sending'">Wyślij link</button>
+      <button mat-flat-button type="submit" [disabled]="state() === 'sending'">Wyślij link</button>
     </form>
   }
 

@@ -1,6 +1,7 @@
 @use 'styles/theme';
+@use 'styles/notices';
+@use 'styles/forms';
 
-/* Shared by all pages: their markup is simple enough not to need component styles yet. */
 body {
   margin: 0;
   font-family: var(--mat-sys-body-large-font), sans-serif;
@@ -18,56 +19,4 @@ button:not(.mat-mdc-button-base):focus-visible {
 /* Amounts line up in columns. */
 .st-amount {
   font-variant-numeric: tabular-nums;
-}
-
-.page {
-  max-width: 32rem;
-  padding: 2rem;
-}
-
-.field {
-  margin-bottom: 1rem;
-}
-
-.field label:not(.checkbox) {
-  display: block;
-  margin-bottom: 0.25rem;
-}
-
-.field input[type='email'] {
-  box-sizing: border-box;
-  width: 100%;
-  padding: 0.5rem;
-  font: inherit;
-}
-
-.checkbox {
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-start;
-}
-
-.field-error {
-  margin: 0.25rem 0 0;
-  color: #b71c1c;
-}
-
-.message {
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-}
-
-.message--success {
-  background: #e3f6e8;
-  color: #1b5e20;
-}
-
-.message--error {
-  background: #fdecea;
-  color: #b71c1c;
-}
-
-button {
-  padding: 0.5rem 1rem;
-  font: inherit;
 }

@@ -2,79 +2,57 @@
   <h1 layoutAside>Rejestracja</h1>
 
   @if (state() === 'sent') {
-    <p class="message message--success" role="status">
+    <p class="st-notice st-notice--success" role="status">
       Sprawdź skrzynkę. Znajdziesz w niej wiadomość z linkiem ważnym przez 15 minut.
     </p>
   } @else {
-    <form [formGroup]="form" (ngSubmit)="submit()">
-      <div class="field">
-        <label for="register-email">Adres e-mail</label>
-        <input
-          id="register-email"
-          type="email"
-          autocomplete="email"
-          formControlName="email"
-          [attr.aria-invalid]="submitted() && form.controls.email.invalid"
-          [attr.aria-describedby]="
-            submitted() && form.controls.email.invalid ? 'register-email-error' : null
-          "
-        />
-        @if (submitted() && form.controls.email.invalid) {
-          <p id="register-email-error" class="field-error">Podaj poprawny adres e-mail.</p>
-        }
-      </div>
+    <form class="st-form" [formGroup]="form" (ngSubmit)="submit()">
+      <!-- mat-error shows after the field is left or the form is submitted, and Material links it
+           to the input through aria-describedby. -->
+      <mat-form-field>
+        <mat-label>Adres e-mail</mat-label>
+        <input matInput type="email" autocomplete="email" formControlName="email" />
+        <mat-error>Podaj poprawny adres e-mail.</mat-error>
+      </mat-form-field>
 
-      <div class="field">
-        <label class="checkbox">
-          <input
-            type="checkbox"
-            formControlName="confirmedAdult"
-            [attr.aria-invalid]="submitted() && form.controls.confirmedAdult.invalid"
-            [attr.aria-describedby]="
-              submitted() && form.controls.confirmedAdult.invalid ? 'register-adult-error' : null
-            "
-          />
-          <span>Oświadczam, że mam ukończone 18 lat.</span>
-        </label>
-        @if (submitted() && form.controls.confirmedAdult.invalid) {
-          <p id="register-adult-error" class="field-error">To oświadczenie jest wymagane.</p>
-        }
-      </div>
+      <mat-checkbox
+        formControlName="confirmedAdult"
+        [aria-describedby]="
+          submitted() && form.controls.confirmedAdult.invalid ? 'register-adult-error' : ''
+        "
+        >Oświadczam, że mam ukończone 18 lat.</mat-checkbox
+      >
+      @if (submitted() && form.controls.confirmedAdult.invalid) {
+        <p id="register-adult-error" class="st-control-error">To oświadczenie jest wymagane.</p>
+      }
 
-      <div class="field">
-        <label class="checkbox">
-          <input
-            type="checkbox"
-            formControlName="acceptedPrivacyPolicy"
-            [attr.aria-invalid]="submitted() && form.controls.acceptedPrivacyPolicy.invalid"
-            [attr.aria-describedby]="
-              submitted() && form.controls.acceptedPrivacyPolicy.invalid
-                ? 'register-policy-error'
-                : null
-            "
-          />
-          <span>
-            Akceptuję
-            <a routerLink="/privacy-policy" target="_blank">politykę prywatności</a>.
-          </span>
-        </label>
-        @if (submitted() && form.controls.acceptedPrivacyPolicy.invalid) {
-          <p id="register-policy-error" class="field-error">Akceptacja polityki jest wymagana.</p>
-        }
-      </div>
+      <mat-checkbox
+        formControlName="acceptedPrivacyPolicy"
+        [aria-describedby]="
+          submitted() && form.controls.acceptedPrivacyPolicy.invalid ? 'register-policy-error' : ''
+        "
+      >
+        Akceptuję
+        <a routerLink="/privacy-policy" target="_blank">politykę prywatności</a>.
+      </mat-checkbox>
+      @if (submitted() && form.controls.acceptedPrivacyPolicy.invalid) {
+        <p id="register-policy-error" class="st-control-error">
+          Akceptacja polityki jest wymagana.
+        </p>
+      }
 
       @if (state() === 'invalid') {
-        <p class="message message--error" role="alert">
+        <p class="st-notice st-notice--error" role="alert">
           Sprawdź adres e-mail: wygląda na niepoprawny.
         </p>
       }
       @if (state() === 'unavailable') {
-        <p class="message message--error" role="alert">
+        <p class="st-notice st-notice--error" role="alert">
           Serwis jest chwilowo niedostępny. Spróbuj ponownie za chwilę.
         </p>
       }
 
-      <button type="submit" [disabled]="state() === 'sending'">Załóż konto</button>
+      <button mat-flat-button type="submit" [disabled]="state() === 'sending'">Załóż konto</button>
     </form>
 
     <p>Masz już konto? <a routerLink="/sign-in">Zaloguj się</a></p>
