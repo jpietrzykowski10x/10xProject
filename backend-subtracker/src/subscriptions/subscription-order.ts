@@ -1,3 +1,4 @@
+import { POLISH_COLLATION } from '../shared/database/polish-collation.js';
 import { SubscriptionSort, SubscriptionStatus } from './subscription.types.js';
 
 // Lower groups come first: running subscriptions, then those ending, then the ended ones.
@@ -35,7 +36,12 @@ export function subscriptionOrder(
           expression: `CASE WHEN ${alias}.status = '${SubscriptionStatus.TRIAL}' THEN ${alias}.trialEndDate ELSE ${alias}.nextBillingDate END`,
           direction: 'ASC',
         },
-        { expression: `lower(${alias}.name)`, direction: 'ASC' },
+        // Without case, in Polish order whatever the database locale (lower() folds Polish
+        // letters under C.UTF-8 too; only the sorting needs the ICU collation).
+        {
+          expression: `lower(${alias}.name) COLLATE "${POLISH_COLLATION}"`,
+          direction: 'ASC',
+        },
         { expression: `${alias}.createdAt`, direction: 'ASC' },
       ];
     }

@@ -13,7 +13,10 @@ import { Mail } from './../src/mail/entities/mail.entity.js';
 import { MAIL_TRANSPORT } from './../src/mail/mail.transport.js';
 import type { MailMessage } from './../src/mail/mail.types.js';
 import { DEFAULT_CATEGORIES } from './../src/subscriptions/default-categories.js';
-import { Category } from './../src/subscriptions/entities/category.entity.js';
+import {
+  Category,
+  CATEGORY_OWNER_NAME_INDEX,
+} from './../src/subscriptions/entities/category.entity.js';
 import { Subscription } from './../src/subscriptions/entities/subscription.entity.js';
 import type {
   CategoryResponse,
@@ -357,6 +360,10 @@ describe('Subscriptions (e2e)', () => {
       await postCategory(cookie, 'PRACA').expect(409);
       await postCategory(cookie, 'inne').expect(409);
       await postCategory(cookie, 'INNE').expect(409);
+      // Polish capitals fold in the application, whatever the database locale.
+      await postCategory(cookie, 'Ślub').expect(201);
+      await postCategory(cookie, 'ślub').expect(409);
+      await postCategory(cookie, 'ŚLUB').expect(409);
       await postCategory(cookie, '').expect(400);
       await postCategory(cookie, 'a'.repeat(51)).expect(400);
     });
@@ -381,11 +388,18 @@ describe('Subscriptions (e2e)', () => {
     it('lets the database refuse a duplicate the lookup did not see', async () => {
       const { address } = await signIn();
       const userId = await userIdOf(address);
-      await repository(Category).insert({ userId, name: 'Kopia' });
+      await repository(Category).insert({
+        userId,
+        name: 'Żółw',
+        nameKey: 'żółw',
+      });
 
+      // The constraint name is what CategoriesService maps to 409.
       await expect(
-        repository(Category).insert({ userId, name: 'KOPIA' }),
-      ).rejects.toMatchObject({ driverError: { code: '23505' } });
+        repository(Category).insert({ userId, name: 'ŻÓŁW', nameKey: 'żółw' }),
+      ).rejects.toMatchObject({
+        driverError: { code: '23505', constraint: CATEGORY_OWNER_NAME_INDEX },
+      });
     });
   });
 
@@ -428,6 +442,18 @@ describe('Subscriptions (e2e)', () => {
     const names = (await getSubscriptions(cookie)).map((row) => row.name);
 
     expect(names).toEqual(['alfa', 'Beta', 'Celka', 'Delta']);
+  });
+
+  it('breaks a tie on the date by the name in Polish order', async () => {
+    const { cookie } = await signIn();
+    // Code-point order (a C.UTF-8 database) would put "Ślub" after "Zoo".
+    for (const name of ['Zoo', 'Ślub', 'słoń', 'Sad']) {
+      await postSubscription(cookie, subscriptionBody({ name })).expect(201);
+    }
+
+    const names = (await getSubscriptions(cookie)).map((row) => row.name);
+
+    expect(names).toEqual(['Sad', 'słoń', 'Ślub', 'Zoo']);
   });
 
   it('removes the subscriptions and own categories of a deleted user', async () => {

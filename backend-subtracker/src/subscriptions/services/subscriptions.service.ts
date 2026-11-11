@@ -67,6 +67,8 @@ export class SubscriptionsService {
       );
     }
 
+    // save() fills id and createdAt from RETURNING; the rest is what was written, the amount
+    // already in the numeric(10,2) form the list reads back ("43.00").
     const saved = await this.subscriptions.save(
       this.subscriptions.create({
         userId,
@@ -83,8 +85,6 @@ export class SubscriptionsService {
         nextBillingDate: dto.nextBillingDate,
       }),
     );
-    // Read back so the answer shows the stored values, as the list will.
-    const stored = await this.subscriptions.findOneByOrFail({ id: saved.id });
-    return toSubscriptionResponse(stored, category);
+    return toSubscriptionResponse(saved, category);
   }
 }

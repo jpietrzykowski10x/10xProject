@@ -6,11 +6,14 @@ import {
   envFromConfig,
   isAutoSynchronization,
 } from '../../config/env.js';
+import { toNameKey } from '../../shared/text/name-key.js';
 import { DEFAULT_CATEGORIES } from '../default-categories.js';
 import {
   Category,
   CATEGORY_OWNER_NAME_INDEX_SQL,
 } from '../entities/category.entity.js';
+
+const LEGACY_CATEGORY_OWNER_NAME_INDEX = 'UQ_category_owner_name';
 
 // Synchronization builds the dev database from entities without running migrations, so neither
 // the seed migration nor the hand-written unique index reaches it. Every other database gets both
@@ -30,9 +33,20 @@ export class CategoriesSeeder implements OnApplicationBootstrap {
       .createQueryBuilder()
       .insert()
       .into(Category)
-      .values(DEFAULT_CATEGORIES.map(({ id, name }) => ({ id, name })))
+      .values(
+        DEFAULT_CATEGORIES.map(({ id, name }) => ({
+          id,
+          name,
+          nameKey: toNameKey(name),
+        })),
+      )
       .orIgnore()
       .execute();
+    // The index on lower(name) that UQ_category_owner_name_key replaced; a dev database created
+    // before the CategoryNameKey migration still has it.
+    await this.dataSource.query(
+      `DROP INDEX IF EXISTS "${LEGACY_CATEGORY_OWNER_NAME_INDEX}"`,
+    );
     await this.dataSource.query(CATEGORY_OWNER_NAME_INDEX_SQL);
   }
 }

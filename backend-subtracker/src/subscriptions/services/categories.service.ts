@@ -2,6 +2,7 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { isUniqueViolation } from '../../shared/database/unique-violation.js';
+import { toNameKey } from '../../shared/text/name-key.js';
 import { DEFAULT_CATEGORIES } from '../default-categories.js';
 import {
   Category,
@@ -50,12 +51,13 @@ export class CategoriesService {
   // The lookup gives the usual answer; the unique index catches two requests that both passed it.
   // The index only covers names within one owner, so the lookup alone guards against a default.
   async create(userId: string, name: string): Promise<CategoryResponse> {
+    const nameKey = toNameKey(name);
     const taken = await this.categories
       .createQueryBuilder('category')
       .where('(category.userId IS NULL OR category.userId = :userId)', {
         userId,
       })
-      .andWhere('lower(category.name) = lower(:name)', { name })
+      .andWhere('category.nameKey = :nameKey', { nameKey })
       .getExists();
     if (taken) {
       throw new ConflictException();
@@ -63,7 +65,7 @@ export class CategoriesService {
 
     try {
       const category = await this.categories.save(
-        this.categories.create({ userId, name }),
+        this.categories.create({ userId, name, nameKey }),
       );
       return toCategoryResponse(category);
     } catch (error) {

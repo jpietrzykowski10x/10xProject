@@ -26,9 +26,9 @@ describe('subscriptionOrder', () => {
     });
   });
 
-  it('breaks ties by the name without case, then by the creation time', () => {
+  it('breaks ties by the name without case in Polish order, then by the creation time', () => {
     expect(terms.slice(2)).toEqual([
-      { expression: 'lower(s.name)', direction: 'ASC' },
+      { expression: 'lower(s.name) COLLATE "pl-PL-x-icu"', direction: 'ASC' },
       { expression: 's.createdAt', direction: 'ASC' },
     ]);
   });
