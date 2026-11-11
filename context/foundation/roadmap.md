@@ -147,7 +147,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** —
 - **Blockers:** — (ochrona CSRF zrobiona w `csrf-protection`, na produkcji od 2026-11-11).
 - **Unknowns:**
-  - Jaka jest predefiniowana lista kategorii na start? — Owner: user. Block: no.
+  - ~~Jaka jest predefiniowana lista kategorii na start?~~ Rozstrzygnięte w S-02: 9 kategorii domyślnych (Streaming, Gry, Oprogramowanie i narzędzia, Chmura i dane, Edukacja, Zdrowie i sport, Prasa i książki, Dom i usługi, Inne) + własne.
 - **Risk:** Gwiazda przewodnia — stoi zaraz po logowaniu; ryzyko w czasie przejścia (< 3 min wg kryterium sukcesu), więc formularz musi być krótki mimo wielu pól.
 - **Status:** done
 
@@ -263,7 +263,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | F-01       | production-database-wiring   | Produkcyjna baza, migracje w deployu i CORS frontend→API | yes                   | Run `/10x-plan production-database-wiring` |
 | S-01       | magic-link-sign-in           | Logowanie magic linkiem                                   | yes                   | Run `/10x-plan magic-link-sign-in`     |
 | F-02       | ui-foundation                | Motyw Angular Material i docelowy układ ekranów S-01      | yes                   | Run `/10x-plan ui-foundation`          |
-| S-02       | first-subscription-in-list   | Dodanie subskrypcji i lista subskrypcji                   | no                    | Gotowe do planowania; gwiazda przewodnia |
+| S-02       | first-subscription-in-list   | Dodanie subskrypcji i lista subskrypcji                   | no                    | Zrobione: PR #16, na produkcji 2026-11-11 |
 | S-03       | edit-and-delete-subscription | Edycja i usuwanie subskrypcji                             | no                    | Czeka na S-02                          |
 | S-04       | dashboard-cost-totals        | Dashboard: sumy miesięczne i roczne per kategoria         | no                    | Czeka na S-02                          |
 | S-05       | subscription-lifecycle       | Automatyczne przejścia cyklu życia subskrypcji            | no                    | Czeka na S-02                          |
