@@ -414,17 +414,17 @@ Brak danych do migracji. Wycofanie to `rollback.sh frontend` na serwerze, bez wp
 
 #### Automated
 
-- [x] 4.1 Build przechodzi: `npm run build`
-- [x] 4.2 Prerenderowany `dist/frontend-subtracker/browser/index.html` zawiera tekst „Ile naprawdę płacisz za subskrypcje?”
-- [x] 4.3 Paczka deployu przechodzi: `npm run prepare-mydevil`
+- [x] 4.1 Build przechodzi: `npm run build` — 870ec91
+- [x] 4.2 Prerenderowany `dist/frontend-subtracker/browser/index.html` zawiera tekst „Ile naprawdę płacisz za subskrypcje?” — 870ec91
+- [x] 4.3 Paczka deployu przechodzi: `npm run prepare-mydevil` — 870ec91
 
 #### Manual
 
 - [x] 4.4 Strona startowa zgadza się z makietą na desktopie i przy 390 px, bez poziomego przewijania
 - [x] 4.5 Przy wyłączonym JavaScripcie treść `/` jest widoczna
-- [x] 4.6 Niezalogowany na `/` zostaje na stronie startowej; „Załóż konto” i „Zaloguj się” prowadzą do właściwych stron
-- [x] 4.7 Lokalnie przez `npm start` (API na localhost:3000): zalogowany wchodzący na `/` trafia na `/subscriptions`; czas mierzymy dopiero na produkcji (5.6)
-- [x] 4.8 Konsola bez błędów hydratacji na `/`, także przy przekierowaniu zalogowanego
+- [x] 4.6 Niezalogowany na `/` zostaje na stronie startowej; „Załóż konto” i „Zaloguj się” prowadzą do właściwych stron — 870ec91
+- [x] 4.7 Lokalnie przez `npm start` (API na localhost:3000): zalogowany wchodzący na `/` trafia na `/subscriptions`; czas mierzymy dopiero na produkcji (5.6) — 870ec91
+- [x] 4.8 Konsola bez błędów hydratacji na `/`, także przy przekierowaniu zalogowanego — 870ec91
 
 ### Phase 5: Wdrożenie
 
