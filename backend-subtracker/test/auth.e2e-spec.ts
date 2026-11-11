@@ -11,6 +11,7 @@ import { Session } from './../src/auth/entities/session.entity.js';
 import { AuthService } from './../src/auth/services/auth.service.js';
 import { hashToken } from './../src/auth/services/session.service.js';
 import { type EnvConfig, envFromConfig } from './../src/config/env.js';
+import { applyHttpSecurity } from './../src/config/http-security.js';
 import { Mail } from './../src/mail/entities/mail.entity.js';
 import { MAIL_TRANSPORT } from './../src/mail/mail.transport.js';
 import { type MailMessage, MailStatus } from './../src/mail/mail.types.js';
@@ -146,6 +147,8 @@ describe('Auth flow (e2e)', () => {
       moduleFixture.get<ConfigService<EnvConfig, true>>(ConfigService),
     );
     app = moduleFixture.createNestApplication();
+    // The production policy (CORS, CSRF, headers), so these tests cover what main.ts serves.
+    applyHttpSecurity(app, env.CORS_ORIGINS);
     await app.init();
     dataSource = app.get(DataSource);
     // Leftovers of a run that was killed before its cleanup.
@@ -372,6 +375,23 @@ describe('Auth flow (e2e)', () => {
       const unknown = await postVerify('nieznany-token').expect(401);
 
       expect(unknown.body).toEqual(used.body);
+    });
+
+    // Login CSRF: a foreign page auto-posts the attacker's own token to sign the victim in.
+    it('refuses a token posted from a foreign site and leaves it usable', async () => {
+      const address = newAddress();
+      await postRegister(address).expect(202);
+      const token = await latestToken(address);
+
+      const forged = await postVerify(token)
+        .set('Origin', 'https://example.com')
+        .set('Sec-Fetch-Site', 'cross-site')
+        .expect(403);
+
+      expect(forged.headers['set-cookie']).toBeUndefined();
+      const user = await findUser(address);
+      expect(await repository(Session).countBy({ userId: user.id })).toBe(0);
+      await postVerify(token).expect(200);
     });
 
     it('refuses the token of an inactive user and creates no session', async () => {

@@ -84,6 +84,43 @@ describe('AppController (e2e)', () => {
       .expect(204);
   });
 
+  describe('CSRF protection', () => {
+    const FOREIGN_ORIGIN = 'https://example.com';
+    const postLogout = () => request(app.getHttpServer()).post('/auth/logout');
+
+    it('refuses a state-changing request from a foreign site', () => {
+      return postLogout()
+        .set('Origin', FOREIGN_ORIGIN)
+        .set('Sec-Fetch-Site', 'cross-site')
+        .expect(403);
+    });
+
+    // An older browser sends Origin but no Sec-Fetch-Site.
+    it('refuses a foreign Origin without Sec-Fetch-Site', () => {
+      return postLogout().set('Origin', FOREIGN_ORIGIN).expect(403);
+    });
+
+    // The frontend runs on another subdomain of the same site.
+    it('lets the frontend through from a trusted origin', () => {
+      return postLogout()
+        .set('Origin', allowedOrigin)
+        .set('Sec-Fetch-Site', 'same-site')
+        .expect(204);
+    });
+
+    it('lets a client without browser headers through', () => {
+      return postLogout().expect(204);
+    });
+
+    it('does not block safe methods from a foreign site', () => {
+      return request(app.getHttpServer())
+        .get('/health')
+        .set('Origin', FOREIGN_ORIGIN)
+        .set('Sec-Fetch-Site', 'cross-site')
+        .expect(200);
+    });
+  });
+
   afterEach(async () => {
     await app.close();
   });
