@@ -9,6 +9,8 @@ $shape: 4px;
 $navy: #14284b;
 $navy-tint: #dce3f0;
 $navy-soft: #c5d1e2;
+$navy-line: #33486c; // dividers on the navy column
+$on-navy-soft: #e3e9f2; // secondary text on navy
 $green: #0b6b4d;
 $green-dark: #0b5a3f;
 $green-tint: #e3f4ea;
@@ -135,6 +137,8 @@ html {
   --st-column-width: clamp(260px, 22vw, 300px);
   --st-navy: #{$navy};
   --st-navy-soft: #{$navy-soft};
+  --st-navy-line: #{$navy-line};
+  --st-on-navy-soft: #{$on-navy-soft};
   --st-green: #{$green};
   --st-warning-bg: #{$warning-tint};
   --st-warning-text: #{$warning-text};

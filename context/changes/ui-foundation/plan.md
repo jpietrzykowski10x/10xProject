@@ -439,3 +439,11 @@ Brak danych do migracji. Wycofanie to `rollback.sh frontend` na serwerze, bez wp
 - [ ] 5.4 Pełny przepływ na produkcji: strona startowa → rejestracja → link z maila → pusta lista → wylogowanie
 - [ ] 5.5 Na prawdziwym telefonie: strona startowa, rejestracja, logowanie i lista są czytelne, menu działa, nie ma poziomego przewijania
 - [ ] 5.6 Pomiar na produkcji: zalogowany widzi stronę startową krócej niż 1 s (mediana z 5 przeładowań); jeśli nie, wariant SSR z fazy 4 i ponowny deploy przed archiwizacją
+
+## Follow-ups
+
+Odstępstwa od planu przyjęte w przeglądzie implementacji (`reviews/impl-review.md`, F1, 2026-11-11):
+
+- Kolumna stron publicznych ma nazwę strony (`<h1 layoutAside>`), a opisy są pod formularzem w `.public-note` (decyzja z fazy 2 w `change.md`). Kolumna ma stałą szerokość `flex: 0 0 var(--st-column-width)` zamiast `1 1 300px`.
+- `/sign-in`: notka „Link zamiast hasła” z informacją o 15 minutach i jednorazowym użyciu (dopisane w triage).
+- `/auth/verify`: tytuł w kolumnie „Logowanie” (jak na `/sign-in`, zamiast „Potwierdzenie logowania”), nagłówek „Ostatni krok” i notka „Dlaczego trzeba kliknąć” o skanerach poczty. Bez zdania o 15 minutach: na tym etapie link już jest w ręku użytkownika.

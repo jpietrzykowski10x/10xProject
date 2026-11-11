@@ -30,4 +30,4 @@ Solo developer building SubTracker after hours in 7 weeks rejected the Astro-bas
 
 ## UI
 
-Angular Material 22 (M3), picked in `ui-foundation` because the chosen design only needs theme-level changes: `mat.theme` for colors, typography and density, `mat.theme-overrides` for the exact primary color, and component `*-overrides` mixins for shapes. The app-specific layout around it (summary column, warning strip) is plain SCSS. Fonts: IBM Plex Sans. Design direction and screens: `context/changes/ui-foundation/change.md`.
+Angular Material 22 (M3), picked in `ui-foundation` because the chosen design only needs theme-level changes: `mat.theme` for colors and typography, `mat.theme-overrides` for the exact primary color, component `*-overrides` mixins for shapes, and density set per component (`mat.form-field-density(-2)` only), not in `mat.theme`. The app-specific layout around it (summary column, warning strip) is plain SCSS. Fonts: IBM Plex Sans. Design direction and screens: `context/changes/ui-foundation/change.md`.

@@ -23,7 +23,7 @@
         >Oświadczam, że mam ukończone 18 lat.</mat-checkbox
       >
       @if (submitted() && form.controls.confirmedAdult.invalid) {
-        <p id="register-adult-error" class="st-control-error">To oświadczenie jest wymagane.</p>
+        <p id="register-adult-error" class="st-control-error" role="alert">To oświadczenie jest wymagane.</p>
       }
 
       <mat-checkbox
@@ -33,10 +33,10 @@
         "
       >
         Akceptuję
-        <a routerLink="/privacy-policy" target="_blank">politykę prywatności</a>.
+        <a routerLink="/privacy-policy" target="_blank" rel="noopener">politykę prywatności</a>.
       </mat-checkbox>
       @if (submitted() && form.controls.acceptedPrivacyPolicy.invalid) {
-        <p id="register-policy-error" class="st-control-error">
+        <p id="register-policy-error" class="st-control-error" role="alert">
           Akceptacja polityki jest wymagana.
         </p>
       }

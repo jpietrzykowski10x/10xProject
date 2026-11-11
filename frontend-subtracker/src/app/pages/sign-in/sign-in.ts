@@ -32,10 +32,8 @@ export class SignIn {
     email: ['', emailValidators],
   });
   protected readonly state = signal<SignInState>('idle');
-  protected readonly submitted = signal(false);
 
   protected submit(): void {
-    this.submitted.set(true);
     if (this.form.invalid) {
       return;
     }
