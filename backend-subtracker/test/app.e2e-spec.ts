@@ -88,11 +88,13 @@ describe('AppController (e2e)', () => {
     const FOREIGN_ORIGIN = 'https://example.com';
     const postLogout = () => request(app.getHttpServer()).post('/auth/logout');
 
+    // The security headers are written before the check, so the 403 carries them too.
     it('refuses a state-changing request from a foreign site', () => {
       return postLogout()
         .set('Origin', FOREIGN_ORIGIN)
         .set('Sec-Fetch-Site', 'cross-site')
-        .expect(403);
+        .expect(403)
+        .expect('X-Content-Type-Options', 'nosniff');
     });
 
     // An older browser sends Origin but no Sec-Fetch-Site.
@@ -106,6 +108,12 @@ describe('AppController (e2e)', () => {
         .set('Origin', allowedOrigin)
         .set('Sec-Fetch-Site', 'same-site')
         .expect(204);
+    });
+
+    // An older browser on the frontend: its Origin never matches the API host, so only the
+    // trusted origin lets it through.
+    it('lets the frontend through without Sec-Fetch-Site', () => {
+      return postLogout().set('Origin', allowedOrigin).expect(204);
     });
 
     it('lets a client without browser headers through', () => {

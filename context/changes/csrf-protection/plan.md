@@ -196,11 +196,11 @@ Brak zmian w bazie. Wycofanie: `rollback.sh api` na serwerze albo revert commita
 
 #### Automated
 
-- [ ] 2.1 CI na PR jest zielone: joby `backend`, `frontend`, `deploy-scripts`
-- [ ] 2.2 Deploy API na `main` przeszedł, wraz z health-checkiem
+- [x] 2.1 CI na PR jest zielone: joby `backend`, `frontend`, `deploy-scripts` — c6b27d7
+- [x] 2.2 Deploy API na `main` przeszedł, wraz z health-checkiem — c6b27d7
 
 #### Manual
 
-- [ ] 2.3 Na produkcji pełny przepływ z frontendu: logowanie linkiem, „Zaloguj”, pusta lista, „Wyloguj” — bez 403 w Network
-- [ ] 2.4 Na produkcji `curl -X POST https://apisubtracker.jakubpietrzykowski.pl/auth/logout -H "Origin: https://example.com" -H "Sec-Fetch-Site: cross-site"` zwraca 403, a to samo z `Origin: https://subtracker.jakubpietrzykowski.pl` i `Sec-Fetch-Site: same-site` zwraca 204
-- [ ] 2.5 Dokumentacja (`backend-patterns.md`, roadmapa, spec 10.6) opisuje wzorzec jako sprawdzony na produkcji
+- [x] 2.3 Na produkcji pełny przepływ z frontendu: logowanie linkiem, „Zaloguj”, pusta lista, „Wyloguj” — bez 403 w Network — c6b27d7
+- [x] 2.4 Na produkcji `curl -X POST https://apisubtracker.jakubpietrzykowski.pl/auth/logout -H "Origin: https://example.com" -H "Sec-Fetch-Site: cross-site"` zwraca 403, a to samo z `Origin: https://subtracker.jakubpietrzykowski.pl` i `Sec-Fetch-Site: same-site` zwraca 204 — c6b27d7
+- [x] 2.5 Dokumentacja (`backend-patterns.md`, roadmapa, spec 10.6) opisuje wzorzec jako sprawdzony na produkcji — c6b27d7

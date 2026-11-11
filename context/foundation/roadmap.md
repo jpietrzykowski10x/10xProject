@@ -128,7 +128,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **PRD refs:** FR-004, FR-007, FR-018, US-01
 - **Prerequisites:** S-01, F-02
 - **Parallel with:** —
-- **Blockers:** Ochrona CSRF przed startem S-02 (follow-up z S-01): `app.enableCsrfProtection` w `applyHttpSecurity` i test e2e.
+- **Blockers:** — (ochrona CSRF zrobiona w `csrf-protection`, na produkcji od 2026-11-11).
 - **Unknowns:**
   - Jaka jest predefiniowana lista kategorii na start? — Owner: user. Block: no.
 - **Risk:** Gwiazda przewodnia — stoi zaraz po logowaniu; ryzyko w czasie przejścia (< 3 min wg kryterium sukcesu), więc formularz musi być krótki mimo wielu pól.
@@ -230,7 +230,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | F-01       | production-database-wiring   | Produkcyjna baza, migracje w deployu i CORS frontend→API | yes                   | Run `/10x-plan production-database-wiring` |
 | S-01       | magic-link-sign-in           | Logowanie magic linkiem                                   | yes                   | Run `/10x-plan magic-link-sign-in`     |
 | F-02       | ui-foundation                | Motyw Angular Material i docelowy układ ekranów S-01      | yes                   | Run `/10x-plan ui-foundation`          |
-| S-02       | first-subscription-in-list   | Dodanie subskrypcji i lista subskrypcji                   | no                    | Czeka na F-02 i CSRF; gwiazda przewodnia |
+| S-02       | first-subscription-in-list   | Dodanie subskrypcji i lista subskrypcji                   | no                    | Gotowe do planowania; gwiazda przewodnia |
 | S-03       | edit-and-delete-subscription | Edycja i usuwanie subskrypcji                             | no                    | Czeka na S-02                          |
 | S-04       | dashboard-cost-totals        | Dashboard: sumy miesięczne i roczne per kategoria         | no                    | Czeka na S-02                          |
 | S-05       | subscription-lifecycle       | Automatyczne przejścia cyklu życia subskrypcji            | no                    | Czeka na S-02                          |
