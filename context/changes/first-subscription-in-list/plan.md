@@ -342,16 +342,16 @@ Dwie nowe migracje (schemat, dane startowe) uruchamiane przez `deploy.sh` po `pg
 
 #### Automated
 
-- [x] 1.1 Testy jednostkowe przechodzą: `cd backend-subtracker && npm test`
-- [x] 1.2 Testy e2e przechodzą, w tym `test/subscriptions.e2e-spec.ts`: `npm run test:e2e`
-- [x] 1.3 Lint przechodzi: `npm run lint`
-- [x] 1.4 Build przechodzi: `npm run build`
-- [x] 1.5 Migracje zastosowane na `subtracker-db`, a `npm run migration:generate -- Check` kończy się komunikatem „No changes in database schema were found”
+- [x] 1.1 Testy jednostkowe przechodzą: `cd backend-subtracker && npm test` — e905c67
+- [x] 1.2 Testy e2e przechodzą, w tym `test/subscriptions.e2e-spec.ts`: `npm run test:e2e` — e905c67
+- [x] 1.3 Lint przechodzi: `npm run lint` — e905c67
+- [x] 1.4 Build przechodzi: `npm run build` — e905c67
+- [x] 1.5 Migracje zastosowane na `subtracker-db`, a `npm run migration:generate -- Check` kończy się komunikatem „No changes in database schema were found” — e905c67
 
 #### Manual
 
-- [x] 1.6 Na bazie dev po starcie API `GET /categories` (zalogowany) zwraca 10 kategorii domyślnych
-- [x] 1.7 Przegląd wygenerowanej migracji: kaskady, indeksy, typy `numeric(10,2)` i `date`, ręczny indeks unikalności
+- [x] 1.6 Na bazie dev po starcie API `GET /categories` (zalogowany) zwraca 10 kategorii domyślnych — e905c67
+- [x] 1.7 Przegląd wygenerowanej migracji: kaskady, indeksy, typy `numeric(10,2)` i `date`, ręczny indeks unikalności — e905c67
 
 ### Phase 2: Frontend — lista subskrypcji
 
