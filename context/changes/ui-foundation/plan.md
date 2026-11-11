@@ -447,3 +447,5 @@ Odstępstwa od planu przyjęte w przeglądzie implementacji (`reviews/impl-revie
 - Kolumna stron publicznych ma nazwę strony (`<h1 layoutAside>`), a opisy są pod formularzem w `.public-note` (decyzja z fazy 2 w `change.md`). Kolumna ma stałą szerokość `flex: 0 0 var(--st-column-width)` zamiast `1 1 300px`.
 - `/sign-in`: notka „Link zamiast hasła” z informacją o 15 minutach i jednorazowym użyciu (dopisane w triage).
 - `/auth/verify`: tytuł w kolumnie „Logowanie” (jak na `/sign-in`, zamiast „Potwierdzenie logowania”), nagłówek „Ostatni krok” i notka „Dlaczego trzeba kliknąć” o skanerach poczty. Bez zdania o 15 minutach: na tym etapie link już jest w ręku użytkownika.
+
+Decyzja po pomiarze 5.6 (2026-11-11): pomiar na produkcji przeszedł (poniżej 1 s), ale mignięcie strony startowej przed przekierowaniem zalogowanego było wyraźnie widoczne, więc użytkownik wybrał wariant SSR z fazy 4 §3 (branch `change/ui-foundation-ssr`, drugi deploy). Różnice względem kontraktu: bez ciasteczka sesji guard na serwerze nie woła API; `Cache-Control: private, no-store` ustawia `headers` w `serverRoutes`, a nie `server.ts`.
