@@ -1,10 +1,10 @@
 ---
 change_id: ui-foundation
 title: Ui foundation
-status: impl_reviewed
+status: archived
 created: 2026-11-10
 updated: 2026-11-11
-archived_at: null
+archived_at: 2026-11-11T11:06:13Z
 ---
 
 ## Notes
