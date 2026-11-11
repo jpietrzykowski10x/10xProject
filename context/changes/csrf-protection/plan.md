@@ -182,15 +182,15 @@ Brak zmian w bazie. Wycofanie: `rollback.sh api` na serwerze albo revert commita
 
 #### Automated
 
-- [x] 1.1 Testy jednostkowe przechodzą: `cd backend-subtracker && npm test`
-- [x] 1.2 Testy e2e przechodzą, w tym nowe przypadki CSRF: `npm run test:e2e`
-- [x] 1.3 Lint przechodzi: `npm run lint`
-- [x] 1.4 Build przechodzi: `npm run build`
+- [x] 1.1 Testy jednostkowe przechodzą: `cd backend-subtracker && npm test` — 6351951
+- [x] 1.2 Testy e2e przechodzą, w tym nowe przypadki CSRF: `npm run test:e2e` — 6351951
+- [x] 1.3 Lint przechodzi: `npm run lint` — 6351951
+- [x] 1.4 Build przechodzi: `npm run build` — 6351951
 
 #### Manual
 
-- [x] 1.5 Lokalnie (`npm run start:dev` + `npm start` we frontendzie): rejestracja, logowanie linkiem, „Zaloguj” na `/auth/verify` i „Wyloguj” działają, a w Network żadne żądanie API nie dostaje 403
-- [x] 1.6 Lokalnie curl z `-H "Origin: https://example.com" -H "Sec-Fetch-Site: cross-site"` na `POST http://localhost:3000/auth/logout` zwraca 403
+- [x] 1.5 Lokalnie (`npm run start:dev` + `npm start` we frontendzie): rejestracja, logowanie linkiem, „Zaloguj” na `/auth/verify` i „Wyloguj” działają, a w Network żadne żądanie API nie dostaje 403 — 6351951
+- [x] 1.6 Lokalnie curl z `-H "Origin: https://example.com" -H "Sec-Fetch-Site: cross-site"` na `POST http://localhost:3000/auth/logout` zwraca 403 — 6351951
 
 ### Phase 2: Wdrożenie i dokumentacja
 
