@@ -420,8 +420,8 @@ Brak danych do migracji. Wycofanie to `rollback.sh frontend` na serwerze, bez wp
 
 #### Manual
 
-- [x] 4.4 Strona startowa zgadza się z makietą na desktopie i przy 390 px, bez poziomego przewijania
-- [x] 4.5 Przy wyłączonym JavaScripcie treść `/` jest widoczna
+- [x] 4.4 Strona startowa zgadza się z makietą na desktopie i przy 390 px, bez poziomego przewijania — 870ec91
+- [x] 4.5 Przy wyłączonym JavaScripcie treść `/` jest widoczna — 870ec91
 - [x] 4.6 Niezalogowany na `/` zostaje na stronie startowej; „Załóż konto” i „Zaloguj się” prowadzą do właściwych stron — 870ec91
 - [x] 4.7 Lokalnie przez `npm start` (API na localhost:3000): zalogowany wchodzący na `/` trafia na `/subscriptions`; czas mierzymy dopiero na produkcji (5.6) — 870ec91
 - [x] 4.8 Konsola bez błędów hydratacji na `/`, także przy przekierowaniu zalogowanego — 870ec91
@@ -430,15 +430,15 @@ Brak danych do migracji. Wycofanie to `rollback.sh frontend` na serwerze, bez wp
 
 #### Automated
 
-- [ ] 5.1 CI na PR jest zielone: joby `backend`, `frontend`, `deploy-scripts`
-- [ ] 5.2 Deploy frontendu na `main` przeszedł, wraz z health-checkiem
+- [x] 5.1 CI na PR jest zielone: joby `backend`, `frontend`, `deploy-scripts` — fcd49d9
+- [x] 5.2 Deploy frontendu na `main` przeszedł, wraz z health-checkiem — fcd49d9
 
 #### Manual
 
-- [ ] 5.3 Na produkcji wszystkie strony mają nowy wygląd, a czcionka ładuje się z domeny aplikacji (Network, brak żądań do Google)
-- [ ] 5.4 Pełny przepływ na produkcji: strona startowa → rejestracja → link z maila → pusta lista → wylogowanie
-- [ ] 5.5 Na prawdziwym telefonie: strona startowa, rejestracja, logowanie i lista są czytelne, menu działa, nie ma poziomego przewijania
-- [ ] 5.6 Pomiar na produkcji: zalogowany widzi stronę startową krócej niż 1 s (mediana z 5 przeładowań); jeśli nie, wariant SSR z fazy 4 i ponowny deploy przed archiwizacją
+- [x] 5.3 Na produkcji wszystkie strony mają nowy wygląd, a czcionka ładuje się z domeny aplikacji (Network, brak żądań do Google) — fcd49d9
+- [x] 5.4 Pełny przepływ na produkcji: strona startowa → rejestracja → link z maila → pusta lista → wylogowanie — fcd49d9
+- [x] 5.5 Na prawdziwym telefonie: strona startowa, rejestracja, logowanie i lista są czytelne, menu działa, nie ma poziomego przewijania — fcd49d9
+- [x] 5.6 Pomiar na produkcji: zalogowany widzi stronę startową krócej niż 1 s (mediana z 5 przeładowań); jeśli nie, wariant SSR z fazy 4 i ponowny deploy przed archiwizacją — f677ed3
 
 ## Follow-ups
 
@@ -449,3 +449,8 @@ Odstępstwa od planu przyjęte w przeglądzie implementacji (`reviews/impl-revie
 - `/auth/verify`: tytuł w kolumnie „Logowanie” (jak na `/sign-in`, zamiast „Potwierdzenie logowania”), nagłówek „Ostatni krok” i notka „Dlaczego trzeba kliknąć” o skanerach poczty. Bez zdania o 15 minutach: na tym etapie link już jest w ręku użytkownika.
 
 Decyzja po pomiarze 5.6 (2026-11-11): pomiar na produkcji przeszedł (poniżej 1 s), ale mignięcie strony startowej przed przekierowaniem zalogowanego było wyraźnie widoczne, więc użytkownik wybrał wariant SSR z fazy 4 §3 (branch `change/ui-foundation-ssr`, drugi deploy). Różnice względem kontraktu: bez ciasteczka sesji guard na serwerze nie woła API; `Cache-Control: private, no-store` ustawia `headers` w `serverRoutes`, a nie `server.ts`.
+
+Przegląd fazy 5 (`reviews/impl-review-phase-5.md`, 2026-11-11):
+
+- `authGuard` na serwerze też przekazuje ciasteczko sesji (F1, Fix B). Bez tego render po przekierowaniu z `/` wpadał w pętlę `/subscriptions` → `/sign-in` → `/subscriptions`. Bez żądania (prerender) guard kieruje na `/sign-in`, więc zapomniana w `serverRoutes` chroniona trasa nie trafi do statycznego HTML. Oba guardy przekazują do API tylko parę `subtracker_session=…`, nie cały nagłówek `Cookie`.
+- Budżet `anyComponentStyle` podniesiony z 4 / 8 kB do 10 / 25 kB (decyzja użytkownika), zamiast wynoszenia stylów strony startowej do `_home.scss`.
