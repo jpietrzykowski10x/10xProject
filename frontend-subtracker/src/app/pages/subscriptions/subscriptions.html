@@ -1,7 +1,8 @@
 <app-shell>
   <div class="subscriptions" [class.subscriptions--adding]="adding()">
-    <!-- On the phone the add view replaces the list: hidden by CSS, and inert as well. -->
-    <div class="subscriptions__main" [attr.inert]="adding() && isPhone() ? '' : null">
+    <!-- While the panel covers the list (drawer below 1200px, whole area on the phone) the list is
+         inert; on the phone CSS also hides it. -->
+    <div class="subscriptions__main" [attr.inert]="listCovered() ? '' : null">
       <div class="subscriptions__header">
         <h1 class="subscriptions__title">Twoje subskrypcje</h1>
         <!-- Desktop only; the phone has the bar at the bottom of the screen. -->
@@ -27,7 +28,8 @@
 
       @let current = state();
       @if (current.kind === 'loading') {
-        <p class="subscriptions__panel" role="status">Wczytywanie subskrypcji…</p>
+        <!-- No role="status": a live region inserted together with its text is often not read. -->
+        <p class="subscriptions__panel">Wczytywanie subskrypcji…</p>
       } @else if (current.kind === 'error') {
         <div class="st-notice st-notice--error subscriptions__error" role="alert">
           <p>Nie udało się wczytać subskrypcji. Serwis jest chwilowo niedostępny.</p>
@@ -56,14 +58,14 @@
     </div>
 
     <!-- One element at every width, so the form keeps what was typed when the window is resized.
-         Escape is not handled: it would also fire when a select or calendar overlay inside the
-         form is closed with Escape. -->
+         Escape closes it, unless it is closing a select inside the form (onPanelEscape). -->
     @if (formMounted()) {
       <section
         id="new-subscription-panel"
         class="add-panel"
         aria-labelledby="new-subscription-title"
         [hidden]="!adding()"
+        (keydown.escape)="onPanelEscape($event)"
       >
         <div class="add-panel__header">
           <h2 #panelTitle id="new-subscription-title" class="add-panel__title" tabindex="-1">

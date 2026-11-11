@@ -1,5 +1,12 @@
-<!-- On desktop the frame scrolls a narrow table sideways, so the page itself never does. -->
-<div class="table__frame">
+<!-- On desktop the frame scrolls a narrow table sideways, so the page itself never does. It is
+     focusable there, so a keyboard can scroll it: the desktop table has nothing focusable inside
+     (on the phone every row is a button). -->
+<div
+  class="table__frame"
+  role="region"
+  aria-label="Lista subskrypcji"
+  [attr.tabindex]="isPhone() ? null : 0"
+>
   <table
     mat-table
     class="table"

@@ -28,6 +28,11 @@
   border: 1px solid var(--st-line);
   border-radius: 4px;
   background: var(--mat-sys-surface);
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
 }
 
 // Fills the frame at every width. Material's own `min-width: 100%` is replaced by the 700px floor
@@ -43,8 +48,9 @@
     white-space: normal;
   }
 
-  // The last data row would draw its divider on top of the frame's border. Detail rows always
-  // come last in the DOM, so the last subscription row is the one before them.
+  // The last data row would draw its divider on top of the frame's border. With
+  // multiTemplateDataRows each subscription row is followed by its own detail row, so the last
+  // subscription row is the second to last child.
   .table__row:nth-last-child(2):not(.table__row--expanded) .mat-mdc-cell {
     border-bottom-width: 0;
   }

@@ -1,7 +1,7 @@
 ---
 change_id: first-subscription-in-list
 title: Dodanie pierwszej subskrypcji i lista subskrypcji
-status: implementing
+status: impl_reviewed
 created: 2026-11-11
 updated: 2026-11-11
 archived_at: null

@@ -2,6 +2,7 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   afterNextRender,
   Component,
+  computed,
   DestroyRef,
   ElementRef,
   inject,
@@ -12,9 +13,9 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButton } from '@angular/material/button';
-import { map } from 'rxjs';
+import { map, type Subscription as RxSubscription } from 'rxjs';
 import { AppShell } from '../../layout/app-shell/app-shell';
-import { PHONE_MEDIA_QUERY } from '../../shared/breakpoints';
+import { PHONE_MEDIA_QUERY, WIDE_MEDIA_QUERY } from '../../shared/breakpoints';
 import { SubscriptionForm } from '../../subscriptions/subscription-form/subscription-form';
 import { addedSubscriptionMessage } from '../../subscriptions/subscription-labels';
 import type { Subscription } from '../../subscriptions/subscription.types';
@@ -49,6 +50,7 @@ export class Subscriptions implements OnInit {
   private autoOpenDecided = false;
 
   protected readonly state = signal<ListState>({ kind: 'loading' });
+  private loadRequest?: RxSubscription;
   protected readonly adding = signal(false);
   // The form stays in the DOM after a plain close, so reopening continues with the typed data;
   // a save removes it, so the next opening starts with an empty form.
@@ -58,18 +60,28 @@ export class Subscriptions implements OnInit {
     this.breakpoints.observe(PHONE_MEDIA_QUERY).pipe(map((state) => state.matches)),
     { initialValue: this.breakpoints.isMatched(PHONE_MEDIA_QUERY) },
   );
+  // From 1200px the panel stands beside the list; below that it covers it (a drawer, or the whole
+  // content area on the phone), so the list is made inert while the panel is open.
+  private readonly isWide = toSignal(
+    this.breakpoints.observe(WIDE_MEDIA_QUERY).pipe(map((state) => state.matches)),
+    { initialValue: this.breakpoints.isMatched(WIDE_MEDIA_QUERY) },
+  );
+  protected readonly listCovered = computed(() => this.adding() && !this.isWide());
 
   ngOnInit(): void {
     this.load();
   }
 
   // `quiet` keeps the current list on screen while it is read again (after a save).
+  // A newer load cancels the older request, so an older response can never overwrite a newer one.
+  // A failed quiet load keeps the list already on screen.
   protected load(quiet = false): void {
     if (!quiet) {
       this.state.set({ kind: 'loading' });
     }
+    this.loadRequest?.unsubscribe();
     // The API returns the list in display order; it is not sorted again here.
-    this.subscriptions
+    this.loadRequest = this.subscriptions
       .list()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -77,7 +89,11 @@ export class Subscriptions implements OnInit {
           this.state.set({ kind: 'ready', subscriptions });
           this.autoOpen(subscriptions.length === 0);
         },
-        error: () => this.state.set({ kind: 'error' }),
+        error: () => {
+          if (!(quiet && this.state().kind === 'ready')) {
+            this.state.set({ kind: 'error' });
+          }
+        },
       });
   }
 
@@ -87,6 +103,17 @@ export class Subscriptions implements OnInit {
     } else {
       this.open();
     }
+  }
+
+  // Escape closes the panel, except when it is closing an open select inside the form: the
+  // select's trigger keeps the focus (aria-expanded="true") and may not have handled the key yet.
+  // The datepicker calendar lives in an overlay outside the panel, so its Escape never gets here.
+  protected onPanelEscape(event: Event): void {
+    const target = event.target instanceof Element ? event.target : null;
+    if (event.defaultPrevented || target?.closest('[aria-expanded="true"]')) {
+      return;
+    }
+    this.close();
   }
 
   protected close(): void {
@@ -138,9 +165,8 @@ export class Subscriptions implements OnInit {
   // Back to the "Dodaj subskrypcję" control of the current width; on the phone it reappears
   // with the list, so the focus waits for the next render.
   private focusAddControl(): void {
-    afterNextRender(
-      () => (this.isPhone() ? this.phoneAddButton() : this.addButton()).focus(),
-      { injector: this.injector },
-    );
+    afterNextRender(() => (this.isPhone() ? this.phoneAddButton() : this.addButton()).focus(), {
+      injector: this.injector,
+    });
   }
 }

@@ -219,10 +219,14 @@ export class SubscriptionForm implements OnInit {
           this.addingCategory.set(false);
           this.categories.set(categories);
           this.categoriesFailed.set(false);
-          this.form.controls.categoryId.setValue(created.id);
           this.categoryName.reset();
-          // The name field disappears with the option; focus stays on the category.
-          this.categorySelect().focus();
+          // Only if "Dodaj własną…" is still chosen: a category picked while the request was in
+          // flight is the user's choice and stays.
+          if (this.form.controls.categoryId.value === NEW_CATEGORY) {
+            this.form.controls.categoryId.setValue(created.id);
+            // The name field disappears with the option; focus stays on the category.
+            this.categorySelect().focus();
+          }
         },
         error: (error: HttpErrorResponse) => {
           this.addingCategory.set(false);
