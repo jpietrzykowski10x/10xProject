@@ -2,7 +2,7 @@
   <div class="subscriptions" [class.subscriptions--adding]="adding()">
     <!-- While the panel covers the list (drawer below 1200px, whole area on the phone) the list is
          inert; on the phone CSS also hides it. -->
-    <div class="subscriptions__main" [attr.inert]="listCovered() ? '' : null">
+    <div #listArea class="subscriptions__main" [attr.inert]="listCovered() ? '' : null">
       <div class="subscriptions__header">
         <h1 class="subscriptions__title">Twoje subskrypcje</h1>
         <!-- Desktop only; the phone has the bar at the bottom of the screen. -->
@@ -25,6 +25,14 @@
           <p class="st-notice st-notice--success">{{ message }}</p>
         }
       </div>
+
+      <!-- After a save the list is read again; when that fails the old list stays below. -->
+      @if (refreshFailed()) {
+        <div class="st-notice st-notice--error subscriptions__error" role="alert">
+          <p>Nie udało się odświeżyć listy.</p>
+          <button mat-stroked-button type="button" (click)="load(true)">Spróbuj ponownie</button>
+        </div>
+      }
 
       @let current = state();
       @if (current.kind === 'loading') {

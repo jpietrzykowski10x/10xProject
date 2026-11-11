@@ -44,7 +44,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | F-01 | production-database-wiring        | (foundation) API ma produkcyjną bazę z migracjami w deployu; frontend woła API    | —             | Access Control, Guardrails    | done |
 | S-01 | magic-link-sign-in                | użytkownik rejestruje się i loguje magic linkiem i widzi swoją (pustą) listę subskrypcji | F-01          | FR-001, US-01                 | done |
 | F-02 | ui-foundation                     | (foundation) ekrany S-01 mają docelowy wygląd i układ; gotowy motyw dla kolejnych slice'ów | S-01          | Guardrails                    | done        |
-| S-02 | first-subscription-in-list        | użytkownik dodaje subskrypcję ze wszystkimi szczegółami i widzi ją na liście      | S-01, F-02    | FR-004, FR-007, FR-018, US-01 | in-progress |
+| S-02 | first-subscription-in-list        | użytkownik dodaje subskrypcję ze wszystkimi szczegółami i widzi ją na liście      | S-01, F-02    | FR-004, FR-007, FR-018, US-01 | done |
 | F-03 | frontend-unit-tests               | (foundation) frontend ma test runner, testy jednostkowe w CI i pierwsze testy helperów `shared/` | S-02          | Guardrails                    | proposed |
 | S-03 | edit-and-delete-subscription      | użytkownik poprawia lub usuwa błędnie dodaną subskrypcję                          | S-02, F-03    | FR-005, FR-006                | proposed |
 | S-04 | dashboard-cost-totals             | użytkownik widzi sumę miesięczną i roczną z podziałem na kategorie                | S-02          | FR-008, US-01                 | proposed |
@@ -147,9 +147,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** —
 - **Blockers:** — (ochrona CSRF zrobiona w `csrf-protection`, na produkcji od 2026-11-11).
 - **Unknowns:**
-  - Jaka jest predefiniowana lista kategorii na start? — Owner: user. Block: no.
+  - ~~Jaka jest predefiniowana lista kategorii na start?~~ Rozstrzygnięte w S-02: 9 kategorii domyślnych (Streaming, Gry, Oprogramowanie i narzędzia, Chmura i dane, Edukacja, Zdrowie i sport, Prasa i książki, Dom i usługi, Inne) + własne.
 - **Risk:** Gwiazda przewodnia — stoi zaraz po logowaniu; ryzyko w czasie przejścia (< 3 min wg kryterium sukcesu), więc formularz musi być krótki mimo wielu pól.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-03: Edycja i usuwanie subskrypcji
 
@@ -263,7 +263,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | F-01       | production-database-wiring   | Produkcyjna baza, migracje w deployu i CORS frontend→API | yes                   | Run `/10x-plan production-database-wiring` |
 | S-01       | magic-link-sign-in           | Logowanie magic linkiem                                   | yes                   | Run `/10x-plan magic-link-sign-in`     |
 | F-02       | ui-foundation                | Motyw Angular Material i docelowy układ ekranów S-01      | yes                   | Run `/10x-plan ui-foundation`          |
-| S-02       | first-subscription-in-list   | Dodanie subskrypcji i lista subskrypcji                   | no                    | Gotowe do planowania; gwiazda przewodnia |
+| S-02       | first-subscription-in-list   | Dodanie subskrypcji i lista subskrypcji                   | no                    | Zrobione: PR #16, na produkcji 2026-11-11 |
 | S-03       | edit-and-delete-subscription | Edycja i usuwanie subskrypcji                             | no                    | Czeka na S-02                          |
 | S-04       | dashboard-cost-totals        | Dashboard: sumy miesięczne i roczne per kategoria         | no                    | Czeka na S-02                          |
 | S-05       | subscription-lifecycle       | Automatyczne przejścia cyklu życia subskrypcji            | no                    | Czeka na S-02                          |
@@ -304,3 +304,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **F-01: (foundation) API łączy się z produkcyjną bazą danych, deploy robi kopię bazy i uruchamia migracje przed przełączeniem wersji, a frontend z innej subdomeny może wywołać API (pierwsze wywołanie potwierdzone na produkcji). Bez tabel domenowych — te dochodzą w slice'ach.** — Archived 2026-10-28 → `context/archive/2026-10-16-production-database-wiring/`. Lesson: —.
 - **S-01: użytkownik rejestruje się e-mailem (z oświadczeniem o pełnoletności i akceptacją polityki prywatności) albo przy kolejnym wejściu wpisuje e-mail, dostaje jednorazowy, ograniczony czasowo link, loguje się nim i widzi swoją (na razie pustą) listę subskrypcji; inni użytkownicy nie mają do niej dostępu.** — Archived 2026-11-09 → `context/archive/2026-11-03-magic-link-sign-in/`. Lesson: —.
 - **F-02: (foundation) istniejące ekrany S-01 mają docelowy wygląd i układ na desktopie i telefonie (Angular Material z motywem projektu), pod `/` jest strona startowa renderowana na serwerze, a kolejne slice'y korzystają z gotowego motywu, formularzy, przycisków i szkieletu strony.** — Archived 2026-11-11 → `context/archive/2026-11-10-ui-foundation/`. Lesson: —.
+- **S-02: użytkownik dodaje subskrypcję (nazwa, kategoria z predefiniowanej listy lub własna, kwota w PLN, cykl miesięczny/roczny, forma płatności z zamkniętej listy, status, data końca triala, data następnego rozliczenia) i natychmiast widzi ją w tabeli wszystkich swoich subskrypcji.** — Archived 2026-11-11 → `context/archive/2026-11-11-first-subscription-in-list/`. Lesson: —.

@@ -43,7 +43,9 @@ export class CategoriesSeeder implements OnApplicationBootstrap {
       .orIgnore()
       .execute();
     // The index on lower(name) that UQ_category_owner_name_key replaced; a dev database created
-    // before the CategoryNameKey migration still has it.
+    // before the CategoryNameKey migration still has it. This only helps once name_key exists:
+    // synchronize cannot add a NOT NULL column to a table with rows, so such a database first
+    // needs dev-local/backfill-category-name-key.mjs (see backend-patterns.md, „Dane domenowe”).
     await this.dataSource.query(
       `DROP INDEX IF EXISTS "${LEGACY_CATEGORY_OWNER_NAME_INDEX}"`,
     );

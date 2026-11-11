@@ -20,6 +20,18 @@ describe('TrimmedString', () => {
     expect(await failedProperties('  abc  ')).toEqual([]);
   });
 
+  it('normalizes the value to NFC', () => {
+    // "S" + combining acute accent becomes the single letter "Ś" (U+015A).
+    expect(parse('S\u0301lub').value).toBe('\u015Alub');
+  });
+
+  it('counts the length of the normalized value', async () => {
+    // Six code points before NFC, five after: within maxLength only once normalized.
+    const decomposed = 'S\u0301lubb';
+    expect(decomposed).toHaveLength(MAX_LENGTH + 1);
+    expect(await failedProperties(decomposed)).toEqual([]);
+  });
+
   it.each([
     ['empty', ''],
     ['only spaces', '   '],

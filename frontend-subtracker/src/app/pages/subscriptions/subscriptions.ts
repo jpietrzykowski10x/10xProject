@@ -4,13 +4,18 @@ import {
   Component,
   computed,
   DestroyRef,
+  DOCUMENT,
+  effect,
   ElementRef,
   inject,
   Injector,
   OnInit,
+  PLATFORM_ID,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButton } from '@angular/material/button';
 import { map, type Subscription as RxSubscription } from 'rxjs';
@@ -45,6 +50,9 @@ export class Subscriptions implements OnInit {
   private readonly addButton = viewChild.required<MatButton>('addButton');
   private readonly phoneAddButton = viewChild.required<MatButton>('phoneAddButton');
   private readonly panelTitle = viewChild<ElementRef<HTMLElement>>('panelTitle');
+  private readonly listArea = viewChild.required<ElementRef<HTMLElement>>('listArea');
+  private readonly document = inject(DOCUMENT);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   // The empty list opens the panel by itself once per visit, and never after the first answer.
   private autoOpenDecided = false;
@@ -56,6 +64,8 @@ export class Subscriptions implements OnInit {
   // a save removes it, so the next opening starts with an empty form.
   protected readonly formMounted = signal(false);
   protected readonly addedMessage = signal<string | null>(null);
+  // A failed quiet load (after a save) keeps the list on screen and offers to read it again.
+  protected readonly refreshFailed = signal(false);
   protected readonly isPhone = toSignal(
     this.breakpoints.observe(PHONE_MEDIA_QUERY).pipe(map((state) => state.matches)),
     { initialValue: this.breakpoints.isMatched(PHONE_MEDIA_QUERY) },
@@ -68,13 +78,36 @@ export class Subscriptions implements OnInit {
   );
   protected readonly listCovered = computed(() => this.adding() && !this.isWide());
 
+  constructor() {
+    // When the panel starts covering the list (it opens below 1200px, or the window narrows while
+    // it is open), the list turns inert and the browser would drop a focus inside it on <body>.
+    // Such a focus moves to the panel title. Opening from the add button focuses the title anyway;
+    // the auto-open happens with the focus outside the list, so it does not move it.
+    let wasCovered = false;
+    effect(() => {
+      const covered = this.listCovered();
+      const becameCovered = covered && !wasCovered;
+      wasCovered = covered;
+      if (!becameCovered || !this.isBrowser) {
+        return;
+      }
+      const listArea = untracked(this.listArea).nativeElement;
+      if (!listArea.contains(this.document.activeElement)) {
+        return;
+      }
+      afterNextRender(() => this.panelTitle()?.nativeElement.focus({ preventScroll: true }), {
+        injector: this.injector,
+      });
+    });
+  }
+
   ngOnInit(): void {
     this.load();
   }
 
   // `quiet` keeps the current list on screen while it is read again (after a save).
   // A newer load cancels the older request, so an older response can never overwrite a newer one.
-  // A failed quiet load keeps the list already on screen.
+  // A failed quiet load keeps the list already on screen and shows the refreshFailed notice.
   protected load(quiet = false): void {
     if (!quiet) {
       this.state.set({ kind: 'loading' });
@@ -86,11 +119,15 @@ export class Subscriptions implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (subscriptions) => {
+          this.refreshFailed.set(false);
           this.state.set({ kind: 'ready', subscriptions });
           this.autoOpen(subscriptions.length === 0);
         },
         error: () => {
-          if (!(quiet && this.state().kind === 'ready')) {
+          if (quiet && this.state().kind === 'ready') {
+            this.refreshFailed.set(true);
+          } else {
+            this.refreshFailed.set(false);
             this.state.set({ kind: 'error' });
           }
         },
@@ -107,10 +144,13 @@ export class Subscriptions implements OnInit {
 
   // Escape closes the panel, except when it is closing an open select inside the form: the
   // select's trigger keeps the focus (aria-expanded="true") and may not have handled the key yet.
+  // Only an aria-expanded inside the panel counts, not one on an ancestor such as the shell.
   // The datepicker calendar lives in an overlay outside the panel, so its Escape never gets here.
   protected onPanelEscape(event: Event): void {
+    const panel = event.currentTarget instanceof Element ? event.currentTarget : null;
     const target = event.target instanceof Element ? event.target : null;
-    if (event.defaultPrevented || target?.closest('[aria-expanded="true"]')) {
+    const expanded = target?.closest('[aria-expanded="true"]');
+    if (event.defaultPrevented || (expanded && panel?.contains(expanded))) {
       return;
     }
     this.close();
@@ -136,6 +176,7 @@ export class Subscriptions implements OnInit {
   private open(): void {
     this.autoOpenDecided = true;
     this.addedMessage.set(null);
+    this.refreshFailed.set(false);
     this.formMounted.set(true);
     this.adding.set(true);
     afterNextRender(
