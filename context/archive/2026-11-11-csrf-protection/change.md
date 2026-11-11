@@ -1,10 +1,10 @@
 ---
 change_id: csrf-protection
 title: Ochrona CSRF w API przed S-02
-status: impl_reviewed
+status: archived
 created: 2026-11-11
 updated: 2026-11-11
-archived_at: null
+archived_at: 2026-11-11T12:20:24Z
 ---
 
 ## Notes
