@@ -374,18 +374,18 @@ Dwie nowe migracje (schemat, dane startowe) uruchamiane przez `deploy.sh` po `pg
 
 #### Automated
 
-- [x] 3.1 Build przechodzi bez błędów i bez ostrzeżeń budżetu: `cd frontend-subtracker && npm run build`
-- [x] 3.2 Paczka deployu przechodzi: `npm run prepare-mydevil`
-- [x] 3.3 `dist/frontend-subtracker/browser/` nie zawiera prerenderowanego `subscriptions/new/index.html` (trasa w `RenderMode.Client`)
+- [x] 3.1 Build przechodzi bez błędów i bez ostrzeżeń budżetu: `cd frontend-subtracker && npm run build` — 68751b3
+- [x] 3.2 Paczka deployu przechodzi: `npm run prepare-mydevil` — 68751b3
+- [x] 3.3 `dist/frontend-subtracker/browser/` nie zawiera prerenderowanego `subscriptions/new/index.html` (trasa w `RenderMode.Client`) — 68751b3
 
 #### Manual
 
-- [x] 3.4 Pełny przepływ lokalnie: pusta lista → panel otwarty sam → dodanie subskrypcji Aktywna i Trial (z końcem trialu) → obie na liście we właściwej kolejności
-- [x] 3.5 Własna kategoria: dodanie, wybór, konflikt z „Inne” pokazuje komunikat
-- [x] 3.6 Walidacja: pusta nazwa, kwota „abc”, „-1”, „100 000”, data „31.02.2026”, rozliczenie przed końcem trialu — komunikaty przy polach, nic nie trafia do API
-- [x] 3.7 Telefon (390 px): „Dodaj subskrypcję” → `/subscriptions/new` → zapis → powrót do listy z komunikatem
-- [x] 3.8 Desktop 1024 px: panel wysuwa się nad tabelę; 1360 px: panel obok tabeli
-- [x] 3.9 Klawiatura i drzewo dostępności: etykiety pól, błędy powiązane z polami, fokus po zapisie
+- [x] 3.4 Pełny przepływ lokalnie: pusta lista → panel otwarty sam → dodanie subskrypcji Aktywna i Trial (z końcem trialu) → obie na liście we właściwej kolejności — 68751b3
+- [x] 3.5 Własna kategoria: dodanie, wybór, konflikt z „Inne” pokazuje komunikat — 68751b3
+- [x] 3.6 Walidacja: pusta nazwa, kwota „abc”, „-1”, „100 000”, data „31.02.2026”, rozliczenie przed końcem trialu — komunikaty przy polach, nic nie trafia do API — 68751b3
+- [x] 3.7 Telefon (390 px): „Dodaj subskrypcję” → `/subscriptions/new` → zapis → powrót do listy z komunikatem — 68751b3
+- [x] 3.8 Desktop 1024 px: panel wysuwa się nad tabelę; 1360 px: panel obok tabeli — 68751b3
+- [x] 3.9 Klawiatura i drzewo dostępności: etykiety pól, błędy powiązane z polami, fokus po zapisie — 68751b3
 
 ### Phase 4: Wdrożenie i dokumentacja
 
