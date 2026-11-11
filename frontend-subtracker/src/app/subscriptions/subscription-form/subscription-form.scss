@@ -1,0 +1,78 @@
+// F2-Lista panel and F2-Tel-Dodawanie: full-width fields, the cycle as a two-part switch, one
+// full-width main action. `--st-form-bleed` is the side padding of the page or panel around the
+// form, so the sticky action bar can reach both edges.
+:host {
+  display: block;
+}
+
+.form__cycle {
+  min-width: 0;
+  margin: 0 0 20px;
+  padding: 0;
+  border: 0;
+}
+
+.form__legend {
+  margin-bottom: 4px;
+  padding: 0;
+  color: var(--st-muted);
+  font: var(--mat-sys-body-small);
+}
+
+.form__toggle {
+  display: flex;
+  width: 100%;
+
+  .mat-button-toggle {
+    flex: 1 1 0;
+  }
+}
+
+.form__new-category {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+
+  .mat-mdc-form-field {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
+// Level with the 48px field next to it.
+.form__new-category-button {
+  height: 48px;
+}
+
+.form__notice-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  p {
+    margin: 0;
+  }
+}
+
+.form__actions {
+  margin-top: 12px;
+
+  // .st-form puts its own margin on the submit button and keeps it narrow.
+  [type='submit'] {
+    width: 100%;
+    margin-top: 0;
+  }
+}
+
+.form--sticky .form__actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin-right: calc(-1 * var(--st-form-bleed, 0px));
+  margin-left: calc(-1 * var(--st-form-bleed, 0px));
+  padding: 12px var(--st-form-bleed, 0px);
+  border-top: 1px solid var(--st-line);
+  background: var(--mat-sys-surface);
+}

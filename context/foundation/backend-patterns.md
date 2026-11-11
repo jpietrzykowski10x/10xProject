@@ -1,6 +1,6 @@
 # Wzorce backendu (NestJS)
 
-> Wzorce dla `backend-subtracker/` przejęte i poprawione z wcześniejszego projektu użytkownika (`fyi/nestboilerplate`, poza gitem). Czytają je /10x-plan i /10x-implement, gdy slice dotyka uwierzytelniania, ról, CORS albo maili. Pierwsze zastosowanie: S-01 `magic-link-sign-in`, potem S-09 `admin-account-management`.
+> Wzorce dla `backend-subtracker/` przejęte i poprawione z wcześniejszego projektu użytkownika (`fyi/nestboilerplate`, poza gitem). Czytają je /10x-plan i /10x-implement, gdy slice dotyka uwierzytelniania, ról, CORS albo maili. Pierwsze zastosowanie: S-01 `magic-link-sign-in`, potem S-09 `admin-account-management`. Sekcja „Dane domenowe” (od S-02) dotyczy każdego slice'a z nowymi encjami domeny.
 
 ## Dostęp: bezpiecznie domyślnie
 
@@ -88,3 +88,17 @@
 - Importy względne z rozszerzeniem `.js`. Bez aliasu `src/...`, bo w natywnym ESM nie zadziała bez dodatkowego loadera.
 - Operacje na kilku encjach w `dataSource.transaction(...)` (wzór z `register`). Zwracamy DTO odpowiedzi; status zostaje w kodzie HTTP, nie w treści.
 - Każdy `Promise` z `await` albo jawnie obsłużony. W boilerplate dwa brakujące `await` przy `argon2.verify` i `changeActivateUserAccount` wyłączały kontrole bezpieczeństwa.
+
+## Dane domenowe (od S-02)
+
+Sprawdzone w pierwszym module domenowym `subscriptions/` (S-02 `first-subscription-in-list`, 2026-11-11). Reguły ogólne (indeksy na FK, migracje, `Relation<T>`, `shared/` vs moduł funkcji) są w `lessons.md`.
+
+- **Kwoty:** kolumna `numeric(10,2)`; node-pg zwraca ją jako string, więc encja ma `amount: string`, a API oddaje string z dwoma miejscami (`"43.00"`). Na wejściu liczba (`@IsNumber({ maxDecimalPlaces: 2 })`, zakres w DTO), zapis przez `toFixed(2)`. Bez transformerów i bez arytmetyki na floatach w SQL ani w serwisie. Kwota jest kwotą za cykl (`monthly` / `yearly`); przeliczenie na miesiąc liczy się w groszach (frontend: `monthlyAmount`).
+- **Daty bez czasu:** kolumna `date`, w encji i API string `YYYY-MM-DD` (bez strefy, bez `Date`). Walidacja `IsDateOnly` z `shared/validation/` (odrzuca 31.02). Daty w przeszłości są dozwolone.
+- **Zamknięte listy:** `varchar(n)` + enum TS + `@IsEnum`, bez enumów Postgresa (`SubscriptionStatus`, `BillingCycle`, `PaymentMethod`).
+- **Kategorie domyślne i własne w jednej tabeli:** domyślne mają `user_id NULL` i stałe UUID w module (`default-categories.ts`), wstawiane migracją danych z wartościami wpisanymi wprost i seederem bazy dev (`orIgnore`). Własne mają `user_id` z kaskadą. Zapytania „moje + domyślne”: `user_id IS NULL OR user_id = :userId`; cudza kategoria daje ten sam 400 co nieistniejąca.
+- **Unikalność bez wielkości liter:** klucz porównania liczy aplikacja (`toNameKey` = `toLocaleLowerCase('pl')`, `shared/text/`) i zapisuje w `name_key` (varchar dwa razy dłuższy niż nazwa). Indeks wyrażeniowy `(COALESCE(user_id, <zero uuid>), name_key)` pisany ręcznie w migracji, w encji `@Index(<nazwa>, { synchronize: false })`, ten sam SQL jako stała uruchamiana przez seeder bazy dev. Serwis sprawdza konflikt przed zapisem (409), a wyścig (`23505` tego ograniczenia, sprawdzanego po nazwie) też mapuje na 409. Nie opieramy się na `lower()` w SQL: jego wynik zależy od locale bazy.
+- **Sortowanie tekstu w SQL:** produkcja ma `datcollate = C.UTF-8` (kolejność kodów Unicode), więc `ORDER BY` po nazwach dostaje `COLLATE "pl-PL-x-icu"` ze stałej `POLISH_COLLATION` (`shared/database/`). Lokalne bazy (`Polish_Poland.1250`) sortują poprawnie i bez tego, więc testy e2e takiego błędu nie złapią.
+- **Kolejność listy jako enum w serwisie:** `SubscriptionSort` (dziś jedna wartość `status_then_date`) budowany w SQL (`subscription-order.ts`): grupa statusu, data odniesienia, remis po nazwie, potem `created_at`. Sortowanie przez użytkownika (FR-016) dołoży wartości enumu zamiast nowego kodu.
+- **Kaskada od użytkownika:** dane domenowe mają `ON DELETE CASCADE` na `user_id` — podstawa przyszłego usuwania konta. FK między danymi domenowymi zostają `NO ACTION` (`subscription.category_id`): usunięcie kategorii musi najpierw przepiąć subskrypcje albo zwrócić 409 (`23503`).
+- **Odpowiedzi:** encja mapowana na typ odpowiedzi bez `userId`; `GET` z danymi użytkownika z `Cache-Control: no-store`; `POST` z jawnym `@HttpCode(201)`. Odpowiedź po zapisie budowana z zapisanej encji, bez ponownego odczytu.

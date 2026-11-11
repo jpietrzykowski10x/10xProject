@@ -1,11 +1,33 @@
+// F2-Lista and F2-Tel-Dodawanie: the list, and the "Nowa subskrypcja" panel. From 1200px the panel
+// is a white column beside the table (the table goes compact by its own width); from 840px to
+// 1200px it slides over the table instead of squeezing it; on the phone it replaces the list.
+.subscriptions {
+  display: flex;
+  align-items: stretch;
+}
+
+.subscriptions__main {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.subscriptions__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
 .subscriptions__title {
-  margin: 0 0 24px;
+  margin: 0;
   font: var(--mat-sys-headline-small);
   font-weight: 700;
 }
 
-// Empty state: a white panel in the content area, like the table that replaces it in S-02.
-.subscriptions__empty {
+// Loading and empty states: a white panel in the content area, where the table appears.
+.subscriptions__panel {
   margin: 0;
   padding: 32px 24px;
   border: 1px solid var(--st-line);
@@ -13,4 +35,159 @@
   background: var(--mat-sys-surface);
   color: var(--st-muted);
   text-align: center;
+}
+
+.subscriptions__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  p {
+    margin: 0;
+  }
+}
+
+.add-panel {
+  --st-form-bleed: 24px;
+
+  box-sizing: border-box;
+  padding: 16px 24px 24px;
+  border-left: 1px solid var(--st-line);
+  background: var(--mat-sys-surface);
+}
+
+.add-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.add-panel__title {
+  margin: 0;
+  font: var(--mat-sys-title-large);
+  font-weight: 600;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.add-panel__close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-right: -12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mat-sys-on-surface);
+  cursor: pointer;
+}
+
+.add-panel[hidden],
+.subscriptions__phone-bar {
+  display: none;
+}
+
+// Beside the table: the panel runs the full height of the content area, up to its edges (the
+// negative margins cancel the app shell's content padding, 28px 32px 40px).
+@media (min-width: 1200px) {
+  .add-panel {
+    flex: 0 0 360px;
+    min-height: 100vh;
+    margin: -28px -32px -40px 32px;
+  }
+}
+
+// Over the table: a drawer at the right edge of the window.
+@media (min-width: 840px) and (max-width: 1199.98px) {
+  .add-panel {
+    position: fixed;
+    z-index: 10;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(400px, 100%);
+    overflow-y: auto;
+    box-shadow: -8px 0 24px rgb(0 0 0 / 0.16);
+    animation: add-panel-in 160ms ease-out;
+  }
+}
+
+@keyframes add-panel-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .add-panel {
+    animation: none;
+  }
+}
+
+@media (max-width: 839.98px) {
+  // Room for the fixed bar, so it never covers the last row.
+  .subscriptions:not(.subscriptions--adding) {
+    padding-bottom: 80px;
+  }
+
+  .subscriptions--adding .subscriptions__main {
+    display: none;
+  }
+
+  // The add view fills the content area: the negative margins cancel the shell's 16px padding.
+  .add-panel {
+    --st-form-bleed: 16px;
+
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: -16px;
+    padding: 0 16px;
+    border-left: 0;
+  }
+
+  .add-panel__header {
+    min-height: 56px;
+    margin: 0 -16px 24px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--st-line);
+  }
+
+  .subscriptions__header {
+    margin-bottom: 12px;
+  }
+
+  .subscriptions__title {
+    font: var(--mat-sys-title-large);
+    font-weight: 600;
+  }
+
+  .subscriptions__add {
+    display: none;
+  }
+
+  // F2-Tel-Lista: the main action stays at the bottom of the screen.
+  .subscriptions__phone-bar {
+    position: fixed;
+    z-index: 10;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: block;
+    padding: 12px 16px;
+    border-top: 1px solid var(--st-line);
+    background: var(--mat-sys-surface);
+
+    button {
+      width: 100%;
+    }
+  }
 }

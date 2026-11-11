@@ -1,0 +1,172 @@
+<!-- On desktop the frame scrolls a narrow table sideways, so the page itself never does. It is
+     focusable there, so a keyboard can scroll it: the desktop table has nothing focusable inside
+     (on the phone every row is a button). -->
+<div
+  class="table__frame"
+  role="region"
+  aria-label="Lista subskrypcji"
+  [attr.tabindex]="isPhone() ? null : 0"
+>
+  <table
+    mat-table
+    class="table"
+    [class.table--phone]="isPhone()"
+    [dataSource]="subscriptions()"
+    [trackBy]="trackById"
+    multiTemplateDataRows
+  >
+    <!-- Desktop columns -->
+    <ng-container matColumnDef="name">
+      <th mat-header-cell *matHeaderCellDef>Nazwa</th>
+      <td mat-cell *matCellDef="let subscription; dataSource: subscriptions()" class="table__name">
+        {{ subscription.name }}
+        <span class="table__note"
+          >{{
+            subscription.category.name
+          }}<!-- In the compact table the payment column is hidden and its value moves here. --><span
+            class="table__payment-note"
+          >
+            · {{ paymentLabels[subscription.paymentMethod] }}</span
+          ></span
+        >
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="payment">
+      <th mat-header-cell *matHeaderCellDef class="table__payment">Forma płatności</th>
+      <td
+        mat-cell
+        *matCellDef="let subscription; dataSource: subscriptions()"
+        class="table__payment"
+      >
+        {{ paymentLabels[subscription.paymentMethod] }}
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="status">
+      <th mat-header-cell *matHeaderCellDef>Status</th>
+      <td
+        mat-cell
+        *matCellDef="let subscription; dataSource: subscriptions()"
+        class="table__status"
+      >
+        <span [class]="'status status--' + subscription.status">{{
+          statusLabels[subscription.status]
+        }}</span>
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="date">
+      <th mat-header-cell *matHeaderCellDef>Kolejna data</th>
+      <td
+        mat-cell
+        *matCellDef="let subscription; dataSource: subscriptions()"
+        class="table__date st-amount"
+      >
+        {{ referenceDate(subscription) | dateOnly }}
+        <span class="table__note">{{ dateNote(subscription, today) }}</span>
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="amount">
+      <th mat-header-cell *matHeaderCellDef class="table__amount">Kwota</th>
+      <td
+        mat-cell
+        *matCellDef="let subscription; dataSource: subscriptions()"
+        class="table__amount table__amount-value st-amount"
+      >
+        {{ subscription.amount | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+        @let perMonth =
+          monthlyAmount(subscription.amount, subscription.billingCycle)
+            | currency: 'PLN' : 'symbol-narrow' : '1.2-2';
+        <!-- "miesięcznie", or "rocznie, 102,82 zł mies." -->
+        <span class="table__note">{{
+          subscription.billingCycle === 'yearly'
+            ? cycleNotes.yearly + ', ' + perMonth + ' mies.'
+            : cycleNotes.monthly
+        }}</span>
+      </td>
+    </ng-container>
+
+    <!-- Phone: the whole row is one button -->
+    <ng-container matColumnDef="summary">
+      <td
+        mat-cell
+        *matCellDef="let subscription; dataSource: subscriptions()"
+        class="table__summary"
+      >
+        <button
+          type="button"
+          class="summary"
+          [attr.aria-expanded]="expandedId() === subscription.id"
+          [attr.aria-controls]="'subscription-details-' + subscription.id"
+          (click)="toggle(subscription.id)"
+        >
+          <span class="summary__line">
+            <strong class="summary__name">{{ subscription.name }}</strong>
+            <span class="summary__amount st-amount">
+              {{ subscription.amount | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+              <span class="table__muted">{{ cycleShort[subscription.billingCycle] }}</span>
+            </span>
+          </span>
+          <span class="summary__line summary__line--small">
+            <span>
+              <span [class]="'status status--' + subscription.status">{{
+                statusLabels[subscription.status]
+              }}</span
+              ><span class="table__muted">, {{ subscription.category.name }}</span>
+            </span>
+            <span class="table__muted summary__date st-amount"
+              >{{ phoneDatePrefix(subscription, today)
+              }}{{ referenceDate(subscription) | dateOnly }}</span
+            >
+          </span>
+        </button>
+      </td>
+    </ng-container>
+
+    <!-- Phone: what the row hides until it is expanded -->
+    <ng-container matColumnDef="details">
+      <td
+        mat-cell
+        *matCellDef="let subscription; dataSource: subscriptions()"
+        class="table__details"
+        [id]="'subscription-details-' + subscription.id"
+      >
+        <dl class="details">
+          <div class="details__item">
+            <dt>Forma płatności</dt>
+            <dd>{{ paymentLabels[subscription.paymentMethod] }}</dd>
+          </div>
+          @if (subscription.billingCycle === 'yearly') {
+            <div class="details__item">
+              <dt>Miesięcznie</dt>
+              <dd class="st-amount">
+                {{
+                  monthlyAmount(subscription.amount, subscription.billingCycle)
+                    | currency: 'PLN' : 'symbol-narrow' : '1.2-2'
+                }}
+              </dd>
+            </div>
+          }
+        </dl>
+      </td>
+    </ng-container>
+
+    <!-- The header row has no cells on the phone (see the component), and is hidden there. -->
+    <tr mat-header-row *matHeaderRowDef="headerColumns()" class="table__header-row"></tr>
+    <tr
+      mat-row
+      *matRowDef="let subscription; columns: columns(); dataSource: subscriptions()"
+      class="table__row"
+      [class.table__row--expanded]="isPhone() && expandedId() === subscription.id"
+    ></tr>
+    <!-- Detail rows exist for every subscription, but show only on the phone when expanded. -->
+    <tr
+      mat-row
+      *matRowDef="let subscription; columns: ['details']; dataSource: subscriptions()"
+      class="table__detail-row"
+      [class.table__detail-row--open]="isPhone() && expandedId() === subscription.id"
+    ></tr>
+  </table>
+</div>
