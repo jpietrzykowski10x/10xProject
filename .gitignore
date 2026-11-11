@@ -30,6 +30,3 @@ Thumbs.db
 fyi
 # MyDevil deploy packages (both apps)
 .mydevil/
-
-# Local manual-test helpers (never committed)
-/dev-local/
