@@ -399,16 +399,16 @@ Brak danych do migracji. Wycofanie to `rollback.sh frontend` na serwerze, bez wp
 
 #### Automated
 
-- [x] 3.1 Build przechodzi: `npm run build`
-- [x] 3.2 Paczka deployu przechodzi: `npm run prepare-mydevil`
-- [x] 3.3 Brak odwołań do starych klas w `frontend-subtracker/src/app/` (wyszukiwanie `class="page"`, `field-error`, `message--`)
+- [x] 3.1 Build przechodzi: `npm run build` — fb71d6b
+- [x] 3.2 Paczka deployu przechodzi: `npm run prepare-mydevil` — fb71d6b
+- [x] 3.3 Brak odwołań do starych klas w `frontend-subtracker/src/app/` (wyszukiwanie `class="page"`, `field-error`, `message--`) — fb71d6b
 
 #### Manual
 
-- [x] 3.4 Pełny przepływ lokalnie z prawdziwym API: rejestracja → link → „Zaloguj” → pusta lista → „Wyloguj”
-- [x] 3.5 Błędy: zły adres (`a@b`), brak zgód, wyłączone API dają te same komunikaty co przed zmianą, w nowym stylu
-- [x] 3.6 Czytnik ekranu albo drzewo dostępności w DevTools: pola mają etykiety, błędy są powiązane z polami, komunikaty mają `role`
-- [x] 3.7 Konsola przeglądarki bez błędów hydratacji na `/privacy-policy` i `/unavailable`
+- [x] 3.4 Pełny przepływ lokalnie z prawdziwym API: rejestracja → link → „Zaloguj” → pusta lista → „Wyloguj” — fb71d6b
+- [x] 3.5 Błędy: zły adres (`a@b`), brak zgód, wyłączone API dają te same komunikaty co przed zmianą, w nowym stylu — fb71d6b
+- [x] 3.6 Czytnik ekranu albo drzewo dostępności w DevTools: pola mają etykiety, błędy są powiązane z polami, komunikaty mają `role` — fb71d6b
+- [x] 3.7 Konsola przeglądarki bez błędów hydratacji na `/privacy-policy` i `/unavailable` — fb71d6b
 
 ### Phase 4: Strona startowa
 

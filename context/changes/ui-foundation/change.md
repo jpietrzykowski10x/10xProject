@@ -3,7 +3,7 @@ change_id: ui-foundation
 title: Ui foundation
 status: implementing
 created: 2026-11-10
-updated: 2026-11-10
+updated: 2026-11-11
 archived_at: null
 ---
 
