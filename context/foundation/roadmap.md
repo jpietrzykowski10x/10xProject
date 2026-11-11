@@ -53,6 +53,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-07 | category-duplicate-warning        | użytkownik widzi ostrzeżenie, gdy kategoria przekroczy jego próg subskrypcji      | S-04          | FR-009, FR-005                | proposed |
 | S-08 | budget-limits-and-alerts          | użytkownik ustawia limity budżetu i widzi alert przy 80% / 100%                   | S-04          | FR-010, FR-011, FR-005        | proposed |
 | S-09 | admin-account-management          | administrator odblokowuje konto lub resetuje dostęp i wgląda w dane użytkownika   | S-02          | FR-002                        | proposed |
+| S-10 | account-deletion                  | użytkownik sam usuwa swoje konto razem ze wszystkimi danymi                       | S-02          | NFR (usunięcie danych w 30 dni) | proposed |
 
 ## Streams
 
@@ -63,7 +64,7 @@ Navigation aid — groups items that share a Prerequisites chain. Canonical orde
 | A      | Rdzeń: konto i lista   | `F-01` → `S-01` → `F-02` → `S-02` → `F-03` → `S-03` | Ścieżka krytyczna do gwiazdy przewodniej; wszystko inne startuje od `S-02`. `F-03` przed kolejną zmianą frontendu. |
 | B      | Koszt i alerty         | `S-04` → `S-07`, `S-08`                 | Dołącza do Stream A po `S-02`; `S-07` i `S-08` mogą iść równolegle po `S-04`.          |
 | C      | Cykl życia i e-mail    | `S-05` → `S-06`                         | Dołącza do Stream A po `S-02`; najbardziej ryzykowna technicznie gałąź — nie zwlekać.  |
-| D      | Administracja          | `S-09`                                  | Dołącza do Stream A po `S-02`; niezależna od B i C.                                    |
+| D      | Administracja i konto  | `S-09`, `S-10`                          | Dołącza do Stream A po `S-02`; niezależna od B i C. `S-10` dzieli z `S-09` unieważnianie sesji i tokenów. |
 
 ## Baseline
 
@@ -172,6 +173,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:**
   - Czy do sum wliczają się subskrypcje w trialu i w cancelled_pending? — Owner: user. Block: no.
+- **Ustalenia z S-02:** `amount` to kwota za cykl (`monthly` / `yearly`), w API string `"43.00"`; lista zwraca także subskrypcje anulowane (`cancelled`), więc sumy muszą je odfiltrować świadomie. Frontend ma już `monthlyAmount` (dzielenie rocznej przez 12 w groszach, `Math.round`) dla dopisku na liście — sumy po stronie API muszą liczyć tak samo (w groszach), inaczej lista i dashboard pokażą różne kwoty.
 - **Risk:** Drugie kryterium sukcesu (100% zgodności sum) — błąd przeliczenia roczne ↔ miesięczne propaguje się do budżetu (S-08), więc S-04 stoi przed alertami.
 - **Status:** proposed
 
@@ -239,6 +241,21 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Niezależna gałąź — może iść równolegle z resztą; ryzyko w tym, że wyjątek od izolacji kont (pełny wgląd admina) przecieknie do zwykłych użytkowników.
 - **Status:** proposed
 
+### S-10: Usunięcie konta
+
+- **Outcome:** użytkownik usuwa swoje konto z poziomu aplikacji. Przed usunięciem widzi potwierdzenie z informacją, że dane (subskrypcje, własne kategorie) przepadną bezpowrotnie. Po usunięciu jest wylogowany, a jego sesje, tokeny logowania i dane domenowe znikają.
+- **Change ID:** account-deletion
+- **PRD refs:** NFR „dane osobowe/finansowe usuwane lub anonimizowane w ciągu 30 dni od żądania usunięcia konta” (`prd.md`, Non-Functional)
+- **Prerequisites:** S-02
+- **Parallel with:** S-03, S-04, S-05, S-09
+- **Blockers:** —
+- **Unknowns:**
+  - Usunięcie natychmiastowe czy z okresem karencji (≤ 30 dni) i możliwością cofnięcia? — Owner: user. Block: no.
+  - Co z wpisami w `mail` (adres odbiorcy bez FK do `user`) i z kopiami bazy z deployu (`backups/`, retencja)? — Owner: user. Block: no.
+- **Ustalenia z S-02:** `subscription` i własne `category` mają już `ON DELETE CASCADE` na `user_id` (test e2e kaskady). `session`, `magic_link_token` i `user_role` mają `NO ACTION` — trzeba je usunąć w tej samej transakcji albo zmienić migracją na kaskadę.
+- **Risk:** Operacja nieodwracalna: potwierdzenie (np. wpisanie adresu), CSRF jak przy innych zmianach stanu, unieważnienie wszystkich sesji użytkownika i test e2e, że po usunięciu nic po koncie nie zostaje. Wspólna logika z dezaktywacją w S-09.
+- **Status:** proposed
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                    | Suggested issue title                                    | Ready for `/10x-plan` | Notes                                  |
@@ -254,6 +271,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-07       | category-duplicate-warning   | Ostrzeżenie o duplikatach w kategorii                     | no                    | Czeka na S-04                          |
 | S-08       | budget-limits-and-alerts     | Limity budżetu i alerty 80% / 100%                        | no                    | Czeka na S-04                          |
 | S-09       | admin-account-management     | Panel administratora: odblokowanie i reset dostępu       | no                    | Czeka na S-02                          |
+| F-03       | frontend-unit-tests          | Test runner i testy jednostkowe frontendu w CI            | no                    | Czeka na S-02; przed S-03              |
+| S-10       | account-deletion             | Usunięcie konta przez użytkownika                         | no                    | Czeka na S-02                          |
 
 ## Open Roadmap Questions
 
