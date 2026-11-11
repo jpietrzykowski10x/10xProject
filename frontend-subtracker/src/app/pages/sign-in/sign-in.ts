@@ -1,7 +1,11 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { MatButton } from '@angular/material/button';
+import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
+import { MatInput } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
+import { PublicLayout } from '../../layout/public-layout/public-layout';
 import { AuthService } from '../../auth/auth.service';
 import { emailValidators } from '../../auth/email-validators';
 
@@ -9,7 +13,16 @@ type SignInState = 'idle' | 'sending' | 'sent' | 'invalid' | 'unavailable';
 
 @Component({
   selector: 'app-sign-in',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [
+    MatButton,
+    MatError,
+    MatFormField,
+    MatInput,
+    MatLabel,
+    PublicLayout,
+    ReactiveFormsModule,
+    RouterLink,
+  ],
   templateUrl: './sign-in.html',
 })
 export class SignIn {
@@ -19,10 +32,8 @@ export class SignIn {
     email: ['', emailValidators],
   });
   protected readonly state = signal<SignInState>('idle');
-  protected readonly submitted = signal(false);
 
   protected submit(): void {
-    this.submitted.set(true);
     if (this.form.invalid) {
       return;
     }

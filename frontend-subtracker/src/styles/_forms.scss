@@ -1,0 +1,26 @@
+// Shared layout of the S-01 forms: full-width fields, checkboxes with their errors, main action.
+.st-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+
+  .mat-mdc-form-field {
+    width: 100%;
+  }
+
+  [type='submit'] {
+    align-self: flex-start;
+    margin-top: 12px;
+  }
+}
+
+// mat-checkbox has no mat-error; this text sits under the checkbox label and is linked to it
+// through aria-describedby. The indent matches the checkbox touch target, so it lines up with the
+// label; the negative top margin cancels the touch target's empty space under the box, so the
+// error sits as close to the control as mat-error does under a form field.
+.st-control-error {
+  margin: -10px 0 8px 40px;
+  color: var(--st-error-text);
+  font: var(--mat-sys-body-small);
+}

@@ -1,13 +1,15 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
+import { MatButton } from '@angular/material/button';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { PublicLayout } from '../../layout/public-layout/public-layout';
 import { AuthService } from '../../auth/auth.service';
 
 type VerifyState = 'ready' | 'sending' | 'invalid' | 'unavailable';
 
 @Component({
   selector: 'app-verify-link',
-  imports: [RouterLink],
+  imports: [MatButton, PublicLayout, RouterLink],
   templateUrl: './verify-link.html',
 })
 export class VerifyLink {

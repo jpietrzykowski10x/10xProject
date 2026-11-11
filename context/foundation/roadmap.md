@@ -3,7 +3,7 @@ project: SubTracker
 version: 1
 status: draft
 created: 2026-10-16
-updated: 2026-11-09
+updated: 2026-11-10
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -43,7 +43,8 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | ---- | --------------------------------- | --------------------------------------------------------------------------------- | ------------- | ----------------------------- | -------- |
 | F-01 | production-database-wiring        | (foundation) API ma produkcyjną bazę z migracjami w deployu; frontend woła API    | —             | Access Control, Guardrails    | done |
 | S-01 | magic-link-sign-in                | użytkownik rejestruje się i loguje magic linkiem i widzi swoją (pustą) listę subskrypcji | F-01          | FR-001, US-01                 | done |
-| S-02 | first-subscription-in-list        | użytkownik dodaje subskrypcję ze wszystkimi szczegółami i widzi ją na liście      | S-01          | FR-004, FR-007, FR-018, US-01 | proposed |
+| F-02 | ui-foundation                     | (foundation) ekrany S-01 mają docelowy wygląd i układ; gotowy motyw dla kolejnych slice'ów | S-01          | Guardrails                    | in-progress |
+| S-02 | first-subscription-in-list        | użytkownik dodaje subskrypcję ze wszystkimi szczegółami i widzi ją na liście      | S-01, F-02    | FR-004, FR-007, FR-018, US-01 | proposed |
 | S-03 | edit-and-delete-subscription      | użytkownik poprawia lub usuwa błędnie dodaną subskrypcję                          | S-02          | FR-005, FR-006                | proposed |
 | S-04 | dashboard-cost-totals             | użytkownik widzi sumę miesięczną i roczną z podziałem na kategorie                | S-02          | FR-008, US-01                 | proposed |
 | S-05 | subscription-lifecycle            | subskrypcja sama przechodzi trial → active i cancelled_pending → cancelled        | S-02          | FR-013                        | proposed |
@@ -58,7 +59,7 @@ Navigation aid — groups items that share a Prerequisites chain. Canonical orde
 
 | Stream | Theme                  | Chain                                   | Note                                                                                   |
 | ------ | ---------------------- | --------------------------------------- | -------------------------------------------------------------------------------------- |
-| A      | Rdzeń: konto i lista   | `F-01` → `S-01` → `S-02` → `S-03`       | Ścieżka krytyczna do gwiazdy przewodniej; wszystko inne startuje od `S-02`.            |
+| A      | Rdzeń: konto i lista   | `F-01` → `S-01` → `F-02` → `S-02` → `S-03` | Ścieżka krytyczna do gwiazdy przewodniej; wszystko inne startuje od `S-02`.            |
 | B      | Koszt i alerty         | `S-04` → `S-07`, `S-08`                 | Dołącza do Stream A po `S-02`; `S-07` i `S-08` mogą iść równolegle po `S-04`.          |
 | C      | Cykl życia i e-mail    | `S-05` → `S-06`                         | Dołącza do Stream A po `S-02`; najbardziej ryzykowna technicznie gałąź — nie zwlekać.  |
 | D      | Administracja          | `S-09`                                  | Dołącza do Stream A po `S-02`; niezależna od B i C.                                    |
@@ -91,6 +92,19 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Stoi pierwsza, bo bez trwałego zapisu i migracji w deployu nie da się zweryfikować na produkcji ani logowania, ani gwiazdy przewodniej; zakres celowo minimalny (połączenie + migracje + CORS), żeby nie budować warstwy danych na zapas.
 - **Status:** done
 
+### F-02: Fundament interfejsu
+
+- **Outcome:** (foundation) istniejące ekrany S-01 mają docelowy wygląd i układ na desktopie i telefonie (Angular Material z motywem projektu), pod `/` jest prerenderowana strona startowa, a kolejne slice'y korzystają z gotowego motywu, formularzy, przycisków i szkieletu strony.
+- **Change ID:** ui-foundation
+- **PRD refs:** Guardrails
+- **Unlocks:** S-02 (formularz dodawania i lista powstają od razu w docelowym stylu, bez przeróbek).
+- **Prerequisites:** S-01
+- **Parallel with:** —
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Stoi przed S-02, żeby nie przerabiać wyglądu w każdym kolejnym slice'ie; ryzyko w rozroście zakresu, więc zmiana obejmuje tylko istniejące ekrany, szkielet i stronę startową, a sumy i alerty dochodzą w swoich slice'ach.
+- **Status:** in-progress
+
 ## Slices
 
 ### S-01: Logowanie magic linkiem
@@ -112,7 +126,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Outcome:** użytkownik dodaje subskrypcję (nazwa, kategoria z predefiniowanej listy lub własna, kwota w PLN, cykl miesięczny/roczny, forma płatności z zamkniętej listy, status, data końca triala, data następnego rozliczenia) i natychmiast widzi ją w tabeli wszystkich swoich subskrypcji.
 - **Change ID:** first-subscription-in-list
 - **PRD refs:** FR-004, FR-007, FR-018, US-01
-- **Prerequisites:** S-01
+- **Prerequisites:** S-01, F-02
 - **Parallel with:** —
 - **Blockers:** Ochrona CSRF przed startem S-02 (follow-up z S-01): `app.enableCsrfProtection` w `applyHttpSecurity` i test e2e.
 - **Unknowns:**
@@ -215,7 +229,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | ---------- | ---------------------------- | -------------------------------------------------------- | --------------------- | -------------------------------------- |
 | F-01       | production-database-wiring   | Produkcyjna baza, migracje w deployu i CORS frontend→API | yes                   | Run `/10x-plan production-database-wiring` |
 | S-01       | magic-link-sign-in           | Logowanie magic linkiem                                   | yes                   | Run `/10x-plan magic-link-sign-in`     |
-| S-02       | first-subscription-in-list   | Dodanie subskrypcji i lista subskrypcji                   | no                    | Czeka na S-01; gwiazda przewodnia      |
+| F-02       | ui-foundation                | Motyw Angular Material i docelowy układ ekranów S-01      | yes                   | Run `/10x-plan ui-foundation`          |
+| S-02       | first-subscription-in-list   | Dodanie subskrypcji i lista subskrypcji                   | no                    | Czeka na F-02 i CSRF; gwiazda przewodnia |
 | S-03       | edit-and-delete-subscription | Edycja i usuwanie subskrypcji                             | no                    | Czeka na S-02                          |
 | S-04       | dashboard-cost-totals        | Dashboard: sumy miesięczne i roczne per kategoria         | no                    | Czeka na S-02                          |
 | S-05       | subscription-lifecycle       | Automatyczne przejścia cyklu życia subskrypcji            | no                    | Czeka na S-02                          |

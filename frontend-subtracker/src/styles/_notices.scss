@@ -1,0 +1,19 @@
+// Status and error messages shown above or instead of a form (S-01 pages, the app shell).
+// Colours come from the theme's semantic variables, so every message matches the palette.
+.st-notice {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  font: var(--mat-sys-body-medium);
+  line-height: 1.5;
+}
+
+.st-notice--success {
+  background: var(--st-success-bg);
+  color: var(--st-success-text);
+}
+
+.st-notice--error {
+  background: var(--st-error-bg);
+  color: var(--st-error-text);
+}

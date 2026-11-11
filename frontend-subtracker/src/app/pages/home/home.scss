@@ -1,0 +1,342 @@
+// Start page, mockups F2-Start (desktop) and F2-Tel-Start (phone): a navy band with the header and
+// the hero, then light sections and a footer. Rows wrap with flex-wrap, and the 840px media query
+// only tightens spacing, so the prerendered HTML lays out correctly without JavaScript.
+:host {
+  display: block;
+  background: var(--mat-sys-surface);
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.home__wrap {
+  box-sizing: border-box;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+.home__band {
+  background: var(--st-navy);
+  color: #fff;
+}
+
+// The global focus outline is navy, which disappears on the navy band.
+.home__band a:focus-visible {
+  outline-color: #fff;
+}
+
+.home__header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 72px;
+}
+
+.home__wordmark {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.home__sign-in {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: #fff;
+}
+
+// Two columns that wrap into one on narrow screens.
+.home__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 24px 64px;
+}
+
+.home__col {
+  flex: 1 1 380px;
+  min-width: 0;
+  margin: 0;
+}
+
+.home__hero-inner {
+  gap: 40px 64px;
+  padding-top: 40px;
+  padding-bottom: 72px;
+}
+
+.home__title {
+  margin: 0 0 20px;
+  font-size: clamp(38px, 5vw, 60px);
+  font-weight: 700;
+  line-height: 1.08;
+}
+
+.home__lead {
+  margin: 0 0 12px;
+  color: var(--st-on-navy-soft);
+  font-size: clamp(17px, 2vw, 20px);
+}
+
+.home__hero-text {
+  margin: 0 0 28px;
+  color: var(--st-navy-soft);
+}
+
+.home__cta {
+  --mat-button-filled-container-height: 52px;
+  --mat-button-filled-horizontal-padding: 28px;
+  --mat-button-filled-label-text-size: 17px;
+  --mat-button-filled-label-text-weight: 600;
+}
+
+// The app preview: a white card on the navy band.
+.home__card {
+  border-radius: 4px;
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.home__totals {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--mat-sys-surface-variant);
+}
+
+.home__label {
+  font-size: 13px;
+}
+
+.home__label,
+.home__limit-label {
+  color: var(--st-muted);
+}
+
+.home__total {
+  color: var(--st-navy);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.home__yearly {
+  font-size: 14px;
+  text-align: right;
+}
+
+.home__items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home__item {
+  padding: 10px 16px;
+
+  & + & {
+    border-top: 1px solid var(--mat-sys-surface-variant);
+  }
+}
+
+.home__item-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+
+  strong {
+    font-weight: 600;
+  }
+}
+
+.home__price {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.home__per {
+  color: var(--st-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.home__item-meta {
+  margin-top: 2px;
+  color: var(--st-muted);
+  font-size: 13px;
+
+  > :last-child {
+    white-space: nowrap;
+  }
+}
+
+.home__active,
+.home__trial {
+  font-weight: 500;
+}
+
+.home__active {
+  color: var(--st-green);
+}
+
+.home__trial {
+  color: var(--st-warning-text);
+}
+
+.home__caption {
+  margin-top: 8px;
+  color: var(--st-navy-soft);
+  font-size: 13px;
+}
+
+// Light sections.
+.home__intro {
+  max-width: 760px;
+  padding: 64px 0 48px;
+}
+
+.home__h2 {
+  margin: 0 0 12px;
+  font-size: clamp(26px, 3vw, 34px);
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.home__h3 {
+  margin: 0 0 8px;
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.home__text {
+  margin: 0;
+  color: var(--st-ink-soft);
+}
+
+.home__feature,
+.home__closing {
+  border-top: 1px solid var(--mat-sys-surface-variant);
+}
+
+.home__feature {
+  padding: 32px 0;
+}
+
+.home__fragment {
+  font-size: 15px;
+}
+
+.home__categories {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  div {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  dt {
+    color: var(--st-muted);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.home__categories-sum {
+  padding-top: 8px;
+  border-top: 1px solid var(--st-navy);
+  color: var(--st-navy);
+  font-weight: 700;
+
+  dt {
+    color: inherit;
+  }
+}
+
+.home__alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.home__warning {
+  margin: 0;
+  padding: 12px 16px;
+  background: var(--st-warning-bg);
+  color: var(--st-warning-text);
+}
+
+.home__limit-track {
+  height: 8px;
+  margin-top: 6px;
+  background: var(--mat-sys-surface-variant);
+}
+
+.home__limit-fill {
+  width: 85%;
+  height: 100%;
+  background: var(--st-navy);
+}
+
+.home__trial-card {
+  padding: 12px 16px;
+  border: 1px solid var(--st-line);
+  border-radius: 4px;
+}
+
+.home__closing {
+  justify-content: space-between;
+  gap: 20px 48px;
+  padding: 56px 0;
+}
+
+.home__footer {
+  border-top: 1px solid var(--mat-sys-surface-variant);
+  font-size: 15px;
+
+  .home__wrap {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+}
+
+.home__footer-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--st-navy);
+}
+
+@media (max-width: 839.98px) {
+  .home__wrap {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .home__col {
+    flex-basis: 100%;
+  }
+
+  .home__hero-inner {
+    padding-top: 16px;
+    padding-bottom: 40px;
+  }
+
+  .home__intro {
+    padding: 40px 0 32px;
+  }
+
+  .home__closing {
+    padding: 40px 0;
+  }
+}
