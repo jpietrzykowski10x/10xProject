@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { map, Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
@@ -37,8 +37,11 @@ export class AuthService {
   }
 
   // Not /auth/me: its 401 for a signed-out visitor would show as an error in the browser console.
-  session(): Observable<AuthUser | null> {
-    return this.http.get<{ user: AuthUser | null }>(`${this.apiUrl}/session`).pipe(
+  // `cookie` is passed only during server-side rendering, where the browser does not attach the
+  // session cookie itself; the response is kept out of the transfer cache (app.config.ts).
+  session(cookie?: string): Observable<AuthUser | null> {
+    const headers = cookie ? new HttpHeaders({ Cookie: cookie }) : undefined;
+    return this.http.get<{ user: AuthUser | null }>(`${this.apiUrl}/session`, { headers }).pipe(
       map(({ user }) => user),
       tap((user) => this.user.set(user)),
     );
