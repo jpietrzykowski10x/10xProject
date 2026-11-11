@@ -449,3 +449,8 @@ Odstępstwa od planu przyjęte w przeglądzie implementacji (`reviews/impl-revie
 - `/auth/verify`: tytuł w kolumnie „Logowanie” (jak na `/sign-in`, zamiast „Potwierdzenie logowania”), nagłówek „Ostatni krok” i notka „Dlaczego trzeba kliknąć” o skanerach poczty. Bez zdania o 15 minutach: na tym etapie link już jest w ręku użytkownika.
 
 Decyzja po pomiarze 5.6 (2026-11-11): pomiar na produkcji przeszedł (poniżej 1 s), ale mignięcie strony startowej przed przekierowaniem zalogowanego było wyraźnie widoczne, więc użytkownik wybrał wariant SSR z fazy 4 §3 (branch `change/ui-foundation-ssr`, drugi deploy). Różnice względem kontraktu: bez ciasteczka sesji guard na serwerze nie woła API; `Cache-Control: private, no-store` ustawia `headers` w `serverRoutes`, a nie `server.ts`.
+
+Przegląd fazy 5 (`reviews/impl-review-phase-5.md`, 2026-11-11):
+
+- `authGuard` na serwerze też przekazuje ciasteczko sesji (F1, Fix B). Bez tego render po przekierowaniu z `/` wpadał w pętlę `/subscriptions` → `/sign-in` → `/subscriptions`. Bez żądania (prerender) guard kieruje na `/sign-in`, więc zapomniana w `serverRoutes` chroniona trasa nie trafi do statycznego HTML. Oba guardy przekazują do API tylko parę `subtracker_session=…`, nie cały nagłówek `Cookie`.
+- Budżet `anyComponentStyle` podniesiony z 4 / 8 kB do 10 / 25 kB (decyzja użytkownika), zamiast wynoszenia stylów strony startowej do `_home.scss`.

@@ -94,7 +94,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ### F-02: Fundament interfejsu
 
-- **Outcome:** (foundation) istniejące ekrany S-01 mają docelowy wygląd i układ na desktopie i telefonie (Angular Material z motywem projektu), pod `/` jest prerenderowana strona startowa, a kolejne slice'y korzystają z gotowego motywu, formularzy, przycisków i szkieletu strony.
+- **Outcome:** (foundation) istniejące ekrany S-01 mają docelowy wygląd i układ na desktopie i telefonie (Angular Material z motywem projektu), pod `/` jest strona startowa renderowana na serwerze, a kolejne slice'y korzystają z gotowego motywu, formularzy, przycisków i szkieletu strony.
 - **Change ID:** ui-foundation
 - **PRD refs:** Guardrails
 - **Unlocks:** S-02 (formularz dodawania i lista powstają od razu w docelowym stylu, bez przeróbek).

@@ -3,7 +3,7 @@ import { MatButton } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
 
 // The preview's next-payment dates are today plus a fixed number of days, so the sample never
-// shows past dates. The prerendered HTML carries the build date; in the browser the page renders
+// shows past dates. The server renders them on the server's date; in the browser the page renders
 // again on start-up and shows the visitor's today.
 const NEXT_PAYMENT_IN_DAYS = { netflix: 7, spotify: 21, microsoft365: 124 } as const;
 
