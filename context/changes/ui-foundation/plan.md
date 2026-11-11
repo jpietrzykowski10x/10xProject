@@ -420,8 +420,8 @@ Brak danych do migracji. Wycofanie to `rollback.sh frontend` na serwerze, bez wp
 
 #### Manual
 
-- [x] 4.4 Strona startowa zgadza się z makietą na desktopie i przy 390 px, bez poziomego przewijania
-- [x] 4.5 Przy wyłączonym JavaScripcie treść `/` jest widoczna
+- [x] 4.4 Strona startowa zgadza się z makietą na desktopie i przy 390 px, bez poziomego przewijania — 870ec91
+- [x] 4.5 Przy wyłączonym JavaScripcie treść `/` jest widoczna — 870ec91
 - [x] 4.6 Niezalogowany na `/` zostaje na stronie startowej; „Załóż konto” i „Zaloguj się” prowadzą do właściwych stron — 870ec91
 - [x] 4.7 Lokalnie przez `npm start` (API na localhost:3000): zalogowany wchodzący na `/` trafia na `/subscriptions`; czas mierzymy dopiero na produkcji (5.6) — 870ec91
 - [x] 4.8 Konsola bez błędów hydratacji na `/`, także przy przekierowaniu zalogowanego — 870ec91
@@ -436,8 +436,8 @@ Brak danych do migracji. Wycofanie to `rollback.sh frontend` na serwerze, bez wp
 #### Manual
 
 - [x] 5.3 Na produkcji wszystkie strony mają nowy wygląd, a czcionka ładuje się z domeny aplikacji (Network, brak żądań do Google) — fcd49d9
-- [x] 5.4 Pełny przepływ na produkcji: strona startowa → rejestracja → link z maila → pusta lista → wylogowanie
-- [x] 5.5 Na prawdziwym telefonie: strona startowa, rejestracja, logowanie i lista są czytelne, menu działa, nie ma poziomego przewijania
+- [x] 5.4 Pełny przepływ na produkcji: strona startowa → rejestracja → link z maila → pusta lista → wylogowanie — fcd49d9
+- [x] 5.5 Na prawdziwym telefonie: strona startowa, rejestracja, logowanie i lista są czytelne, menu działa, nie ma poziomego przewijania — fcd49d9
 - [x] 5.6 Pomiar na produkcji: zalogowany widzi stronę startową krócej niż 1 s (mediana z 5 przeładowań); jeśli nie, wariant SSR z fazy 4 i ponowny deploy przed archiwizacją — f677ed3
 
 ## Follow-ups
