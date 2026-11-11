@@ -1,5 +1,19 @@
 <app-shell>
+  <!-- The "Dodaj subskrypcję" button and the add panel arrive in phase 3 of S-02. -->
   <h1 class="subscriptions__title">Twoje subskrypcje</h1>
-  <!-- The add button arrives with S-02. -->
-  <p class="subscriptions__empty">Nie masz jeszcze żadnych subskrypcji.</p>
+
+  @let current = state();
+  @if (current.kind === 'loading') {
+    <p class="subscriptions__panel" role="status">Wczytywanie subskrypcji…</p>
+  } @else if (current.kind === 'error') {
+    <div class="st-notice st-notice--error subscriptions__error" role="alert">
+      <p>Nie udało się wczytać subskrypcji. Serwis jest chwilowo niedostępny.</p>
+      <button mat-stroked-button type="button" (click)="load()">Spróbuj ponownie</button>
+    </div>
+  } @else if (current.subscriptions.length === 0) {
+    <p class="subscriptions__panel">Nie masz jeszcze żadnych subskrypcji.</p>
+  } @else {
+    <!-- One table for desktop and phone; it switches its columns at 840px. -->
+    <app-subscription-table [subscriptions]="current.subscriptions" />
+  }
 </app-shell>

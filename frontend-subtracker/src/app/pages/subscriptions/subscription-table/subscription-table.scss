@@ -1,0 +1,219 @@
+// F2-Lista and F2-Tel-Lista: a white table with soft row dividers and small grey notes under
+// the values. Material's table tokens are set here, like the other component overrides in
+// _theme.scss, because only this table uses them.
+@use '@angular/material' as mat;
+
+:host {
+  display: block;
+
+  @include mat.table-overrides(
+    (
+      background-color: var(--mat-sys-surface),
+      header-headline-color: var(--st-muted),
+      header-headline-size: 13px,
+      header-headline-weight: 500,
+      header-container-height: 44px,
+      row-item-label-text-color: var(--mat-sys-on-surface),
+      row-item-label-text-size: 15px,
+      row-item-outline-color: var(--st-line-soft),
+    )
+  );
+}
+
+// The frame is a size container: the table goes compact by its own width, so the same rule
+// covers a narrow window and (phase 3) the add panel standing beside the table.
+.table__frame {
+  container-type: inline-size;
+  overflow-x: auto;
+  border: 1px solid var(--st-line);
+  border-radius: 4px;
+  background: var(--mat-sys-surface);
+}
+
+// Fills the frame at every width. Material's own `min-width: 100%` is replaced by the 700px floor
+// below (and 0 on the phone), so the width has to be set here.
+.table {
+  width: 100%;
+  min-width: 700px;
+
+  .mat-mdc-header-cell,
+  .mat-mdc-cell {
+    padding: 12px 16px;
+    vertical-align: top;
+    white-space: normal;
+  }
+
+  // The last data row would draw its divider on top of the frame's border. Detail rows always
+  // come last in the DOM, so the last subscription row is the one before them.
+  .table__row:nth-last-child(2):not(.table__row--expanded) .mat-mdc-cell {
+    border-bottom-width: 0;
+  }
+}
+
+.table__name {
+  font-weight: 600;
+}
+
+.table__note {
+  display: block;
+  color: var(--st-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.table__muted {
+  color: var(--st-muted);
+  font-weight: 400;
+}
+
+.table__date {
+  white-space: nowrap;
+}
+
+.table .table__amount {
+  text-align: right;
+}
+
+.table__amount-value {
+  font-size: 17px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status {
+  font-weight: 500;
+}
+
+.status--trial {
+  color: var(--st-status-trial);
+}
+
+.status--active {
+  color: var(--st-status-active);
+}
+
+.status--cancelled_pending {
+  color: var(--st-status-cancelled-pending);
+}
+
+.status--cancelled {
+  color: var(--st-status-cancelled);
+}
+
+.table__payment-note {
+  display: none;
+}
+
+// Compact desktop table: the payment column moves under the name ("Streaming · BLIK") and the
+// cells tighten, so the table fits from about 520px; below that the frame scrolls.
+@container (max-width: 680px) {
+  .table:not(.table--phone) {
+    min-width: 520px;
+
+    .mat-mdc-header-cell,
+    .mat-mdc-cell {
+      padding: 10px 12px;
+    }
+
+    .table__payment {
+      display: none;
+    }
+
+    .table__payment-note {
+      display: inline;
+    }
+  }
+}
+
+// Detail rows only appear on the phone, under an expanded row.
+.table__detail-row:not(.table__detail-row--open) {
+  display: none;
+}
+
+// Phone layout
+.table--phone {
+  min-width: 0;
+
+  .table__header-row {
+    display: none;
+  }
+
+  .table__summary {
+    padding: 0;
+  }
+
+  .table__row--expanded .mat-mdc-cell {
+    border-bottom-width: 0;
+  }
+
+  .table__details {
+    padding: 0 12px 12px;
+    font-size: 14px;
+  }
+}
+
+.summary {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.summary__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.summary__line--small {
+  margin-top: 2px;
+  font-size: 13px;
+}
+
+.summary__name {
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.summary__amount {
+  font-weight: 600;
+  white-space: nowrap;
+
+  .table__muted {
+    font-size: 13px;
+  }
+}
+
+.summary__date {
+  text-align: right;
+}
+
+.details {
+  margin: 0;
+}
+
+.details__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--st-line-soft);
+
+  dt {
+    color: var(--st-muted);
+  }
+
+  dd {
+    margin: 0;
+    text-align: right;
+  }
+}

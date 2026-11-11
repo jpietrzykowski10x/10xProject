@@ -4,8 +4,8 @@
   font-weight: 700;
 }
 
-// Empty state: a white panel in the content area, like the table that replaces it in S-02.
-.subscriptions__empty {
+// Loading and empty states: a white panel in the content area, where the table appears.
+.subscriptions__panel {
   margin: 0;
   padding: 32px 24px;
   border: 1px solid var(--st-line);
@@ -13,4 +13,24 @@
   background: var(--mat-sys-surface);
   color: var(--st-muted);
   text-align: center;
+}
+
+.subscriptions__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  p {
+    margin: 0;
+  }
+}
+
+@media (max-width: 839.98px) {
+  .subscriptions__title {
+    margin-bottom: 12px;
+    font: var(--mat-sys-title-large);
+    font-weight: 600;
+  }
 }

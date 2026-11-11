@@ -259,6 +259,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **FR-017: konfigurowalne progi alertów budżetowych** — Why parked: nice-to-have, w PRD planowane na v2.
 - **NFR: powiadomienie o koncie nieaktywnym 12 miesięcy** — Why parked: pierwsze takie konta pojawią się najwcześniej rok po starcie; cel `speed`.
 - **Monitoring i alerty produkcyjne poza logami procesów** — Why parked: cel `speed` i ryzyko `time`; decyzja otwarta w Open Roadmap Questions #3.
+- **Ikony form płatności na liście subskrypcji** — Why parked: opcja dodatkowa z S-02 (2026-11-11). Ikona (inline SVG, z etykietą dla czytnika ekranu) zamiast tekstu formy płatności; w kompaktowej tabeli (container query poniżej 680 px) zastąpiłaby dopisek „· BLIK” pod nazwą i zajęła mniej miejsca.
 
 ## Milestone History
 

@@ -26,6 +26,7 @@ $error: #a1191a;
 $error-tint: #fdecea;
 $warning-text: #6b4100;
 $warning-tint: #fdf1dc;
+$orange: #b54708; // 5.4:1 on white; clearly lighter than $warning-text (8.8:1)
 
 html {
   color-scheme: light;
@@ -134,7 +135,7 @@ html {
 // App-specific colours outside Material's token set, from the same palette.
 :root {
   // One width for the navy column in every layout, so it never jumps between pages.
-  --st-column-width: clamp(260px, 22vw, 300px);
+  --st-column-width: clamp(220px, 20vw, 300px);
   --st-navy: #{$navy};
   --st-navy-soft: #{$navy-soft};
   --st-navy-line: #{$navy-line};
@@ -149,5 +150,12 @@ html {
   --st-ink-soft: #{$ink-soft};
   --st-muted: #{$muted};
   --st-line: #{$line};
+  --st-line-soft: #{$line-soft}; // dividers between rows of a table or list
   --st-page: #{$page};
+  // Subscription status text (F2-Lista): green while paid, dark amber in a trial, orange while the
+  // cancellation runs out, grey when finished. Red stays reserved for errors.
+  --st-status-trial: #{$warning-text};
+  --st-status-active: #{$green};
+  --st-status-cancelled-pending: #{$orange};
+  --st-status-cancelled: #{$muted};
 }
