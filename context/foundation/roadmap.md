@@ -44,7 +44,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | F-01 | production-database-wiring        | (foundation) API ma produkcyjną bazę z migracjami w deployu; frontend woła API    | —             | Access Control, Guardrails    | done |
 | S-01 | magic-link-sign-in                | użytkownik rejestruje się i loguje magic linkiem i widzi swoją (pustą) listę subskrypcji | F-01          | FR-001, US-01                 | done |
 | F-02 | ui-foundation                     | (foundation) ekrany S-01 mają docelowy wygląd i układ; gotowy motyw dla kolejnych slice'ów | S-01          | Guardrails                    | done        |
-| S-02 | first-subscription-in-list        | użytkownik dodaje subskrypcję ze wszystkimi szczegółami i widzi ją na liście      | S-01, F-02    | FR-004, FR-007, FR-018, US-01 | proposed |
+| S-02 | first-subscription-in-list        | użytkownik dodaje subskrypcję ze wszystkimi szczegółami i widzi ją na liście      | S-01, F-02    | FR-004, FR-007, FR-018, US-01 | in-progress |
 | S-03 | edit-and-delete-subscription      | użytkownik poprawia lub usuwa błędnie dodaną subskrypcję                          | S-02          | FR-005, FR-006                | proposed |
 | S-04 | dashboard-cost-totals             | użytkownik widzi sumę miesięczną i roczną z podziałem na kategorie                | S-02          | FR-008, US-01                 | proposed |
 | S-05 | subscription-lifecycle            | subskrypcja sama przechodzi trial → active i cancelled_pending → cancelled        | S-02          | FR-013                        | proposed |
@@ -132,7 +132,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - Jaka jest predefiniowana lista kategorii na start? — Owner: user. Block: no.
 - **Risk:** Gwiazda przewodnia — stoi zaraz po logowaniu; ryzyko w czasie przejścia (< 3 min wg kryterium sukcesu), więc formularz musi być krótki mimo wielu pól.
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-03: Edycja i usuwanie subskrypcji
 

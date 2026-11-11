@@ -40,3 +40,17 @@
 - **Problem**: W S-01 trasy frontendu powstały po polsku (`/rejestracja`, `/logowanie`), więc trzeba było je zmieniać razem z linkiem w mailu. Po wdrożeniu taka zmiana psuje wysłane linki i zakładki.
 - **Rule**: Ścieżki tras są zawsze po angielsku, także nowe. Po polsku zostają tylko teksty w interfejsie.
 - **Applies to**: plan, plan-review, implement, impl-review
+
+## Indeksy tam, gdzie zapytanie albo klucz ich potrzebuje
+
+- **Context**: `backend-subtracker/` — encje TypeORM i migracje; w S-02 `subscription.category_id` (FK) dostał indeks dopiero przy przeglądzie migracji
+- **Problem**: Postgres nie zakłada indeksu na kolumnie klucza obcego. Bez niego usunięcie wiersza nadrzędnego (sprawdzenie FK, kaskada) i każde filtrowanie lub grupowanie po tej kolumnie skanuje całą tabelę; brak wychodzi dopiero przy większej liczbie danych. Wcześniej tak samo trzeba było dodać indeksy `user_id` w `session` i `magic_link_token` osobną migracją.
+- **Rule**: Każda kolumna klucza obcego dostaje `@Index()`, chyba że jest pierwszą kolumną innego indeksu. Do tego indeks na kolumnach, po których zapytania filtrują, sortują albo łączą (np. status i daty dla jobów). Indeks bez zapytania, które go używa, nie powstaje. Przy przeglądzie wygenerowanej migracji sprawdzić, czy każdy FK ma indeks.
+- **Applies to**: plan, plan-review, implement, impl-review
+
+## Kod ogólny w `shared/`, logika domeny w module funkcji
+
+- **Context**: `backend-subtracker/src/` — moduły funkcji (`auth/`, `subscriptions/`, …) i `src/shared/`; w S-02 walidator dnia `YYYY-MM-DD`, przycinany string i rozpoznanie błędu `23505` powstały jako prywatne funkcje modułu `subscriptions`, a stałe kategorii domyślnych trafiły do `shared/types`
+- **Problem**: Ogólny kod schowany w module domeny jest kopiowany w kolejnych slice'ach zamiast używany ponownie, a stałe domeny w `shared/` łamią zasadę, że `shared/` to liść bez wiedzy o funkcjach.
+- **Rule**: Walidatory, helpery bazy i funkcje bez wiedzy o domenie trafiają do `src/shared/<obszar>/` (`validation/`, `database/`, `decorators/`, `types/`…) z własnym testem jednostkowym obok. Moduł funkcji trzyma tylko logikę i stałe swojej domeny (reguły biznesowe, kolejność, odpowiedzi API, dane startowe). Przed napisaniem helpera sprawdzić, czy podobny nie istnieje już w `shared/`.
+- **Applies to**: plan, implement, impl-review

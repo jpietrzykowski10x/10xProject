@@ -10,6 +10,7 @@ import { buildDatabaseOptions } from './database/database.options.js';
 import { HealthController } from './health/health.controller.js';
 import { MailModule } from './mail/mail.module.js';
 import { SafeLoggingExceptionFilter } from './shared/filters/safe-logging-exception.filter.js';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
 import { UsersModule } from './users/users.module.js';
 
 @Module({
@@ -28,6 +29,7 @@ import { UsersModule } from './users/users.module.js';
     MailModule,
     UsersModule,
     AuthModule,
+    SubscriptionsModule,
   ],
   controllers: [AppController, HealthController],
   providers: [
