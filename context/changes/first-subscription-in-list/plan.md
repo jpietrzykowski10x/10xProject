@@ -357,14 +357,14 @@ Dwie nowe migracje (schemat, dane startowe) uruchamiane przez `deploy.sh` po `pg
 
 #### Automated
 
-- [x] 2.1 Build przechodzi bez błędów i bez ostrzeżeń budżetu: `cd frontend-subtracker && npm run build`
-- [x] 2.2 Paczka deployu przechodzi: `npm run prepare-mydevil`
+- [x] 2.1 Build przechodzi bez błędów i bez ostrzeżeń budżetu: `cd frontend-subtracker && npm run build` — c00d66b
+- [x] 2.2 Paczka deployu przechodzi: `npm run prepare-mydevil` — c00d66b
 
 #### Manual
 
-- [x] 2.3 Lokalnie z subskrypcjami z fazy 1 (dodanymi przez API): tabela na desktopie i lista na telefonie (390 px) zgodne z makietami, kwoty „43,00 zł”, daty „15.11.2026”, kolejność według grup statusu i dat
-- [x] 2.4 Pusta lista pokazuje pusty stan; przy wyłączonym API komunikat błędu i działające „Spróbuj ponownie”
-- [x] 2.5 Wiersz na telefonie rozwija się i zwija (klawiatura, `aria-expanded`), bez poziomego przewijania strony
+- [x] 2.3 Lokalnie z subskrypcjami z fazy 1 (dodanymi przez API): tabela na desktopie i lista na telefonie (390 px) zgodne z makietami, kwoty „43,00 zł”, daty „15.11.2026”, kolejność według grup statusu i dat — c00d66b
+- [x] 2.4 Pusta lista pokazuje pusty stan; przy wyłączonym API komunikat błędu i działające „Spróbuj ponownie” — c00d66b
+- [x] 2.5 Wiersz na telefonie rozwija się i zwija (klawiatura, `aria-expanded`), bez poziomego przewijania strony — c00d66b
 
 ### Phase 3: Frontend — dodawanie subskrypcji
 
