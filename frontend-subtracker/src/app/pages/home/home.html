@@ -1,8 +1,193 @@
+<!-- Prerendered at build time (app.routes.server.ts): everything here is static HTML and must read
+     well without JavaScript. The amounts are sample data, not API data. -->
+<header class="home__band home__header">
+  <div class="home__wrap home__header-inner">
+    <span class="home__wordmark">SubTracker</span>
+    <a class="home__sign-in" routerLink="/sign-in">Zaloguj się</a>
+  </div>
+</header>
+
 <main>
-  <h1>SubTracker</h1>
-  <p>Miej wszystkie swoje subskrypcje w jednym miejscu i wiedz, ile naprawdę na nie wydajesz.</p>
-  <ul>
-    <li><a routerLink="/register">Załóż konto</a></li>
-    <li><a routerLink="/sign-in">Zaloguj się</a></li>
-  </ul>
+  <section class="home__band home__hero" aria-labelledby="home-title">
+    <div class="home__wrap home__row home__hero-inner">
+      <div class="home__col">
+        <h1 id="home-title" class="home__title">Ile naprawdę płacisz za subskrypcje?</h1>
+        <p class="home__lead">
+          Miej wszystkie swoje subskrypcje w jednym miejscu i wiedz, ile naprawdę na nie wydajesz.
+        </p>
+        <p class="home__hero-text">
+          Roczne i miesięczne opłaty sprowadzamy do jednej kwoty. Ostrzegamy, gdy płacisz za podobne
+          usługi albo zbliżasz się do limitu, i przypominamy o końcu okresu próbnego, zanim zacznie
+          się płatność.
+        </p>
+        <a mat-flat-button class="home__cta" routerLink="/register">Załóż konto</a>
+      </div>
+
+      <!-- Sums: trial excluded. Monthly 43,00 + 23,99 + 429,99 / 12 (35,83) = 102,82 zł;
+           yearly (43,00 + 23,99) × 12 + 429,99 = 1 233,87 zł. -->
+      <figure class="home__col home__preview">
+        <div class="home__card">
+          <div class="home__totals">
+            <div>
+              <div class="home__label">Miesięcznie</div>
+              <div class="home__total st-amount">102,82 zł</div>
+            </div>
+            <div class="home__yearly">
+              <div class="home__label">Rocznie</div>
+              <span class="st-amount">1 233,87 zł</span>
+            </div>
+          </div>
+          <ul class="home__items">
+            <li class="home__item">
+              <div class="home__item-line">
+                <strong>Netflix</strong>
+                <span class="home__price st-amount"
+                  >43,00 zł <span class="home__per">/ mies.</span></span
+                >
+              </div>
+              <div class="home__item-line home__item-meta">
+                <span><span class="home__active">Aktywna</span>, Streaming</span>
+                <span class="st-amount">{{ nextPayments.netflix }}</span>
+              </div>
+            </li>
+            <li class="home__item">
+              <div class="home__item-line">
+                <strong>Spotify</strong>
+                <span class="home__price st-amount"
+                  >23,99 zł <span class="home__per">/ mies.</span></span
+                >
+              </div>
+              <div class="home__item-line home__item-meta">
+                <span><span class="home__active">Aktywna</span>, Muzyka</span>
+                <span class="st-amount">{{ nextPayments.spotify }}</span>
+              </div>
+            </li>
+            <li class="home__item">
+              <div class="home__item-line">
+                <strong>Microsoft 365</strong>
+                <span class="home__price st-amount"
+                  >429,99 zł <span class="home__per">/ rok</span></span
+                >
+              </div>
+              <div class="home__item-line home__item-meta">
+                <span><span class="home__active">Aktywna</span>, Praca</span>
+                <span class="st-amount">{{ nextPayments.microsoft365 }}</span>
+              </div>
+            </li>
+            <li class="home__item">
+              <div class="home__item-line">
+                <strong>Duolingo</strong>
+                <span class="home__price st-amount"
+                  >29,99 zł <span class="home__per">/ mies.</span></span
+                >
+              </div>
+              <div class="home__item-line home__item-meta">
+                <span><span class="home__trial">Trial</span>, Edukacja</span>
+                <span>za 4 dni</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <figcaption class="home__caption">Podgląd aplikacji na przykładowych danych.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <div class="home__wrap">
+    <section class="home__intro" aria-labelledby="home-intro">
+      <h2 id="home-intro" class="home__h2">Arkusz trzeba pilnować. SubTracker pilnuje sam.</h2>
+      <p class="home__text">
+        Kilka usług, kilka kart, różne terminy i część opłat raz w roku. Arkusz albo kategorie w
+        banku wymagają regularnej ręcznej pracy. Tutaj dodajesz subskrypcję raz, a sumy, duplikaty i
+        terminy są liczone za Ciebie.
+      </p>
+    </section>
+
+    <section class="home__row home__feature" aria-labelledby="home-cost">
+      <div class="home__col">
+        <h3 id="home-cost" class="home__h3">Realny koszt w jednej liczbie</h3>
+        <p class="home__text">
+          Płatności miesięczne i roczne przeliczamy do wspólnego mianownika. Widzisz sumę za miesiąc
+          i za rok oraz to, która kategoria kosztuje najwięcej.
+        </p>
+      </div>
+      <!-- The same items as the preview above: 43,00 + 35,83 + 23,99 = 102,82 zł. -->
+      <dl class="home__col home__fragment home__categories st-amount">
+        <div>
+          <dt>Streaming</dt>
+          <dd>43,00 zł</dd>
+        </div>
+        <div>
+          <dt>Praca</dt>
+          <dd>35,83 zł</dd>
+        </div>
+        <div>
+          <dt>Muzyka</dt>
+          <dd>23,99 zł</dd>
+        </div>
+        <div class="home__categories-sum">
+          <dt>Miesięcznie</dt>
+          <dd>102,82 zł</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="home__row home__feature" aria-labelledby="home-warning">
+      <div class="home__col">
+        <h3 id="home-warning" class="home__h3">Ostrzeżenie, zanim przepłacisz</h3>
+        <p class="home__text">
+          Sam decydujesz, ile subskrypcji w kategorii to za dużo i jaki jest Twój miesięczny limit.
+          Po każdej zmianie sprawdzamy to od nowa, a przy 80% i 100% limitu dostajesz alert.
+        </p>
+      </div>
+      <div class="home__col home__fragment home__alerts">
+        <p class="home__warning">Streaming: 3 aktywne subskrypcje, Twój próg to 2.</p>
+        <div>
+          <div class="home__item-line">
+            <span class="home__limit-label">Limit 200,00 zł</span>
+            <span class="st-amount">85%</span>
+          </div>
+          <div class="home__limit-track" aria-hidden="true">
+            <div class="home__limit-fill"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="home__row home__feature" aria-labelledby="home-trial">
+      <div class="home__col">
+        <h3 id="home-trial" class="home__h3">Koniec triala Cię nie zaskoczy</h3>
+        <p class="home__text">
+          Na 7 dni przed końcem okresu próbnego dostajesz e-mail, więc masz czas zdecydować, czy
+          zostać, czy zrezygnować.
+        </p>
+      </div>
+      <div class="home__col home__fragment home__trial-card">
+        <div class="home__item-line">
+          <strong>Duolingo</strong>
+          <span class="home__price st-amount">29,99 zł <span class="home__per">/ mies.</span></span>
+        </div>
+        <div class="home__item-line home__item-meta">
+          <span><span class="home__trial">Trial</span>, Edukacja</span>
+          <span>koniec za 4 dni</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="home__row home__closing" aria-labelledby="home-start">
+      <div class="home__col">
+        <h2 id="home-start" class="home__h2">Zacznij od pierwszej subskrypcji</h2>
+        <p class="home__text">
+          Konto zakładasz samym adresem e-mail. Bez hasła: logujesz się linkiem z wiadomości.
+        </p>
+      </div>
+      <a mat-flat-button class="home__cta" routerLink="/register">Załóż konto</a>
+    </section>
+  </div>
 </main>
+
+<footer class="home__footer">
+  <div class="home__wrap">
+    <a class="home__footer-link" routerLink="/privacy-policy">Polityka prywatności</a>
+  </div>
+</footer>
