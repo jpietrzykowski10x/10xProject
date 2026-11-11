@@ -1,0 +1,167 @@
+<!-- mat-error shows after a field is left or the form is submitted, and Material links it to the
+     field through aria-describedby. -->
+<form
+  class="st-form form"
+  [class.form--sticky]="stickyActions()"
+  [formGroup]="form"
+  (ngSubmit)="submit()"
+  novalidate
+>
+  <mat-form-field>
+    <mat-label>Nazwa</mat-label>
+    <input
+      matInput
+      formControlName="name"
+      placeholder="np. Netflix"
+      autocomplete="off"
+      [maxlength]="nameMaxLength"
+    />
+    <mat-error>Podaj nazwę.</mat-error>
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Kategoria</mat-label>
+    <mat-select #categorySelect formControlName="categoryId">
+      @for (category of categories(); track category.id) {
+        <mat-option [value]="category.id">{{ category.name }}</mat-option>
+      }
+      <mat-option [value]="newCategory">Dodaj własną…</mat-option>
+    </mat-select>
+    <mat-error>Wybierz kategorię.</mat-error>
+  </mat-form-field>
+  @if (categoriesFailed()) {
+    <div class="st-notice st-notice--error form__notice-action" role="alert">
+      <p>Nie udało się wczytać kategorii.</p>
+      <button mat-stroked-button type="button" (click)="loadCategories()">Spróbuj ponownie</button>
+    </div>
+  }
+
+  @if (addingOwnCategory()) {
+    <div class="form__new-category">
+      <mat-form-field>
+        <mat-label>Nazwa nowej kategorii</mat-label>
+        <input
+          matInput
+          [formControl]="categoryName"
+          autocomplete="off"
+          [maxlength]="categoryNameMaxLength"
+          (keydown.enter)="onCategoryEnter($event)"
+        />
+        @if (categoryName.hasError('conflict')) {
+          <mat-error>Taka kategoria już istnieje.</mat-error>
+        } @else {
+          <mat-error>Podaj nazwę kategorii.</mat-error>
+        }
+      </mat-form-field>
+      <button
+        mat-stroked-button
+        type="button"
+        class="form__new-category-button"
+        [disabled]="addingCategory()"
+        (click)="addCategory()"
+      >
+        Dodaj
+      </button>
+    </div>
+    @if (categoryFailed()) {
+      <p class="st-notice st-notice--error" role="alert">
+        Nie udało się dodać kategorii. Spróbuj ponownie za chwilę.
+      </p>
+    }
+  }
+
+  <mat-form-field>
+    <mat-label>Kwota w PLN</mat-label>
+    <input
+      matInput
+      formControlName="amount"
+      inputmode="decimal"
+      placeholder="0,00"
+      autocomplete="off"
+    />
+    <mat-error>Podaj kwotę od 0 do 99 999,99 zł.</mat-error>
+  </mat-form-field>
+
+  <fieldset class="form__cycle">
+    <legend class="form__legend">Cykl rozliczeniowy</legend>
+    <mat-button-toggle-group
+      formControlName="billingCycle"
+      class="form__toggle"
+      hideSingleSelectionIndicator
+    >
+      @for (cycle of cycles; track cycle) {
+        <mat-button-toggle [value]="cycle">{{ cycleLabels[cycle] }}</mat-button-toggle>
+      }
+    </mat-button-toggle-group>
+  </fieldset>
+
+  <mat-form-field>
+    <mat-label>Forma płatności</mat-label>
+    <mat-select formControlName="paymentMethod">
+      @for (method of paymentMethods; track method) {
+        <mat-option [value]="method">{{ paymentLabels[method] }}</mat-option>
+      }
+    </mat-select>
+    <mat-error>Wybierz formę płatności.</mat-error>
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Status</mat-label>
+    <mat-select formControlName="status">
+      @for (status of statuses; track status) {
+        <mat-option [value]="status">{{ statusLabels[status] }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  @if (isTrial()) {
+    <mat-form-field>
+      <mat-label>Koniec okresu próbnego</mat-label>
+      <input
+        matInput
+        [matDatepicker]="trialEndPicker"
+        formControlName="trialEndDate"
+        placeholder="dd.mm.rrrr"
+        autocomplete="off"
+      />
+      <mat-datepicker-toggle matIconSuffix [for]="trialEndPicker" />
+      <mat-datepicker #trialEndPicker />
+      <mat-error>Podaj datę w formacie dd.mm.rrrr.</mat-error>
+    </mat-form-field>
+  }
+
+  <mat-form-field>
+    <mat-label>Następne rozliczenie</mat-label>
+    <input
+      matInput
+      [matDatepicker]="nextBillingPicker"
+      formControlName="nextBillingDate"
+      placeholder="dd.mm.rrrr"
+      autocomplete="off"
+    />
+    <mat-datepicker-toggle matIconSuffix [for]="nextBillingPicker" />
+    <mat-datepicker #nextBillingPicker />
+    @if (form.controls.nextBillingDate.hasError('notBeforeDate')) {
+      <mat-error>Rozliczenie nie może być wcześniejsze niż koniec okresu próbnego.</mat-error>
+    } @else {
+      <mat-error>Podaj datę w formacie dd.mm.rrrr.</mat-error>
+    }
+  </mat-form-field>
+
+  @if (state() === 'invalid') {
+    <p class="st-notice st-notice--error" role="alert">
+      Serwer nie przyjął danych. Sprawdź pola formularza i spróbuj ponownie.
+    </p>
+  }
+  @if (state() === 'unavailable') {
+    <p class="st-notice st-notice--error" role="alert">
+      Serwis jest chwilowo niedostępny. Spróbuj ponownie za chwilę.
+    </p>
+  }
+
+  <div class="form__actions">
+    <button mat-flat-button type="submit" [disabled]="state() === 'sending'">
+      Zapisz subskrypcję
+    </button>
+  </div>
+</form>

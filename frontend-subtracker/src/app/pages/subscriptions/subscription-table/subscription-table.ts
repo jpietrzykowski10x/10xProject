@@ -4,6 +4,7 @@ import { Component, computed, inject, input, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatTableModule } from '@angular/material/table';
 import { map } from 'rxjs';
+import { PHONE_MEDIA_QUERY } from '../../../shared/breakpoints';
 import { DateOnlyPipe } from '../../../shared/date-only.pipe';
 import { TypedCellDef, TypedRowDef } from '../../../shared/typed-table-defs';
 import { monthlyAmount } from '../../../subscriptions/subscription-amounts';
@@ -17,9 +18,6 @@ import {
   STATUS_LABELS,
 } from '../../../subscriptions/subscription-labels';
 import type { Subscription } from '../../../subscriptions/subscription.types';
-
-// The phone breakpoint of the app shell (app-shell.scss).
-const PHONE = '(max-width: 839.98px)';
 
 const DESKTOP_COLUMNS = ['name', 'payment', 'status', 'date', 'amount'];
 const PHONE_COLUMNS = ['summary'];
@@ -41,8 +39,8 @@ export class SubscriptionTable {
 
   // isMatched reads the media query synchronously, so the first frame already has the right columns.
   protected readonly isPhone = toSignal(
-    this.breakpoints.observe(PHONE).pipe(map((state) => state.matches)),
-    { initialValue: this.breakpoints.isMatched(PHONE) },
+    this.breakpoints.observe(PHONE_MEDIA_QUERY).pipe(map((state) => state.matches)),
+    { initialValue: this.breakpoints.isMatched(PHONE_MEDIA_QUERY) },
   );
   protected readonly columns = computed(() => (this.isPhone() ? PHONE_COLUMNS : DESKTOP_COLUMNS));
   protected readonly headerColumns = computed(() => (this.isPhone() ? [] : DESKTOP_COLUMNS));

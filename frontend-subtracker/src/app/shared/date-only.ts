@@ -27,3 +27,27 @@ export function daysFromToday(value: string, today: Date = new Date()): number |
   const start = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
   return Math.round((target - start) / MS_PER_DAY);
 }
+
+// The local calendar day of a Date as YYYY-MM-DD, for the API. Never `toISOString()`: that is the
+// UTC day, one day earlier for a local midnight east of Greenwich.
+export function toDateOnly(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${String(date.getFullYear()).padStart(4, '0')}-${month}-${day}`;
+}
+
+const DAY_MONTH_YEAR = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/;
+
+// A day typed the Polish way ("05.01.2026" or "5.1.2026") as a local Date at midnight, or null for
+// any other text or a day that does not exist ("31.02.2026" would otherwise roll over to March).
+export function parseDayMonthYear(value: string): Date | null {
+  const match = DAY_MONTH_YEAR.exec(value.trim());
+  if (match === null) {
+    return null;
+  }
+  const [year, month, day] = [+match[3], +match[2] - 1, +match[1]];
+  const date = new Date(year, month, day);
+  return date.getFullYear() === year && date.getMonth() === month && date.getDate() === day
+    ? date
+    : null;
+}

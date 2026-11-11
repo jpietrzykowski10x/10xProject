@@ -333,6 +333,10 @@ Dwie nowe migracje (schemat, dane startowe) uruchamiane przez `deploy.sh` po `pg
 
 - Faza 1, przegląd migracji przez użytkownika (2026-11-11): `subscription.category_id` dostał indeks (reguła „Indeksy tam, gdzie zapytanie albo klucz ich potrzebuje” w `lessons.md`), a domyślne „Streaming wideo” i „Muzyka i audio” połączone w jedną kategorię „Streaming” (usługi typu YouTube obejmują obie) — kategorii domyślnych jest 9. Wiersz Progress 1.6 zachowuje pierwotny tytuł („10 kategorii”); sprawdzana wartość to 9.
 - Faza 1, przegląd kodu przez użytkownika (2026-11-11): ogólne helpery wydzielone do `src/shared/` — `validation/date-only.ts` (`isDateOnly`, `IsDateOnly`), `validation/trimmed-string.ts` (`TrimmedString`, wcześniej `TrimmedName`), `database/unique-violation.ts` (`isUniqueViolation`), każdy z testem; `default-categories.ts` przeniesione z `shared/types` do modułu `subscriptions` (reguła „Kod ogólny w `shared/`, logika domeny w module funkcji” w `lessons.md`).
+- Faza 2, przegląd użytkownika (2026-11-11): zamiast osobnych komponentów dla telefonu i desktopu jedna `mat-table` (`subscription-table`) z rozwijanymi wierszami na telefonie (`BreakpointObserver`); „W trakcie anulowania” na pomarańczowo (czerwony tylko dla błędów); „za N dni” przy trialu; kwota miesięczna dla rocznych (`monthlyAmount`, wcześniej przypisane do S-04); kolumna granatowa `clamp(220px, 20vw, 300px)` i tryb kompaktowy tabeli przez container query (< 680 px, forma płatności pod nazwą). Ikony form płatności w `roadmap.md` → Parked.
+- Faza 3, budżet paczki (2026-11-11): globalny `MAT_FORM_FIELD_DEFAULT_OPTIONS` z `app.config.ts` przeniesiony do `shared/form-field-defaults.ts` i podpięty w każdym formularzu (rejestracja, logowanie, subskrypcja) — initial z 504,52 kB do 364,95 kB, bez podnoszenia budżetu. Adapter dat i `MAT_DATE_*` podpięte w `SubscriptionForm`, nie w `app.config.ts`. `PlDateAdapter.parse` zwraca `invalid()` dla nieczytelnego tekstu (nie `null`), żeby pokazać błąd formatu.
+- Faza 3, decyzja użytkownika po testach ręcznych (2026-11-11): **bez trasy `/subscriptions/new`**. Dodawanie to jeden stan na `/subscriptions`; telefon — widok na całą treść pod granatowym paskiem szkieletu (lista ukryta i `inert`; pasek nad widokiem zaakceptowany przez użytkownika zamiast pełnoekranowej nakładki z makiety), 840–1199 px — panel nad tabelą, ≥ 1200 px — panel obok; ten sam egzemplarz formularza przy zmianie szerokości. Auto-otwarcie raz na wejście, tylko ≥ 840 px i nigdy po ręcznym zamknięciu. Kontrola 3.3 (brak prerenderowanego `subscriptions/new`) jest spełniona trywialnie; test 3.7 sprawdza dodawanie na telefonie na `/subscriptions`. Przycisk „wstecz” Androida zamykający widok — później (parametr w adresie). Sekcja 4 fazy 3 i wpis `/subscriptions/new` w CLAUDE.md (faza 4) nieaktualne.
+- Testy jednostkowe frontendu: nowy fundament F-03 `frontend-unit-tests` w `roadmap.md` (przed S-03); w S-02 błąd regex kwoty wyszedł dopiero w teście ręcznym.
 
 ## Progress
 
@@ -370,18 +374,18 @@ Dwie nowe migracje (schemat, dane startowe) uruchamiane przez `deploy.sh` po `pg
 
 #### Automated
 
-- [ ] 3.1 Build przechodzi bez błędów i bez ostrzeżeń budżetu: `cd frontend-subtracker && npm run build`
-- [ ] 3.2 Paczka deployu przechodzi: `npm run prepare-mydevil`
-- [ ] 3.3 `dist/frontend-subtracker/browser/` nie zawiera prerenderowanego `subscriptions/new/index.html` (trasa w `RenderMode.Client`)
+- [x] 3.1 Build przechodzi bez błędów i bez ostrzeżeń budżetu: `cd frontend-subtracker && npm run build`
+- [x] 3.2 Paczka deployu przechodzi: `npm run prepare-mydevil`
+- [x] 3.3 `dist/frontend-subtracker/browser/` nie zawiera prerenderowanego `subscriptions/new/index.html` (trasa w `RenderMode.Client`)
 
 #### Manual
 
-- [ ] 3.4 Pełny przepływ lokalnie: pusta lista → panel otwarty sam → dodanie subskrypcji Aktywna i Trial (z końcem trialu) → obie na liście we właściwej kolejności
-- [ ] 3.5 Własna kategoria: dodanie, wybór, konflikt z „Inne” pokazuje komunikat
-- [ ] 3.6 Walidacja: pusta nazwa, kwota „abc”, „-1”, „100 000”, data „31.02.2026”, rozliczenie przed końcem trialu — komunikaty przy polach, nic nie trafia do API
-- [ ] 3.7 Telefon (390 px): „Dodaj subskrypcję” → `/subscriptions/new` → zapis → powrót do listy z komunikatem
-- [ ] 3.8 Desktop 1024 px: panel wysuwa się nad tabelę; 1360 px: panel obok tabeli
-- [ ] 3.9 Klawiatura i drzewo dostępności: etykiety pól, błędy powiązane z polami, fokus po zapisie
+- [x] 3.4 Pełny przepływ lokalnie: pusta lista → panel otwarty sam → dodanie subskrypcji Aktywna i Trial (z końcem trialu) → obie na liście we właściwej kolejności
+- [x] 3.5 Własna kategoria: dodanie, wybór, konflikt z „Inne” pokazuje komunikat
+- [x] 3.6 Walidacja: pusta nazwa, kwota „abc”, „-1”, „100 000”, data „31.02.2026”, rozliczenie przed końcem trialu — komunikaty przy polach, nic nie trafia do API
+- [x] 3.7 Telefon (390 px): „Dodaj subskrypcję” → `/subscriptions/new` → zapis → powrót do listy z komunikatem
+- [x] 3.8 Desktop 1024 px: panel wysuwa się nad tabelę; 1360 px: panel obok tabeli
+- [x] 3.9 Klawiatura i drzewo dostępności: etykiety pól, błędy powiązane z polami, fokus po zapisie
 
 ### Phase 4: Wdrożenie i dokumentacja
 

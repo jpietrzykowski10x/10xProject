@@ -2,10 +2,6 @@ import { ApplicationConfig, LOCALE_ID, provideBrowserGlobalErrorListeners } from
 import { registerLocaleData } from '@angular/common';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import localePl from '@angular/common/locales/pl';
-import {
-  MAT_FORM_FIELD_DEFAULT_OPTIONS,
-  MatFormFieldDefaultOptions,
-} from '@angular/material/form-field';
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { provideClientHydration, withHttpTransferCacheOptions } from '@angular/platform-browser';
@@ -25,9 +21,6 @@ export const appConfig: ApplicationConfig = {
       withHttpTransferCacheOptions({ filter: (request) => !request.url.endsWith('/auth/session') }),
     ),
     provideHttpClient(withFetch(), withInterceptors([credentialsInterceptor])),
-    {
-      provide: MAT_FORM_FIELD_DEFAULT_OPTIONS,
-      useValue: { appearance: 'outline' } satisfies MatFormFieldDefaultOptions,
-    },
+    // Outline form fields are provided per form component (shared/form-field-defaults.ts).
   ],
 };

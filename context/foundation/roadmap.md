@@ -45,7 +45,8 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-01 | magic-link-sign-in                | użytkownik rejestruje się i loguje magic linkiem i widzi swoją (pustą) listę subskrypcji | F-01          | FR-001, US-01                 | done |
 | F-02 | ui-foundation                     | (foundation) ekrany S-01 mają docelowy wygląd i układ; gotowy motyw dla kolejnych slice'ów | S-01          | Guardrails                    | done        |
 | S-02 | first-subscription-in-list        | użytkownik dodaje subskrypcję ze wszystkimi szczegółami i widzi ją na liście      | S-01, F-02    | FR-004, FR-007, FR-018, US-01 | in-progress |
-| S-03 | edit-and-delete-subscription      | użytkownik poprawia lub usuwa błędnie dodaną subskrypcję                          | S-02          | FR-005, FR-006                | proposed |
+| F-03 | frontend-unit-tests               | (foundation) frontend ma test runner, testy jednostkowe w CI i pierwsze testy helperów `shared/` | S-02          | Guardrails                    | proposed |
+| S-03 | edit-and-delete-subscription      | użytkownik poprawia lub usuwa błędnie dodaną subskrypcję                          | S-02, F-03    | FR-005, FR-006                | proposed |
 | S-04 | dashboard-cost-totals             | użytkownik widzi sumę miesięczną i roczną z podziałem na kategorie                | S-02          | FR-008, US-01                 | proposed |
 | S-05 | subscription-lifecycle            | subskrypcja sama przechodzi trial → active i cancelled_pending → cancelled        | S-02          | FR-013                        | proposed |
 | S-06 | trial-end-reminder                | użytkownik dostaje e-mail 7 dni przed końcem okresu próbnego                      | S-05          | FR-014                        | proposed |
@@ -59,7 +60,7 @@ Navigation aid — groups items that share a Prerequisites chain. Canonical orde
 
 | Stream | Theme                  | Chain                                   | Note                                                                                   |
 | ------ | ---------------------- | --------------------------------------- | -------------------------------------------------------------------------------------- |
-| A      | Rdzeń: konto i lista   | `F-01` → `S-01` → `F-02` → `S-02` → `S-03` | Ścieżka krytyczna do gwiazdy przewodniej; wszystko inne startuje od `S-02`.            |
+| A      | Rdzeń: konto i lista   | `F-01` → `S-01` → `F-02` → `S-02` → `F-03` → `S-03` | Ścieżka krytyczna do gwiazdy przewodniej; wszystko inne startuje od `S-02`. `F-03` przed kolejną zmianą frontendu. |
 | B      | Koszt i alerty         | `S-04` → `S-07`, `S-08`                 | Dołącza do Stream A po `S-02`; `S-07` i `S-08` mogą iść równolegle po `S-04`.          |
 | C      | Cykl życia i e-mail    | `S-05` → `S-06`                         | Dołącza do Stream A po `S-02`; najbardziej ryzykowna technicznie gałąź — nie zwlekać.  |
 | D      | Administracja          | `S-09`                                  | Dołącza do Stream A po `S-02`; niezależna od B i C.                                    |
@@ -105,6 +106,21 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Stoi przed S-02, żeby nie przerabiać wyglądu w każdym kolejnym slice'ie; ryzyko w rozroście zakresu, więc zmiana obejmuje tylko istniejące ekrany, szkielet i stronę startową, a sumy i alerty dochodzą w swoich slice'ach.
 - **Status:** done
 
+### F-03: Testy jednostkowe frontendu
+
+- **Outcome:** (foundation) `frontend-subtracker` ma działający test runner (`ng test` / `npm test`), testy jednostkowe uruchamiane w CI (`ci.yml`, job `frontend`) i pierwsze testy czystych helperów: `shared/decimal.ts` (`parseDecimal`), `shared/pl-date-adapter.ts` (`parse`, w tym 31.02 i `d.m.rrrr`), `shared/date-only.ts` (`daysFromToday`, `toDateOnly` bez przesunięcia strefy), `subscriptions/subscription-amounts.ts` (`monthlyAmount`) i walidatory formularza subskrypcji. Kontrola celowego uszkodzenia dla każdego testu.
+- **Change ID:** frontend-unit-tests
+- **PRD refs:** Guardrails
+- **Unlocks:** S-03 i kolejne zmiany frontendu z bramką testów zamiast samych testów ręcznych; reguła z `lessons.md` („helper w `shared/` z testem obok”) da się spełnić także na froncie.
+- **Prerequisites:** S-02
+- **Parallel with:** S-04, S-05, S-09 (backend)
+- **Blockers:** —
+- **Unknowns:**
+  - Runner: wbudowany builder Angulara 22 (`@angular/build:unit-test` z Vitest) czy Karma/Jest — rozstrzygnąć w `/10x-research`; preferencja: Vitest, jak w backendzie. — Owner: agent. Block: no.
+  - Czy moduł 3 kursu (strategia testów, bramki jakości) narzuca układ testów — sprawdzić przed `/10x-plan`. — Owner: user. Block: no.
+- **Risk:** Frontend powstał z `--skip-tests`; w S-02 błąd w wyrażeniu regularnym kwoty (każda kwota odrzucana) wyszedł dopiero w teście ręcznym. Zakres celowo mały (runner, CI, helpery), bez testów komponentów i e2e przeglądarki.
+- **Status:** proposed
+
 ## Slices
 
 ### S-01: Logowanie magic linkiem
@@ -139,7 +155,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Outcome:** użytkownik poprawia dane istniejącej subskrypcji albo trwale usuwa błędnie dodaną — odrębnie od anulowania usługi w cyklu życia.
 - **Change ID:** edit-and-delete-subscription
 - **PRD refs:** FR-005, FR-006
-- **Prerequisites:** S-02
+- **Prerequisites:** S-02, F-03
 - **Parallel with:** S-04, S-05, S-06, S-07, S-08, S-09
 - **Blockers:** —
 - **Unknowns:** —

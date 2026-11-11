@@ -92,3 +92,8 @@ export function phoneDatePrefix(subscription: Subscription, today: Date): string
   const countdown = trialCountdown(subscription, today);
   return countdown === null ? '' : `${countdown}, `;
 }
+
+// The status message after a subscription is saved.
+export function addedSubscriptionMessage(name: string): string {
+  return `Dodano subskrypcję „${name}”.`;
+}

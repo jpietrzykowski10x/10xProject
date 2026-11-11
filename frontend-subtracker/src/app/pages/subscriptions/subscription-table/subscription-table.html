@@ -14,7 +14,8 @@
       <td mat-cell *matCellDef="let subscription; dataSource: subscriptions()" class="table__name">
         {{ subscription.name }}
         <span class="table__note"
-          >{{ subscription.category.name
+          >{{
+            subscription.category.name
           }}<!-- In the compact table the payment column is hidden and its value moves here. --><span
             class="table__payment-note"
           >
