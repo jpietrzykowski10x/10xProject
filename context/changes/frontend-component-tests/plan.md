@@ -470,26 +470,26 @@ Brak — tylko testy i konfiguracja testów; produkcja zmienia się tylko, jeśl
 
 #### Automated
 
-- [x] 2.1 Spec formularza przechodzi
-- [x] 2.2 Cały zestaw przechodzi w obu strefach
-- [x] 2.3 Formatowanie
+- [x] 2.1 Spec formularza przechodzi — f2ea44f
+- [x] 2.2 Cały zestaw przechodzi w obu strefach — f2ea44f
+- [x] 2.3 Formatowanie — f2ea44f
 
 #### Manual
 
-- [x] 2.4 Sabotaż adaptera dat daje czerwony test
-- [x] 2.5 Sabotaż toISOString daje czerwony test w co najmniej jednej strefie
+- [x] 2.4 Sabotaż adaptera dat daje czerwony test — f2ea44f
+- [x] 2.5 Sabotaż toISOString daje czerwony test w co najmniej jednej strefie — f2ea44f
 
 ### Phase 3: »Should create« dla pozostałych 11 komponentów i zachowanie register
 
 #### Automated
 
-- [ ] 3.1 Cały zestaw przechodzi w obu strefach
-- [ ] 3.2 Każdy z 12 komponentów ma spec
-- [ ] 3.3 Formatowanie
+- [x] 3.1 Cały zestaw przechodzi w obu strefach
+- [x] 3.2 Każdy z 12 komponentów ma spec
+- [x] 3.3 Formatowanie
 
 #### Manual
 
-- [ ] 3.4 Sabotaż importu lub komunikatu register daje czerwony test
+- [x] 3.4 Sabotaż importu lub komunikatu register daje czerwony test
 
 ### Phase 4: Aktualizacja planu testów
 
