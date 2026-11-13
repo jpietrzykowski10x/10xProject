@@ -80,12 +80,12 @@ orkiestrator aktualizuje go, gdy artefakty pojawiają się na dysku.
 | unit (backend) | Vitest | ^4.1.2 | `backend-subtracker/src/**/*.spec.ts`, 20 plików; w CI |
 | integration / API e2e (backend) | Vitest + Supertest | ^4.1.2 / ^7.0.0 | `backend-subtracker/test/`, 3 pliki na prawdziwym Postgresie; NIE w CI — see Phase 3 |
 | unit (frontend) | Vitest + jsdom przez `@angular/build:unit-test` | ^4.1.12 / ^31.0.1 | `frontend-subtracker/src/**/*.spec.ts`; `npm run test:ci` uruchamia zestaw w `Europe/Warsaw` i `America/New_York`; w CI |
-| component (frontend) | none yet — see Phase 2 | — | TestBed + harnessy Angular Material/CDK 22.2.6 w tym samym runnerze |
+| component (frontend) | TestBed (zoneless) + harnessy Angular Material/CDK, w runnerze unit | 22.2.6 | spec obok każdego komponentu (12); globalne providery w `src/test-providers.ts` (`providersFile`); makieta tylko na granicy HTTP; biegnie w `test:ci` w obu strefach; checked: 2026-11-13 |
 | e2e (przeglądarka) | none yet — see Phase 4 | — | kandydat: Playwright (lekcja m3l4) |
 | accessibility | none | — | poza zakresem rolloutu; kontrole ręczne przy `/10x-ui` |
 | (optional) AI-native | post-edit hook w Claude Code — checked: 2026-11-13 | n/a | When NOT to use: jako zamiennik bramki CI albo z testami trwającymi dłużej niż kilka sekund |
 
-Profil bazy testów: `sparse` — backend ma Vitest (20 unit, 3 e2e); frontend ma runner i 12 plików testów jednostkowych (czyste funkcje, guardy, interceptory i strażnik strefy), bez testów komponentów.
+Profil bazy testów: `sparse` — backend ma Vitest (20 unit, 3 e2e); frontend ma runner, 12 plików testów jednostkowych (czyste funkcje, guardy, interceptory i strażnik strefy) i 12 plików testów komponentów (»should create« każdego komponentu; zachowanie formularza subskrypcji i `register`).
 
 **Stack grounding tools (current session):**
 - Docs: none — Context7 ani inny MCP dokumentacji nie jest dostępny w tej sesji; wersje z `package.json`; checked: 2026-11-13
@@ -124,7 +124,16 @@ odpowiednia faza wdrożenia zostanie dostarczona; wcześniej brzmi „TBD — se
 
 ### 6.2 Adding a component test
 
-- TBD — see §3 Phase 2: wzorzec testu komponentu z harnessem Angular Material — element warunkowy obecny albo nieobecny w danym stanie, komunikat walidacji widoczny po próbie zapisu (bez asercji treści); »should create« jako minimum dla każdego nowego komponentu.
+- **Location**: `<komponent>.spec.ts` obok komponentu. `ng generate component` tworzy go sam (`skipTests: false` tylko dla schematu komponentu). Minimum dla każdego komponentu to »should create«, a test zachowania dochodzi tam, gdzie §2 wskazuje ryzyko (pola warunkowe, komunikaty, wartość wysyłana do API).
+- **Providers**: globalne są w `src/test-providers.ts` (`providersFile` w `angular.json`): `LOCALE_ID` `pl-PL` z `localePl` jak w `app.config.ts` oraz `MATERIAL_ANIMATIONS` z `animationsDisabled`, bo jsdom nie kończy animacji. W specu dodaj tylko to, czego komponent potrzebuje: `provideHttpClient()` + `provideHttpClientTesting()`, gdy on lub jego dzieci wołają API, oraz `provideRouter([])`, gdy on lub jego layout ma `RouterLink`/`Router`. Wymagany input ustawiasz przez `fixture.componentRef.setInput(...)`. Nie mockuj serwisów ani wnętrza komponentu, zastępuj tylko granicę HTTP.
+- **»Should create«**: zawsze `await fixture.whenStable()` przed asercją, bo dopiero render tworzy dyrektywy z szablonu (brakujący provider, np. `DateAdapter`, wychodzi tylko wtedy). Żądania z `ngOnInit` obsłuż w kolejności, w jakiej powstają: flush → `whenStable` → następne `expectOne`. Builder ustawia `errorOnUnknownElements/Properties`, więc brakujący komponent lub binding `[x]` daje czerwony test. Nie złapie jednak dyrektywy użytej jako statyczny atrybut, np. `routerLink="/x"` bez importu `RouterLink`.
+- **Behaviour (harnessy)**: pole znajdziesz po etykiecie, `MatFormFieldHarness.with({ floatingLabelText })`; etykieta to uchwyt użytkownika. Tekst wpisuje `MatInputHarness.setValue`, a datę `MatDatepickerInputHarness.setValue`, więc przechodzi przez adapter komponentu. Opcję wybiera `MatSelectHarness.clickOptions({ text })`. Element warunkowy sprawdzasz liczbą harnessów (0/1) w każdym stanie, nie sygnałem komponentu. Komunikat pola sprawdzasz przez `hasErrors()` po kliknięciu „Zapisz”, bez treści. Komunikat spoza Material sprawdzasz liczbą `[role="alert"]` i powiązaniem `aria-describedby`; przy `MatCheckbox` atrybut jest na wewnętrznym `input[type=checkbox]`. Wysłane dane sprawdzasz na granicy HTTP: `expectOne(...).request.body` porównane `toEqual` z całym ciałem z kontraktu API. Brak żądania to `expectNone({ method: 'POST', url })`. `httpTesting.verify()` dajesz w `afterEach`.
+- **Reference tests**:
+  - `src/app/subscriptions/subscription-form/subscription-form.spec.ts` — pomoc „wypełnij poprawny formularz” lokalna w specu; pola warunkowe w każdym stanie, ukryte pole nie blokuje zapisu, tabela wpisów w polskim formacie → ciało `POST` (wyrocznia: kontrakt i kalendarz; reszta przypadków parserów w testach jednostkowych).
+  - `src/app/pages/register/register.spec.ts` — komunikaty nie-Materialowe: liczba alertów i `aria-describedby` po próbie zapisu.
+  - `src/app/pages/subscriptions/subscriptions.spec.ts` — »should create« strony, która przy starcie robi dwa żądania jedno po drugim.
+- **Run locally** (z `frontend-subtracker/`): jeden plik `npx ng test --include src/app/pages/register/register.spec.ts --watch=false`; obie strefy, jak w CI: `npm run test:ci`. Prefiks `TZ=...` przed `ng test` nie zmienia strefy na Windows, do tego służy `test:ci`.
+- **Sabotage check**: jak w §6.1. Dla testu komponentu psuj szablon albo okablowanie: `@if (warunek)` → `@if (true)`, usunięty provider z `providers` komponentu, usunięte `enable()`. Spację twardą w danych zapisuj jako `\u00A0`; Edit i `sed` potrafią wstawić surowy znak.
 
 ### 6.3 Adding a backend unit test
 
@@ -144,6 +153,7 @@ odpowiednia faza wdrożenia zostanie dostarczona; wcześniej brzmi „TBD — se
 (Uzupełniane po każdej fazie: 2–3 linie o tym, czego faza nauczyła.)
 
 - **§3 Phase 1 (2026-11-13)**: Pierwszy test od razu wykrył błąd: `parseDecimal(x, 0)` rzucał `SyntaxError` (kwantyfikator `{1,0}`). Uszkodzony zapis dnia odpada tylko na wschód od UTC, a uszkodzony odczyt tylko na zachód, dlatego zestaw biegnie w dwóch strefach, a test-strażnik odrzuca każdą inną. Logikę z formularza (budowa żądania) opłaca się wyjąć do czystej funkcji, zamiast testować ją przez komponent.
+- **§3 Phase 2 (2026-11-13)**: Otwarte pytanie z researchu (czy błąd samodzielnej kontrolki `categoryName` pokazuje się po zapisie) rozstrzygnął test: pokazuje się, bo matcher widzi `submitted` rodzica, więc poprawka nie była potrzebna. Sabotaże potwierdziły, że tylko test komponentu pilnuje okablowania: `NativeDateAdapter` zamiast polskiego adaptera daje czerwone wszystkie wiersze z datą. Granica »should create«: brakujący komponent lub binding wychodzi (`errorOnUnknown*`), ale `routerLink` jako statyczny atrybut bez importu `RouterLink` przechodzi po cichu i link robi pełne przeładowanie strony.
 
 ## 7. What We Deliberately Don't Test
 

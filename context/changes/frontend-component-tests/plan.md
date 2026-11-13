@@ -483,21 +483,21 @@ Brak — tylko testy i konfiguracja testów; produkcja zmienia się tylko, jeśl
 
 #### Automated
 
-- [x] 3.1 Cały zestaw przechodzi w obu strefach
-- [x] 3.2 Każdy z 12 komponentów ma spec
-- [x] 3.3 Formatowanie
+- [x] 3.1 Cały zestaw przechodzi w obu strefach — 60c4ee5
+- [x] 3.2 Każdy z 12 komponentów ma spec — 60c4ee5
+- [x] 3.3 Formatowanie — 60c4ee5
 
 #### Manual
 
-- [x] 3.4 Sabotaż importu lub komunikatu register daje czerwony test
+- [x] 3.4 Sabotaż importu lub komunikatu register daje czerwony test — 60c4ee5
 
 ### Phase 4: Aktualizacja planu testów
 
 #### Automated
 
-- [ ] 4.1 §6.2 nie zawiera już TBD
-- [ ] 4.2 Ścieżki referencyjne z §6.2 istnieją
+- [x] 4.1 §6.2 nie zawiera już TBD
+- [x] 4.2 Ścieżki referencyjne z §6.2 istnieją
 
 #### Manual
 
-- [ ] 4.3 §6.2 czyta się jako samodzielny przepis
+- [x] 4.3 §6.2 czyta się jako samodzielny przepis
