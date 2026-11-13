@@ -71,7 +71,7 @@ describe('toCreateSubscriptionRequest', () => {
       { status: 'cancelled_pending' },
     ],
   ])('sends %s', (_, form, body) => {
-    expect(toCreateSubscriptionRequest({ ...FORM, ...form })).toEqual({ ...BODY, ...body });
+    expect(toCreateSubscriptionRequest({ ...FORM, ...form })).toStrictEqual({ ...BODY, ...body });
   });
 
   it.each<[string, Partial<SubscriptionFormValue>]>([

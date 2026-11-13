@@ -1,7 +1,7 @@
 ---
 change_id: frontend-unit-tests
 title: Testy jednostkowe frontendu — faza 1 planu testów (F-03)
-status: implementing
+status: impl_reviewed
 created: 2026-11-13
 updated: 2026-11-13
 archived_at: null

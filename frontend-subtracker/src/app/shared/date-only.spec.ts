@@ -114,7 +114,8 @@ describe('daysFromToday', () => {
     ['2026-12-13', new Date(2026, 10, 13), 30],
     ['2027-01-01', new Date(2026, 11, 31, 23, 30), 1],
     // DST starts in Europe on 29 March 2026 and in the USA on 8 March 2026: the night is an hour
-    // shorter, but it is still one day.
+    // shorter, but it is still one day. These rows (and the DST-end ones) catch rounding down or up
+    // a 23 h / 25 h day; they do not prove the UTC normalisation, which rounding alone also hides.
     ['2026-03-29', new Date(2026, 2, 28), 1],
     ['2026-03-30', new Date(2026, 2, 29), 1],
     ['2026-03-08', new Date(2026, 2, 7), 1],
