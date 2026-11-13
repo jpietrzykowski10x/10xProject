@@ -7,6 +7,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "test:ci": "node scripts/test-time-zones.mjs",
     "serve:ssr:frontend-subtracker": "node dist/frontend-subtracker/server/server.mjs",
     "prepare-mydevil": "ng build && node scripts/prepare-mydevil.mjs"
   },
@@ -34,7 +35,9 @@
     "@angular/compiler-cli": "^22.2.0",
     "@types/express": "^5.0.1",
     "@types/node": "^22.12.0",
+    "jsdom": "^31.0.1",
     "prettier": "^3.8.1",
-    "typescript": "~6.0.2"
+    "typescript": "~6.0.2",
+    "vitest": "^4.1.12"
   }
 }

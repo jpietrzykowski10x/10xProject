@@ -55,6 +55,7 @@ jobs:
           cache-dependency-path: frontend-subtracker/package-lock.json
 
       - run: npm ci
+      - run: npm run test:ci
       - run: npm run prepare-mydevil
 
   deploy-scripts:

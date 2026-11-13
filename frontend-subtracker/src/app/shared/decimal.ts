@@ -7,6 +7,8 @@ const GROUP_SEPARATORS = /[   ]/g;
 export function parseDecimal(value: string, maxFractionDigits: number): number | null {
   const compact = value.trim().replace(GROUP_SEPARATORS, '');
   // String.raw keeps `\d` intact; in a plain template literal it would turn into a bare "d".
-  const pattern = new RegExp(String.raw`^\d+(?:[.,]\d{1,${maxFractionDigits}})?$`);
+  // With no decimals allowed there is no fraction part at all ("{1,0}" is not a valid quantifier).
+  const fraction = maxFractionDigits > 0 ? String.raw`(?:[.,]\d{1,${maxFractionDigits}})?` : '';
+  const pattern = new RegExp(String.raw`^\d+${fraction}$`);
   return pattern.test(compact) ? Number(compact.replace(',', '.')) : null;
 }
