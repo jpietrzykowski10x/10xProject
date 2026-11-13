@@ -43,10 +43,10 @@ Każdy plik testów ma wyrocznię z wymagań i przeszedł kontrolę celowego usz
 - Testy: `decimal`, `subscription-validators`, `date-only`, `pl-date-adapter`, `not-before-date`,
   `trimmed-required`, `subscription-request` (nowy plik), `subscription-amounts`, `auth.guard`,
   oba interceptory
-- `test-plan.md` §6.1, §4, §5, §6.5, status §3
+- `test-plan.md` §6.1, §4, §5, §6.6, status §3
 
 **Out of scope:**
-- Testy komponentów, render mode i nagłówki cache SSR (faza 3 planu testów)
+- Testy komponentów (faza 2 planu testów), render mode i nagłówki cache SSR (faza 4 planu testów)
 - Stryker i próg pokrycia, hooki, MCP, e2e
 - Sumy kwot (S-04)
 

@@ -235,22 +235,22 @@ folder zmiany nie traci powiązania.
 
 #### Automated
 
-- [ ] 1.1 §2 ma 7 ryzyk, a §3 5 faz
-- [ ] 1.2 Odwołania „see Phase / after §3 Phase / see §3 Phase” zgodne z nową tabelą §3
-- [ ] 1.3 Nagłówki §6 to kolejno 6.1–6.6 z „Adding a component test” jako 6.2
-- [ ] 1.4 Nowe wiersze §2 bez kotwic plików
+- [x] 1.1 §2 ma 7 ryzyk, a §3 5 faz — 240188a
+- [x] 1.2 Odwołania „see Phase / after §3 Phase / see §3 Phase” zgodne z nową tabelą §3 — 240188a
+- [x] 1.3 Nagłówki §6 to kolejno 6.1–6.6 z „Adding a component test” jako 6.2 — 240188a
+- [x] 1.4 Nowe wiersze §2 bez kotwic plików — 240188a
 
 #### Manual
 
-- [ ] 1.5 §2–§7 zgodne z briefem i decyzjami planu
+- [x] 1.5 §2–§7 zgodne z briefem i decyzjami planu — 240188a
 
 ### Phase 2: Spójność odwołań
 
 #### Automated
 
-- [ ] 2.1 Brak „faza 3 planu” i „§6.5” w folderze `frontend-unit-tests`
-- [ ] 2.2 Diff fazy obejmuje tylko trzy pliki `frontend-unit-tests`, Progress tamtego planu bez zmian
+- [x] 2.1 Brak „faza 3 planu” i „§6.5” w folderze `frontend-unit-tests` — 4629405
+- [x] 2.2 Diff fazy obejmuje tylko trzy pliki `frontend-unit-tests`, Progress tamtego planu bez zmian — 4629405
 
 #### Manual
 
-- [ ] 2.3 `/10x-test-plan --status` pokazuje 5 faz z bieżącą fazą 1
+- [x] 2.3 `/10x-test-plan --status` pokazuje 5 faz z bieżącą fazą 1 — 4629405

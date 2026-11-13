@@ -156,7 +156,7 @@ kierunkach od UTC. Test uruchomiony wyłącznie w UTC nie odróżni poprawnej im
   `auth/credentials.interceptor.ts:4-10` (`withCredentials` tylko dla `apiUrl` i `apiUrl/…`).
 - Poza zasięgiem testu jednostkowego: render mode tras i `Cache-Control: private, no-store`
   (`app.routes.server.ts:8-34`) oraz filtr transfer cache dla `/auth/session` (`app.config.ts:21-23`) —
-  wymagają zbudowanego serwera SSR (faza 3 planu).
+  wymagają zbudowanego serwera SSR (faza 4 planu).
 
 ### 5. Ryzyko #4 — kwota miesięczna
 

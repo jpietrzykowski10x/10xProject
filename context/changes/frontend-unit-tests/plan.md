@@ -62,7 +62,7 @@ testów staje się przepisem „jak dodać test jednostkowy frontendu”.
 
 - Testów komponentów (np. renderowania `SubscriptionForm`, tabeli) — poza F-03 (`roadmap.md:122`).
 - Testów render mode tras, nagłówków `Cache-Control` i filtra transfer cache (`app.routes.server.ts`,
-  `app.config.ts`) — wymagają zbudowanego SSR, należą do fazy 3 planu testów.
+  `app.config.ts`) — wymagają zbudowanego SSR, należą do fazy 4 planu testów.
 - Narzędzia mutacyjnego (Stryker) — kontrola celowego uszkodzenia jest ręczna i zapisana w logu.
 - Zmiany `skipTests: true` w `angular.json` — wygenerowane specy komponentów („should create”) nie dają
   sygnału; wzorzec testu obok helpera opisuje §6.1.
@@ -418,7 +418,7 @@ przed fazą 4.
 
 ### Overview
 
-Przepis §6.1 w planie testów, wiersz stosu §4, notatka fazy §6.5 i status fazy w §3.
+Przepis §6.1 w planie testów, wiersz stosu §4, notatka fazy §6.6 i status fazy w §3.
 
 ### Changes Required:
 
@@ -436,7 +436,7 @@ wyrocznią z DTO; `auth.guard.spec.ts` — TestBed + `HttpTestingController`; `s
 — wyrocznia policzona ręcznie), **Run locally** (`npm test`, jeden plik: `npx ng test --include
 <ścieżka> --watch=false`, obie strefy: `npm run test:ci`), **Sabotage check** (krótko: uszkodź, zobacz
 czerwony, cofnij). §4: wiersz „unit (frontend)” — Vitest + jsdom z wersjami, przez
-`@angular/build:unit-test`. §5: „unit frontend” → `required`. §6.5: 2–3 linie wniosków z fazy. §3 faza
+`@angular/build:unit-test`. §5: „unit frontend” → `required`. §6.6: 2–3 linie wniosków z fazy. §3 faza
 1: status `complete`. `Last updated` na dzień zamknięcia.
 
 ### Success Criteria:
