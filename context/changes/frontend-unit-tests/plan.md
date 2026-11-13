@@ -506,7 +506,7 @@ Brak zmian w bazie i API. Jedyna zmiana kodu produkcyjnego to wydzielenie
 - [x] 1.1 `npm test -- --watch=false` w `frontend-subtracker/` przechodzi — bf7c89f
 - [x] 1.2 `npm run test:ci` przechodzi w obu strefach i wypisuje nazwę każdej strefy — bf7c89f
 - [x] 1.3 `npm run build` przechodzi (specy nie trafiają do bundla) — bf7c89f
-- [ ] 1.4 Job `frontend` w CI na gałęzi `change/frontend-unit-tests` jest zielony z krokiem `npm run test:ci`
+- [x] 1.4 Job `frontend` w CI na gałęzi `change/frontend-unit-tests` jest zielony z krokiem `npm run test:ci` — bf7c89f
 
 #### Manual
 
@@ -517,15 +517,15 @@ Brak zmian w bazie i API. Jedyna zmiana kodu produkcyjnego to wydzielenie
 
 #### Automated
 
-- [ ] 2.1 `npm run test:ci` przechodzi w obu strefach
-- [ ] 2.2 `npm run build` przechodzi po wydzieleniu `subscription-request.ts`
+- [x] 2.1 `npm run test:ci` przechodzi w obu strefach
+- [x] 2.2 `npm run build` przechodzi po wydzieleniu `subscription-request.ts`
 - [ ] 2.3 Job `frontend` w CI zielony
 
 #### Manual
 
-- [ ] 2.4 Formularz dodawania subskrypcji zapisuje kwotę `1 299,00` i datę `5.1.2027` tak samo jak przed zmianą
-- [ ] 2.5 Uszkodzone `toDateOnly` odpada w `Europe/Warsaw`, a złe `parseDateOnly` w `America/New_York`
-- [ ] 2.6 Kontrola celowego uszkodzenia dla każdego pliku testów z fazy wpisana do `sabotage-log.md`
+- [x] 2.4 Formularz dodawania subskrypcji zapisuje kwotę `1 299,00` i datę `5.1.2027` tak samo jak przed zmianą
+- [x] 2.5 Uszkodzone `toDateOnly` odpada w `Europe/Warsaw`, a złe `parseDateOnly` w `America/New_York`
+- [x] 2.6 Kontrola celowego uszkodzenia dla każdego pliku testów z fazy wpisana do `sabotage-log.md`
 
 ### Phase 3: Guardy i interceptory (#2)
 

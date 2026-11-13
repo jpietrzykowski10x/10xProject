@@ -33,14 +33,14 @@ import { MatError, MatFormField, MatLabel, MatSuffix } from '@angular/material/f
 import { MatInput } from '@angular/material/input';
 import { MatSelect } from '@angular/material/select';
 import { catchError, map, merge, of, switchMap } from 'rxjs';
-import { toDateOnly } from '../../shared/date-only';
 import { FORM_FIELD_DEFAULTS } from '../../shared/form-field-defaults';
 import { PL_DATE_FORMATS, PlDateAdapter } from '../../shared/pl-date-adapter';
 import { PlDatepickerIntl } from '../../shared/pl-datepicker-intl';
 import { notBeforeDate } from '../../shared/validation/not-before-date';
 import { trimmedRequired } from '../../shared/validation/trimmed-required';
 import { BILLING_CYCLE_LABELS, PAYMENT_METHOD_LABELS, STATUS_LABELS } from '../subscription-labels';
-import { amountValidator, parseAmount } from '../subscription-validators';
+import { toCreateSubscriptionRequest } from '../subscription-request';
+import { amountValidator } from '../subscription-validators';
 import {
   BillingCycle,
   Category,
@@ -264,35 +264,12 @@ export class SubscriptionForm implements OnInit {
       });
   }
 
-  // The request body, or null while any field is invalid. The end of the trial goes only with a
-  // trial: the API refuses it for every other status.
+  // The request body, or null while any field is invalid.
   private request(): CreateSubscriptionRequest | null {
     if (this.form.invalid) {
       return null;
     }
-    const value = this.form.getRawValue();
-    const amount = parseAmount(value.amount);
-    const trial = value.status === 'trial';
-    if (
-      amount === null ||
-      value.paymentMethod === '' ||
-      value.nextBillingDate === null ||
-      (trial && value.trialEndDate === null)
-    ) {
-      return null;
-    }
-    return {
-      name: value.name.trim(),
-      categoryId: value.categoryId,
-      amount,
-      billingCycle: value.billingCycle,
-      paymentMethod: value.paymentMethod,
-      status: value.status,
-      nextBillingDate: toDateOnly(value.nextBillingDate),
-      ...(trial && value.trialEndDate !== null
-        ? { trialEndDate: toDateOnly(value.trialEndDate) }
-        : {}),
-    };
+    return toCreateSubscriptionRequest(this.form.getRawValue());
   }
 
   private focusFirstInvalid(): void {
