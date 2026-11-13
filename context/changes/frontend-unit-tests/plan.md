@@ -503,15 +503,15 @@ Brak zmian w bazie i API. Jedyna zmiana kodu produkcyjnego to wydzielenie
 
 #### Automated
 
-- [x] 1.1 `npm test -- --watch=false` w `frontend-subtracker/` przechodzi
-- [x] 1.2 `npm run test:ci` przechodzi w obu strefach i wypisuje nazwę każdej strefy
-- [x] 1.3 `npm run build` przechodzi (specy nie trafiają do bundla)
+- [x] 1.1 `npm test -- --watch=false` w `frontend-subtracker/` przechodzi — bf7c89f
+- [x] 1.2 `npm run test:ci` przechodzi w obu strefach i wypisuje nazwę każdej strefy — bf7c89f
+- [x] 1.3 `npm run build` przechodzi (specy nie trafiają do bundla) — bf7c89f
 - [ ] 1.4 Job `frontend` w CI na gałęzi `change/frontend-unit-tests` jest zielony z krokiem `npm run test:ci`
 
 #### Manual
 
-- [x] 1.5 Test-strażnik odpada, gdy skrypt dostanie strefę różną od faktycznej, i przechodzi po cofnięciu
-- [x] 1.6 Kontrola celowego uszkodzenia dla `decimal.spec.ts` i `subscription-validators.spec.ts` wpisana do `sabotage-log.md`
+- [x] 1.5 Test-strażnik odpada, gdy skrypt dostanie strefę różną od faktycznej, i przechodzi po cofnięciu — bf7c89f
+- [x] 1.6 Kontrola celowego uszkodzenia dla `decimal.spec.ts` i `subscription-validators.spec.ts` wpisana do `sabotage-log.md` — bf7c89f
 
 ### Phase 2: Kwoty, daty i kwota miesięczna (#3, #4)
 
