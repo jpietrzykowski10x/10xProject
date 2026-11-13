@@ -495,9 +495,9 @@ Brak — tylko testy i konfiguracja testów; produkcja zmienia się tylko, jeśl
 
 #### Automated
 
-- [x] 4.1 §6.2 nie zawiera już TBD
-- [x] 4.2 Ścieżki referencyjne z §6.2 istnieją
+- [x] 4.1 §6.2 nie zawiera już TBD — b1e1177
+- [x] 4.2 Ścieżki referencyjne z §6.2 istnieją — b1e1177
 
 #### Manual
 
-- [x] 4.3 §6.2 czyta się jako samodzielny przepis
+- [x] 4.3 §6.2 czyta się jako samodzielny przepis — b1e1177

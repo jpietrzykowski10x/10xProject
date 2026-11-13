@@ -1,7 +1,7 @@
 ---
 change_id: frontend-component-tests
 title: Frontend component tests
-status: implementing
+status: implemented
 created: 2026-11-13
 updated: 2026-11-13
 archived_at: null
