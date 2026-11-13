@@ -16,5 +16,10 @@ Każde uszkodzenie było zmianą tylko w working tree, cofniętą `git checkout 
 | `shared/validation/trimmed-required.spec.ts` | `trimmed-required.ts`: bez `trim()` | `flags " " / "   " / "\t" as required` | 2026-11-13 |
 | `subscriptions/subscription-request.spec.ts` | `subscription-request.ts`: `trialEndDate` wysyłane dla każdego statusu | `sends an active subscription with a leftover trial end`, `sends a pending cancellation with a leftover trial end` (2 testy) | 2026-11-13 |
 | `subscriptions/subscription-amounts.spec.ts` | `subscription-amounts.ts`: `Math.floor` zamiast `Math.round` | `divides a yearly "12.06" into "1.01" a month`, `"12.07"`, `"0.06"` — połówka i reszta grosza | 2026-11-13 |
+| `auth/auth.guard.spec.ts` | `auth.guard.ts`: na serwer idzie cały nagłówek `cookie` zamiast samej pary sesji | `guestGuard forwards only the session cookie to the API`, `authGuard forwards only the session cookie to the API` — 2 z 33 | 2026-11-13 |
+| `auth/auth.guard.spec.ts` | `auth.guard.ts`: `guestGuard` bez ciasteczka na serwerze zwraca UrlTree `/sign-in` zamiast `true` | `guestGuard lets the visitor in without asking the API: …` (prerender, bez ciasteczek, inne ciasteczka, podobna nazwa) — 4 z 33 | 2026-11-13 |
+| `auth/auth.guard.spec.ts` | `auth.guard.ts`: `catchError` w `authGuard` zwraca `/sign-in` zamiast `RedirectCommand` `/unavailable` | `shows /unavailable …` po błędzie HTTP, błędzie sieci i po 10 s, na serwerze i w przeglądarce — 6 z 33 | 2026-11-13 |
+| `auth/session-expired.interceptor.spec.ts` | `session-expired.interceptor.ts`: usunięty wyjątek dla `/auth/` | `does not navigate on a 401 from /auth/session …`, `… /auth/verify …` — 2 z 6 | 2026-11-13 |
+| `auth/credentials.interceptor.spec.ts` | `credentials.interceptor.ts`: prefiks `apiUrl` bez końcowego `/` | `does not send the cookie to a host that only starts with the API host` — 1 z 4 | 2026-11-13 |
 
 Uwaga: pierwsza wersja strażnika pomijała strefę spoza listy, więc przebieg w UTC byłby zielony. Strażnik został zaostrzony przed tą kontrolą: strefa spoza listy oczekiwanych jest błędem.

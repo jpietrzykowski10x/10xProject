@@ -517,28 +517,28 @@ Brak zmian w bazie i API. Jedyna zmiana kodu produkcyjnego to wydzielenie
 
 #### Automated
 
-- [x] 2.1 `npm run test:ci` przechodzi w obu strefach
-- [x] 2.2 `npm run build` przechodzi po wydzieleniu `subscription-request.ts`
+- [x] 2.1 `npm run test:ci` przechodzi w obu strefach — e7bbd5c
+- [x] 2.2 `npm run build` przechodzi po wydzieleniu `subscription-request.ts` — e7bbd5c
 - [ ] 2.3 Job `frontend` w CI zielony
 
 #### Manual
 
-- [x] 2.4 Formularz dodawania subskrypcji zapisuje kwotę `1 299,00` i datę `5.1.2027` tak samo jak przed zmianą
-- [x] 2.5 Uszkodzone `toDateOnly` odpada w `Europe/Warsaw`, a złe `parseDateOnly` w `America/New_York`
-- [x] 2.6 Kontrola celowego uszkodzenia dla każdego pliku testów z fazy wpisana do `sabotage-log.md`
+- [x] 2.4 Formularz dodawania subskrypcji zapisuje kwotę `1 299,00` i datę `5.1.2027` tak samo jak przed zmianą — e7bbd5c
+- [x] 2.5 Uszkodzone `toDateOnly` odpada w `Europe/Warsaw`, a złe `parseDateOnly` w `America/New_York` — e7bbd5c
+- [x] 2.6 Kontrola celowego uszkodzenia dla każdego pliku testów z fazy wpisana do `sabotage-log.md` — e7bbd5c
 
 ### Phase 3: Guardy i interceptory (#2)
 
 #### Automated
 
-- [ ] 3.1 `npm run test:ci` przechodzi w obu strefach
-- [ ] 3.2 `npm run build` przechodzi
+- [x] 3.1 `npm run test:ci` przechodzi w obu strefach
+- [x] 3.2 `npm run build` przechodzi
 - [ ] 3.3 Job `frontend` w CI zielony
 
 #### Manual
 
-- [ ] 3.4 Kontrola celowego uszkodzenia dla `auth.guard.spec.ts` i obu specy interceptorów wpisana do `sabotage-log.md`
-- [ ] 3.5 Przegląd specy: żaden test nie mockuje `AuthService` ani wnętrza guarda
+- [x] 3.4 Kontrola celowego uszkodzenia dla `auth.guard.spec.ts` i obu specy interceptorów wpisana do `sabotage-log.md`
+- [x] 3.5 Przegląd specy: żaden test nie mockuje `AuthService` ani wnętrza guarda
 
 ### Phase 4: Cookbook i zamknięcie
 
