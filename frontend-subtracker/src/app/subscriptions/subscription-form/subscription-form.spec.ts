@@ -176,7 +176,7 @@ function expectNothingSaved(): void {
 }
 
 afterEach(() => {
-  httpTesting.verify();
+  TestBed.inject(HttpTestingController).verify();
 });
 
 describe('SubscriptionForm conditional fields and field errors', () => {
@@ -275,9 +275,14 @@ describe('SubscriptionForm conditional fields and field errors', () => {
 
     await pick(CATEGORY_FIELD, CATEGORY.name);
     expect(await fieldCount(NEW_CATEGORY_NAME)).toBe(0);
+  });
 
-    // The hidden, empty category name does not block saving.
+  it('saves after "Dodaj własną…" was picked and left, with the category name empty', async () => {
+    await createLoadedForm();
+    await pick(CATEGORY_FIELD, ADD_OWN_CATEGORY);
+    await pick(CATEGORY_FIELD, CATEGORY.name);
     await fillValidForm({ category: null });
+
     await save();
 
     expect(expectSavedBody()).toEqual(BODY);

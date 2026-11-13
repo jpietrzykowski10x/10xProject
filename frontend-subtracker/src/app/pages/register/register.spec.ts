@@ -76,7 +76,7 @@ function describedAlert(id: string): Element | null {
 }
 
 afterEach(() => {
-  httpTesting.verify();
+  TestBed.inject(HttpTestingController).verify();
 });
 
 describe('Register', () => {
@@ -132,14 +132,19 @@ describe('Register required statements', () => {
     await save();
 
     const request = httpTesting.expectOne({ method: 'POST', url: REGISTER_URL });
+    const body: unknown = request.request.body;
+    // Read while the request is pending: once answered, the form gives way to the success notice.
+    const alerts = alertCount();
+    const links = describedBy();
+    request.flush(null);
+
     const expected: RegisterRequest = {
       email: EMAIL,
       confirmedAdult: true,
       acceptedPrivacyPolicy: true,
     };
-    expect(request.request.body).toEqual(expected);
-    expect(alertCount()).toBe(0);
-    expect(describedBy()).toEqual(['', '']);
-    request.flush(null);
+    expect(body).toEqual(expected);
+    expect(alerts).toBe(0);
+    expect(links).toEqual(['', '']);
   });
 });
