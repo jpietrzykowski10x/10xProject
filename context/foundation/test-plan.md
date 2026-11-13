@@ -30,6 +30,9 @@ Hot-spot scope used for likelihood weighting: `backend-subtracker/src`, `fronten
 ## 2. Risk Map
 
 Najważniejsze scenariusze awarii, uporządkowane wg ryzyka = wpływ × prawdopodobieństwo.
+Numery są stałymi identyfikatorami (odwołują się do nich §3 i researche faz); ryzyko dodane
+przy refreshu dostaje kolejny numer zamiast przenumerowania, więc kolejność wg ryzyka
+obowiązuje wewnątrz pierwotnego zestawu #1–#6.
 Ryzyka są scenariuszami w kategoriach użytkownika i biznesu, nie nazwami testów.
 Kolumna Source cytuje *dowód, który podniósł ryzyko* — nigdy konkretny plik jako
 „miejsce awarii” (to zadanie researchu, §1 zasada 3).
