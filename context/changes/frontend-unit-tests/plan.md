@@ -519,7 +519,7 @@ Brak zmian w bazie i API. Jedyna zmiana kodu produkcyjnego to wydzielenie
 
 - [x] 2.1 `npm run test:ci` przechodzi w obu strefach — e7bbd5c
 - [x] 2.2 `npm run build` przechodzi po wydzieleniu `subscription-request.ts` — e7bbd5c
-- [ ] 2.3 Job `frontend` w CI zielony
+- [x] 2.3 Job `frontend` w CI zielony — e7bbd5c
 
 #### Manual
 
@@ -533,7 +533,7 @@ Brak zmian w bazie i API. Jedyna zmiana kodu produkcyjnego to wydzielenie
 
 - [x] 3.1 `npm run test:ci` przechodzi w obu strefach — e8d14cb
 - [x] 3.2 `npm run build` przechodzi — e8d14cb
-- [ ] 3.3 Job `frontend` w CI zielony
+- [x] 3.3 Job `frontend` w CI zielony — e8d14cb
 
 #### Manual
 
@@ -544,9 +544,9 @@ Brak zmian w bazie i API. Jedyna zmiana kodu produkcyjnego to wydzielenie
 
 #### Automated
 
-- [x] 4.1 `test-plan.md` §6.1 nie zawiera już „TBD — see §3 Phase 1”
-- [x] 4.2 Polecenie jednego pliku z §6.1 działa dla `subscription-amounts.spec.ts`
+- [x] 4.1 `test-plan.md` §6.1 nie zawiera już „TBD — see §3 Phase 1” — 83a9905
+- [x] 4.2 Polecenie jednego pliku z §6.1 działa dla `subscription-amounts.spec.ts` — 83a9905
 
 #### Manual
 
-- [x] 4.3 Osoba spoza zmiany potrafi dodać nowy test helpera wyłącznie na podstawie §6.1
+- [x] 4.3 Osoba spoza zmiany potrafi dodać nowy test helpera wyłącznie na podstawie §6.1 — 83a9905
