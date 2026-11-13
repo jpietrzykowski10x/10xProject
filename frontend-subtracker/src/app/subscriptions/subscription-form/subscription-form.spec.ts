@@ -343,3 +343,70 @@ describe('SubscriptionForm conditional fields and field errors', () => {
     expect(await fieldCount(NAME)).toBe(1);
   });
 });
+
+// The oracle is the API contract (amount as a number, dates as calendar days YYYY-MM-DD) and the
+// calendar (2028 is a leap year, 2027 is not). These rows only prove that the form has the parsers
+// and the Polish date adapter wired in and that their result reaches the request body; the other
+// parsing cases are in subscription-request.spec.ts and the shared parser specs.
+describe('SubscriptionForm typed text in the POST /subscriptions body', () => {
+  // Values typed into the fields; a trial end also switches the status to a trial.
+  interface TypedInput {
+    amount?: string;
+    nextBillingDate?: string;
+    trialEndDate?: string;
+  }
+
+  it.each<[string, TypedInput, CreateSubscriptionRequest]>([
+    ['an amount with a decimal comma', { amount: '12,99' }, { ...BODY, amount: 12.99 }],
+    ['an amount with a space between thousands', { amount: '1 299,00' }, { ...BODY, amount: 1299 }],
+    [
+      'an amount with a no-break space between thousands',
+      { amount: '1\u00A0299,00' },
+      { ...BODY, amount: 1299 },
+    ],
+    // Day 5, month 1: without the Polish date adapter it would be read as 1 May.
+    [
+      'a billing date as day.month.year',
+      { nextBillingDate: '05.01.2027' },
+      { ...BODY, nextBillingDate: '2027-01-05' },
+    ],
+    [
+      'a billing date on 29 February of a leap year',
+      { nextBillingDate: '29.02.2028' },
+      { ...BODY, nextBillingDate: '2028-02-29' },
+    ],
+    [
+      'a trial ending on the billing day',
+      { trialEndDate: '05.01.2027', nextBillingDate: '05.01.2027' },
+      { ...BODY, status: 'trial', trialEndDate: '2027-01-05', nextBillingDate: '2027-01-05' },
+    ],
+  ])('sends %s as typed', async (_, typed, body) => {
+    await createLoadedForm();
+    if (typed.trialEndDate !== undefined) {
+      await pick(STATUS, 'Trial');
+      await typeDate(TRIAL_END, typed.trialEndDate);
+    }
+    await fillValidForm({
+      amount: typed.amount ?? VALID_INPUT.amount,
+      nextBillingDate: typed.nextBillingDate ?? VALID_INPUT.nextBillingDate,
+    });
+
+    await save();
+
+    expect(expectSavedBody()).toEqual(body);
+  });
+
+  it.each<[string, string, Partial<FormInput>]>([
+    ['an amount with three decimal places', AMOUNT, { amount: '12,999' }],
+    ['29 February of a common year', NEXT_BILLING, { nextBillingDate: '29.02.2027' }],
+    ['31 February', NEXT_BILLING, { nextBillingDate: '31.02.2027' }],
+  ])('does not save %s and shows the field error', async (_, label, typed) => {
+    await createLoadedForm();
+    await fillValidForm(typed);
+
+    await save();
+
+    expectNothingSaved();
+    expect(await (await field(label)).hasErrors()).toBe(true);
+  });
+});

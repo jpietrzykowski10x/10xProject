@@ -455,29 +455,29 @@ Brak — tylko testy i konfiguracja testów; produkcja zmienia się tylko, jeśl
 
 #### Automated
 
-- [x] 1.1 Spec formularza przechodzi
-- [x] 1.2 Cały zestaw przechodzi w obu strefach
-- [x] 1.3 Build produkcyjny przechodzi
-- [x] 1.4 Formatowanie
-- [x] 1.5 Schemat komponentu tworzy spec
+- [x] 1.1 Spec formularza przechodzi — 9ecc892
+- [x] 1.2 Cały zestaw przechodzi w obu strefach — 9ecc892
+- [x] 1.3 Build produkcyjny przechodzi — 9ecc892
+- [x] 1.4 Formatowanie — 9ecc892
+- [x] 1.5 Schemat komponentu tworzy spec — 9ecc892
 
 #### Manual
 
-- [x] 1.6 Sabotaż @if, enable() i warunku trialu daje czerwony test
-- [x] 1.7 Wynik testu a) zapisany w notatce fazy
+- [x] 1.6 Sabotaż @if, enable() i warunku trialu daje czerwony test — 9ecc892
+- [x] 1.7 Wynik testu a) zapisany w notatce fazy — 9ecc892
 
 ### Phase 2: Wpisany tekst → ciało POST /subscriptions (#3)
 
 #### Automated
 
-- [ ] 2.1 Spec formularza przechodzi
-- [ ] 2.2 Cały zestaw przechodzi w obu strefach
-- [ ] 2.3 Formatowanie
+- [x] 2.1 Spec formularza przechodzi
+- [x] 2.2 Cały zestaw przechodzi w obu strefach
+- [x] 2.3 Formatowanie
 
 #### Manual
 
-- [ ] 2.4 Sabotaż adaptera dat daje czerwony test
-- [ ] 2.5 Sabotaż toISOString daje czerwony test w co najmniej jednej strefie
+- [x] 2.4 Sabotaż adaptera dat daje czerwony test
+- [x] 2.5 Sabotaż toISOString daje czerwony test w co najmniej jednej strefie
 
 ### Phase 3: »Should create« dla pozostałych 11 komponentów i zachowanie register
 
