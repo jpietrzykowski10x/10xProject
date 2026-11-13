@@ -117,8 +117,10 @@ function failWithNetworkError(request: TestRequest): void {
 }
 
 afterEach(() => {
-  TestBed.inject(HttpTestingController).verify();
+  // Real timers first: verify() throws when a failed test left a request open, and fake timers must
+  // not leak into the next spec file.
   vi.useRealTimers();
+  TestBed.inject(HttpTestingController).verify();
 });
 
 describe('guards on the server without a session cookie', () => {

@@ -119,7 +119,7 @@ odpowiednia faza wdrożenia zostanie dostarczona; wcześniej brzmi „TBD — se
   - `src/app/subscriptions/subscription-amounts.spec.ts` — wyrocznia policzona ręcznie, rachunek w komentarzu przy każdym wierszu.
   - `src/app/shared/date-only.spec.ts` — daty: oczekiwany dzień kalendarzowy, a nie wynik `Date`; zestaw biegnie w dwóch strefach.
   - `src/app/auth/auth.guard.spec.ts` — TestBed z `provideHttpClientTesting()`; makieta tylko na granicy HTTP (`HttpTestingController`), `AuthService` i `Router` prawdziwe; `PLATFORM_ID` i `REQUEST` jako providery; fake timery Vitest przywracane w `afterEach` razem z `httpTesting.verify()`.
-- **Run locally** (z `frontend-subtracker/`): cały zestaw `npm test -- --watch=false`; jeden plik `npx ng test --include src/app/subscriptions/subscription-amounts.spec.ts --watch=false` (w strefie maszyny); obie strefy, tak jak w CI: `npm run test:ci`. Test zależny od strefy musi przechodzić w `Europe/Warsaw` i `America/New_York`.
+- **Run locally** (z `frontend-subtracker/`): cały zestaw `npm test -- --watch=false`; jeden plik `npx ng test --include src/app/subscriptions/subscription-amounts.spec.ts --watch=false` (w strefie maszyny); obie strefy, tak jak w CI: `npm run test:ci`. Test zależny od strefy musi przechodzić w `Europe/Warsaw` i `America/New_York`. Gdy w powłoce jest ustawione `TZ`, musi to być jedna z tych dwóch stref — inaczej test-strażnik strefy (`src/test-time-zone.spec.ts`) odpada.
 - **Sabotage check**: przed commitem uszkodź testowany kod w working tree (np. `Math.round` → `Math.floor`), uruchom jeden plik, zobacz czerwony test, cofnij `git checkout -- <plik>`. Test, który zostaje zielony, niczego nie pilnuje.
 
 ### 6.2 Adding a component test

@@ -172,6 +172,10 @@ stroną Greenwich (Warszawa ujemne, Nowy Jork dodatnie). Gdy `TZ` nie jest ustaw
 `"1e3"`. `parseDecimal` dodatkowo sprawdza parametr `maxFractionDigits` (np. 0 i 3). `amountValidator`:
 `{ amount: true }` dla odrzuconej wartości, `null` dla przyjętej.
 
+**Addendum (implementacja, bf7c89f)**: przypadek `maxFractionDigits = 0` wykrył błąd — `parseDecimal(x, 0)`
+rzucał `SyntaxError` (kwantyfikator `{1,0}`). Poprawione w tej samej fazie w `shared/decimal.ts`: bez
+miejsc po przecinku wzorzec nie ma części ułamkowej.
+
 #### 7. Krok w CI
 
 **File**: `.github/workflows/ci.yml`
