@@ -26,6 +26,7 @@ Everything between the `BEGIN`/`END @przeprogramowani/10x-cli` markers below is 
 - `prd.md` — requirements (structure defined by `.claude/skills/10x-shape/references/prd-schema.md`)
 - `tech-stack.md` — stack decisions and the deployment plan; source of truth when this file and it disagree
 - `context/changes/bootstrap-verification/verification.md` — how the apps were scaffolded and the audit at the time
+- UI mockups — private claude.ai design canvas https://claude.ai/artifact/1GnVVi4MbScvb9CFMBT53J (owner-only; the chosen direction is row **F2**, other variants are rejected). The decisions taken from it are in `context/archive/2026-11-10-ui-foundation/change.md` (Notes); when the canvas and the repo disagree, the repo wins.
 
 ### Architecture
 
