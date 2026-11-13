@@ -2,6 +2,9 @@
 /.claude/skills/10x*
 /.claude/.10x*
 
+# Claude Code personal settings (local permissions, not shared)
+/.claude/settings.local.json
+
 # Dependencies (both apps)
 node_modules/
 
