@@ -248,9 +248,9 @@ folder zmiany nie traci powiązania.
 
 #### Automated
 
-- [x] 2.1 Brak „faza 3 planu” i „§6.5” w folderze `frontend-unit-tests`
-- [x] 2.2 Diff fazy obejmuje tylko trzy pliki `frontend-unit-tests`, Progress tamtego planu bez zmian
+- [x] 2.1 Brak „faza 3 planu” i „§6.5” w folderze `frontend-unit-tests` — 4629405
+- [x] 2.2 Diff fazy obejmuje tylko trzy pliki `frontend-unit-tests`, Progress tamtego planu bez zmian — 4629405
 
 #### Manual
 
-- [x] 2.3 `/10x-test-plan --status` pokazuje 5 faz z bieżącą fazą 1
+- [x] 2.3 `/10x-test-plan --status` pokazuje 5 faz z bieżącą fazą 1 — 4629405
