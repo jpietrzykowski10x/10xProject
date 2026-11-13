@@ -531,22 +531,22 @@ Brak zmian w bazie i API. Jedyna zmiana kodu produkcyjnego to wydzielenie
 
 #### Automated
 
-- [x] 3.1 `npm run test:ci` przechodzi w obu strefach
-- [x] 3.2 `npm run build` przechodzi
+- [x] 3.1 `npm run test:ci` przechodzi w obu strefach — e8d14cb
+- [x] 3.2 `npm run build` przechodzi — e8d14cb
 - [ ] 3.3 Job `frontend` w CI zielony
 
 #### Manual
 
-- [x] 3.4 Kontrola celowego uszkodzenia dla `auth.guard.spec.ts` i obu specy interceptorów wpisana do `sabotage-log.md`
-- [x] 3.5 Przegląd specy: żaden test nie mockuje `AuthService` ani wnętrza guarda
+- [x] 3.4 Kontrola celowego uszkodzenia dla `auth.guard.spec.ts` i obu specy interceptorów wpisana do `sabotage-log.md` — e8d14cb
+- [x] 3.5 Przegląd specy: żaden test nie mockuje `AuthService` ani wnętrza guarda — e8d14cb
 
 ### Phase 4: Cookbook i zamknięcie
 
 #### Automated
 
-- [ ] 4.1 `test-plan.md` §6.1 nie zawiera już „TBD — see §3 Phase 1”
-- [ ] 4.2 Polecenie jednego pliku z §6.1 działa dla `subscription-amounts.spec.ts`
+- [x] 4.1 `test-plan.md` §6.1 nie zawiera już „TBD — see §3 Phase 1”
+- [x] 4.2 Polecenie jednego pliku z §6.1 działa dla `subscription-amounts.spec.ts`
 
 #### Manual
 
-- [ ] 4.3 Osoba spoza zmiany potrafi dodać nowy test helpera wyłącznie na podstawie §6.1
+- [x] 4.3 Osoba spoza zmiany potrafi dodać nowy test helpera wyłącznie na podstawie §6.1

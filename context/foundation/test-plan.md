@@ -67,7 +67,7 @@ orkiestrator aktualizuje go, gdy artefakty pojawiają się na dysku.
 
 | # | Phase name | Goal (one line) | Risks covered | Test types | Status | Change folder |
 |---|---|---|---|---|---|---|
-| 1 | Frontend unit tests (roadmap F-03) | Runner i bramka CI na froncie; dowód, że parsowanie kwot i dat, przeliczenie na miesiąc i decyzje guardów nie przepuszczają złych wartości | #3, #2, #4 | unit | implementing | context/changes/frontend-unit-tests/ |
+| 1 | Frontend unit tests (roadmap F-03) | Runner i bramka CI na froncie; dowód, że parsowanie kwot i dat, przeliczenie na miesiąc i decyzje guardów nie przepuszczają złych wartości | #3, #2, #4 | unit | complete | context/changes/frontend-unit-tests/ |
 | 2 | Frontend component tests | »Should create« dla wszystkich komponentów i dowód, że formularz subskrypcji pokazuje pola warunkowe i komunikaty walidacji wtedy, kiedy powinien; `skipTests: false` dla schematu komponentu | #7, #3 | component | not started | — |
 | 3 | Account isolation and backend e2e in CI | e2e backendu w CI na Postgresie `C.UTF-8`; dowód, że żadna trasa po id nie zwraca ani nie zmienia cudzych danych | #1, #5, #6 | integration (API e2e), CI gate | not started | — |
 | 4 | Critical browser paths | 2–3 przejścia na zbudowanym SSR: przekierowania guardów, brak cache stron zalogowanego, dodana subskrypcja widoczna na liście | #2, #1 | e2e | not started | — |
@@ -85,7 +85,7 @@ orkiestrator aktualizuje go, gdy artefakty pojawiają się na dysku.
 | accessibility | none | — | poza zakresem rolloutu; kontrole ręczne przy `/10x-ui` |
 | (optional) AI-native | post-edit hook w Claude Code — checked: 2026-11-13 | n/a | When NOT to use: jako zamiennik bramki CI albo z testami trwającymi dłużej niż kilka sekund |
 
-Profil bazy testów: `sparse` — backend ma Vitest (20 unit, 3 e2e); frontend ma runner i 3 pliki testów jednostkowych (czyste funkcje i strażnik strefy), bez testów komponentów.
+Profil bazy testów: `sparse` — backend ma Vitest (20 unit, 3 e2e); frontend ma runner i 12 plików testów jednostkowych (czyste funkcje, guardy, interceptory i strażnik strefy), bez testów komponentów.
 
 **Stack grounding tools (current session):**
 - Docs: none — Context7 ani inny MCP dokumentacji nie jest dostępny w tej sesji; wersje z `package.json`; checked: 2026-11-13
@@ -100,7 +100,7 @@ Profil bazy testów: `sparse` — backend ma Vitest (20 unit, 3 e2e); frontend m
 | lint (backend, oxlint type-aware) | local + CI | required | dryf typów i składni w API |
 | build frontendu (typecheck AOT) | CI | required | błędy typów i szablonów frontu |
 | unit backend | local + CI | required | regresje logiki API |
-| unit frontend | local + CI | required after §3 Phase 1 | regresje parsowania, przeliczeń i guardów; od §3 Phase 2 także zepsute renderowanie komponentów i niewidoczne komunikaty walidacji |
+| unit frontend | local + CI | required | regresje parsowania, przeliczeń i guardów; od §3 Phase 2 także zepsute renderowanie komponentów i niewidoczne komunikaty walidacji |
 | API e2e backendu na Postgresie `C.UTF-8` | CI on PR | required after §3 Phase 3 | wyciek między kontami, różnice locale, regresje auth |
 | e2e w przeglądarce (krytyczne ścieżki) | CI on PR | required after §3 Phase 4 | zepsute przekierowania SSR i główny przepływ |
 | post-edit hook | local (agent loop) | recommended after §3 Phase 5 | regresje w chwili edycji |
@@ -112,7 +112,15 @@ odpowiednia faza wdrożenia zostanie dostarczona; wcześniej brzmi „TBD — se
 
 ### 6.1 Adding a frontend unit test
 
-- TBD — see §3 Phase 1: wzorzec tabeli wejść z niezależną wyrocznią dla parsowania kwot i dat oraz decyzji guardów.
+- **Location**: `*.spec.ts` obok testowanego pliku w `frontend-subtracker/src/`. Helper w `src/app/shared/` zawsze dostaje test obok. Logikę wyjętą z komponentu (np. budowę żądania) przenieś do czystej funkcji w module funkcji i testuj ją bez TestBed.
+- **Naming**: `describe` = nazwa jednostki (`monthlyAmount`, `guestGuard`). Przypadki jako `it.each` z tabelą wejście → wynik; nazwa testu mówi, co jednostka robi z wejściem (`divides a yearly %j into %j a month`). Nad tabelą komentarz ze źródłem wyroczni: kontrakt API (DTO backendu), reguła z §2 albo kalendarz, nigdy obecny kod.
+- **Reference tests**:
+  - `src/app/subscriptions/subscription-validators.spec.ts` — tabele przyjętych i odrzuconych wpisów z wyrocznią z DTO; spacje twarde zapisane jako `\u00A0` / `\u202F`, nie jako surowe znaki.
+  - `src/app/subscriptions/subscription-amounts.spec.ts` — wyrocznia policzona ręcznie, rachunek w komentarzu przy każdym wierszu.
+  - `src/app/shared/date-only.spec.ts` — daty: oczekiwany dzień kalendarzowy, a nie wynik `Date`; zestaw biegnie w dwóch strefach.
+  - `src/app/auth/auth.guard.spec.ts` — TestBed z `provideHttpClientTesting()`; makieta tylko na granicy HTTP (`HttpTestingController`), `AuthService` i `Router` prawdziwe; `PLATFORM_ID` i `REQUEST` jako providery; fake timery Vitest przywracane w `afterEach` razem z `httpTesting.verify()`.
+- **Run locally** (z `frontend-subtracker/`): cały zestaw `npm test -- --watch=false`; jeden plik `npx ng test --include src/app/subscriptions/subscription-amounts.spec.ts --watch=false` (w strefie maszyny); obie strefy, tak jak w CI: `npm run test:ci`. Test zależny od strefy musi przechodzić w `Europe/Warsaw` i `America/New_York`.
+- **Sabotage check**: przed commitem uszkodź testowany kod w working tree (np. `Math.round` → `Math.floor`), uruchom jeden plik, zobacz czerwony test, cofnij `git checkout -- <plik>`. Test, który zostaje zielony, niczego nie pilnuje.
 
 ### 6.2 Adding a component test
 
@@ -134,6 +142,8 @@ odpowiednia faza wdrożenia zostanie dostarczona; wcześniej brzmi „TBD — se
 ### 6.6 Per-rollout-phase notes
 
 (Uzupełniane po każdej fazie: 2–3 linie o tym, czego faza nauczyła.)
+
+- **§3 Phase 1 (2026-11-13)**: Pierwszy test od razu wykrył błąd: `parseDecimal(x, 0)` rzucał `SyntaxError` (kwantyfikator `{1,0}`). Uszkodzony zapis dnia odpada tylko na wschód od UTC, a uszkodzony odczyt tylko na zachód, dlatego zestaw biegnie w dwóch strefach, a test-strażnik odrzuca każdą inną. Logikę z formularza (budowa żądania) opłaca się wyjąć do czystej funkcji, zamiast testować ją przez komponent.
 
 ## 7. What We Deliberately Don't Test
 
