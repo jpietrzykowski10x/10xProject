@@ -23,7 +23,9 @@
         >Oświadczam, że mam ukończone 18 lat.</mat-checkbox
       >
       @if (submitted() && form.controls.confirmedAdult.invalid) {
-        <p id="register-adult-error" class="st-control-error" role="alert">To oświadczenie jest wymagane.</p>
+        <p id="register-adult-error" class="st-control-error" role="alert">
+          To oświadczenie jest wymagane.
+        </p>
       }
 
       <mat-checkbox
