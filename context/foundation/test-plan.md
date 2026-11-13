@@ -42,6 +42,7 @@ Kolumna Source cytuje *dowód, który podniósł ryzyko* — nigdy konkretny pli
 | 4 | Kwota miesięczna lub roczna różni się od ręcznego wyliczenia (roczne ↔ miesięczne, zaokrąglenia, wliczane statusy) | High | Medium | PRD Success Criteria (100% zgodności sum); roadmap S-04 (Risk, Unknowns), S-08; decyzja produktowa 2026-11-13: kwota miesięczna zaokrąglana do grosza per subskrypcja, połówka w górę |
 | 5 | Na produkcji (`C.UTF-8`) sortowanie lub unikalność nazw kategorii z polskimi literami działa inaczej niż lokalnie — testy przechodzą, produkcja ma duplikaty lub złą kolejność | Medium | High | interview Q2; archive 2026-11-11-first-subscription-in-list (locale bazy, klucz nazwy); CLAUDE.md Tripwires (lokalne e2e tego nie złapią) |
 | 6 | Nadużycie logowania: magic link działa ponownie lub po terminie, wygasła sesja daje dostęp, publiczne trasy pozwalają zalać skrzynkę mailami | High | Low | PRD US-01 Acceptance Criteria; archive 2026-11-03-magic-link-sign-in (przeglądy: liczba wysyłek, współbieżne verify); interview Q4 (backend dobrze pokryty) |
+| 7 | Ekran lub komponent nie renderuje się albo element warunkowy (pole końca trialu, pole własnej kategorii) lub komunikat walidacji nie pojawia się wtedy, kiedy powinien — użytkownik nie może dodać subskrypcji i nie wie dlaczego | High | High | refresh interview 2026-11-13 Q1 (komponent się nie pokazuje, brak widocznych komunikatów walidacji), Q3 (zmiany wszędzie, dochodzą nowe komponenty), Q4 (najpierw formularz subskrypcji); hot-spot dir `frontend-subtracker/src/app/pages` (67 zmian plików / 30 dni, najwięcej w zakresie); archive 2026-11-11-first-subscription-in-list (błąd kwoty widoczny dopiero w UI); roadmap S-03, S-04, S-08, S-09, S-10 (nowe ekrany i formularze) |
 
 ### Risk Response Guidance
 
@@ -53,6 +54,7 @@ Kolumna Source cytuje *dowód, który podniósł ryzyko* — nigdy konkretny pli
 | #4 | Kwota miesięczna subskrypcji rocznej równa się ręcznemu wyliczeniu: grosze / 12, zaokrąglone do grosza, połówka w górę; od S-04 sumy zgadzają się co do grosza | „kwota podzielna przez 12 dowodzi poprawności zaokrąglenia” — wyrocznia musi objąć resztę i połówkę grosza | gdzie liczona jest kwota i suma (front czy API); które statusy się wliczają (S-04) | unit z wyrocznią policzoną ręcznie | skopiowany wzór z kodu produkcyjnego |
 | #5 | W bazie `C.UTF-8` (jak produkcja) nazwy różniące się wielkością polskich liter są duplikatem, a sortowanie jest polskie | „lokalna baza zachowuje się jak produkcyjna” | locale bazy w CI; collation w zapytaniach; klucz nazwy kategorii | e2e backendu na Postgresie `C.UTF-8` w CI | test uruchamiany tylko na lokalnym `Polish_Poland.1250` |
 | #6 | Drugie użycie linku i link po terminie są odrzucane; wygasła sesja dostaje 401 | „istniejące testy chodzą w CI” (dziś e2e nie chodzą) | obecne pokrycie e2e auth; co faktycznie uruchamia CI | e2e backendu (istnieją) + bramka w CI | dopisywanie testów, które już istnieją |
+| #7 | Dla każdego stanu formularza element warunkowy jest albo go nie ma; po błędnym wpisie i próbie zapisu komunikat przy polu jest widoczny (bez sprawdzania treści); każdy komponent da się utworzyć | „testy walidatorów dowodzą, że komunikat się wyświetla”; „»should create« dowodzi, że formularz działa” | kiedy Material pokazuje błąd pola; jak pola warunkowe są pokazywane i włączane; providery testowe (locale, animacje, breakpointy w jsdom) | test komponentu (TestBed + jsdom, harnessy Angular Material), API zastąpione na granicy HTTP | asercja dokładnej treści komunikatu, położenia lub snapshotu; mockowanie wnętrza formularza |
 
 ## 3. Phased Rollout
 
@@ -62,28 +64,30 @@ orkiestrator aktualizuje go, gdy artefakty pojawiają się na dysku.
 
 | # | Phase name | Goal (one line) | Risks covered | Test types | Status | Change folder |
 |---|---|---|---|---|---|---|
-| 1 | Frontend unit tests (roadmap F-03) | Runner i bramka CI na froncie; dowód, że parsowanie kwot i dat, przeliczenie na miesiąc i decyzje guardów nie przepuszczają złych wartości | #3, #2, #4 | unit | planned | context/changes/frontend-unit-tests/ |
-| 2 | Account isolation and backend e2e in CI | e2e backendu w CI na Postgresie `C.UTF-8`; dowód, że żadna trasa po id nie zwraca ani nie zmienia cudzych danych | #1, #5, #6 | integration (API e2e), CI gate | not started | — |
-| 3 | Critical browser paths | 2–3 przejścia na zbudowanym SSR: przekierowania guardów, brak cache stron zalogowanego, dodana subskrypcja widoczna na liście | #2, #1 | e2e | not started | — |
-| 4 | Agent-loop hooks | lint, typecheck i unit uruchamiane po edycji i na koniec tury agenta | cross-cutting | post-edit hook | not started | — |
+| 1 | Frontend unit tests (roadmap F-03) | Runner i bramka CI na froncie; dowód, że parsowanie kwot i dat, przeliczenie na miesiąc i decyzje guardów nie przepuszczają złych wartości | #3, #2, #4 | unit | implementing | context/changes/frontend-unit-tests/ |
+| 2 | Frontend component tests | »Should create« dla wszystkich komponentów i dowód, że formularz subskrypcji pokazuje pola warunkowe i komunikaty walidacji wtedy, kiedy powinien; `skipTests: false` dla schematu komponentu | #7, #3 | component | not started | — |
+| 3 | Account isolation and backend e2e in CI | e2e backendu w CI na Postgresie `C.UTF-8`; dowód, że żadna trasa po id nie zwraca ani nie zmienia cudzych danych | #1, #5, #6 | integration (API e2e), CI gate | not started | — |
+| 4 | Critical browser paths | 2–3 przejścia na zbudowanym SSR: przekierowania guardów, brak cache stron zalogowanego, dodana subskrypcja widoczna na liście | #2, #1 | e2e | not started | — |
+| 5 | Agent-loop hooks | lint, typecheck i unit uruchamiane po edycji i na koniec tury agenta | cross-cutting | post-edit hook | not started | — |
 
 ## 4. Stack
 
 | Layer | Tool | Version | Notes |
 |---|---|---|---|
 | unit (backend) | Vitest | ^4.1.2 | `backend-subtracker/src/**/*.spec.ts`, 20 plików; w CI |
-| integration / API e2e (backend) | Vitest + Supertest | ^4.1.2 / ^7.0.0 | `backend-subtracker/test/`, 3 pliki na prawdziwym Postgresie; NIE w CI — see Phase 2 |
-| unit (frontend) | none yet — see Phase 1 | — | Angular 22 (`@angular/build` ^22.2.0); wybór runnera w researchu fazy 1, preferencja Vitest |
-| e2e (przeglądarka) | none yet — see Phase 3 | — | kandydat: Playwright (lekcja m3l4) |
+| integration / API e2e (backend) | Vitest + Supertest | ^4.1.2 / ^7.0.0 | `backend-subtracker/test/`, 3 pliki na prawdziwym Postgresie; NIE w CI — see Phase 3 |
+| unit (frontend) | Vitest + jsdom przez `@angular/build:unit-test` | ^4.1.12 / ^31.0.1 | `frontend-subtracker/src/**/*.spec.ts`; `npm run test:ci` uruchamia zestaw w `Europe/Warsaw` i `America/New_York`; w CI |
+| component (frontend) | none yet — see Phase 2 | — | TestBed + harnessy Angular Material/CDK 22.2.6 w tym samym runnerze |
+| e2e (przeglądarka) | none yet — see Phase 4 | — | kandydat: Playwright (lekcja m3l4) |
 | accessibility | none | — | poza zakresem rolloutu; kontrole ręczne przy `/10x-ui` |
 | (optional) AI-native | post-edit hook w Claude Code — checked: 2026-11-13 | n/a | When NOT to use: jako zamiennik bramki CI albo z testami trwającymi dłużej niż kilka sekund |
 
-Profil bazy testów: `sparse` — backend ma Vitest (20 unit, 3 e2e), frontend nie ma runnera ani testów.
+Profil bazy testów: `sparse` — backend ma Vitest (20 unit, 3 e2e); frontend ma runner i 3 pliki testów jednostkowych (czyste funkcje i strażnik strefy), bez testów komponentów.
 
 **Stack grounding tools (current session):**
 - Docs: none — Context7 ani inny MCP dokumentacji nie jest dostępny w tej sesji; wersje z `package.json`; checked: 2026-11-13
 - Search: WebSearch (wbudowany) — nieużyty przy pisaniu planu; do potwierdzenia runnera Angulara 22 w researchu fazy 1; checked: 2026-11-13
-- Runtime/browser: Claude in Chrome — not used; ewentualnie do eksploracji w fazie 3; checked: 2026-11-13
+- Runtime/browser: Claude in Chrome — not used; ewentualnie do eksploracji w fazie 4; checked: 2026-11-13
 - Provider/platform: GitHub (`gh`, token tylko do odczytu) — odczyt wyników CI; checked: 2026-11-13
 
 ## 5. Quality Gates
@@ -93,10 +97,10 @@ Profil bazy testów: `sparse` — backend ma Vitest (20 unit, 3 e2e), frontend n
 | lint (backend, oxlint type-aware) | local + CI | required | dryf typów i składni w API |
 | build frontendu (typecheck AOT) | CI | required | błędy typów i szablonów frontu |
 | unit backend | local + CI | required | regresje logiki API |
-| unit frontend | local + CI | required after §3 Phase 1 | regresje parsowania, przeliczeń i guardów |
-| API e2e backendu na Postgresie `C.UTF-8` | CI on PR | required after §3 Phase 2 | wyciek między kontami, różnice locale, regresje auth |
-| e2e w przeglądarce (krytyczne ścieżki) | CI on PR | required after §3 Phase 3 | zepsute przekierowania SSR i główny przepływ |
-| post-edit hook | local (agent loop) | recommended after §3 Phase 4 | regresje w chwili edycji |
+| unit frontend | local + CI | required after §3 Phase 1 | regresje parsowania, przeliczeń i guardów; od §3 Phase 2 także zepsute renderowanie komponentów i niewidoczne komunikaty walidacji |
+| API e2e backendu na Postgresie `C.UTF-8` | CI on PR | required after §3 Phase 3 | wyciek między kontami, różnice locale, regresje auth |
+| e2e w przeglądarce (krytyczne ścieżki) | CI on PR | required after §3 Phase 4 | zepsute przekierowania SSR i główny przepływ |
+| post-edit hook | local (agent loop) | recommended after §3 Phase 5 | regresje w chwili edycji |
 
 ## 6. Cookbook Patterns
 
@@ -107,27 +111,33 @@ odpowiednia faza wdrożenia zostanie dostarczona; wcześniej brzmi „TBD — se
 
 - TBD — see §3 Phase 1: wzorzec tabeli wejść z niezależną wyrocznią dla parsowania kwot i dat oraz decyzji guardów.
 
-### 6.2 Adding a backend unit test
+### 6.2 Adding a component test
+
+- TBD — see §3 Phase 2: wzorzec testu komponentu z harnessem Angular Material — element warunkowy obecny albo nieobecny w danym stanie, komunikat walidacji widoczny po próbie zapisu (bez asercji treści); »should create« jako minimum dla każdego nowego komponentu.
+
+### 6.3 Adding a backend unit test
 
 - **Location**: obok testowanego pliku, `*.spec.ts` w `backend-subtracker/src/`; helpery z `src/shared/<obszar>/` zawsze z testem obok (`lessons.md`).
 - **Run locally**: `cd backend-subtracker && npx vitest run <ścieżka>`.
 
-### 6.3 Adding an API test for a new endpoint
+### 6.4 Adding an API test for a new endpoint
 
-- TBD — see §3 Phase 2: wzorzec dwóch kont (właściciel i obcy) dla każdej trasy po id, uruchamiany na bazie `C.UTF-8`.
+- TBD — see §3 Phase 3: wzorzec dwóch kont (właściciel i obcy) dla każdej trasy po id, uruchamiany na bazie `C.UTF-8`.
 
-### 6.4 Adding a browser e2e test
+### 6.5 Adding a browser e2e test
 
-- TBD — see §3 Phase 3: wzorzec przejścia przez zbudowany serwer SSR z sesją testową.
+- TBD — see §3 Phase 4: wzorzec przejścia przez zbudowany serwer SSR z sesją testową.
 
-### 6.5 Per-rollout-phase notes
+### 6.6 Per-rollout-phase notes
 
 (Uzupełniane po każdej fazie: 2–3 linie o tym, czego faza nauczyła.)
 
 ## 7. What We Deliberately Don't Test
 
 - **Wygląd i piksele** (motyw, kolory, odstępy, snapshoty wizualne) — sprawdzane okiem, snapshoty dawałyby szum. Re-evaluate, jeśli regresja wizualna dotrze na produkcję niezauważona. (Source: Phase 2 interview Q5.)
-- **Strony statyczne** (`/privacy-policy`, `/unavailable`) — prerenderowane, bez logiki. Re-evaluate, jeśli dostaną dane lub logikę. (Source: Phase 2 interview Q5.)
+- **Zachowanie stron statycznych** (`/privacy-policy`, `/unavailable`) — prerenderowane, bez logiki; mają tylko test »should create« (§3 Phase 2). Re-evaluate, jeśli dostaną dane lub logikę. (Source: Phase 2 interview Q5; refresh plan 2026-11-13.)
+- **Dokładna treść komunikatów** — treść może ewoluować; test komponentu sprawdza, że komunikat jest widoczny przy błędzie, a nie jego tekst. Re-evaluate, jeśli treść stanie się wymaganiem (np. prawnym). (Source: refresh interview 2026-11-13 Q5.)
+- **Położenie elementów względem siebie** (np. odstęp komunikatu od pola) — to wygląd, sprawdzany okiem. Re-evaluate jak wygląd i piksele. (Source: refresh interview 2026-11-13 Q2, Q5.)
 - **Joby cyklu życia i przypomnienia o trialu** — jeszcze nie istnieją; testy wejdą razem z S-05/S-06 i `--refresh`. (Source: challenger, roadmap S-05/S-06.)
 - **Dostarczalność maili (DKIM/DMARC)** — konfiguracja domeny i obserwowalność, nie test. (Source: challenger, infrastructure.md Risk Register.)
 

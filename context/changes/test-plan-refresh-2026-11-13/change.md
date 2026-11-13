@@ -1,7 +1,7 @@
 ---
 change_id: test-plan-refresh-2026-11-13
 title: Refresh planu testów — testy komponentów frontendu (ryzyko #7, nowa faza 2)
-status: planned
+status: implementing
 created: 2026-11-13
 updated: 2026-11-13
 archived_at: null
