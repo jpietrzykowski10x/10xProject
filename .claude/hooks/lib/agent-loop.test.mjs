@@ -1,6 +1,7 @@
 // Run: node --test .claude/hooks/
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
@@ -8,6 +9,7 @@ import {
   acquireLock,
   classify,
   editedFiles,
+  fingerprint,
   groupByApp,
   hooksDisabled,
   nodeProblem,
@@ -149,6 +151,62 @@ describe('hooksDisabled', () => {
     assert.equal(hooksDisabled({ SUBTRACKER_AGENT_HOOKS: 'off' }), true);
     assert.equal(hooksDisabled({ SUBTRACKER_AGENT_HOOKS: 'on' }), false);
     assert.equal(hooksDisabled({}), false);
+  });
+});
+
+describe('fingerprint', () => {
+  it('changes with tracked edits, untracked content and commits, and only for the given dirs', () => {
+    const repo = mkdtempSync(path.join(tmpdir(), 'agent-loop-git-'));
+    const git = (...args) => {
+      const run = spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.invalid', ...args], {
+        cwd: repo,
+        encoding: 'utf8',
+      });
+      assert.equal(run.status, 0, run.stderr);
+    };
+    try {
+      mkdirSync(path.join(repo, 'app', 'src'), { recursive: true });
+      mkdirSync(path.join(repo, 'docs'));
+      writeFileSync(path.join(repo, 'app', 'src', 'a.ts'), 'one');
+      writeFileSync(path.join(repo, 'docs', 'x.md'), 'doc');
+      git('init', '-q');
+      git('add', '.');
+      git('commit', '-q', '-m', 'init');
+      const dirs = ['app/src'];
+
+      const clean = fingerprint(repo, dirs);
+      assert.match(clean, /^[0-9a-f]{64}$/);
+      assert.equal(fingerprint(repo, dirs), clean, 'same state, same fingerprint');
+
+      writeFileSync(path.join(repo, 'docs', 'x.md'), 'other doc');
+      assert.equal(fingerprint(repo, dirs), clean, 'a file outside the dirs does not count');
+
+      writeFileSync(path.join(repo, 'app', 'src', 'a.ts'), 'two');
+      const edited = fingerprint(repo, dirs);
+      assert.notEqual(edited, clean);
+      writeFileSync(path.join(repo, 'app', 'src', 'a.ts'), 'three');
+      assert.notEqual(fingerprint(repo, dirs), edited, 'another edit of an already changed file');
+
+      writeFileSync(path.join(repo, 'app', 'src', 'new.ts'), 'x');
+      const untracked = fingerprint(repo, dirs);
+      writeFileSync(path.join(repo, 'app', 'src', 'new.ts'), 'y');
+      assert.notEqual(fingerprint(repo, dirs), untracked, 'untracked file content counts');
+
+      git('add', '.');
+      git('commit', '-q', '-m', 'second');
+      assert.notEqual(fingerprint(repo, dirs), clean, 'a new commit counts');
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  it('is null outside a git repository', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'agent-loop-nogit-'));
+    try {
+      assert.equal(fingerprint(dir, ['src']), null);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

@@ -22,3 +22,10 @@ After creating the folder, follow the downstream continuation rule.
 - Chosen variant: **fallback** — `PostToolUse` with `matcher: "Edit|Write"`, exit 2 + stderr (shown to Claude, the turn continues), and a per-app lock in `.claude/hooks/.state/<app>.lock` so parallel edits check one after another (verified: two parallel runs, 1.3 s and 2.7 s, no overlap).
 - (d) **Fails**: `systemMessage` with exit 0 from `PostToolUse` is not shown to the user (checked twice). Stderr with exit 1 is: "PostToolUse:Edit hook error — Failed with non-blocking status code: <stderr>", and Claude does not get it. So user warnings (wrong Node, tool not installed) go to stderr + exit 1. Phase 3 should check whether `systemMessage` from `Stop` is shown before relying on it.
 - The temporary probe (log of event, tool and file path only) was removed after the check.
+
+### Stop hook (Phase 3, 2026-11-14)
+
+- `decision: "block"` from `Stop` continues the turn with the report; `systemMessage` from `Stop` **is** shown to the user (unlike `PostToolUse`), so the loop rule uses it as planned.
+- Adaptation: the state file keeps the names of the red tools, so a stop right after a block (`stop_hook_active: true`) with no change in between still tells the user "checks still red" instead of staying silent.
+- Times: first check of both apps in parallel ≈ 14 s (plan estimated ≤ 10 s), backend alone ≈ 6 s, unchanged state 0.3 s.
+- `SUBTRACKER_AGENT_HOOKS=off` in `env` of `.claude/settings.local.json` takes effect only after a session restart (checked: no effect in the running session, both hooks off after `claude --continue`).

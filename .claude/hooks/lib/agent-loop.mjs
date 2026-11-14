@@ -2,9 +2,16 @@
 // the path filter, the Node check and the way tools are started cannot drift apart.
 // Pure functions (everything except runTool and readHookInput) are covered by agent-loop.test.mjs:
 // a wrong classify() would block the agent on edits of non-code files, which is the costliest bug.
-import { spawnSync } from 'node:child_process';
-import { closeSync, mkdirSync, openSync, rmSync, statSync, writeSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { closeSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeSync } from 'node:fs';
 import path from 'node:path';
+
+/** Directories (relative to the project) whose state decides whether Stop checks an app. */
+export const APP_DIRS = {
+  backend: ['backend-subtracker/src', 'backend-subtracker/test'],
+  frontend: ['frontend-subtracker/src'],
+};
 
 const MIN_NODE = [24, 15, 0];
 const EDIT_TOOLS = new Set(['Edit', 'Write']);
@@ -118,6 +125,60 @@ export function runTool(appDir, scriptPath, args, extraEnv = {}) {
   });
   const output = run.error ? String(run.error.message) : `${run.stdout ?? ''}${run.stderr ?? ''}`;
   return { ok: !run.error && run.status === 0, output, ms: Date.now() - started };
+}
+
+/** Async variant of runTool, so Stop can check both apps at the same time. */
+export function runToolAsync(appDir, scriptPath, args, extraEnv = {}) {
+  const started = Date.now();
+  return new Promise((resolve) => {
+    let output = '';
+    const child = spawn(process.execPath, [scriptPath, ...args], {
+      cwd: appDir,
+      env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0', ...extraEnv },
+      windowsHide: true,
+    });
+    child.stdout.on('data', (chunk) => (output += chunk));
+    child.stderr.on('data', (chunk) => (output += chunk));
+    child.on('error', (error) => resolve({ ok: false, output: String(error.message), ms: Date.now() - started }));
+    child.on('close', (code) => resolve({ ok: code === 0, output, ms: Date.now() - started }));
+  });
+}
+
+/**
+ * Hash of the git state of `dirs` (relative to `projectDir`): the HEAD commit, `git status` of those
+ * directories and the content of every changed or untracked file in them. It changes with any edit,
+ * also one made through Bash, so Stop checks an app only when something in it changed since the
+ * last check. `null` when git cannot be asked (Stop then checks and does not remember).
+ */
+export function fingerprint(projectDir, dirs) {
+  const git = (args) => {
+    const run = spawnSync('git', args, { cwd: projectDir, encoding: 'buffer', windowsHide: true, maxBuffer: 64 * 1024 * 1024 });
+    if (run.error || run.status !== 0) throw new Error(`git ${args[0]} failed`);
+    return run.stdout;
+  };
+  try {
+    const hash = createHash('sha256');
+    hash.update(git(['rev-parse', 'HEAD']));
+    const status = git(['status', '--porcelain=v1', '-z', '--untracked-files=all', '--', ...dirs]);
+    hash.update(status);
+    const entries = status.toString('utf8').split('\0');
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      if (entry.length < 4) continue;
+      // A rename or copy is followed by its source path, which is not a file to read.
+      if (entry[0] === 'R' || entry[0] === 'C') i++;
+      const file = entry.slice(3);
+      hash.update(`\0${file}\0`);
+      try {
+        hash.update(readFileSync(path.join(projectDir, file)));
+      } catch {
+        hash.update('<missing>');
+      }
+    }
+    return hash.digest('hex');
+  } catch {
+    return null;
+  }
 }
 
 /**

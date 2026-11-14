@@ -310,33 +310,33 @@ Hooki działają po zaakceptowaniu zaufania do workspace i przeładowują się b
 
 #### Automated
 
-- [x] 2.1 Testy biblioteki przechodzą: `node --test .claude/hooks/`
-- [x] 2.2 Hook dla czystego `register.html` kończy się kodem 0 w ≤ 4 s
-- [x] 2.3 Frontend nadal zielony: `npm test -- --watch=false`
+- [x] 2.1 Testy biblioteki przechodzą: `node --test .claude/hooks/` — 4d8e6c8
+- [x] 2.2 Hook dla czystego `register.html` kończy się kodem 0 w ≤ 4 s — 4d8e6c8
+- [x] 2.3 Frontend nadal zielony: `npm test -- --watch=false` — 4d8e6c8
 
 #### Manual
 
-- [x] 2.4 Sabotaż szablonu → błąd szablonu Register od hooka; cofnięte
-- [x] 2.5 Sabotaż typu w `.ts` komponentu → błąd od hooka; cofnięte
-- [x] 2.6 Edycja pliku bez speca → brak fałszywego alarmu
-- [x] 2.7 Edycja `.scss` i `e2e/` → brak kontroli
+- [x] 2.4 Sabotaż szablonu → błąd szablonu Register od hooka; cofnięte — 4d8e6c8
+- [x] 2.5 Sabotaż typu w `.ts` komponentu → błąd od hooka; cofnięte — 4d8e6c8
+- [x] 2.6 Edycja pliku bez speca → brak fałszywego alarmu — 4d8e6c8
+- [x] 2.7 Edycja `.scss` i `e2e/` → brak kontroli — 4d8e6c8
 
 ### Phase 3: Hook Stop
 
 #### Automated
 
-- [ ] 3.1 Testy biblioteki (w tym `fingerprint`) przechodzą: `node --test .claude/hooks/`
-- [ ] 3.2 Stop przy czystym drzewie i zapisanym odcisku kończy się kodem 0 w ≤ 1 s
-- [ ] 3.3 Obie aplikacje nadal zielone
+- [x] 3.1 Testy biblioteki (w tym `fingerprint`) przechodzą: `node --test .claude/hooks/`
+- [x] 3.2 Stop przy czystym drzewie i zapisanym odcisku kończy się kodem 0 w ≤ 1 s
+- [x] 3.3 Obie aplikacje nadal zielone
 
 #### Manual
 
-- [ ] 3.4 Sabotaż przez Bash → blokada Stop z raportem `vitest run`; cofnięte
-- [ ] 3.5 Sabotaż typu w specu frontu → Stop zgłasza `tsc` speców; cofnięte
-- [ ] 3.6 Sabotaż testu frontu → Stop zgłasza `ng test`; cofnięte
-- [ ] 3.7 Pętla: przy `stop_hook_active` tylko `systemMessage`, bez drugiej blokady
-- [ ] 3.8 Tura bez zmian → Stop nie uruchamia kontroli
-- [ ] 3.9 `SUBTRACKER_AGENT_HOOKS=off` wyłącza oba hooki
+- [x] 3.4 Sabotaż przez Bash → blokada Stop z raportem `vitest run`; cofnięte
+- [x] 3.5 Sabotaż typu w specu frontu → Stop zgłasza `tsc` speców; cofnięte
+- [x] 3.6 Sabotaż testu frontu → Stop zgłasza `ng test`; cofnięte
+- [x] 3.7 Pętla: przy `stop_hook_active` tylko `systemMessage`, bez drugiej blokady
+- [x] 3.8 Tura bez zmian → Stop nie uruchamia kontroli
+- [x] 3.9 `SUBTRACKER_AGENT_HOOKS=off` wyłącza oba hooki
 
 ### Phase 4: Aktualizacja test-plan (§5, §6)
 
