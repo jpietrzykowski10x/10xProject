@@ -364,17 +364,22 @@ i wejściu drugiego konta w tej samej karcie (te same storage, cache HTTP i kont
 nie ma jej na ekranie.
 
 **Contract**:
-1. Konto A z sesją; `page.goto('/subscriptions')`; „Dodaj subskrypcję”; wypełnienie wymaganych
-   pól po etykietach poprawnymi wartościami (nazwa unikalna z czasem, kwota `12,99`, data
-   rozliczenia w przyszłości); „Zapisz”. Wartości nie są przedmiotem asercji.
-2. Pozycja z tą nazwą widoczna na liście; `page.reload()` → nadal widoczna (przyszła z API, nie
+1. Konto A z sesją i jedną starszą subskrypcją utworzoną przez API (przy pustej liście panel
+   dodawania na desktopie otwiera się sam, więc kliknięcie „Dodaj subskrypcję” by go zamknęło —
+   ustalone przy implementacji); `page.goto('/subscriptions')`, starsza pozycja widoczna;
+   „Dodaj subskrypcję”; wypełnienie wymaganych pól po etykietach poprawnymi wartościami (nazwa
+   unikalna z czasem, kwota `12,99`, data rozliczenia w przyszłości); „Zapisz subskrypcję”.
+   Wartości nie są przedmiotem asercji.
+2. Pozycja z tą nazwą widoczna w regionie „Lista subskrypcji” (nie w całej stronie: komunikat
+   „Dodano subskrypcję …” też ją nazywa); `page.reload()` → nadal widoczna (przyszła z API, nie
    z lokalnego stanu formularza).
 3. „Wyloguj” (widoczny przycisk) → adres `/sign-in`.
 4. Konto B ma wcześniej własną subskrypcję utworzoną przez `request.post('http://localhost:3000/subscriptions')`
-   z ciasteczkiem B (kategoria z `GET /categories` B). W tej samej karcie: `addCookies` z sesją B,
+   z ciasteczkiem B (kategoria z `GET /categories` B; samo ciasteczko wystarcza — klient bez
+   nagłówków przeglądarki przechodzi kontrolę CSRF). W tej samej karcie: `addCookies` z sesją B,
    `page.goto('/subscriptions')`.
 5. Widoczny adres B w powłoce i pozycja B na liście (kotwica: lista wczytana dla B); dopiero potem
-   pozycja A ma liczbę 0.
+   obie pozycje A (nowa i starsza) mają liczbę 0 na całej stronie.
 
 - **Behavior asserted**: zapis z formularza kończy się trwałą pozycją na liście właściciela; dane A nie przeżywają zmiany konta w tej samej karcie.
 - **Regression caught**: formularz nie wysyła albo lista nie odświeża się po zapisie; wpis widoczny tylko lokalnie (znika po przeładowaniu); przyszły cache po stronie klienta (`localStorage`/`sessionStorage`, cache HTTP przy zgubionym `no-store`, service worker) pokazujący listę poprzedniego konta; wylogowanie, które nie unieważnia sesji (krok 3 nie dojdzie do `/sign-in`).
@@ -392,7 +397,7 @@ nie ma jej na ekranie.
 
 #### Manual Verification:
 
-- Sabotaż: `SubscriptionsService` zapamiętuje listę w `sessionStorage` i zwraca ją przed żądaniem, `build:e2e`, krok 5 czerwony; cofnięte
+- Sabotaż: `SubscriptionsService` zapamiętuje listę w `sessionStorage` i zwraca ją przed żądaniem przy pierwszym wczytaniu po starcie aplikacji (każde pobranie z API aktualizuje cache), `build:e2e`, krok 5 czerwony; cofnięte. Wersja zwracająca cache przy każdym wczytaniu czerwieni już krok 2 (lista nie odświeża się po zapisie)
 - Sabotaż: strona po zapisie nie pobiera listy ponownie, `build:e2e`, krok 2 czerwony; cofnięte
 - Po biegu w `subtracker-db-dev` nie zostaje żaden użytkownik ani subskrypcja kont `e2e-browser-%`
 
@@ -593,29 +598,29 @@ Bez zmian schematu i bez migracji. Lokalnie jednorazowo: `CORS_ORIGINS` w
 
 #### Automated
 
-- [x] 3.1 `guards.e2e-spec.ts` przechodzi w projekcie `chromium`
-- [x] 3.2 `npm run e2e` (oba projekty) przechodzi
-- [x] 3.3 `npm run typecheck:e2e` przechodzi
+- [x] 3.1 `guards.e2e-spec.ts` przechodzi w projekcie `chromium` — c7d3af7
+- [x] 3.2 `npm run e2e` (oba projekty) przechodzi — c7d3af7
+- [x] 3.3 `npm run typecheck:e2e` przechodzi — c7d3af7
 
 #### Manual
 
-- [x] 3.4 Sabotaż gałęzi błędu `authGuard` daje czerwone przejście 2
-- [x] 3.5 Sabotaż zdjętego `guestGuard` z `sign-in` daje czerwone przejście 3
-- [x] 3.6 Ślad Playwrighta czerwonego testu pokazuje kroki i sieć
+- [x] 3.4 Sabotaż gałęzi błędu `authGuard` daje czerwone przejście 2 — c7d3af7
+- [x] 3.5 Sabotaż zdjętego `guestGuard` z `sign-in` daje czerwone przejście 3 — c7d3af7
+- [x] 3.6 Ślad Playwrighta czerwonego testu pokazuje kroki i sieć — c7d3af7
 
 ### Phase 4: Przepływ dodania i zmiana konta w tej samej karcie (ryzyko #1)
 
 #### Automated
 
-- [ ] 4.1 `subscriptions-flow.e2e-spec.ts` przechodzi w projekcie `chromium`
-- [ ] 4.2 Cały zestaw przechodzi trzy razy z rzędu (`--repeat-each=3`)
-- [ ] 4.3 `npm run typecheck:e2e` przechodzi
+- [x] 4.1 `subscriptions-flow.e2e-spec.ts` przechodzi w projekcie `chromium`
+- [x] 4.2 Cały zestaw przechodzi trzy razy z rzędu (`--repeat-each=3`)
+- [x] 4.3 `npm run typecheck:e2e` przechodzi
 
 #### Manual
 
-- [ ] 4.4 Sabotaż cache listy w `sessionStorage` daje czerwony krok 5
-- [ ] 4.5 Sabotaż braku odświeżenia listy po zapisie daje czerwony krok 2
-- [ ] 4.6 Po biegu w bazie dev nie zostają dane kont `e2e-browser-%`
+- [x] 4.4 Sabotaż cache listy w `sessionStorage` daje czerwony krok 5
+- [x] 4.5 Sabotaż braku odświeżenia listy po zapisie daje czerwony krok 2
+- [x] 4.6 Po biegu w bazie dev nie zostają dane kont `e2e-browser-%`
 
 ### Phase 5: Job CI `browser-e2e`
 
