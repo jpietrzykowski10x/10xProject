@@ -5,6 +5,9 @@
 # Claude Code personal settings (local permissions, not shared)
 /.claude/settings.local.json
 
+# Agent-loop hooks runtime state (Stop fingerprints, locks)
+/.claude/hooks/.state/
+
 # Dependencies (both apps)
 node_modules/
 

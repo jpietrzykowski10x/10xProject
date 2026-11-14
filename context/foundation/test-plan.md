@@ -70,8 +70,8 @@ orkiestrator aktualizuje go, gdy artefakty pojawiają się na dysku.
 | 1 | Frontend unit tests (roadmap F-03) | Runner i bramka CI na froncie; dowód, że parsowanie kwot i dat, przeliczenie na miesiąc i decyzje guardów nie przepuszczają złych wartości | #3, #2, #4 | unit | complete | context/changes/frontend-unit-tests/ |
 | 2 | Frontend component tests | »Should create« dla wszystkich komponentów i dowód, że formularz subskrypcji pokazuje pola warunkowe i komunikaty walidacji wtedy, kiedy powinien; `skipTests: false` dla schematu komponentu | #7, #3 | component | complete | context/changes/frontend-component-tests/ |
 | 3 | Account isolation and backend e2e in CI | e2e backendu w CI na Postgresie `C.UTF-8`; dowód, że żadna trasa po id nie zwraca ani nie zmienia cudzych danych | #1, #5, #6 | integration (API e2e), CI gate | complete | context/changes/backend-e2e-account-isolation/ |
-| 4 | Critical browser paths | 2–3 przejścia na zbudowanym SSR: przekierowania guardów, brak cache stron zalogowanego, dodana subskrypcja widoczna na liście | #2, #1 | e2e | planned | context/changes/browser-critical-paths/ |
-| 5 | Agent-loop hooks | lint, typecheck i unit uruchamiane po edycji i na koniec tury agenta | cross-cutting | post-edit hook | not started | — |
+| 4 | Critical browser paths | 2–3 przejścia na zbudowanym SSR: przekierowania guardów, brak cache stron zalogowanego, dodana subskrypcja widoczna na liście | #2, #1 | e2e | complete | context/changes/browser-critical-paths/ |
+| 5 | Agent-loop hooks | lint, typecheck i unit uruchamiane po edycji i na koniec tury agenta | cross-cutting | post-edit hook | planned | context/changes/agent-loop-hooks/ |
 
 ## 4. Stack
 
@@ -83,7 +83,7 @@ orkiestrator aktualizuje go, gdy artefakty pojawiają się na dysku.
 | component (frontend) | TestBed (zoneless) + harnessy Angular Material/CDK, w runnerze unit | 22.2.6 | spec obok każdego komponentu (12); globalne providery w `src/test-providers.ts` (`providersFile`); makieta tylko na granicy HTTP; biegnie w `test:ci` w obu strefach; checked: 2026-11-13 |
 | e2e (przeglądarka) | Playwright (`@playwright/test`) | ~1.65.1 | `frontend-subtracker/e2e/`, 5 plików `*.e2e-spec.ts` (12 testów); projekty `http` (żądania do serwera SSR, bez przeglądarki) i `chromium`; biegnie na buildzie `e2e` (optymalizacja jak w produkcji, lokalne API) i na prawdziwym API; konta i sesje zapisywane wprost w bazie, bez maila; w CI (job `browser-e2e`: Postgres 16 `C.UTF-8`, schemat z migracji); checked: 2026-11-14 |
 | accessibility | none | — | poza zakresem rolloutu; kontrole ręczne przy `/10x-ui` |
-| (optional) AI-native | post-edit hook w Claude Code — checked: 2026-11-13 | n/a | When NOT to use: jako zamiennik bramki CI albo z testami trwającymi dłużej niż kilka sekund |
+| (optional) AI-native | post-edit hook w Claude Code (`PostToolUse` + `Stop`, §6.7) — checked: 2026-11-14 | n/a | When NOT to use: jako zamiennik bramki CI albo z testami trwającymi dłużej niż kilka sekund |
 
 Profil bazy testów: `sparse` — backend ma Vitest (20 plików unit, 11 plików e2e w CI na `C.UTF-8`, w tym strażnik listy tras i test dwóch kont); frontend ma runner, 12 plików testów jednostkowych (czyste funkcje, guardy, interceptory i strażnik strefy) i 12 plików testów komponentów (»should create« każdego komponentu; zachowanie formularza subskrypcji i `register`); e2e Playwrighta (5 plików, w CI) sprawdza render mode i cache strony startowej, guardy w przeglądarce i przepływ dodania ze zmianą konta.
 
@@ -103,7 +103,7 @@ Profil bazy testów: `sparse` — backend ma Vitest (20 plików unit, 11 plików
 | unit frontend | local + CI | required | regresje parsowania, przeliczeń i guardów; od §3 Phase 2 także zepsute renderowanie komponentów i niewidoczne komunikaty walidacji |
 | API e2e backendu na Postgresie `C.UTF-8` | CI on PR (job `backend-e2e`) | required | wyciek między kontami, różnice locale, regresje auth, trasa dodana bez wpisu na liście tras |
 | e2e w przeglądarce (krytyczne ścieżki) | CI on PR (job `browser-e2e`) | required | prerender albo zły render mode trasy z guardem, zgubione `no-store` na HTML zależnym od ciasteczka, zepsute przekierowania guardów (serwer i przeglądarka), główny przepływ dodania i dane poprzedniego konta widoczne po zmianie konta w tej samej karcie |
-| post-edit hook | local (agent loop) | recommended after §3 Phase 5 | regresje w chwili edycji |
+| post-edit hook | local (agent loop: po każdym Edit/Write + Stop na koniec tury) | recommended | w chwili edycji: lint i typy całej aplikacji backendu (oxlint `--type-check`) i powiązane testy backendu, typy i szablony całego frontu (`ngc`); na koniec tury: pełny unit obu aplikacji, `tsc` backendu, typy speców frontu i edycje zrobione przez Bash. Bez dwóch stref, buildu AOT i e2e — to zostaje w CI (§6.7) |
 
 ## 6. Cookbook Patterns
 
@@ -181,6 +181,23 @@ odpowiednia faza wdrożenia zostanie dostarczona; wcześniej brzmi „TBD — se
 - **§3 Phase 2 (2026-11-13)**: Otwarte pytanie z researchu (czy błąd samodzielnej kontrolki `categoryName` pokazuje się po zapisie) rozstrzygnął test: pokazuje się, bo matcher widzi `submitted` rodzica, więc poprawka nie była potrzebna. Sabotaże potwierdziły, że tylko test komponentu pilnuje okablowania: `NativeDateAdapter` zamiast polskiego adaptera daje czerwone wszystkie wiersze z datą. Granica »should create«: brakujący komponent lub binding wychodzi (`errorOnUnknown*`), ale `routerLink` jako statyczny atrybut bez importu `RouterLink` przechodzi po cichu i link robi pełne przeładowanie strony.
 - **§3 Phase 3 (2026-11-14)**: Pierwszy przebieg `backend-e2e` był zielony: obraz `postgres:16` ma ICU `pl-PL-x-icu`, a initdb przyjmuje `C.UTF-8`; przechwytywanie maili (`vi.waitFor`) jest stabilne na runnerze. Sabotaż `COLLATE` (usunięty z kolejności listy subskrypcji): lokalnie wszystkie e2e zielone, w CI czerwony dokładnie jeden test kolejności polskich nazw. Test jednostkowy też odpadł, ale tylko dlatego, że porównuje dosłowny `ORDER BY`; nowego sortowania bez `COLLATE` nie złapie, łapie je tylko e2e na `C.UTF-8`.
 - **§3 Phase 4 (2026-11-14)**: Testy biegną na buildzie, więc sabotaż bez `build:e2e` sprawdza stary kod; w CI bramkę potwierdził tymczasowy commit z `/` jako `Client` (`browser-e2e` czerwony, potem revert). Część założeń poprawiły same testy: serwer dokleja do powłoki CSR linki `modulepreload` per trasa, stan transferu trzyma wpisy pod hashem, a usunięcie filtra `/auth/session` niczego nie psuje, bo chronią go jeszcze dwie warstwy. `CORS_ORIGINS` to lista po przecinkach; config Playwrighta sprawdza w niej `:4000` przed startem, bo inaczej przeglądarka dostaje tylko niejasny błąd CORS.
+- **§3 Phase 5 (2026-11-14)**: `PostToolBatch` odpadł: tam zarówno kod 2, jak i `decision: "block"` kończą turę agenta zamiast oddać mu raport, więc hook po edycji to `PostToolUse` z blokadą per aplikacja. `systemMessage` z `PostToolUse` nie dociera do użytkownika (z `Stop` dociera), stąd ostrzeżenia hooka po edycji idą przez stderr z kodem 1. Zmierzone: po edycji backend ok. 1,5 s, front ok. 3,3 s; `Stop` obu aplikacji ok. 14 s, sam backend ok. 6 s, bez zmian 0,3 s. Lint samego pliku nie widzi zepsutych wywołań w innych plikach — dlatego lintujemy całą aplikację.
+
+### 6.7 Agent-loop hooks — jak działają, jak wyłączyć
+
+- **Pliki**: `.claude/settings.json` (sekcja `hooks`, commitowana), `.claude/hooks/post-edit.mjs`, `.claude/hooks/stop.mjs`, wspólne reguły w `.claude/hooks/lib/agent-loop.mjs` (+ `agent-loop.test.mjs`); stan w `.claude/hooks/.state/` (git-ignorowany: odciski `Stop`, blokady). Docs: https://code.claude.com/docs/en/hooks; checked: 2026-11-14.
+- **Po edycji** (`PostToolUse`, matcher `Edit|Write`, timeout 60 s): sprawdzane są tylko `backend-subtracker/{src,test}/**/*.ts` i `frontend-subtracker/src/**/*.{ts,html}` bez `*.spec.ts` frontu. Każdy inny plik (`context/`, `*.md`, `.env*`, `e2e/`, `scripts/`, `*.scss`, konfiguracja) kończy hook od razu, bez uruchamiania czegokolwiek.
+  - backend (ok. 1,5 s): `oxlint --type-aware --type-check --quiet src/ test/` (cała aplikacja, bo lint pliku nie widzi wywołań w innych plikach) + `vitest related --run <plik>`;
+  - frontend (ok. 3,3 s): `ngc -p tsconfig.app.json --noEmit` — typy i szablony całej aplikacji, bez testów.
+  - Czerwony wynik: stderr (ostatnie ok. 40 linii) + kod 2 → agent widzi raport i tura trwa dalej. Równoległe edycje tej samej aplikacji sprawdzane są po kolei (blokada w `.state/<app>.lock`; blokada zabitego hooka jest usuwana od razu, gdy jego proces nie żyje, a każda starsza niż 60 s).
+- **Na koniec tury** (`Stop`, timeout 120 s): tylko aplikacje, których odcisk się zmienił (HEAD + `git status` katalogów aplikacji + treść zmienionych i nieśledzonych plików), więc łapie też edycje przez Bash. Aplikacje równolegle:
+  - backend (ok. 6 s): `oxlint --type-check`, `tsc -p tsconfig.json --noEmit`, `vitest run`;
+  - frontend (ok. 10–14 s): `tsc -p tsconfig.spec.json --noEmit`, `ng test --watch=false` z `TZ=Europe/Warsaw` (jedna strefa; dwie biegną w CI).
+  - Czerwony wynik blokuje turę **raz** (`decision: "block"` z raportem). Jeśli agent kończy znowu, a kontrole są nadal czerwone (`stop_hook_active`), użytkownik dostaje `systemMessage` „[agent-loop] checks still red: …” i tura się kończy — bez drugiej blokady. Stan bez zmian (także już zgłoszony czerwony) → nic nie biegnie (ok. 0,3 s). Odcisk obejmuje każdy brudny plik w katalogu aplikacji, więc także czyjąś niezacommitowaną pracę spoza tury agenta: czerwony test w takim kodzie blokuje turę agenta raz na stan, nawet jeśli agent tej aplikacji nie dotykał.
+- **Wymagany Node 24.15+**: hook startuje pierwszym `node` z PATH. Ze starszym (np. `C:\Program Files\nodejs` 22.14) hooki nie uruchamiają narzędzi i zgłaszają to użytkownikowi („hooks skipped: Node …”); sesję uruchamiaj z powłoki z `fnm`. Brak `node_modules` → „skipped (tool not installed, run npm ci)”.
+- **Wyłączenie**: `SUBTRACKER_AGENT_HOOKS=off` — w powłoce przed `claude` albo w `.claude/settings.local.json` jako `"env": { "SUBTRACKER_AGENT_HOOKS": "off" }`. Zmiana `env` w ustawieniach działa dopiero po restarcie sesji (`/exit`, potem `claude --continue`); zmiany w sekcji `hooks` działają od razu. Ostateczność: `"disableAllHooks": true` w `settings.local.json` — wyłącza też hooki pluginów i ustawień użytkownika.
+- **Testy hooków** (z katalogu głównego, poza CI): `node --test ".claude/hooks/**/*.test.mjs"` — samo `node --test .claude/hooks/` w Node 24 nie działa (katalog traktowany jak plik).
+- **Nie robią**: e2e (backend i Playwright), migracji, `start:*` ani niczego, co czyta `.env`; nie wypisują środowiska. Nie zastępują bramek z §5 — CI pozostaje jedyną bramką wymaganą.
 
 ## 7. What We Deliberately Don't Test
 
@@ -196,7 +213,7 @@ odpowiednia faza wdrożenia zostanie dostarczona; wcześniej brzmi „TBD — se
 
 - Strategy (§1–§5) last reviewed: 2026-11-14
 - Stack versions last verified: 2026-11-14
-- AI-native tool references last verified: 2026-11-13
+- AI-native tool references last verified: 2026-11-14
 
 Refresh (`/10x-test-plan --refresh`) when:
 
