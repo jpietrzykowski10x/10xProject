@@ -325,25 +325,25 @@ Hooki działają po zaakceptowaniu zaufania do workspace i przeładowują się b
 
 #### Automated
 
-- [x] 3.1 Testy biblioteki (w tym `fingerprint`) przechodzą: `node --test .claude/hooks/`
-- [x] 3.2 Stop przy czystym drzewie i zapisanym odcisku kończy się kodem 0 w ≤ 1 s
-- [x] 3.3 Obie aplikacje nadal zielone
+- [x] 3.1 Testy biblioteki (w tym `fingerprint`) przechodzą: `node --test .claude/hooks/` — 74f87e4
+- [x] 3.2 Stop przy czystym drzewie i zapisanym odcisku kończy się kodem 0 w ≤ 1 s — 74f87e4
+- [x] 3.3 Obie aplikacje nadal zielone — 74f87e4
 
 #### Manual
 
-- [x] 3.4 Sabotaż przez Bash → blokada Stop z raportem `vitest run`; cofnięte
-- [x] 3.5 Sabotaż typu w specu frontu → Stop zgłasza `tsc` speców; cofnięte
-- [x] 3.6 Sabotaż testu frontu → Stop zgłasza `ng test`; cofnięte
-- [x] 3.7 Pętla: przy `stop_hook_active` tylko `systemMessage`, bez drugiej blokady
-- [x] 3.8 Tura bez zmian → Stop nie uruchamia kontroli
-- [x] 3.9 `SUBTRACKER_AGENT_HOOKS=off` wyłącza oba hooki
+- [x] 3.4 Sabotaż przez Bash → blokada Stop z raportem `vitest run`; cofnięte — 74f87e4
+- [x] 3.5 Sabotaż typu w specu frontu → Stop zgłasza `tsc` speców; cofnięte — 74f87e4
+- [x] 3.6 Sabotaż testu frontu → Stop zgłasza `ng test`; cofnięte — 74f87e4
+- [x] 3.7 Pętla: przy `stop_hook_active` tylko `systemMessage`, bez drugiej blokady — 74f87e4
+- [x] 3.8 Tura bez zmian → Stop nie uruchamia kontroli — 74f87e4
+- [x] 3.9 `SUBTRACKER_AGENT_HOOKS=off` wyłącza oba hooki — 74f87e4
 
 ### Phase 4: Aktualizacja test-plan (§5, §6)
 
 #### Automated
 
-- [ ] 4.1 §5 i §6.7 obecne w test-plan
+- [x] 4.1 §5 i §6.7 obecne w test-plan
 
 #### Manual
 
-- [ ] 4.2 §6.7 da się zastosować bez czytania planu
+- [x] 4.2 §6.7 da się zastosować bez czytania planu
