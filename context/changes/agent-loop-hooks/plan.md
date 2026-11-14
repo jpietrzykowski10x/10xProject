@@ -342,8 +342,8 @@ Hooki działają po zaakceptowaniu zaufania do workspace i przeładowują się b
 
 #### Automated
 
-- [x] 4.1 §5 i §6.7 obecne w test-plan
+- [x] 4.1 §5 i §6.7 obecne w test-plan — f8a69cb
 
 #### Manual
 
-- [x] 4.2 §6.7 da się zastosować bez czytania planu
+- [x] 4.2 §6.7 da się zastosować bez czytania planu — f8a69cb

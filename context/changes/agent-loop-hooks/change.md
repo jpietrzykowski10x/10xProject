@@ -1,7 +1,7 @@
 ---
 change_id: agent-loop-hooks
 title: Agent-loop hooks — lint, typecheck and unit tests after agent edits
-status: implementing
+status: implemented
 created: 2026-11-14
 updated: 2026-11-14
 archived_at: null
