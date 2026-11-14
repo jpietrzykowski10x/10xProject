@@ -70,8 +70,8 @@ orkiestrator aktualizuje go, gdy artefakty pojawiają się na dysku.
 | 1 | Frontend unit tests (roadmap F-03) | Runner i bramka CI na froncie; dowód, że parsowanie kwot i dat, przeliczenie na miesiąc i decyzje guardów nie przepuszczają złych wartości | #3, #2, #4 | unit | complete | context/changes/frontend-unit-tests/ |
 | 2 | Frontend component tests | »Should create« dla wszystkich komponentów i dowód, że formularz subskrypcji pokazuje pola warunkowe i komunikaty walidacji wtedy, kiedy powinien; `skipTests: false` dla schematu komponentu | #7, #3 | component | complete | context/changes/frontend-component-tests/ |
 | 3 | Account isolation and backend e2e in CI | e2e backendu w CI na Postgresie `C.UTF-8`; dowód, że żadna trasa po id nie zwraca ani nie zmienia cudzych danych | #1, #5, #6 | integration (API e2e), CI gate | complete | context/changes/backend-e2e-account-isolation/ |
-| 4 | Critical browser paths | 2–3 przejścia na zbudowanym SSR: przekierowania guardów, brak cache stron zalogowanego, dodana subskrypcja widoczna na liście | #2, #1 | e2e | planned | context/changes/browser-critical-paths/ |
-| 5 | Agent-loop hooks | lint, typecheck i unit uruchamiane po edycji i na koniec tury agenta | cross-cutting | post-edit hook | not started | — |
+| 4 | Critical browser paths | 2–3 przejścia na zbudowanym SSR: przekierowania guardów, brak cache stron zalogowanego, dodana subskrypcja widoczna na liście | #2, #1 | e2e | complete | context/changes/browser-critical-paths/ |
+| 5 | Agent-loop hooks | lint, typecheck i unit uruchamiane po edycji i na koniec tury agenta | cross-cutting | post-edit hook | planned | context/changes/agent-loop-hooks/ |
 
 ## 4. Stack
 
