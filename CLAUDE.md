@@ -43,7 +43,8 @@ Frontend (`cd frontend-subtracker`):
 - `npm start` — dev server (`ng serve`)
 - `npm run build` — production build to `dist/frontend-subtracker/` (browser + server bundles)
 - `npm run serve:ssr:frontend-subtracker` — run the built SSR server
-- No lint or test target exists yet — the app was scaffolded with `--skip-tests`, so `ng test` has no builder.
+- `npm test` — unit and component tests (`ng test`, Vitest via `@angular/build:unit-test`, `src/**/*.spec.ts`); `npm run test:ci` — the whole suite once per time zone (Warsaw, New York), as the CI job `frontend` runs it. How to add a test: `context/foundation/test-plan.md` §6.1–6.2.
+- No lint target exists yet.
 
 Backend (`cd backend-subtracker`):
 
