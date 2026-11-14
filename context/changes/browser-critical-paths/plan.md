@@ -612,15 +612,15 @@ Bez zmian schematu i bez migracji. Lokalnie jednorazowo: `CORS_ORIGINS` w
 
 #### Automated
 
-- [x] 4.1 `subscriptions-flow.e2e-spec.ts` przechodzi w projekcie `chromium`
-- [x] 4.2 Cały zestaw przechodzi trzy razy z rzędu (`--repeat-each=3`)
-- [x] 4.3 `npm run typecheck:e2e` przechodzi
+- [x] 4.1 `subscriptions-flow.e2e-spec.ts` przechodzi w projekcie `chromium` — e225262
+- [x] 4.2 Cały zestaw przechodzi trzy razy z rzędu (`--repeat-each=3`) — e225262
+- [x] 4.3 `npm run typecheck:e2e` przechodzi — e225262
 
 #### Manual
 
-- [x] 4.4 Sabotaż cache listy w `sessionStorage` daje czerwony krok 5
-- [x] 4.5 Sabotaż braku odświeżenia listy po zapisie daje czerwony krok 2
-- [x] 4.6 Po biegu w bazie dev nie zostają dane kont `e2e-browser-%`
+- [x] 4.4 Sabotaż cache listy w `sessionStorage` daje czerwony krok 5 — e225262
+- [x] 4.5 Sabotaż braku odświeżenia listy po zapisie daje czerwony krok 2 — e225262
+- [x] 4.6 Po biegu w bazie dev nie zostają dane kont `e2e-browser-%` — e225262
 
 ### Phase 5: Job CI `browser-e2e`
 
