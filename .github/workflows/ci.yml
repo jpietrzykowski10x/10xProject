@@ -58,6 +58,95 @@ jobs:
       - run: npm run test:ci
       - run: npm run prepare-mydevil
 
+  # Backend e2e tests against a disposable PostgreSQL, as a separate named check.
+  # - C.UTF-8: production PostgreSQL uses C.UTF-8 (collate and ctype), local databases use
+  #   Polish_Poland.1250, so only here does a missing COLLATE "pl-PL-x-icu" break the sorting
+  #   the tests expect. The first step refuses to continue on any other locale.
+  # - Migrations, not synchronize: the schema is built the way production builds it, so the
+  #   tests also run against the data seeded by migrations, and a missing migration fails here.
+  # - One database for the CLI and the app: POSTGRES_DATABASE_DEV = POSTGRES_DATABASE is allowed
+  #   only in this throwaway container. Locally migration:* never targets the -dev database
+  #   (context/foundation/lessons.md); do not copy this .env to a developer machine.
+  backend-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend-subtracker
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: subtracker_ci
+          POSTGRES_DB: subtracker_ci
+          # Reachable only from this runner and removed with the job, so no password is set.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_INITDB_ARGS: --locale=C.UTF-8 --encoding=UTF8
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U subtracker_ci -d subtracker_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend-subtracker/package-lock.json
+
+      - name: Check database locale and Polish collation
+        run: |
+          q() {
+            docker exec ${{ job.services.postgres.id }} \
+              psql -v ON_ERROR_STOP=1 -U subtracker_ci -d subtracker_ci -tA -c "$1"
+          }
+          locale=$(q "SELECT datcollate || ' / ' || datctype FROM pg_database WHERE datname = current_database()")
+          echo "datcollate / datctype: $locale"
+          if [ "$locale" != "C.UTF-8 / C.UTF-8" ]; then
+            echo "::error::Expected C.UTF-8 / C.UTF-8 (production locale), got '$locale'"
+            exit 1
+          fi
+          collation=$(q "SELECT count(*) FROM pg_collation WHERE collname = 'pl-PL-x-icu'")
+          echo "pl-PL-x-icu collations found: $collation"
+          if [ "$collation" != "1" ]; then
+            echo "::error::Collation pl-PL-x-icu is missing"
+            exit 1
+          fi
+          order=$(q "SELECT 'Ślub' < 'Zoo' COLLATE \"pl-PL-x-icu\"")
+          echo "'Ślub' < 'Zoo' COLLATE \"pl-PL-x-icu\": $order"
+          if [ "$order" != "t" ]; then
+            echo "::error::Expected 'Ślub' to sort before 'Zoo' in pl-PL-x-icu, got '$order'"
+            exit 1
+          fi
+
+      # Read by the TypeORM CLI (data-source.ts) and by vitest.config.e2e.ts. No secrets.
+      - name: Write .env for CI
+        run: |
+          cat > .env <<'EOF'
+          MODE=DEV
+          POSTGRES_HOST=localhost
+          POSTGRES_PORT=5432
+          POSTGRES_USER=subtracker_ci
+          # Not checked: the CI server uses trust authentication. validateEnv only needs a value.
+          POSTGRES_PASSWORD=unused-trust-auth
+          # One throwaway database for both the migration CLI and the app (CI only).
+          POSTGRES_DATABASE=subtracker_ci
+          POSTGRES_DATABASE_DEV=subtracker_ci
+          DATABASE_AUTO_SYNCHRONIZATION=false
+          CORS_ORIGINS=http://localhost:4200
+          FRONTEND_URL=http://localhost:4200
+          # Empty: mail goes to the console.
+          SMTP_HOST=
+          EOF
+
+      - run: npm ci
+      - run: npm run migration:run
+      - run: npm run test:e2e
+
   deploy-scripts:
     runs-on: ubuntu-latest
     steps:
