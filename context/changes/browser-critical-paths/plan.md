@@ -243,11 +243,13 @@ ciasteczko do API.
   `ng-server-context="ssr"`;
 - ważna sesja → 302, `Location` kończy się na `/subscriptions`, `Cache-Control` zawiera `private`
   i `no-store`;
-- wygasła sesja → 200, `no-store`, HTML zawiera `ng-server-context="ssr"` i nie zawiera ciągu
-  `/auth/session` (odpowiedź sesji nie trafiła do stanu transferu).
+- wygasła sesja → 200, `no-store`, HTML zawiera `ng-server-context="ssr"`, a skrypt `ng-state`
+  nie zawiera treści odpowiedzi sesji (`"user"`) — odpowiedź sesji nie trafiła do stanu transferu.
+  Wpisy stanu transferu mają klucz-hash, a URL jest zapisany z `/`, więc szukanie ciągu
+  `/auth/session` niczego nie chroni (ustalone przy implementacji).
 
 - **Behavior asserted**: status, przekierowanie i nagłówek cache strony startowej dla trzech stanów ciasteczka.
-- **Regression caught**: `/` przeniesione do `Prerender`/`Client` (brak `ng-server-context` albo brak 302), zgubione nagłówki trasy, serwerowy `guestGuard` przestaje przekazywać ciasteczko (ważna sesja daje 200), usunięte wyłączenie `/auth/session` z transfer cache.
+- **Regression caught**: `/` przeniesione do `Prerender`/`Client` (brak `ng-server-context` albo brak 302), zgubione nagłówki trasy, serwerowy `guestGuard` przestaje przekazywać ciasteczko (ważna sesja daje 200), odpowiedź sesji w stanie transferu. Uwaga z implementacji: samo usunięcie filtra `/auth/session` w `app.config.ts` zostaje zielone, bo odpowiedź trzymają poza stanem transferu także domyślne reguły Angulara (żądania z credentials, odpowiedź `no-store` z API); test czerwienieje dopiero, gdy znikną wszystkie trzy (sprawdzone sabotażem).
 - **Research source**: research Summary 1–3, tabela „Macierz serwera”; `app.routes.server.ts:9-11`, `ssr.mjs:1082-1089,1112-1113`, `app.config.ts:22`.
 - **Edge/error/boundary**: wygasła sesja (API zwraca `user: null`, nie 401) — granica między „gość” a „zalogowany”; 302 musi mieć ten sam `no-store` co 200.
 - **Anti-pattern avoided**: przeglądarka tam, gdzie wystarczy żądanie; „API nie odpowiada” po stronie serwera nie jest powtarzane (unit, `auth.guard.spec.ts:235`).
@@ -261,8 +263,9 @@ prerenderowanych to tylko strony statyczne.
 
 **Contract**:
 - Tabela tras `/subscriptions`, `/sign-in`, `/register`, `/auth/verify` × {bez ciasteczka, z ważną
-  sesją}: 200, HTML bez `ng-server-context`; wszystkie odpowiedzi mają identyczne ciało (jedna
-  powłoka dla każdego).
+  sesją}: 200, HTML bez `ng-server-context`; dla każdej trasy odpowiedź z sesją i bez niej jest
+  identyczna, a powłoki różnych tras są identyczne po usunięciu linków `modulepreload` (serwer
+  dokleja je per trasa dla jej leniwych chunków — ustalone przy implementacji).
 - `dist/frontend-subtracker-e2e/prerendered-routes.json`: klucze `routes` to dokładnie
   `['/privacy-policy', '/unavailable']` (wyrocznia: §7 planu testów, strony statyczne). Komentarz
   w teście: nowa strona statyczna = świadomy dopisek do tej listy.
@@ -561,30 +564,30 @@ Bez zmian schematu i bez migracji. Lokalnie jednorazowo: `CORS_ORIGINS` w
 
 #### Automated
 
-- [x] 1.1 `npm run build:e2e` kończy się sukcesem i tworzy `dist/frontend-subtracker-e2e/`
-- [x] 1.2 Build e2e nie zawiera adresu produkcyjnego API
-- [x] 1.3 `npm run typecheck:e2e` przechodzi
-- [x] 1.4 `npm run e2e` przechodzi (test dymny w projekcie `http`)
-- [x] 1.5 `npm test` nie zbiera plików z `e2e/`
-- [x] 1.6 `npm run prepare-mydevil` dalej pakuje produkcyjne API
+- [x] 1.1 `npm run build:e2e` kończy się sukcesem i tworzy `dist/frontend-subtracker-e2e/` — c2ac3b1
+- [x] 1.2 Build e2e nie zawiera adresu produkcyjnego API — c2ac3b1
+- [x] 1.3 `npm run typecheck:e2e` przechodzi — c2ac3b1
+- [x] 1.4 `npm run e2e` przechodzi (test dymny w projekcie `http`) — c2ac3b1
+- [x] 1.5 `npm test` nie zbiera plików z `e2e/` — c2ac3b1
+- [x] 1.6 `npm run prepare-mydevil` dalej pakuje produkcyjne API — c2ac3b1
 
 #### Manual
 
-- [x] 1.7 Po teście dymnym w bazie dev nie zostaje użytkownik `e2e-browser-%`
-- [x] 1.8 Brak `http://localhost:4000` w `CORS_ORIGINS` daje czytelny komunikat na starcie
+- [x] 1.7 Po teście dymnym w bazie dev nie zostaje użytkownik `e2e-browser-%` — c2ac3b1
+- [x] 1.8 Brak `http://localhost:4000` w `CORS_ORIGINS` daje czytelny komunikat na starcie — c2ac3b1
 
 ### Phase 2: Testy HTTP zbudowanego SSR (ryzyko #2)
 
 #### Automated
 
-- [ ] 2.1 `npx playwright test --project=http` przechodzi
-- [ ] 2.2 `npm run typecheck:e2e` przechodzi
+- [x] 2.1 `npx playwright test --project=http` przechodzi
+- [x] 2.2 `npm run typecheck:e2e` przechodzi
 
 #### Manual
 
-- [ ] 2.3 Sabotaż 1 (strona startowa jako `Client`) daje czerwony test
-- [ ] 2.4 Sabotaż 2 (usunięty wpis `subscriptions`) daje czerwony strażnik prerenderu
-- [ ] 2.5 Sabotaż 3 (usunięte nagłówki trasy) daje czerwone asercje `no-store`
+- [x] 2.3 Sabotaż 1 (strona startowa jako `Client`) daje czerwony test
+- [x] 2.4 Sabotaż 2 (usunięty wpis `subscriptions`) daje czerwony strażnik prerenderu
+- [x] 2.5 Sabotaż 3 (usunięte nagłówki trasy) daje czerwone asercje `no-store`
 
 ### Phase 3: Przejścia guardów w przeglądarce (ryzyko #2)
 
