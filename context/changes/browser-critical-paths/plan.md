@@ -580,28 +580,28 @@ Bez zmian schematu i bez migracji. Lokalnie jednorazowo: `CORS_ORIGINS` w
 
 #### Automated
 
-- [x] 2.1 `npx playwright test --project=http` przechodzi
-- [x] 2.2 `npm run typecheck:e2e` przechodzi
+- [x] 2.1 `npx playwright test --project=http` przechodzi — 3aa50f0
+- [x] 2.2 `npm run typecheck:e2e` przechodzi — 3aa50f0
 
 #### Manual
 
-- [x] 2.3 Sabotaż 1 (strona startowa jako `Client`) daje czerwony test
-- [x] 2.4 Sabotaż 2 (usunięty wpis `subscriptions`) daje czerwony strażnik prerenderu
-- [x] 2.5 Sabotaż 3 (usunięte nagłówki trasy) daje czerwone asercje `no-store`
+- [x] 2.3 Sabotaż 1 (strona startowa jako `Client`) daje czerwony test — 3aa50f0
+- [x] 2.4 Sabotaż 2 (usunięty wpis `subscriptions`) daje czerwony strażnik prerenderu — 3aa50f0
+- [x] 2.5 Sabotaż 3 (usunięte nagłówki trasy) daje czerwone asercje `no-store` — 3aa50f0
 
 ### Phase 3: Przejścia guardów w przeglądarce (ryzyko #2)
 
 #### Automated
 
-- [ ] 3.1 `guards.e2e-spec.ts` przechodzi w projekcie `chromium`
-- [ ] 3.2 `npm run e2e` (oba projekty) przechodzi
-- [ ] 3.3 `npm run typecheck:e2e` przechodzi
+- [x] 3.1 `guards.e2e-spec.ts` przechodzi w projekcie `chromium`
+- [x] 3.2 `npm run e2e` (oba projekty) przechodzi
+- [x] 3.3 `npm run typecheck:e2e` przechodzi
 
 #### Manual
 
-- [ ] 3.4 Sabotaż gałęzi błędu `authGuard` daje czerwone przejście 2
-- [ ] 3.5 Sabotaż zdjętego `guestGuard` z `sign-in` daje czerwone przejście 3
-- [ ] 3.6 Ślad Playwrighta czerwonego testu pokazuje kroki i sieć
+- [x] 3.4 Sabotaż gałęzi błędu `authGuard` daje czerwone przejście 2
+- [x] 3.5 Sabotaż zdjętego `guestGuard` z `sign-in` daje czerwone przejście 3
+- [x] 3.6 Ślad Playwrighta czerwonego testu pokazuje kroki i sieć
 
 ### Phase 4: Przepływ dodania i zmiana konta w tej samej karcie (ryzyko #1)
 
