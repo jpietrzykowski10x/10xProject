@@ -1,17 +1,5 @@
-import { INestApplication } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Test } from '@nestjs/testing';
-import request, { type Response } from 'supertest';
-import { App } from 'supertest/types.js';
-import { DataSource, In, Like, type ObjectLiteral } from 'typeorm';
-import { AppModule } from './../src/app.module.js';
 import { MagicLinkToken } from './../src/auth/entities/magic-link-token.entity.js';
 import { Session } from './../src/auth/entities/session.entity.js';
-import { type EnvConfig, envFromConfig } from './../src/config/env.js';
-import { applyHttpSecurity } from './../src/config/http-security.js';
-import { Mail } from './../src/mail/entities/mail.entity.js';
-import { MAIL_TRANSPORT } from './../src/mail/mail.transport.js';
-import type { MailMessage } from './../src/mail/mail.types.js';
 import { DEFAULT_CATEGORIES } from './../src/subscriptions/default-categories.js';
 import {
   Category,
@@ -24,87 +12,16 @@ import type {
 } from './../src/subscriptions/subscription.types.js';
 import { UserRole } from './../src/users/entities/user-role.entity.js';
 import { User } from './../src/users/entities/user.entity.js';
+import { createE2eApp, type SignedIn } from './support/e2e-app.js';
 
-// Runs against the local dev database with a fake mail transport. Every row these tests create
-// hangs off a recognisable address and is removed at the end.
-const ADDRESS_PREFIX = 'e2e-subscriptions-';
-const ADDRESS_DOMAIN = '@subtracker.test';
-const ADDRESS_PATTERN = `${ADDRESS_PREFIX}%${ADDRESS_DOMAIN}`;
 const OTHER_CATEGORY_ID = DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1].id;
-
-interface SignedIn {
-  address: string;
-  cookie: string;
-}
+const PAST = new Date('2020-01-01T00:00:00.000Z');
 
 describe('Subscriptions (e2e)', () => {
-  let app: INestApplication<App>;
-  let dataSource: DataSource;
-  const sent: MailMessage[] = [];
-  let addressCounter = 0;
-
-  const http = () => request(app.getHttpServer());
-  const newAddress = () =>
-    `${ADDRESS_PREFIX}${Date.now()}-${++addressCounter}${ADDRESS_DOMAIN}`;
-  const repository = <T extends ObjectLiteral>(entity: new () => T) =>
-    dataSource.getRepository(entity);
-
-  // Subscriptions and categories first: they hang off the users. Session, token and role rows
-  // block deleting a user (ON DELETE NO ACTION).
-  async function removeUserRows(userIds: string[]): Promise<void> {
-    const ids = In(userIds);
-    await repository(Subscription).delete({ userId: ids });
-    await repository(Category).delete({ userId: ids });
-    await repository(Session).delete({ userId: ids });
-    await repository(MagicLinkToken).delete({ userId: ids });
-    await repository(UserRole).delete({ userId: ids });
-    await repository(User).delete({ id: ids });
-  }
-
-  async function removeTestData(): Promise<void> {
-    const users = await repository(User).findBy({
-      email: Like(ADDRESS_PATTERN),
-    });
-    await removeUserRows(users.map((user) => user.id));
-    await repository(Mail).delete({ recipient: Like(ADDRESS_PATTERN) });
-  }
-
-  async function latestToken(address: string): Promise<string> {
-    let token: string | undefined;
-    await vi.waitFor(() => {
-      const mail = sent.findLast((message) => message.to === address);
-      token =
-        mail === undefined ? undefined : /#token=([\w-]+)/.exec(mail.text)?.[1];
-      expect(token).toBeDefined();
-    });
-    return token as string;
-  }
-
-  function cookiePairOf(response: Response): string {
-    const header = response.headers['set-cookie'] as unknown as
-      string[] | undefined;
-    if (header === undefined || header.length !== 1) {
-      throw new Error('Expected exactly one Set-Cookie header');
-    }
-    return header[0].split(';')[0];
-  }
-
-  async function signIn(): Promise<SignedIn> {
-    const address = newAddress();
-    await http()
-      .post('/auth/register')
-      .send({
-        email: address,
-        confirmedAdult: true,
-        acceptedPrivacyPolicy: true,
-      })
-      .expect(202);
-    const verified = await http()
-      .post('/auth/verify')
-      .send({ token: await latestToken(address) })
-      .expect(200);
-    return { address, cookie: cookiePairOf(verified) };
-  }
+  // Runs against the local dev database with a fake mail transport. Every row these tests create
+  // hangs off a recognisable address and is removed at the end.
+  const e2e = createE2eApp({ addressPrefix: 'e2e-subscriptions-' });
+  const { http, repository, signIn, twoAccounts } = e2e;
 
   const userIdOf = async (address: string) =>
     (await repository(User).findOneByOrFail({ email: address })).id;
@@ -144,55 +61,45 @@ describe('Subscriptions (e2e)', () => {
         .expect('Cache-Control', 'no-store')
     ).body as CategoryResponse[];
 
-  beforeAll(async () => {
-    const moduleFixture = await Test.createTestingModule({
-      imports: [AppModule],
-    })
-      .overrideProvider(MAIL_TRANSPORT)
-      .useValue({
-        send: (message: MailMessage) => {
-          sent.push(message);
-          return Promise.resolve();
-        },
-      })
-      .compile();
+  beforeAll(() => e2e.start());
 
-    const env = envFromConfig(
-      moduleFixture.get<ConfigService<EnvConfig, true>>(ConfigService),
-    );
-    app = moduleFixture.createNestApplication();
-    // The production policy (CORS, CSRF, headers), so these tests cover what main.ts serves.
-    applyHttpSecurity(app, env.CORS_ORIGINS);
-    await app.init();
-    dataSource = app.get(DataSource);
-    // Leftovers of a run that was killed before its cleanup.
-    await removeTestData();
-  });
-
-  afterAll(async () => {
-    try {
-      // Audit rows are written after the transport finishes.
-      await vi.waitFor(
-        async () => {
-          expect(
-            await repository(Mail).countBy({
-              recipient: Like(ADDRESS_PATTERN),
-            }),
-          ).toBe(sent.length);
-        },
-        { timeout: 5000 },
-      );
-    } finally {
-      await removeTestData();
-      await app.close();
-    }
-  });
+  afterAll(() => e2e.close());
 
   it('answers 401 on every route without a session', async () => {
     await http().get('/categories').expect(401);
     await http().post('/categories').send({ name: 'Praca' }).expect(401);
     await http().get('/subscriptions').expect(401);
     await http().post('/subscriptions').send(subscriptionBody()).expect(401);
+  });
+
+  // The global guard is covered on /auth/me in auth.e2e-spec.ts; this keeps it on the domain routes.
+  it.each([
+    [
+      'an expired session',
+      async ({ address }: SignedIn) => {
+        await repository(Session).update(
+          { userId: await userIdOf(address) },
+          { expiresAt: PAST },
+        );
+      },
+    ],
+    [
+      'a signed-out session',
+      async ({ cookie }: SignedIn) => {
+        await http().post('/auth/logout').set('Cookie', cookie).expect(204);
+      },
+    ],
+  ])('answers 401 on every route with %s', async (_state, endSession) => {
+    const account = await signIn();
+    const { cookie } = account;
+    await getCategories(cookie);
+
+    await endSession(account);
+
+    await http().get('/categories').set('Cookie', cookie).expect(401);
+    await postCategory(cookie, 'Praca').expect(401);
+    await http().get('/subscriptions').set('Cookie', cookie).expect(401);
+    await postSubscription(cookie, subscriptionBody()).expect(401);
   });
 
   it('adds a subscription and lists it with the amount as a string', async () => {
@@ -244,8 +151,7 @@ describe('Subscriptions (e2e)', () => {
 
   describe('account isolation', () => {
     it('keeps the subscriptions and own categories of one user from another', async () => {
-      const owner = await signIn();
-      const other = await signIn();
+      const { owner, other } = await twoAccounts();
       const category = (await postCategory(owner.cookie, 'Praca').expect(201))
         .body as CategoryResponse;
       await postSubscription(
@@ -267,8 +173,7 @@ describe('Subscriptions (e2e)', () => {
     });
 
     it('refuses an unknown category and a userId in the body', async () => {
-      const owner = await signIn();
-      const other = await signIn();
+      const { owner, other } = await twoAccounts();
 
       await postSubscription(
         owner.cookie,

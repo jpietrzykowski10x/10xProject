@@ -408,26 +408,26 @@ Brak zmian schematu. Migracje są tylko uruchamiane w CI na czystej bazie.
 
 #### Automated
 
-- [x] 1.1 Lint backendu przechodzi
-- [x] 1.2 Lokalnie cały zestaw e2e przechodzi bez zmian
-- [x] 1.3 Lokalnie sabotaż `COLLATE` zostawia zestaw e2e zielonym
+- [x] 1.1 Lint backendu przechodzi — f9b5c69
+- [x] 1.2 Lokalnie cały zestaw e2e przechodzi bez zmian — f9b5c69
+- [x] 1.3 Lokalnie sabotaż `COLLATE` zostawia zestaw e2e zielonym — f9b5c69
 
 #### Manual
 
-- [ ] 1.4 Po pushu `backend-e2e` zielony, log pokazuje `C.UTF-8` i `pl-PL-x-icu`
-- [ ] 1.5 Push `sabotage/collate-ci` daje czerwony tylko test polskiej kolejności; gałąź usunięta
-- [ ] 1.6 `backend-e2e` w required status checks rulesetu `protect-main`
+- [x] 1.4 Po pushu `backend-e2e` zielony, log pokazuje `C.UTF-8` i `pl-PL-x-icu`
+- [x] 1.5 Push `sabotage/collate-ci` daje czerwony tylko test polskiej kolejności; gałąź usunięta
+- [x] 1.6 `backend-e2e` w required status checks rulesetu `protect-main`
 
 ### Phase 2: Wspólny pomocnik e2e i strażnik tras
 
 #### Automated
 
-- [ ] 2.1 Lint backendu przechodzi
-- [ ] 2.2 Cały zestaw e2e przechodzi lokalnie
+- [x] 2.1 Lint backendu przechodzi
+- [x] 2.2 Cały zestaw e2e przechodzi lokalnie
 - [ ] 2.3 Job `backend-e2e` zielony po pushu
-- [ ] 2.4 Sabotaż: tymczasowa trasa `GET /subscriptions/:id` daje czerwony strażnik tras
-- [ ] 2.5 Sabotaż: usunięcie `@Public()` z `GET /health` daje czerwony strażnik tras
-- [ ] 2.6 Sabotaż: usunięcie filtra `userId` z listy daje czerwony test izolacji kont
+- [x] 2.4 Sabotaż: tymczasowa trasa `GET /subscriptions/:id` daje czerwony strażnik tras
+- [x] 2.5 Sabotaż: usunięcie `@Public()` z `GET /health` daje czerwony strażnik tras
+- [x] 2.6 Sabotaż: usunięcie filtra `userId` z listy daje czerwony test izolacji kont
 
 #### Manual
 
