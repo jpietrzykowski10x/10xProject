@@ -14,7 +14,7 @@ Everything between the `BEGIN`/`END @przeprogramowani/10x-cli` markers below is 
 - **Every frontend route is prerendered at build time** — `src/app/app.routes.server.ts` maps `'**'` to `RenderMode.Prerender`. Routes that depend on the logged-in user or live data need an explicit `RenderMode.Server` (or `Client`) entry, or they will ship stale HTML. Today `register`, `sign-in`, `auth/verify` and `subscriptions` are `Client`; `/` is the exception among `guestGuard` routes: it is `RenderMode.Server` with `Cache-Control: private, no-store`; on the server `guestGuard` forwards the `subtracker_session` cookie to `GET /auth/session` and redirects a signed-in visitor before any HTML is sent (no cookie = no API call). `/auth/session` is excluded from the HTTP transfer cache in `app.config.ts`.
 - **Recurring rules live in @context/foundation/lessons.md** — follow them when planning and implementing.
 - **Backend auth, roles, CORS and mail patterns live in `context/foundation/backend-patterns.md`** — read it before planning or implementing any slice that touches sign-in, sessions, guards, roles, CORS or e-mail (S-01, S-09 first). Roles are a separate `role` + `user_role` table pair, not a column on `user`.
-- **Production PostgreSQL is `C.UTF-8` (collate and ctype), local databases are `Polish_Poland.1250`.** Text sorted in SQL needs `COLLATE "pl-PL-x-icu"` (`POLISH_COLLATION`, `src/shared/database/`), and case-insensitive uniqueness uses an application-folded key column (`toNameKey`), not `lower()` in SQL. Local e2e tests will not catch a sorting mistake here.
+- **Production PostgreSQL is `C.UTF-8` (collate and ctype), local databases are `Polish_Poland.1250`.** Text sorted in SQL needs `COLLATE "pl-PL-x-icu"` (`POLISH_COLLATION`, `src/shared/database/`), and case-insensitive uniqueness uses an application-folded key column (`toNameKey`), not `lower()` in SQL. Local e2e tests will not catch a sorting mistake here; only the CI job `backend-e2e` (Postgres 16 on `C.UTF-8`) does.
 - **The frontend turns an API 401 (outside `/auth/`) into a redirect to `/sign-in`** (`auth/session-expired.interceptor.ts`); a page never has to handle an expired session itself. Adding a subscription has no route of its own: it is one "adding" state on `/subscriptions` (panel on desktop, full content area on the phone).
 - **Manual-test helpers live in `dev-local/`** (committed), never in system temp folders. No secrets or personal data in them: credentials come from `backend-subtracker/.env`, an account e-mail is an argument (or `DEV_USER_EMAIL` in `.env`), session tokens are never written to disk. E.g. `node --env-file=.env ../dev-local/test-session.mjs create|seed|cleanup [email]` (run from `backend-subtracker/`) makes a temporary session in `subtracker-db-dev` instead of signing in by e-mail, adds sample subscriptions through the API, and removes both. Every script refuses to run unless `MODE=DEV` (`dev-local/local-only.mjs`); usage and rules for new scripts: `dev-local/README.md`.
 - **`.claude/skills/` and `.agents/skills/` are generated** by the `10x` CLI and git-ignored; don't hand-edit them. `skills-lock.json` and `.claude/.10x-cli-manifest.json` track their provenance. Behaviour changes belong upstream in `przeprogramowani/10x-cli`.
@@ -43,15 +43,16 @@ Frontend (`cd frontend-subtracker`):
 - `npm start` — dev server (`ng serve`)
 - `npm run build` — production build to `dist/frontend-subtracker/` (browser + server bundles)
 - `npm run serve:ssr:frontend-subtracker` — run the built SSR server
-- No lint or test target exists yet — the app was scaffolded with `--skip-tests`, so `ng test` has no builder.
+- `npm test` — unit and component tests (`ng test`, Vitest via `@angular/build:unit-test`, `src/**/*.spec.ts`); `npm run test:ci` — the whole suite once per time zone (Warsaw, New York), as the CI job `frontend` runs it. How to add a test: `context/foundation/test-plan.md` §6.1–6.2.
+- No lint target exists yet.
 
 Backend (`cd backend-subtracker`):
 
 - `npm run start:dev` — dev server with watch; `npm run build` then `npm run start:prod` for the built app
 - `npm run lint` — oxlint (type-aware); `npm run format` — prettier
-- `npm test` — vitest unit tests (`src/**/*.spec.ts`); `npm run test:e2e` — e2e tests in `test/`; `npm run test:cov` — coverage
-- Single test file: `npx vitest run src/app.controller.spec.ts`
-- `start:dev` and `test:e2e` need the local PostgreSQL (`database/create-local-databases.sql`) and `.env`.
+- `npm test` — vitest unit tests (`src/**/*.spec.ts`); `npm run test:e2e` — e2e tests in `test/` (shared helper `test/support/e2e-app.ts`); `npm run test:cov` — coverage
+- Single test file: `npx vitest run src/app.controller.spec.ts`; single e2e file: `npx vitest run --config ./vitest.config.e2e.ts test/<path>`
+- `start:dev` and `test:e2e` need the local PostgreSQL (`database/create-local-databases.sql`) and `.env`. In CI the job `backend-e2e` runs `test:e2e` on Postgres 16 with `C.UTF-8` (like production) and a schema built by `migration:run`, so text sorting without `COLLATE` fails only there. How to add an API test: `context/foundation/test-plan.md` §6.4.
 
 Database (`cd backend-subtracker`) — two local databases with the same owner:
 
