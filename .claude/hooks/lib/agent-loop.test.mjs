@@ -4,7 +4,15 @@ import { existsSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
-import { acquireLock, classify, editedFiles, hooksDisabled, nodeProblem, tail } from './agent-loop.mjs';
+import {
+  acquireLock,
+  classify,
+  editedFiles,
+  groupByApp,
+  hooksDisabled,
+  nodeProblem,
+  tail,
+} from './agent-loop.mjs';
 
 const WIN = 'C:\\Repositories\\10xDevs\\10xProject';
 const POSIX = '/home/dev/10xProject';
@@ -60,6 +68,30 @@ describe('classify', () => {
 
   it('does not match directory names in a different case', () => {
     assert.equal(classify(`${WIN}\\Backend-Subtracker\\src\\main.ts`, WIN), null);
+  });
+});
+
+describe('groupByApp', () => {
+  it('splits files per app, skips frontend specs and non-code files', () => {
+    const files = [
+      `${WIN}\\backend-subtracker\\src\\subscriptions\\subscription-order.ts`,
+      `${WIN}\\backend-subtracker\\src\\subscriptions\\subscription-order.spec.ts`,
+      `${WIN}\\frontend-subtracker\\src\\app\\pages\\register\\register.html`,
+      `${WIN}\\frontend-subtracker\\src\\app\\pages\\register\\register.spec.ts`,
+      `${WIN}\\frontend-subtracker\\src\\app\\pages\\register\\register.scss`,
+      `${WIN}\\context\\foundation\\test-plan.md`,
+    ];
+    assert.deepEqual(groupByApp(files, WIN), {
+      backend: [files[0], files[1]],
+      frontend: [files[2]],
+    });
+  });
+
+  it('returns empty lists when only a frontend spec was edited', () => {
+    assert.deepEqual(groupByApp([`${WIN}\\frontend-subtracker\\src\\app\\app.spec.ts`], WIN), {
+      backend: [],
+      frontend: [],
+    });
   });
 });
 

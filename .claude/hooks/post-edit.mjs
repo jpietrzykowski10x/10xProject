@@ -1,5 +1,6 @@
 // Agent-loop hook after an edit (PostToolUse, matcher Edit|Write, in .claude/settings.json).
-// Checks the app whose code the edit touched and hands a red result back to the agent
+// Checks the app whose code the edit touched (backend: oxlint --type-check + vitest related;
+// frontend: ngc --noEmit for types and templates) and hands a red result back to the agent
 // (stderr + exit 2) before its next step. Parallel edits run this hook in parallel; a lock per app
 // makes their checks run one after another. Local and recommended: the CI gates stay the required
 // ones (context/foundation/test-plan.md §5). Off with SUBTRACKER_AGENT_HOOKS=off.
@@ -9,8 +10,8 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import {
   acquireLock,
-  classify,
   editedFiles,
+  groupByApp,
   hooksDisabled,
   nodeProblem,
   readHookInput,
@@ -35,12 +36,8 @@ const input = await readHookInput();
 
 if (hooksDisabled(process.env)) process.exit(0);
 
-const byApp = { backend: [], frontend: [] };
-for (const file of editedFiles(input)) {
-  const kind = classify(file, projectDir);
-  if (kind) byApp[kind.app].push(file);
-}
-if (byApp.backend.length === 0) process.exit(0);
+const byApp = groupByApp(editedFiles(input), projectDir);
+if (byApp.backend.length === 0 && byApp.frontend.length === 0) process.exit(0);
 
 const problem = nodeProblem(process.version);
 if (problem) warnUser(problem);
@@ -74,6 +71,19 @@ if (byApp.backend.length > 0) {
       '--run',
       ...related,
     ]);
+  } finally {
+    release();
+  }
+}
+
+if (byApp.frontend.length > 0) {
+  // Types and templates of the whole app (tsc does not see template errors); no tests after an
+  // edit — they take longer than a few seconds and run in Stop.
+  const appDir = path.join(projectDir, 'frontend-subtracker');
+  const ngc = path.join(appDir, 'node_modules', '@angular', 'compiler-cli', 'bundles', 'src', 'bin', 'ngc.js');
+  const release = acquireLock(stateDir, 'frontend', LOCK_STALE_MS);
+  try {
+    check('frontend', appDir, 'ngc --noEmit', ngc, ['-p', 'tsconfig.app.json', '--noEmit']);
   } finally {
     release();
   }

@@ -63,6 +63,21 @@ export function classify(absPath, projectDir) {
 }
 
 /**
+ * Edited files the post-edit check covers, per app. Frontend specs are left out: they are outside
+ * tsconfig.app.json, so ngc would not see them (Stop checks them).
+ */
+export function groupByApp(files, projectDir) {
+  const byApp = { backend: [], frontend: [] };
+  for (const file of files) {
+    const kind = classify(file, projectDir);
+    if (!kind) continue;
+    if (kind.app === 'frontend' && /\.spec\.ts$/.test(file)) continue;
+    byApp[kind.app].push(file);
+  }
+  return byApp;
+}
+
+/**
  * Absolute paths of files written by Edit/Write, from either input shape:
  * `PostToolBatch` (`tool_calls[]`) or `PostToolUse` (one `tool_name` + `tool_input`).
  */

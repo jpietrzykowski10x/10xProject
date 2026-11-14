@@ -292,34 +292,34 @@ Hooki działają po zaakceptowaniu zaufania do workspace i przeładowują się b
 
 #### Automated
 
-- [x] 1.1 Testy biblioteki przechodzą: `node --test .claude/hooks/`
-- [x] 1.2 Hook dla pliku w `context/` kończy się kodem 0 bez uruchamiania narzędzi
-- [x] 1.3 Hook dla czystego `subscription-order.ts` kończy się kodem 0 w ≤ 2 s
-- [x] 1.4 Backend nadal zielony: `npm run lint && npm test`
+- [x] 1.1 Testy biblioteki przechodzą: `node --test .claude/hooks/` — ab58a91
+- [x] 1.2 Hook dla pliku w `context/` kończy się kodem 0 bez uruchamiania narzędzi — ab58a91
+- [x] 1.3 Hook dla czystego `subscription-order.ts` kończy się kodem 0 w ≤ 2 s — ab58a91
+- [x] 1.4 Backend nadal zielony: `npm run lint && npm test` — ab58a91
 
 #### Manual
 
-- [x] 1.5 Sprawdzenie zdarzenia (a)–(d) i wybrany wariant zapisane w `change.md`
-- [x] 1.6 Sabotaż typu → `TS2322` od hooka; cofnięte
-- [x] 1.7 Sabotaż wywołującego → hook wskazuje inny plik; cofnięte
-- [x] 1.8 Sabotaż testu → czerwony `vitest related`; cofnięte
-- [x] 1.9 Edycja `*.md` i `context/` nie uruchamia kontroli
-- [x] 1.10 Równoległe edycje backendu → jedna kontrola (lub kolejno przy fallbacku)
+- [x] 1.5 Sprawdzenie zdarzenia (a)–(d) i wybrany wariant zapisane w `change.md` — ab58a91
+- [x] 1.6 Sabotaż typu → `TS2322` od hooka; cofnięte — ab58a91
+- [x] 1.7 Sabotaż wywołującego → hook wskazuje inny plik; cofnięte — ab58a91
+- [x] 1.8 Sabotaż testu → czerwony `vitest related`; cofnięte — ab58a91
+- [x] 1.9 Edycja `*.md` i `context/` nie uruchamia kontroli — ab58a91
+- [x] 1.10 Równoległe edycje backendu → jedna kontrola (lub kolejno przy fallbacku) — ab58a91
 
 ### Phase 2: Hook frontendu po edycji
 
 #### Automated
 
-- [ ] 2.1 Testy biblioteki przechodzą: `node --test .claude/hooks/`
-- [ ] 2.2 Hook dla czystego `register.html` kończy się kodem 0 w ≤ 4 s
-- [ ] 2.3 Frontend nadal zielony: `npm test -- --watch=false`
+- [x] 2.1 Testy biblioteki przechodzą: `node --test .claude/hooks/`
+- [x] 2.2 Hook dla czystego `register.html` kończy się kodem 0 w ≤ 4 s
+- [x] 2.3 Frontend nadal zielony: `npm test -- --watch=false`
 
 #### Manual
 
-- [ ] 2.4 Sabotaż szablonu → błąd szablonu Register od hooka; cofnięte
-- [ ] 2.5 Sabotaż typu w `.ts` komponentu → błąd od hooka; cofnięte
-- [ ] 2.6 Edycja pliku bez speca → brak fałszywego alarmu
-- [ ] 2.7 Edycja `.scss` i `e2e/` → brak kontroli
+- [x] 2.4 Sabotaż szablonu → błąd szablonu Register od hooka; cofnięte
+- [x] 2.5 Sabotaż typu w `.ts` komponentu → błąd od hooka; cofnięte
+- [x] 2.6 Edycja pliku bez speca → brak fałszywego alarmu
+- [x] 2.7 Edycja `.scss` i `e2e/` → brak kontroli
 
 ### Phase 3: Hook Stop
 
