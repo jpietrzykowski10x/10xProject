@@ -1,10 +1,10 @@
 ---
 change_id: browser-critical-paths
 title: Krytyczne ścieżki w przeglądarce — e2e na zbudowanym SSR (etap 4 planu testów)
-status: impl_reviewed
+status: archived
 created: 2026-11-14
 updated: 2026-11-14
-archived_at: null
+archived_at: 2026-11-14T20:55:33Z
 ---
 
 ## Notes
