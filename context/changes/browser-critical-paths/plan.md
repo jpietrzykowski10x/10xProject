@@ -638,10 +638,10 @@ Bez zmian schematu i bez migracji. Lokalnie jednorazowo: `CORS_ORIGINS` w
 
 #### Automated
 
-- [x] 6.1 W planie testów nie zostaje „TBD — see §3 Phase 4”
-- [x] 6.2 `browser-e2e` opisany w §5, §6.5 i w Commands CLAUDE.md
+- [x] 6.1 W planie testów nie zostaje „TBD — see §3 Phase 4” — 8f027ae
+- [x] 6.2 `browser-e2e` opisany w §5, §6.5 i w Commands CLAUDE.md — 8f027ae
 
 #### Manual
 
-- [x] 6.3 §6.5 wystarcza do dodania nowego testu e2e bez czytania kodu testów
-- [x] 6.4 §2 i §3 planu testów bez zmian poza orkiestratorem
+- [x] 6.3 §6.5 wystarcza do dodania nowego testu e2e bez czytania kodu testów — 8f027ae
+- [x] 6.4 §2 i §3 planu testów bez zmian poza orkiestratorem — 8f027ae
