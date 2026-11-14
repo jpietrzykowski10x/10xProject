@@ -626,22 +626,22 @@ Bez zmian schematu i bez migracji. Lokalnie jednorazowo: `CORS_ORIGINS` w
 
 #### Automated
 
-- [ ] 5.1 Job `browser-e2e` zielony na gałęzi zmiany
-- [ ] 5.2 Pozostałe joby CI nadal zielone
+- [x] 5.1 Job `browser-e2e` zielony na gałęzi zmiany — 7371456
+- [x] 5.2 Pozostałe joby CI nadal zielone — 7371456
 
 #### Manual
 
-- [ ] 5.3 Tymczasowy sabotaż daje czerwony `browser-e2e` z raportem w artefaktach
-- [ ] 5.4 Właściciel oznacza `browser-e2e` jako wymagany check dla `main`
+- [x] 5.3 Tymczasowy sabotaż daje czerwony `browser-e2e` z raportem w artefaktach — 7371456
+- [x] 5.4 Właściciel oznacza `browser-e2e` jako wymagany check dla `main` — 7371456
 
 ### Phase 6: Plan testów i dokumentacja
 
 #### Automated
 
-- [ ] 6.1 W planie testów nie zostaje „TBD — see §3 Phase 4”
-- [ ] 6.2 `browser-e2e` opisany w §5, §6.5 i w Commands CLAUDE.md
+- [x] 6.1 W planie testów nie zostaje „TBD — see §3 Phase 4”
+- [x] 6.2 `browser-e2e` opisany w §5, §6.5 i w Commands CLAUDE.md
 
 #### Manual
 
-- [ ] 6.3 §6.5 wystarcza do dodania nowego testu e2e bez czytania kodu testów
-- [ ] 6.4 §2 i §3 planu testów bez zmian poza orkiestratorem
+- [x] 6.3 §6.5 wystarcza do dodania nowego testu e2e bez czytania kodu testów
+- [x] 6.4 §2 i §3 planu testów bez zmian poza orkiestratorem

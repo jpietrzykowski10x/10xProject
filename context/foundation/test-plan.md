@@ -81,16 +81,16 @@ orkiestrator aktualizuje go, gdy artefakty pojawiają się na dysku.
 | integration / API e2e (backend) | Vitest + Supertest | ^4.1.2 / ^7.0.0 | `backend-subtracker/test/`, 11 plików `*.e2e-spec.ts` (79 testów) na prawdziwym Postgresie, wspólny pomocnik w `test/support/`; w CI (job `backend-e2e`: Postgres 16 `C.UTF-8`, schemat z migracji) |
 | unit (frontend) | Vitest + jsdom przez `@angular/build:unit-test` | ^4.1.12 / ^31.0.1 | `frontend-subtracker/src/**/*.spec.ts`; `npm run test:ci` uruchamia zestaw w `Europe/Warsaw` i `America/New_York`; w CI |
 | component (frontend) | TestBed (zoneless) + harnessy Angular Material/CDK, w runnerze unit | 22.2.6 | spec obok każdego komponentu (12); globalne providery w `src/test-providers.ts` (`providersFile`); makieta tylko na granicy HTTP; biegnie w `test:ci` w obu strefach; checked: 2026-11-13 |
-| e2e (przeglądarka) | none yet — see Phase 4 | — | kandydat: Playwright (lekcja m3l4) |
+| e2e (przeglądarka) | Playwright (`@playwright/test`) | ~1.65.1 | `frontend-subtracker/e2e/`, 5 plików `*.e2e-spec.ts` (12 testów); projekty `http` (żądania do serwera SSR, bez przeglądarki) i `chromium`; biegnie na buildzie `e2e` (optymalizacja jak w produkcji, lokalne API) i na prawdziwym API; konta i sesje zapisywane wprost w bazie, bez maila; w CI (job `browser-e2e`: Postgres 16 `C.UTF-8`, schemat z migracji); checked: 2026-11-14 |
 | accessibility | none | — | poza zakresem rolloutu; kontrole ręczne przy `/10x-ui` |
 | (optional) AI-native | post-edit hook w Claude Code — checked: 2026-11-13 | n/a | When NOT to use: jako zamiennik bramki CI albo z testami trwającymi dłużej niż kilka sekund |
 
-Profil bazy testów: `sparse` — backend ma Vitest (20 plików unit, 11 plików e2e w CI na `C.UTF-8`, w tym strażnik listy tras i test dwóch kont); frontend ma runner, 12 plików testów jednostkowych (czyste funkcje, guardy, interceptory i strażnik strefy) i 12 plików testów komponentów (»should create« każdego komponentu; zachowanie formularza subskrypcji i `register`).
+Profil bazy testów: `sparse` — backend ma Vitest (20 plików unit, 11 plików e2e w CI na `C.UTF-8`, w tym strażnik listy tras i test dwóch kont); frontend ma runner, 12 plików testów jednostkowych (czyste funkcje, guardy, interceptory i strażnik strefy) i 12 plików testów komponentów (»should create« każdego komponentu; zachowanie formularza subskrypcji i `register`); e2e Playwrighta (5 plików, w CI) sprawdza render mode i cache strony startowej, guardy w przeglądarce i przepływ dodania ze zmianą konta.
 
 **Stack grounding tools (current session):**
 - Docs: none — Context7 ani inny MCP dokumentacji nie jest dostępny w tej sesji; wersje z `package.json`; checked: 2026-11-13
 - Search: WebSearch (wbudowany) — nieużyty przy pisaniu planu; do potwierdzenia runnera Angulara 22 w researchu fazy 1; checked: 2026-11-13
-- Runtime/browser: Claude in Chrome — not used; ewentualnie do eksploracji w fazie 4; checked: 2026-11-13
+- Runtime/browser: Playwright (`@playwright/test`, Chromium) — testy e2e i diagnoza przez trace (`show-trace`); Claude in Chrome nieużyty; checked: 2026-11-14
 - Provider/platform: GitHub (`gh`, token tylko do odczytu) — odczyt wyników CI; checked: 2026-11-13
 
 ## 5. Quality Gates
@@ -102,7 +102,7 @@ Profil bazy testów: `sparse` — backend ma Vitest (20 plików unit, 11 plików
 | unit backend | local + CI | required | regresje logiki API |
 | unit frontend | local + CI | required | regresje parsowania, przeliczeń i guardów; od §3 Phase 2 także zepsute renderowanie komponentów i niewidoczne komunikaty walidacji |
 | API e2e backendu na Postgresie `C.UTF-8` | CI on PR (job `backend-e2e`) | required | wyciek między kontami, różnice locale, regresje auth, trasa dodana bez wpisu na liście tras |
-| e2e w przeglądarce (krytyczne ścieżki) | CI on PR | required after §3 Phase 4 | zepsute przekierowania SSR i główny przepływ |
+| e2e w przeglądarce (krytyczne ścieżki) | CI on PR (job `browser-e2e`) | required | prerender albo zły render mode trasy z guardem, zgubione `no-store` na HTML zależnym od ciasteczka, zepsute przekierowania guardów (serwer i przeglądarka), główny przepływ dodania i dane poprzedniego konta widoczne po zmianie konta w tej samej karcie |
 | post-edit hook | local (agent loop) | recommended after §3 Phase 5 | regresje w chwili edycji |
 
 ## 6. Cookbook Patterns
@@ -157,7 +157,21 @@ odpowiednia faza wdrożenia zostanie dostarczona; wcześniej brzmi „TBD — se
 
 ### 6.5 Adding a browser e2e test
 
-- TBD — see §3 Phase 4: wzorzec przejścia przez zbudowany serwer SSR z sesją testową.
+- **Location**: `frontend-subtracker/e2e/http/<temat>.e2e-spec.ts` albo `e2e/browser/<temat>.e2e-spec.ts`. Rozszerzenie `*.e2e-spec.ts`, nie `*.spec.ts` (te zbiera `ng test`). Pliki biegną po kolei (`workers: 1`) na jednej bazie.
+- **Projekt**: katalog wybiera projekt Playwrighta. `http` (fixture `request`, bez przeglądarki), gdy wystarczy status, nagłówek albo HTML: render mode, `Cache-Control`, przekierowanie serwera, stan transferu. `chromium` tylko dla zachowania w przeglądarce: guard po stronie klienta, formularz, nawigacja, to, co karta trzyma między kontami. Najpierw sprawdź, czy ryzyka nie pokrywa już unit guarda (§6.1), test komponentu (§6.2) albo e2e backendu (§6.4); macierzy guardów ani pól formularza w e2e nie powtarzamy.
+- **Konta i sesje**: `const accounts = createE2eAccounts({ addressPrefix: 'e2e-browser-<temat>-' })` z `e2e/support/accounts.ts`. Prefiks jest własny dla pliku i nie może być początkiem prefiksu innego pliku (zajęte: `e2e-browser-smoke-`, `-start-page-`, `-render-modes-`, `-guards-`, `-flow-`). `beforeAll` → `accounts.removeTestData()` (resztki przerwanego przebiegu), `afterAll` → `removeTestData()`, a w `finally` `close()`. Konto: `newAccount()`, sesja: `sessionFor(konto)` albo `sessionFor(konto, { expired: true })`. Nigdy przez rejestrację i maila. W przeglądarce `context.addCookies([sessionCookie(token)])`, w `http` nagłówek `Cookie: ${SESSION_COOKIE}=${token}`. Dane startowe zakładaj przez API z fixture `request` (wystarczy nagłówek `Cookie`; klient bez nagłówków przeglądarki przechodzi kontrolę CSRF), nie przez formularz.
+- **Uchwyty**: po rolach i etykietach, tak jak widzi je użytkownik: `getByRole('heading', { name, exact: true })`, `getByRole('textbox', { name: 'Kwota w PLN' })`, `getByRole('combobox', ...)` + `getByRole('option', ...)` dla `mat-select`. Element powtórzony w DOM (kolumna i menu telefonu: „Wyloguj”, „Dodaj subskrypcję”) zawężasz `.filter({ visible: true })`. Pozycje listy szukasz w regionie „Lista subskrypcji”, bo komunikat „Dodano subskrypcję …” też zawiera nazwę. Pusta lista sama otwiera na desktopie panel dodawania, więc test przepływu zaczyna od jednej subskrypcji założonej przez API.
+- **„Nie widać”**: zawsze z kotwicą. Najpierw asercja, że strona załadowała się dla właściwego stanu (adres konta, jego własna pozycja na liście), dopiero potem `toHaveCount(0)`. Bez kotwicy „nie widać” przechodzi na pustej, jeszcze ładującej się stronie.
+- **Podmiana**: tylko sieć, przez `page.route(...)` (np. `route.abort()` dla „API niedostępne”). Nie podmieniaj `AuthService`, guardów ani serwisów; build jest produkcyjny, tylko z lokalnym API.
+- **HTML z serwera**: `ng-server-context="ssr"` = wyrenderowane na serwerze dla tego żądania; powłoka CSR i prerender go nie mają. Przy porównaniu powłok różnych tras usuń linki `modulepreload` (serwer dokleja je per trasa); ta sama trasa z sesją i bez musi dać identyczne bajty. Stan transferu trzyma wpisy pod hashem klucza, a URL zapisuje z `\u002F` zamiast `/`, więc „odpowiedź sesji nie trafiła do stanu transferu” sprawdzasz po treści odpowiedzi w skrypcie `ng-state`, nie po URL.
+- **Reference tests**:
+  - `e2e/http/start-page.e2e-spec.ts` — strona startowa renderowana na serwerze: `no-store` w wariancie gościa i przekierowania, 302 dla sesji, stan transferu bez odpowiedzi sesji.
+  - `e2e/http/render-modes.e2e-spec.ts` — trasy z guardem oddają jedną powłokę CSR; prerender tylko stron statycznych (wyrocznia: lista z §7, nie `app.routes.server.ts`). Nowa strona statyczna = świadomy dopisek do listy w teście.
+  - `e2e/browser/guards.e2e-spec.ts` — przejścia guardów w przeglądarce, „API niedostępne” przez `page.route`.
+  - `e2e/browser/subscriptions-flow.e2e-spec.ts` — dodanie przez formularz → lista z API po przeładowaniu → wylogowanie → drugie konto w tej samej karcie (kotwica, potem „nie widać”).
+  - `e2e/http/smoke.e2e-spec.ts` to diagnoza środowiska (oba serwery, sesja z pomocnika), nie wzorzec.
+- **Run locally** (z `frontend-subtracker/`): potrzebny lokalny Postgres i `backend-subtracker/.env` z `MODE=DEV`, lokalnym `POSTGRES_HOST` i `http://localhost:4000` w `CORS_ORIGINS` (lista po przecinkach, np. `http://localhost:4200,http://localhost:4000`; tablica JSON sprawia, że API nie wstaje). Bez tego `playwright.config.ts` przerywa start z opisem problemu. Najpierw `npm run build:e2e`, potem `npm run e2e`. Config sam uruchamia serwer SSR (:4000) i API (`start:prod`, czyli `dist` backendu — po zmianie backendu `npm run build` w `backend-subtracker/`), a lokalnie używa już działających, np. `start:dev`. Jeden plik: `npx playwright test e2e/browser/guards.e2e-spec.ts`; jeden projekt: `--project=http`. Po błędzie: `npx playwright show-trace test-results/<katalog>/trace.zip` (akcje, sieć, konsola, błędy, źródło) albo `npx playwright show-report`. W CI (job `browser-e2e`, ok. 80 s) raport i `test-results` są w artefakcie `playwright-report` (7 dni, tylko przy błędzie).
+- **Sabotage check**: testy biegną na buildzie, więc po każdej zmianie kodu aplikacji `npm run build:e2e`, inaczej sprawdzasz stary build. Kolejność: uszkodź kod → `build:e2e` → `e2e` → czerwony test → `git checkout -- <plik>` → `build:e2e`. Przykłady: `/` jako `RenderMode.Client` (czerwone testy strony startowej), usunięte `no-store`, cache listy oddający dane poprzedniego konta (zapamiętane dane tylko przy pierwszym ładowaniu po starcie aplikacji; cache aktywny zawsze psuje wcześniejszy krok przepływu, a nie zmianę konta). Samo usunięcie filtra `/auth/session` w `app.config.ts` zostaje zielone: to jedna z trzech warstw (obok domyślnego pomijania żądań z credentials i `no-store` z API).
 
 ### 6.6 Per-rollout-phase notes
 
@@ -166,6 +180,7 @@ odpowiednia faza wdrożenia zostanie dostarczona; wcześniej brzmi „TBD — se
 - **§3 Phase 1 (2026-11-13)**: Pierwszy test od razu wykrył błąd: `parseDecimal(x, 0)` rzucał `SyntaxError` (kwantyfikator `{1,0}`). Uszkodzony zapis dnia odpada tylko na wschód od UTC, a uszkodzony odczyt tylko na zachód, dlatego zestaw biegnie w dwóch strefach, a test-strażnik odrzuca każdą inną. Logikę z formularza (budowa żądania) opłaca się wyjąć do czystej funkcji, zamiast testować ją przez komponent.
 - **§3 Phase 2 (2026-11-13)**: Otwarte pytanie z researchu (czy błąd samodzielnej kontrolki `categoryName` pokazuje się po zapisie) rozstrzygnął test: pokazuje się, bo matcher widzi `submitted` rodzica, więc poprawka nie była potrzebna. Sabotaże potwierdziły, że tylko test komponentu pilnuje okablowania: `NativeDateAdapter` zamiast polskiego adaptera daje czerwone wszystkie wiersze z datą. Granica »should create«: brakujący komponent lub binding wychodzi (`errorOnUnknown*`), ale `routerLink` jako statyczny atrybut bez importu `RouterLink` przechodzi po cichu i link robi pełne przeładowanie strony.
 - **§3 Phase 3 (2026-11-14)**: Pierwszy przebieg `backend-e2e` był zielony: obraz `postgres:16` ma ICU `pl-PL-x-icu`, a initdb przyjmuje `C.UTF-8`; przechwytywanie maili (`vi.waitFor`) jest stabilne na runnerze. Sabotaż `COLLATE` (usunięty z kolejności listy subskrypcji): lokalnie wszystkie e2e zielone, w CI czerwony dokładnie jeden test kolejności polskich nazw. Test jednostkowy też odpadł, ale tylko dlatego, że porównuje dosłowny `ORDER BY`; nowego sortowania bez `COLLATE` nie złapie, łapie je tylko e2e na `C.UTF-8`.
+- **§3 Phase 4 (2026-11-14)**: Testy biegną na buildzie, więc sabotaż bez `build:e2e` sprawdza stary kod; w CI bramkę potwierdził tymczasowy commit z `/` jako `Client` (`browser-e2e` czerwony, potem revert). Część założeń poprawiły same testy: serwer dokleja do powłoki CSR linki `modulepreload` per trasa, stan transferu trzyma wpisy pod hashem, a usunięcie filtra `/auth/session` niczego nie psuje, bo chronią go jeszcze dwie warstwy. `CORS_ORIGINS` to lista po przecinkach; config Playwrighta sprawdza w niej `:4000` przed startem, bo inaczej przeglądarka dostaje tylko niejasny błąd CORS.
 
 ## 7. What We Deliberately Don't Test
 
@@ -179,8 +194,8 @@ odpowiednia faza wdrożenia zostanie dostarczona; wcześniej brzmi „TBD — se
 
 ## 8. Freshness Ledger
 
-- Strategy (§1–§5) last reviewed: 2026-11-13
-- Stack versions last verified: 2026-11-13
+- Strategy (§1–§5) last reviewed: 2026-11-14
+- Stack versions last verified: 2026-11-14
 - AI-native tool references last verified: 2026-11-13
 
 Refresh (`/10x-test-plan --refresh`) when:
