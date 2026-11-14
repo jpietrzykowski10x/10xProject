@@ -1,9 +1,15 @@
 import type { INestApplication, ModuleMetadata } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import request, { type Response } from 'supertest';
+import request, { type Agent, type Response } from 'supertest';
 import type { App } from 'supertest/types.js';
-import { DataSource, In, Like, type ObjectLiteral } from 'typeorm';
+import {
+  DataSource,
+  In,
+  Like,
+  type ObjectLiteral,
+  type Repository,
+} from 'typeorm';
 import { AppModule } from '../../src/app.module.js';
 import { MagicLinkToken } from '../../src/auth/entities/magic-link-token.entity.js';
 import { Session } from '../../src/auth/entities/session.entity.js';
@@ -17,10 +23,10 @@ import { Subscription } from '../../src/subscriptions/entities/subscription.enti
 import { UserRole } from '../../src/users/entities/user-role.entity.js';
 import { User } from '../../src/users/entities/user.entity.js';
 
-const ADDRESS_DOMAIN = '@subtracker.test';
+export const ADDRESS_DOMAIN = '@subtracker.test';
 
 export interface E2eAppOptions {
-  // Every row a file creates hangs off addresses with this prefix (e.g. `e2e-subscriptions-`), so
+  // Every row a file creates hangs off addresses with this prefix (e.g. `e2e-subscriptions-list-`), so
   // the cleanup removes only that file's data.
   addressPrefix: string;
   // Extra modules for this file, e.g. DiscoveryModule to list the routes.
@@ -32,6 +38,38 @@ export interface SignedIn {
   cookie: string;
 }
 
+export interface TwoAccounts {
+  owner: SignedIn;
+  other: SignedIn;
+}
+
+// What an e2e file gets from createE2eApp. Members are function properties, so a spec can
+// destructure them at describe level.
+export interface E2eApp {
+  // Boots the app and removes leftovers of this prefix; call in beforeAll.
+  start: () => Promise<void>;
+  // Waits for the mail audit rows, removes this prefix's data and closes the app; call in afterAll.
+  close: () => Promise<void>;
+  // The three below throw before start().
+  readonly app: INestApplication<App>;
+  readonly dataSource: DataSource;
+  readonly env: EnvConfig;
+  // Every mail the app tried to send, in order.
+  readonly sent: MailMessage[];
+  http: () => Agent;
+  repository: <T extends ObjectLiteral>(entity: new () => T) => Repository<T>;
+  newAddress: () => string;
+  // The token from the latest mail sent to the address; waits for the mail.
+  latestToken: (address: string) => Promise<string>;
+  // `name=value` of the single Set-Cookie header.
+  cookiePairOf: (response: Response) => string;
+  // A new account signed in through register → verify.
+  signIn: () => Promise<SignedIn>;
+  // Two signed-in accounts: the owner creates a resource, the other must not reach it.
+  twoAccounts: () => Promise<TwoAccounts>;
+  removeTestData: () => Promise<void>;
+}
+
 interface Started {
   app: INestApplication<App>;
   dataSource: DataSource;
@@ -41,7 +79,10 @@ interface Started {
 // Boots AppModule like main.ts against the local dev database, with a fake mail transport: no
 // real mail goes out. Call start() in beforeAll and close() in afterAll; the other members work
 // in between.
-export function createE2eApp({ addressPrefix, imports = [] }: E2eAppOptions) {
+export function createE2eApp({
+  addressPrefix,
+  imports = [],
+}: E2eAppOptions): E2eApp {
   const addressPattern = `${addressPrefix}%${ADDRESS_DOMAIN}`;
   const sent: MailMessage[] = [];
   let addressCounter = 0;
@@ -116,10 +157,7 @@ export function createE2eApp({ addressPrefix, imports = [] }: E2eAppOptions) {
   }
 
   // The owner creates a resource, the other account must not reach it.
-  async function twoAccounts(): Promise<{
-    owner: SignedIn;
-    other: SignedIn;
-  }> {
+  async function twoAccounts(): Promise<TwoAccounts> {
     return { owner: await signIn(), other: await signIn() };
   }
 
@@ -193,5 +231,3 @@ export function createE2eApp({ addressPrefix, imports = [] }: E2eAppOptions) {
     removeTestData,
   };
 }
-
-export type E2eApp = ReturnType<typeof createE2eApp>;

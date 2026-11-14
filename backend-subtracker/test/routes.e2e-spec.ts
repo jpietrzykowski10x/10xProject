@@ -29,7 +29,8 @@ interface AppRoute {
 // - `session` unless the handler or controller carries @Public();
 // - a route with a parameter in its path (e.g. `/subscriptions/:id`) also needs a test that a
 //   second account gets no access to the owner's resource (two-account pattern, test plan §6.4,
-//   `twoAccounts()` from test/support/e2e-app.ts); put that test's name in `twoAccountTest`.
+//   `twoAccounts()` from test/support/e2e-app.ts, example in
+//   test/subscriptions/account-isolation.e2e-spec.ts); put that test's name in `twoAccountTest`.
 const EXPECTED_ROUTES: ExpectedRoute[] = [
   { method: 'GET', path: '/', access: 'public' },
   { method: 'GET', path: '/health', access: 'public' },

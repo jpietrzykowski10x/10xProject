@@ -422,25 +422,25 @@ Brak zmian schematu. Migracje są tylko uruchamiane w CI na czystej bazie.
 
 #### Automated
 
-- [x] 2.1 Lint backendu przechodzi
-- [x] 2.2 Cały zestaw e2e przechodzi lokalnie
-- [ ] 2.3 Job `backend-e2e` zielony po pushu
-- [x] 2.4 Sabotaż: tymczasowa trasa `GET /subscriptions/:id` daje czerwony strażnik tras
-- [x] 2.5 Sabotaż: usunięcie `@Public()` z `GET /health` daje czerwony strażnik tras
-- [x] 2.6 Sabotaż: usunięcie filtra `userId` z listy daje czerwony test izolacji kont
+- [x] 2.1 Lint backendu przechodzi — d898656
+- [x] 2.2 Cały zestaw e2e przechodzi lokalnie — d898656
+- [x] 2.3 Job `backend-e2e` zielony po pushu
+- [x] 2.4 Sabotaż: tymczasowa trasa `GET /subscriptions/:id` daje czerwony strażnik tras — d898656
+- [x] 2.5 Sabotaż: usunięcie `@Public()` z `GET /health` daje czerwony strażnik tras — d898656
+- [x] 2.6 Sabotaż: usunięcie filtra `userId` z listy daje czerwony test izolacji kont — d898656
 
 #### Manual
 
-- [ ] 2.7 Przegląd: `subscriptions.e2e-spec.ts` bez własnych kopii pomocników, test izolacji jako wzorzec
+- [x] 2.7 Przegląd: `subscriptions.e2e-spec.ts` bez własnych kopii pomocników, test izolacji jako wzorzec
 
 ### Phase 3: Podział `auth.e2e-spec.ts`
 
 #### Automated
 
-- [ ] 3.1 Lint backendu przechodzi
-- [ ] 3.2 Cały zestaw e2e przechodzi lokalnie
-- [ ] 3.3 Liczba testów auth po podziale równa liczbie sprzed podziału
-- [ ] 3.4 Żaden plik w `test/` nie przekracza ok. 300 linii
+- [x] 3.1 Lint backendu przechodzi
+- [x] 3.2 Cały zestaw e2e przechodzi lokalnie
+- [x] 3.3 Liczba testów auth po podziale równa liczbie sprzed podziału
+- [x] 3.4 Żaden plik w `test/` nie przekracza ok. 300 linii
 - [ ] 3.5 Job `backend-e2e` zielony po pushu
 
 #### Manual
