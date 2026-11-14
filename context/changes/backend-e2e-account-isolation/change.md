@@ -1,7 +1,7 @@
 ---
 change_id: backend-e2e-account-isolation
 title: Izolacja kont i e2e backendu w CI (test-plan, etap 3)
-status: implementing
+status: implemented
 created: 2026-11-13
 updated: 2026-11-14
 archived_at: null

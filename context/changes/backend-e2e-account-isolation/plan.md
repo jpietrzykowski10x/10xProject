@@ -451,9 +451,9 @@ Brak zmian schematu. Migracje są tylko uruchamiane w CI na czystej bazie.
 
 #### Automated
 
-- [x] 4.1 `test-plan.md` §6.4 bez „TBD”, §5 bez „required after §3 Phase 3”
-- [x] 4.2 Lint backendu przechodzi
+- [x] 4.1 `test-plan.md` §6.4 bez „TBD”, §5 bez „required after §3 Phase 3” — f4e7f99
+- [x] 4.2 Lint backendu przechodzi — f4e7f99
 
 #### Manual
 
-- [x] 4.3 §6.4 wykonalne bez czytania planu (przegląd z perspektywy autora S-03)
+- [x] 4.3 §6.4 wykonalne bez czytania planu (przegląd z perspektywy autora S-03) — f4e7f99
