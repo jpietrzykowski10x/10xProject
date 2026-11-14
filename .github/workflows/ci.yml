@@ -147,6 +147,106 @@ jobs:
       - run: npm run migration:run
       - run: npm run test:e2e
 
+  # Browser e2e (Playwright) against the built SSR frontend and the built API, as a separate
+  # named check: the critical paths a visitor walks through (guards, sign-in redirects, adding a
+  # subscription) checked on real HTML from the server and in Chromium.
+  # - Separate build: build:e2e is the production build with the e2e configuration (local API,
+  #   output dist/frontend-subtracker-e2e), so it is not the bundle the frontend job packs for
+  #   MyDevil. Playwright starts both servers itself (CI=true: never reuses a running one).
+  # - Postgres as in backend-e2e (C.UTF-8, schema from migrations); the locale check stays there.
+  # - One database for the CLI and the app, as in backend-e2e: do not copy this .env to a
+  #   developer machine (context/foundation/lessons.md).
+  browser-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: subtracker_ci
+          POSTGRES_DB: subtracker_ci
+          # Reachable only from this runner and removed with the job, so no password is set.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_INITDB_ARGS: --locale=C.UTF-8 --encoding=UTF8
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U subtracker_ci -d subtracker_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            backend-subtracker/package-lock.json
+            frontend-subtracker/package-lock.json
+
+      # Read by the TypeORM CLI, by the API (start:prod) and by playwright.config.ts. No secrets.
+      - name: Write .env for CI
+        working-directory: backend-subtracker
+        run: |
+          cat > .env <<'EOF'
+          MODE=DEV
+          PORT=3000
+          POSTGRES_HOST=localhost
+          POSTGRES_PORT=5432
+          POSTGRES_USER=subtracker_ci
+          # Not checked: the CI server uses trust authentication. validateEnv only needs a value.
+          POSTGRES_PASSWORD=unused-trust-auth
+          # One throwaway database for both the migration CLI and the app (CI only).
+          POSTGRES_DATABASE=subtracker_ci
+          POSTGRES_DATABASE_DEV=subtracker_ci
+          DATABASE_AUTO_SYNCHRONIZATION=false
+          # The browser's origin is the SSR server (port 4000), not ng serve (4200).
+          CORS_ORIGINS=http://localhost:4000
+          FRONTEND_URL=http://localhost:4000
+          # Empty: mail goes to the console.
+          SMTP_HOST=
+          EOF
+
+      - name: Build the API on a migrated database
+        working-directory: backend-subtracker
+        run: |
+          npm ci
+          npm run migration:run
+          npm run build
+
+      - name: Install the frontend and Chromium
+        working-directory: frontend-subtracker
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      # Playwright strips the types without checking them.
+      - name: Type check the e2e tests
+        working-directory: frontend-subtracker
+        run: npm run typecheck:e2e
+
+      - name: Build the frontend (e2e configuration)
+        working-directory: frontend-subtracker
+        run: npm run build:e2e
+
+      - name: Browser e2e
+        working-directory: frontend-subtracker
+        env:
+          CI: 'true'
+        run: npm run e2e
+
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            frontend-subtracker/playwright-report
+            frontend-subtracker/test-results
+          retention-days: 7
+
   deploy-scripts:
     runs-on: ubuntu-latest
     steps:

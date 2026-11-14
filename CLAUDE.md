@@ -44,6 +44,7 @@ Frontend (`cd frontend-subtracker`):
 - `npm run build` — production build to `dist/frontend-subtracker/` (browser + server bundles)
 - `npm run serve:ssr:frontend-subtracker` — run the built SSR server
 - `npm test` — unit and component tests (`ng test`, Vitest via `@angular/build:unit-test`, `src/**/*.spec.ts`); `npm run test:ci` — the whole suite once per time zone (Warsaw, New York), as the CI job `frontend` runs it. How to add a test: `context/foundation/test-plan.md` §6.1–6.2.
+- `npm run build:e2e` — build in the `e2e` configuration (production optimisation, local API on :3000) to `dist/frontend-subtracker-e2e/`; `npm run e2e` — Playwright browser e2e (`e2e/**/*.e2e-spec.ts`, projects `http` and `chromium`) against that build on :4000 and the real API, as the CI job `browser-e2e` runs it. Tests run on the build: re-run `build:e2e` after changing app code. Needs the local PostgreSQL and `backend-subtracker/.env` with `MODE=DEV` and `http://localhost:4000` in `CORS_ORIGINS` (comma-separated, not a JSON array; the config stops with a message otherwise); the API is reused if running (`start:dev`), else started from the backend build (`npm run build` there first). How to add an e2e test: `context/foundation/test-plan.md` §6.5.
 - No lint target exists yet.
 
 Backend (`cd backend-subtracker`):
