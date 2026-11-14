@@ -7,7 +7,7 @@ export const serverRoutes: ServerRoute[] = [
   // The response depends on the visitor's cookie, so no cache may keep it.
   {
     path: '',
-    renderMode: RenderMode.Client,
+    renderMode: RenderMode.Server,
     headers: { 'Cache-Control': 'private, no-store' },
   },
   // Client-rendered because of guestGuard: a prerendered form would be visible but not working
