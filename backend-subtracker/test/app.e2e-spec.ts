@@ -7,7 +7,8 @@ import { ConfigService } from '@nestjs/config';
 import { applyHttpSecurity } from './../src/config/http-security.js';
 import { type EnvConfig, envFromConfig } from './../src/config/env.js';
 
-// Boots the full AppModule, so it needs the local PostgreSQL from .env (not run in CI).
+// Boots the full AppModule against the PostgreSQL from .env: locally the dev database, in CI the
+// C.UTF-8 database of the backend-e2e job.
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
   let allowedOrigin: string;

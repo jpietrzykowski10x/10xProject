@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-11-13
+> Last updated: 2026-11-14
 
 ## 1. Strategy
 
@@ -56,7 +56,7 @@ Kolumna Source cytuje *dowód, który podniósł ryzyko* — nigdy konkretny pli
 | #3 | Tabela wejść w polskim formacie (np. `12,99`, `1 299,00`, `05.01.2027`, `29.02.2028`) daje oczekiwane wartości wysłane do API, a nieistniejące daty (`29.02.2027` — 2027 nie jest przestępny, `31.02.2027`) jawne odrzucenie | „regex przepuszcza przykład z planu, więc przepuszcza wszystkie”; „zielony test w CI (UTC) dowodzi braku przesunięcia doby” — test daty musi biec w strefie innej niż UTC (na wschód i na zachód); „unit testy parserów dowodzą, że formularz wysyła wpisaną wartość” — formularz musi mieć podpięty polski adapter dat (bez niego `05.01.2027` jest czytane jako 1 maja) | helpery parsowania kwot i dat; kontrakt API dla kwoty i daty; jak pole formularza dostaje parser dat | unit (parsery) + test komponentu (tekst wpisany w pole → ciało żądania na granicy HTTP) | oczekiwana wartość przepisana z implementacji (problem wyroczni) |
 | #4 | Kwota miesięczna subskrypcji rocznej równa się ręcznemu wyliczeniu: grosze / 12, zaokrąglone do grosza, połówka w górę; od S-04 sumy zgadzają się co do grosza | „kwota podzielna przez 12 dowodzi poprawności zaokrąglenia” — wyrocznia musi objąć resztę i połówkę grosza | gdzie liczona jest kwota i suma (front czy API); które statusy się wliczają (S-04) | unit z wyrocznią policzoną ręcznie | skopiowany wzór z kodu produkcyjnego |
 | #5 | W bazie `C.UTF-8` (jak produkcja) nazwy różniące się wielkością polskich liter są duplikatem, a sortowanie jest polskie | „lokalna baza zachowuje się jak produkcyjna” | locale bazy w CI; collation w zapytaniach; klucz nazwy kategorii | e2e backendu na Postgresie `C.UTF-8` w CI | test uruchamiany tylko na lokalnym `Polish_Poland.1250` |
-| #6 | Drugie użycie linku i link po terminie są odrzucane; wygasła sesja dostaje 401 | „istniejące testy chodzą w CI” (dziś e2e nie chodzą) | obecne pokrycie e2e auth; co faktycznie uruchamia CI | e2e backendu (istnieją) + bramka w CI | dopisywanie testów, które już istnieją |
+| #6 | Drugie użycie linku i link po terminie są odrzucane; wygasła sesja dostaje 401 | „istniejące testy chodzą w CI” (od §3 Phase 3 chodzą: job `backend-e2e`, required) | obecne pokrycie e2e auth; co faktycznie uruchamia CI | e2e backendu (istnieją) + bramka w CI | dopisywanie testów, które już istnieją |
 | #7 | Dla każdego stanu formularza element warunkowy jest albo go nie ma; po błędnym wpisie i próbie zapisu komunikat przy polu jest widoczny (bez sprawdzania treści); każdy komponent da się utworzyć | „testy walidatorów dowodzą, że komunikat się wyświetla”; „»should create« dowodzi, że formularz działa” | kiedy Material pokazuje błąd pola; jak pola warunkowe są pokazywane i włączane; providery testowe (locale, animacje, breakpointy w jsdom) | test komponentu (TestBed + jsdom, harnessy Angular Material), API zastąpione na granicy HTTP | asercja dokładnej treści komunikatu, położenia lub snapshotu; mockowanie wnętrza formularza |
 
 ## 3. Phased Rollout
@@ -78,14 +78,14 @@ orkiestrator aktualizuje go, gdy artefakty pojawiają się na dysku.
 | Layer | Tool | Version | Notes |
 |---|---|---|---|
 | unit (backend) | Vitest | ^4.1.2 | `backend-subtracker/src/**/*.spec.ts`, 20 plików; w CI |
-| integration / API e2e (backend) | Vitest + Supertest | ^4.1.2 / ^7.0.0 | `backend-subtracker/test/`, 3 pliki na prawdziwym Postgresie; NIE w CI — see Phase 3 |
+| integration / API e2e (backend) | Vitest + Supertest | ^4.1.2 / ^7.0.0 | `backend-subtracker/test/`, 11 plików `*.e2e-spec.ts` (79 testów) na prawdziwym Postgresie, wspólny pomocnik w `test/support/`; w CI (job `backend-e2e`: Postgres 16 `C.UTF-8`, schemat z migracji) |
 | unit (frontend) | Vitest + jsdom przez `@angular/build:unit-test` | ^4.1.12 / ^31.0.1 | `frontend-subtracker/src/**/*.spec.ts`; `npm run test:ci` uruchamia zestaw w `Europe/Warsaw` i `America/New_York`; w CI |
 | component (frontend) | TestBed (zoneless) + harnessy Angular Material/CDK, w runnerze unit | 22.2.6 | spec obok każdego komponentu (12); globalne providery w `src/test-providers.ts` (`providersFile`); makieta tylko na granicy HTTP; biegnie w `test:ci` w obu strefach; checked: 2026-11-13 |
 | e2e (przeglądarka) | none yet — see Phase 4 | — | kandydat: Playwright (lekcja m3l4) |
 | accessibility | none | — | poza zakresem rolloutu; kontrole ręczne przy `/10x-ui` |
 | (optional) AI-native | post-edit hook w Claude Code — checked: 2026-11-13 | n/a | When NOT to use: jako zamiennik bramki CI albo z testami trwającymi dłużej niż kilka sekund |
 
-Profil bazy testów: `sparse` — backend ma Vitest (20 unit, 3 e2e); frontend ma runner, 12 plików testów jednostkowych (czyste funkcje, guardy, interceptory i strażnik strefy) i 12 plików testów komponentów (»should create« każdego komponentu; zachowanie formularza subskrypcji i `register`).
+Profil bazy testów: `sparse` — backend ma Vitest (20 plików unit, 11 plików e2e w CI na `C.UTF-8`, w tym strażnik listy tras i test dwóch kont); frontend ma runner, 12 plików testów jednostkowych (czyste funkcje, guardy, interceptory i strażnik strefy) i 12 plików testów komponentów (»should create« każdego komponentu; zachowanie formularza subskrypcji i `register`).
 
 **Stack grounding tools (current session):**
 - Docs: none — Context7 ani inny MCP dokumentacji nie jest dostępny w tej sesji; wersje z `package.json`; checked: 2026-11-13
@@ -101,7 +101,7 @@ Profil bazy testów: `sparse` — backend ma Vitest (20 unit, 3 e2e); frontend m
 | build frontendu (typecheck AOT) | CI | required | błędy typów i szablonów frontu |
 | unit backend | local + CI | required | regresje logiki API |
 | unit frontend | local + CI | required | regresje parsowania, przeliczeń i guardów; od §3 Phase 2 także zepsute renderowanie komponentów i niewidoczne komunikaty walidacji |
-| API e2e backendu na Postgresie `C.UTF-8` | CI on PR | required after §3 Phase 3 | wyciek między kontami, różnice locale, regresje auth |
+| API e2e backendu na Postgresie `C.UTF-8` | CI on PR (job `backend-e2e`) | required | wyciek między kontami, różnice locale, regresje auth, trasa dodana bez wpisu na liście tras |
 | e2e w przeglądarce (krytyczne ścieżki) | CI on PR | required after §3 Phase 4 | zepsute przekierowania SSR i główny przepływ |
 | post-edit hook | local (agent loop) | recommended after §3 Phase 5 | regresje w chwili edycji |
 
@@ -142,7 +142,18 @@ odpowiednia faza wdrożenia zostanie dostarczona; wcześniej brzmi „TBD — se
 
 ### 6.4 Adding an API test for a new endpoint
 
-- TBD — see §3 Phase 3: wzorzec dwóch kont (właściciel i obcy) dla każdej trasy po id, uruchamiany na bazie `C.UTF-8`.
+- **Location**: `backend-subtracker/test/<obszar>.e2e-spec.ts` albo plik w katalogu obszaru, `test/<obszar>/<temat>.e2e-spec.ts`. Żądania wspólne dla plików obszaru trzymaj w pliku pomocniczym obszaru bez `.e2e-spec` (`test/subscriptions/subscriptions-e2e.ts`, `test/auth/auth-e2e.ts`). Pliki biegną po kolei (`fileParallelism: false`) na jednej bazie.
+- **Start**: `const e2e = createE2eApp({ addressPrefix: 'e2e-<obszar>-<temat>-' })` z `test/support/e2e-app.ts`, `beforeAll(() => e2e.start())`, `afterAll(() => e2e.close())`. Prefiks jest własny dla pliku i nie może być początkiem prefiksu innego pliku, bo sprzątanie usuwa wszystko, co wisi na adresach `prefiks%`. Konto zakładasz przez `signIn()` (prawdziwe register → verify, mail przechwycony w `sent`), żądania wysyłasz przez `http()`, bazę czytasz przez `repository(Encja)`. Nie mockuj serwisów; zastąpiony jest tylko transport maili.
+- **Dwa konta dla każdej trasy po id** (ryzyko #1): `const { owner, other } = await twoAccounts()`; `owner` tworzy zasób, potem `other` robi na jego id odczyt, zmianę i usunięcie. Każde dostaje 404 (albo 403, jeśli tak mówi kontrakt), a zasób `owner` jest potem nienaruszony: odczyt przez `owner` albo `repository(...)` daje te same pola. Lista `other` nie zawiera danych `owner`. Test na jednym koncie nie chroni przed IDOR.
+- **Lista tras**: każdą nową trasę dopisz do `EXPECTED_ROUTES` w `test/routes.e2e-spec.ts` z dostępem `session` (albo `public` dla `@Public()`). Trasa z parametrem dostaje w `twoAccountTest` nazwę swojego testu dwóch kont. Bez wpisu ten plik jest czerwony; sprawdza też, że każda trasa `session` odpowiada 401 bez ciasteczka.
+- **Reference tests**:
+  - `test/subscriptions/account-isolation.e2e-spec.ts` — wzorzec dwóch kont; testy nowych tras po id dopisuj tutaj.
+  - `test/routes.e2e-spec.ts` — strażnik listy tras i dostępu.
+  - `test/subscriptions/subscriptions.e2e-spec.ts` — kolejność listy z polskimi literami (`breaks a tie on the date by the name in Polish order`); wzór dla nowego sortowania tekstu.
+  - `test/auth/token-rules.e2e-spec.ts` — reguły tokenów i sesji z pomocnikami obszaru (`authRequests`).
+- **Run locally** (z `backend-subtracker/`, potrzebny lokalny Postgres i `.env`): cały zestaw `npm run test:e2e`; jeden plik `npx vitest run --config ./vitest.config.e2e.ts test/subscriptions/account-isolation.e2e-spec.ts`. Lokalnie testy biegną na `subtracker-db-dev`.
+- **Sabotage check**: jak w §6.1. Dla trasy po id usuń filtr po właścicielu w zapytaniu serwisu, uruchom plik z testem dwóch kont i zobacz czerwony test; dodaj trasę bez wpisu na liście i zobacz czerwony `routes.e2e-spec.ts`.
+- **`C.UTF-8` tylko w CI**: lokalna baza (`Polish_Poland.1250`) sortuje po polsku nawet bez `COLLATE "pl-PL-x-icu"`, więc błąd sortowania lub unikalności nazw z polskimi literami (ryzyko #5) wychodzi tylko w jobie `backend-e2e`. Nowe sortowanie tekstu potrzebuje testu e2e z nazwami jak `Ślub`, `słoń`, `Zoo`; zielony przebieg lokalny tego nie dowodzi.
 
 ### 6.5 Adding a browser e2e test
 
@@ -154,6 +165,7 @@ odpowiednia faza wdrożenia zostanie dostarczona; wcześniej brzmi „TBD — se
 
 - **§3 Phase 1 (2026-11-13)**: Pierwszy test od razu wykrył błąd: `parseDecimal(x, 0)` rzucał `SyntaxError` (kwantyfikator `{1,0}`). Uszkodzony zapis dnia odpada tylko na wschód od UTC, a uszkodzony odczyt tylko na zachód, dlatego zestaw biegnie w dwóch strefach, a test-strażnik odrzuca każdą inną. Logikę z formularza (budowa żądania) opłaca się wyjąć do czystej funkcji, zamiast testować ją przez komponent.
 - **§3 Phase 2 (2026-11-13)**: Otwarte pytanie z researchu (czy błąd samodzielnej kontrolki `categoryName` pokazuje się po zapisie) rozstrzygnął test: pokazuje się, bo matcher widzi `submitted` rodzica, więc poprawka nie była potrzebna. Sabotaże potwierdziły, że tylko test komponentu pilnuje okablowania: `NativeDateAdapter` zamiast polskiego adaptera daje czerwone wszystkie wiersze z datą. Granica »should create«: brakujący komponent lub binding wychodzi (`errorOnUnknown*`), ale `routerLink` jako statyczny atrybut bez importu `RouterLink` przechodzi po cichu i link robi pełne przeładowanie strony.
+- **§3 Phase 3 (2026-11-14)**: Pierwszy przebieg `backend-e2e` był zielony: obraz `postgres:16` ma ICU `pl-PL-x-icu`, a initdb przyjmuje `C.UTF-8`; przechwytywanie maili (`vi.waitFor`) jest stabilne na runnerze. Sabotaż `COLLATE` (usunięty z kolejności listy subskrypcji): lokalnie wszystkie e2e zielone, w CI czerwony dokładnie jeden test kolejności polskich nazw. Test jednostkowy też odpadł, ale tylko dlatego, że porównuje dosłowny `ORDER BY`; nowego sortowania bez `COLLATE` nie złapie, łapie je tylko e2e na `C.UTF-8`.
 
 ## 7. What We Deliberately Don't Test
 

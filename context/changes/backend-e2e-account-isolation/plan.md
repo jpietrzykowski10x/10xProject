@@ -437,23 +437,23 @@ Brak zmian schematu. Migracje są tylko uruchamiane w CI na czystej bazie.
 
 #### Automated
 
-- [x] 3.1 Lint backendu przechodzi
-- [x] 3.2 Cały zestaw e2e przechodzi lokalnie
-- [x] 3.3 Liczba testów auth po podziale równa liczbie sprzed podziału
-- [x] 3.4 Żaden plik w `test/` nie przekracza ok. 300 linii
-- [ ] 3.5 Job `backend-e2e` zielony po pushu
+- [x] 3.1 Lint backendu przechodzi — 632c5b7
+- [x] 3.2 Cały zestaw e2e przechodzi lokalnie — 632c5b7
+- [x] 3.3 Liczba testów auth po podziale równa liczbie sprzed podziału — 632c5b7
+- [x] 3.4 Żaden plik w `test/` nie przekracza ok. 300 linii — 632c5b7
+- [x] 3.5 Job `backend-e2e` zielony po pushu
 
 #### Manual
 
-- [ ] 3.6 Przegląd diffu: przeniesione testy mają te same asercje
+- [x] 3.6 Przegląd diffu: przeniesione testy mają te same asercje
 
 ### Phase 4: Dokumentacja
 
 #### Automated
 
-- [ ] 4.1 `test-plan.md` §6.4 bez „TBD”, §5 bez „required after §3 Phase 3”
-- [ ] 4.2 Lint backendu przechodzi
+- [x] 4.1 `test-plan.md` §6.4 bez „TBD”, §5 bez „required after §3 Phase 3”
+- [x] 4.2 Lint backendu przechodzi
 
 #### Manual
 
-- [ ] 4.3 §6.4 wykonalne bez czytania planu (przegląd z perspektywy autora S-03)
+- [x] 4.3 §6.4 wykonalne bez czytania planu (przegląd z perspektywy autora S-03)
