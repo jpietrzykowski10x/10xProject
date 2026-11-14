@@ -222,6 +222,11 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
 
+      # Playwright strips the types without checking them.
+      - name: Type check the e2e tests
+        working-directory: frontend-subtracker
+        run: npm run typecheck:e2e
+
       - name: Build the frontend (e2e configuration)
         working-directory: frontend-subtracker
         run: npm run build:e2e

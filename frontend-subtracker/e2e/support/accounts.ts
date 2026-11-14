@@ -1,10 +1,13 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { Client } from 'pg';
+import { assertLocalDatabase } from './local-dev-setup';
 
 // Accounts and sessions for the browser e2e tests, written straight to the app's database (no
 // sign-in mail), and the cleanup of everything a test file left behind. The counterpart of
-// backend-subtracker/test/support/e2e-app.ts. playwright.config.ts loads backend-subtracker/.env
-// and refuses to start outside the local DEV setup.
+// backend-subtracker/test/support/e2e-app.ts. playwright.config.ts loads backend-subtracker/.env;
+// both the config and this helper (before it connects) refuse anything but the local DEV database.
 
 export const API_ORIGIN = 'http://localhost:3000';
 
@@ -13,8 +16,20 @@ export const ADDRESS_DOMAIN = '@subtracker.test';
 // The session cookie the API sets (backend SessionService).
 export const SESSION_COOKIE = 'subtracker_session';
 
-// The current version in backend-subtracker/src/auth/auth.constants.ts.
-const PRIVACY_POLICY_VERSION = '0-placeholder';
+// The current privacy policy version, read from the backend source so it never goes stale here.
+const AUTH_CONSTANTS = resolve(__dirname, '../../../backend-subtracker/src/auth/auth.constants.ts');
+
+function privacyPolicyVersion(): string {
+  const source = readFileSync(AUTH_CONSTANTS, 'utf8');
+  const version = /export const PRIVACY_POLICY_VERSION = '([^']+)'/.exec(source)?.[1];
+  if (version === undefined) {
+    throw new Error(`No PRIVACY_POLICY_VERSION = '...' in ${AUTH_CONSTANTS}`);
+  }
+  return version;
+}
+
+// The prefix becomes a LIKE pattern, so it may not contain % or _ (and is never just the base).
+const ADDRESS_PREFIX = /^e2e-browser-[a-z0-9-]+-$/;
 
 // RoleCode.USER in the backend; looked up by code, the id is not repeated here.
 const USER_ROLE_CODE = 'USER';
@@ -75,15 +90,19 @@ function requireEnv(key: string): string {
 // Connects lazily to the database the API uses in MODE=DEV (POSTGRES_DATABASE_DEV): locally
 // subtracker-db-dev, in CI the only database.
 export function createE2eAccounts({ addressPrefix }: E2eAccountsOptions): E2eAccounts {
-  if (!addressPrefix.startsWith('e2e-browser-')) {
-    throw new Error(`addressPrefix must start with "e2e-browser-", got "${addressPrefix}"`);
+  if (!ADDRESS_PREFIX.test(addressPrefix)) {
+    throw new Error(
+      `addressPrefix must look like "e2e-browser-<topic>-" (a-z, 0-9, -), got "${addressPrefix}"`,
+    );
   }
   const addressPattern = `${addressPrefix}%${ADDRESS_DOMAIN}`;
   let addressCounter = 0;
   let connected: Promise<Client> | undefined;
+  let policyVersion: string | undefined;
 
   function db(): Promise<Client> {
     connected ??= (async () => {
+      assertLocalDatabase();
       const client = new Client({
         host: requireEnv('POSTGRES_HOST'),
         port: Number(process.env['POSTGRES_PORT'] ?? 5432),
@@ -94,6 +113,10 @@ export function createE2eAccounts({ addressPrefix }: E2eAccountsOptions): E2eAcc
       await client.connect();
       return client;
     })();
+    // A failed connection is not kept: the next call tries again and close() has nothing to end.
+    connected.catch(() => {
+      connected = undefined;
+    });
     return connected;
   }
 
@@ -103,7 +126,7 @@ export function createE2eAccounts({ addressPrefix }: E2eAccountsOptions): E2eAcc
     const user = await client.query<{ id: string }>(
       `INSERT INTO "user" (email, email_verified_at, consents_accepted_at, privacy_policy_version)
        VALUES ($1, now(), now(), $2) RETURNING id`,
-      [email, PRIVACY_POLICY_VERSION],
+      [email, (policyVersion ??= privacyPolicyVersion())],
     );
     const id = user.rows[0].id;
     const role = await client.query(

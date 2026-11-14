@@ -45,7 +45,11 @@ async function createSubscriptionThroughApi(
   const headers = { Cookie: `${SESSION_COOKIE}=${token}` };
   const categories = await request.get(`${API_ORIGIN}/categories`, { headers });
   expect(categories.status()).toBe(200);
-  const [category] = (await categories.json()) as CategoryResponse[];
+  const categoryList = (await categories.json()) as CategoryResponse[];
+  expect(categoryList.length, 'no default categories (were the migrations run?)').toBeGreaterThan(
+    0,
+  );
+  const [category] = categoryList;
   const created = await request.post(`${API_ORIGIN}/subscriptions`, {
     headers,
     data: {

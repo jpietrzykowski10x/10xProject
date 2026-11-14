@@ -245,7 +245,7 @@ ciasteczko do API.
   i `no-store`;
 - wygasła sesja → 200, `no-store`, HTML zawiera `ng-server-context="ssr"`, a skrypt `ng-state`
   nie zawiera treści odpowiedzi sesji (`"user"`) — odpowiedź sesji nie trafiła do stanu transferu.
-  Wpisy stanu transferu mają klucz-hash, a URL jest zapisany z `/`, więc szukanie ciągu
+  Wpisy stanu transferu mają klucz-hash, a URL jest zapisany z `\u002F`, więc szukanie ciągu
   `/auth/session` niczego nie chroni (ustalone przy implementacji).
 
 - **Behavior asserted**: status, przekierowanie i nagłówek cache strony startowej dla trzech stanów ciasteczka.

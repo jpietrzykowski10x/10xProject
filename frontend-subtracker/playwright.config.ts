@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { localDatabaseProblems } from './e2e/support/local-dev-setup';
 
 // Browser e2e (npm run e2e) against the built SSR server (npm run build:e2e) and the real API with
 // its database. Both read backend-subtracker/.env: the API itself, the tests through
@@ -14,21 +15,11 @@ if (existsSync(backendEnv)) {
 const SSR_ORIGIN = 'http://localhost:4000';
 const API_ORIGIN = 'http://localhost:3000';
 
-const LOCAL_HOSTS = ['localhost', '127.0.0.1', '::1'];
-
 // The tests create accounts and delete rows by prefix, so they never run outside the local DEV
-// setup. The API must also accept the SSR origin, or CORS and the CSRF check reject the browser.
+// setup (the accounts helper checks the database again before it connects). The API must also
+// accept the SSR origin, or CORS and the CSRF check reject the browser.
 function assertLocalDevSetup(): void {
-  const problems: string[] = [];
-  if (process.env['MODE'] !== 'DEV') {
-    problems.push(`MODE is ${process.env['MODE'] ?? 'not set'}, expected DEV`);
-  }
-  const host = process.env['POSTGRES_HOST'];
-  if (host === undefined || !LOCAL_HOSTS.includes(host.trim())) {
-    problems.push(
-      `POSTGRES_HOST is ${host ?? 'not set'}, expected one of ${LOCAL_HOSTS.join(', ')}`,
-    );
-  }
+  const problems = localDatabaseProblems();
   // Read like the backend (parseCorsOrigins): comma-separated origins, trailing slashes ignored.
   const corsOrigins = (process.env['CORS_ORIGINS'] ?? '')
     .split(',')
