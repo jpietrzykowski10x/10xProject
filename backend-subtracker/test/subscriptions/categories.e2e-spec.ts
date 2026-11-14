@@ -6,12 +6,13 @@ import {
 import { createE2eApp } from '../support/e2e-app.js';
 import { subscriptionRequests } from './subscriptions-e2e.js';
 
-describe('Subscriptions (e2e)', () => {
-  // Runs against the local dev database with a fake mail transport. Every row these tests create
-  // hangs off a recognisable address and is removed at the end.
+describe('Subscriptions — categories (e2e)', () => {
+  // Runs against the database from .env (locally the dev database, in CI the C.UTF-8 database of
+  // the backend-e2e job) with a fake mail transport. Every row these tests create hangs off a
+  // recognisable address and is removed at the end.
   const e2e = createE2eApp({ addressPrefix: 'e2e-subscriptions-categories-' });
-  const { repository, signIn } = e2e;
-  const { userIdOf, postCategory, getCategories } = subscriptionRequests(e2e);
+  const { repository, signIn, userIdOf } = e2e;
+  const { postCategory, getCategories } = subscriptionRequests(e2e);
 
   beforeAll(() => e2e.start());
 

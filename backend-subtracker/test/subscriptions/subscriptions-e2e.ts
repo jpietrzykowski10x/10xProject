@@ -1,10 +1,9 @@
+import type { Test } from 'supertest';
 import { DEFAULT_CATEGORIES } from '../../src/subscriptions/default-categories.js';
 import type {
   CategoryResponse,
   SubscriptionResponse,
 } from '../../src/subscriptions/subscription.types.js';
-import { User } from '../../src/users/entities/user.entity.js';
-import type { Test } from 'supertest';
 import type { E2eApp } from '../support/e2e-app.js';
 
 export const OTHER_CATEGORY_ID =
@@ -27,7 +26,6 @@ export const subscriptionBody = (
 
 // Requests shared by the subscription e2e files. The list requests expect 200 without caching.
 export interface SubscriptionRequests {
-  userIdOf: (address: string) => Promise<string>;
   postSubscription: (cookie: string, body: Record<string, unknown>) => Test;
   postCategory: (cookie: string, name: string) => Test;
   getSubscriptions: (cookie: string) => Promise<SubscriptionResponse[]>;
@@ -35,10 +33,7 @@ export interface SubscriptionRequests {
 }
 
 export function subscriptionRequests(e2e: E2eApp): SubscriptionRequests {
-  const { http, repository } = e2e;
-
-  const userIdOf = async (address: string) =>
-    (await repository(User).findOneByOrFail({ email: address })).id;
+  const { http } = e2e;
 
   const postSubscription = (cookie: string, body: Record<string, unknown>) =>
     http().post('/subscriptions').set('Cookie', cookie).send(body);
@@ -65,7 +60,6 @@ export function subscriptionRequests(e2e: E2eApp): SubscriptionRequests {
     ).body as CategoryResponse[];
 
   return {
-    userIdOf,
     postSubscription,
     postCategory,
     getSubscriptions,

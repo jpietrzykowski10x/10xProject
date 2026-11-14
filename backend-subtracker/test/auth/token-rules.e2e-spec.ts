@@ -2,15 +2,16 @@ import { MagicLinkToken } from '../../src/auth/entities/magic-link-token.entity.
 import { Session } from '../../src/auth/entities/session.entity.js';
 import { hashToken } from '../../src/auth/services/session.service.js';
 import { User } from '../../src/users/entities/user.entity.js';
-import { createE2eApp } from '../support/e2e-app.js';
-import { authRequests, PAST } from './auth-e2e.js';
+import { createE2eApp, PAST } from '../support/e2e-app.js';
+import { authRequests } from './auth-e2e.js';
 
-describe('Auth flow (e2e)', () => {
-  // Runs against the local dev database with a fake mail transport. Every row these tests create
-  // hangs off a recognisable address and is removed at the end.
+describe('Auth flow — token rules (e2e)', () => {
+  // Runs against the database from .env (locally the dev database, in CI the C.UTF-8 database of
+  // the backend-e2e job) with a fake mail transport. Every row these tests create hangs off a
+  // recognisable address and is removed at the end.
   const e2e = createE2eApp({ addressPrefix: 'e2e-auth-token-' });
   const { newAddress, repository } = e2e;
-  const { postRegister, postRequestLink, postVerify, latestToken, findUser } =
+  const { postRegister, postRequestLink, postVerify, tokenFromMail, findUser } =
     authRequests(e2e);
 
   beforeAll(() => e2e.start());
@@ -21,7 +22,7 @@ describe('Auth flow (e2e)', () => {
     it('refuses a token used for the second time', async () => {
       const address = newAddress();
       await postRegister(address).expect(202);
-      const token = await latestToken(address);
+      const token = await tokenFromMail(address);
 
       await postVerify(token).expect(200);
 
@@ -31,7 +32,7 @@ describe('Auth flow (e2e)', () => {
     it('lets only one of two simultaneous requests use a token', async () => {
       const address = newAddress();
       await postRegister(address).expect(202);
-      const token = await latestToken(address);
+      const token = await tokenFromMail(address);
 
       const responses = await Promise.all([
         postVerify(token),
@@ -47,7 +48,7 @@ describe('Auth flow (e2e)', () => {
     it('refuses an expired token', async () => {
       const address = newAddress();
       await postRegister(address).expect(202);
-      const token = await latestToken(address);
+      const token = await tokenFromMail(address);
       await repository(MagicLinkToken).update(
         { tokenHash: hashToken(token) },
         { expiresAt: PAST },
@@ -61,10 +62,10 @@ describe('Auth flow (e2e)', () => {
     it('refuses an older token once a new one is issued', async () => {
       const address = newAddress();
       await postRegister(address).expect(202);
-      const older = await latestToken(address);
+      const older = await tokenFromMail(address);
 
       await postRequestLink(address).expect(202);
-      const newer = await latestToken(address, 2);
+      const newer = await tokenFromMail(address, 2);
 
       await postVerify(older).expect(401);
       await postVerify(newer).expect(200);
@@ -73,7 +74,7 @@ describe('Auth flow (e2e)', () => {
     it('refuses an unknown token with the same answer as a used one', async () => {
       const address = newAddress();
       await postRegister(address).expect(202);
-      const token = await latestToken(address);
+      const token = await tokenFromMail(address);
       await postVerify(token).expect(200);
 
       const used = await postVerify(token).expect(401);
@@ -86,7 +87,7 @@ describe('Auth flow (e2e)', () => {
     it('refuses a token posted from a foreign site and leaves it usable', async () => {
       const address = newAddress();
       await postRegister(address).expect(202);
-      const token = await latestToken(address);
+      const token = await tokenFromMail(address);
 
       const forged = await postVerify(token)
         .set('Origin', 'https://example.com')
@@ -102,7 +103,7 @@ describe('Auth flow (e2e)', () => {
     it('refuses the token of an inactive user and creates no session', async () => {
       const address = newAddress();
       await postRegister(address).expect(202);
-      const token = await latestToken(address);
+      const token = await tokenFromMail(address);
       await repository(User).update({ email: address }, { isActive: false });
 
       const response = await postVerify(token).expect(401);

@@ -1,11 +1,12 @@
 import { Session } from '../../src/auth/entities/session.entity.js';
 import { RoleCode } from '../../src/shared/types/role-code.js';
-import { createE2eApp } from '../support/e2e-app.js';
-import { authRequests, PAST, setCookieOf } from './auth-e2e.js';
+import { createE2eApp, PAST, setCookieOf } from '../support/e2e-app.js';
+import { authRequests } from './auth-e2e.js';
 
-describe('Auth flow (e2e)', () => {
-  // Runs against the local dev database with a fake mail transport. Every row these tests create
-  // hangs off a recognisable address and is removed at the end.
+describe('Auth flow — session (e2e)', () => {
+  // Runs against the database from .env (locally the dev database, in CI the C.UTF-8 database of
+  // the backend-e2e job) with a fake mail transport. Every row these tests create hangs off a
+  // recognisable address and is removed at the end.
   const e2e = createE2eApp({ addressPrefix: 'e2e-auth-session-' });
   const { http, newAddress, repository } = e2e;
   const { getMe, signIn, findUser } = authRequests(e2e);

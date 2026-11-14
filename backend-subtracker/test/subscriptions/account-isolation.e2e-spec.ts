@@ -1,22 +1,18 @@
 import { DEFAULT_CATEGORIES } from '../../src/subscriptions/default-categories.js';
 import type { CategoryResponse } from '../../src/subscriptions/subscription.types.js';
-import { createE2eApp } from '../support/e2e-app.js';
+import { createE2eApp, UNKNOWN_ID } from '../support/e2e-app.js';
 import { subscriptionBody, subscriptionRequests } from './subscriptions-e2e.js';
 
 // The two-account pattern (test plan §6.4): the owner creates a resource, the other account must
 // not reach it. A new route by id adds its test here and names it in routes.e2e-spec.ts.
-describe('Subscriptions (e2e)', () => {
-  // Runs against the local dev database with a fake mail transport. Every row these tests create
-  // hangs off a recognisable address and is removed at the end.
+describe('Subscriptions — account isolation (e2e)', () => {
+  // Runs against the database from .env (locally the dev database, in CI the C.UTF-8 database of
+  // the backend-e2e job) with a fake mail transport. Every row these tests create hangs off a
+  // recognisable address and is removed at the end.
   const e2e = createE2eApp({ addressPrefix: 'e2e-subscriptions-isolation-' });
-  const { twoAccounts } = e2e;
-  const {
-    userIdOf,
-    postSubscription,
-    postCategory,
-    getSubscriptions,
-    getCategories,
-  } = subscriptionRequests(e2e);
+  const { twoAccounts, userIdOf } = e2e;
+  const { postSubscription, postCategory, getSubscriptions, getCategories } =
+    subscriptionRequests(e2e);
 
   beforeAll(() => e2e.start());
 
@@ -51,7 +47,7 @@ describe('Subscriptions (e2e)', () => {
       await postSubscription(
         owner.cookie,
         subscriptionBody({
-          categoryId: '00000000-0000-4000-8000-000000000000',
+          categoryId: UNKNOWN_ID,
         }),
       ).expect(400);
       await postSubscription(

@@ -8,16 +8,17 @@ import { RoleCode } from '../../src/shared/types/role-code.js';
 import { grantAdmin } from '../../src/users/grant-admin.js';
 import { UserRole } from '../../src/users/entities/user-role.entity.js';
 import { User } from '../../src/users/entities/user.entity.js';
-import { createE2eApp } from '../support/e2e-app.js';
-import { authRequests, setCookieOf, tokenIn } from './auth-e2e.js';
+import { createE2eApp, setCookieOf, tokenIn } from '../support/e2e-app.js';
+import { authRequests } from './auth-e2e.js';
 
 const OLD_CONSENT_DATE = new Date('2020-01-01T00:00:00.000Z');
 const OLD_POLICY_VERSION = 'old-version';
 const CONSENT_SENTENCE = '18 lat';
 
-describe('Auth flow (e2e)', () => {
-  // Runs against the local dev database with a fake mail transport. Every row these tests create
-  // hangs off a recognisable address and is removed at the end.
+describe('Auth flow — sign-in (e2e)', () => {
+  // Runs against the database from .env (locally the dev database, in CI the C.UTF-8 database of
+  // the backend-e2e job) with a fake mail transport. Every row these tests create hangs off a
+  // recognisable address and is removed at the end.
   const e2e = createE2eApp({ addressPrefix: 'e2e-auth-sign-in-' });
   const { newAddress, repository, cookiePairOf } = e2e;
   const {
@@ -26,7 +27,7 @@ describe('Auth flow (e2e)', () => {
     postVerify,
     getMe,
     mailsTo,
-    latestToken,
+    tokenFromMail,
     signIn,
     findUser,
   } = authRequests(e2e);
@@ -42,7 +43,7 @@ describe('Auth flow (e2e)', () => {
       const registered = await postRegister(address).expect(202);
       expect(registered.text).toBe('');
 
-      const token = await latestToken(address);
+      const token = await tokenFromMail(address);
       expect((await findUser(address)).emailVerifiedAt).toBeNull();
 
       const verified = await postVerify(token).expect(200);
@@ -71,7 +72,9 @@ describe('Auth flow (e2e)', () => {
       const address = newAddress();
       await postRegister(address).expect(202);
 
-      const verified = await postVerify(await latestToken(address)).expect(200);
+      const verified = await postVerify(await tokenFromMail(address)).expect(
+        200,
+      );
 
       const cookie = setCookieOf(verified);
       expect(cookie).toMatch(/^subtracker_session=/);
@@ -99,7 +102,7 @@ describe('Auth flow (e2e)', () => {
 
       await postRequestLink(address.toUpperCase()).expect(202);
 
-      const verified = await postVerify(await latestToken(address, 2)).expect(
+      const verified = await postVerify(await tokenFromMail(address, 2)).expect(
         200,
       );
       expect((verified.body as AuthUser).email).toBe(address);
@@ -198,7 +201,7 @@ describe('Auth flow (e2e)', () => {
   it('keeps the token out of the mail audit row', async () => {
     const address = newAddress();
     await postRegister(address).expect(202);
-    const token = await latestToken(address);
+    const token = await tokenFromMail(address);
 
     await vi.waitFor(async () => {
       expect(await repository(Mail).countBy({ recipient: address })).toBe(1);

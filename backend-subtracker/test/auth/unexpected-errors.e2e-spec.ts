@@ -3,9 +3,10 @@ import { AuthService } from '../../src/auth/services/auth.service.js';
 import { createE2eApp } from '../support/e2e-app.js';
 import { authRequests } from './auth-e2e.js';
 
-describe('Auth flow (e2e)', () => {
-  // Runs against the local dev database with a fake mail transport. Every row these tests create
-  // hangs off a recognisable address and is removed at the end.
+describe('Auth flow — unexpected errors (e2e)', () => {
+  // Runs against the database from .env (locally the dev database, in CI the C.UTF-8 database of
+  // the backend-e2e job) with a fake mail transport. Every row these tests create hangs off a
+  // recognisable address and is removed at the end.
   const e2e = createE2eApp({ addressPrefix: 'e2e-auth-errors-' });
   const { http, newAddress } = e2e;
   const { postRequestLink } = authRequests(e2e);

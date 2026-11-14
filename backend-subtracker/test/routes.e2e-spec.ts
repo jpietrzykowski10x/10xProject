@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { RequestMethod } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants.js';
 import {
@@ -7,7 +9,7 @@ import {
   Reflector,
 } from '@nestjs/core';
 import { Public } from './../src/shared/decorators/public.decorator.js';
-import { createE2eApp } from './support/e2e-app.js';
+import { createE2eApp, UNKNOWN_ID } from './support/e2e-app.js';
 
 type Access = 'public' | 'session';
 
@@ -46,7 +48,20 @@ const EXPECTED_ROUTES: ExpectedRoute[] = [
   { method: 'POST', path: '/subscriptions', access: 'session' },
 ];
 
-const ANY_ID = '00000000-0000-4000-8000-000000000000';
+// The sources of every e2e file except this one, whose list names the tests itself.
+function otherSpecSources(): string {
+  const testDir = import.meta.dirname;
+  return readdirSync(testDir, { recursive: true, encoding: 'utf8' })
+    .filter((file) => file.endsWith('.e2e-spec.ts'))
+    .map((file) => join(testDir, file))
+    .filter((file) => resolve(file) !== resolve(import.meta.filename))
+    .map((file) => readFileSync(file, 'utf8'))
+    .join('\n');
+}
+
+// A test title appears in its file as a string literal.
+const hasTestTitled = (sources: string, title: string) =>
+  ["'", '"', '`'].some((quote) => sources.includes(`${quote}${title}${quote}`));
 
 const routeKey = ({ method, path }: { method: string; path: string }) =>
   `${method} ${path}`;
@@ -84,14 +99,23 @@ describe('Routes (e2e)', () => {
     const reflector = e2e.app.get(Reflector);
     const routes: AppRoute[] = [];
 
-    for (const { metatype, instance } of discovery.getControllers()) {
-      if (typeof metatype !== 'function' || instance === undefined) {
-        continue;
+    for (const {
+      name: controllerName,
+      metatype,
+    } of discovery.getControllers()) {
+      // A controller is a class; anything else would hide its routes from this check.
+      if (typeof metatype !== 'function') {
+        throw new Error(
+          `Controller ${String(controllerName)} has no class to read`,
+        );
       }
-      const prototype = Object.getPrototypeOf(instance) as Record<
-        string,
-        unknown
-      >;
+      const prototype = metatype.prototype as
+        Record<string, unknown> | undefined;
+      if (prototype === undefined) {
+        throw new Error(
+          `Controller ${String(controllerName)} has no prototype to read`,
+        );
+      }
       const controllerPaths = pathsOf(
         reflector.get<PathMetadata>(PATH_METADATA, metatype),
       );
@@ -139,9 +163,14 @@ describe('Routes (e2e)', () => {
     const listed = new Map(
       EXPECTED_ROUTES.map((route) => [routeKey(route), route]),
     );
+    const sources = otherSpecSources();
     const untested = appRoutes()
       .filter((route) => route.path.includes(':'))
-      .filter((route) => !listed.get(routeKey(route))?.twoAccountTest?.trim())
+      .filter((route) => {
+        const title = listed.get(routeKey(route))?.twoAccountTest?.trim();
+        // A typo or a placeholder names no test that exists.
+        return !title || !hasTestTitled(sources, title);
+      })
       .map(routeKey);
 
     expect(untested).toEqual([]);
@@ -155,7 +184,7 @@ describe('Routes (e2e)', () => {
 
     const statuses = [];
     for (const route of sessionRoutes) {
-      const path = route.path.replace(/:\w+/g, ANY_ID);
+      const path = route.path.replace(/:\w+/g, UNKNOWN_ID);
       const response =
         await http()[
           route.method.toLowerCase() as
