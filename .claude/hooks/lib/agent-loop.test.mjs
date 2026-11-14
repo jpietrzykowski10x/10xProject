@@ -13,6 +13,7 @@ import {
   groupByApp,
   hooksDisabled,
   nodeProblem,
+  processAlive,
   tail,
 } from './agent-loop.mjs';
 
@@ -229,6 +230,28 @@ describe('acquireLock', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  it('replaces a fresh lock at once when its owner process is gone', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'agent-loop-'));
+    try {
+      const gone = spawnSync(process.execPath, ['-e', 'process.stdout.write(String(process.pid))'], {
+        encoding: 'utf8',
+      });
+      const deadPid = Number(gone.stdout);
+      assert.equal(processAlive(deadPid), false);
+      writeFileSync(path.join(dir, 'backend.lock'), String(deadPid));
+      const started = Date.now();
+      const release = acquireLock(dir, 'backend', 60_000);
+      assert.ok(Date.now() - started < 1000, 'did not wait for the 60 s backstop');
+      release();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('treats the current process as alive', () => {
+    assert.equal(processAlive(process.pid), true);
   });
 });
 

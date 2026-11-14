@@ -1,7 +1,7 @@
 ---
 change_id: agent-loop-hooks
 title: Agent-loop hooks — lint, typecheck and unit tests after agent edits
-status: implemented
+status: impl_reviewed
 created: 2026-11-14
 updated: 2026-11-14
 archived_at: null
@@ -29,3 +29,4 @@ After creating the folder, follow the downstream continuation rule.
 - Adaptation: the state file keeps the names of the red tools, so a stop right after a block (`stop_hook_active: true`) with no change in between still tells the user "checks still red" instead of staying silent.
 - Times: first check of both apps in parallel ≈ 14 s (plan estimated ≤ 10 s), backend alone ≈ 6 s, unchanged state 0.3 s.
 - `SUBTRACKER_AGENT_HOOKS=off` in `env` of `.claude/settings.local.json` takes effect only after a session restart (checked: no effect in the running session, both hooks off after `claude --continue`).
+- Success criteria 1.1, 2.1 and 3.1 were verified with `node --test ".claude/hooks/**/*.test.mjs"` (test-plan §6.7): the plan's `node --test .claude/hooks/` fails on Node 24, which treats the directory as a test file.

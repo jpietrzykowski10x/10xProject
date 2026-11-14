@@ -184,8 +184,9 @@ export function fingerprint(projectDir, dirs) {
 /**
  * Waits for and takes the lock `<stateDir>/<name>.lock`; returns a function that releases it.
  * PostToolUse runs once per edit and parallel edits run their hooks in parallel, so checks of the
- * same app go one after another instead of overlapping. A lock older than `staleMs` (the hook's
- * timeout) belongs to a hook that was killed and is removed.
+ * same app go one after another instead of overlapping. A hook killed mid-check (timeout, user
+ * interrupt) leaves its lock behind: a lock whose PID is no longer running is removed at once, and
+ * any lock older than `staleMs` (the hook's timeout) is removed as a backstop.
  */
 export function acquireLock(stateDir, name, staleMs, pollMs = 200) {
   mkdirSync(stateDir, { recursive: true });
@@ -201,7 +202,10 @@ export function acquireLock(stateDir, name, staleMs, pollMs = 200) {
       if (error.code !== 'EEXIST') throw error;
     }
     try {
-      if (Date.now() - statSync(file).mtimeMs > staleMs) {
+      // An empty file (owner between open and write) gives NaN and is not treated as dead.
+      const owner = Number.parseInt(readFileSync(file, 'utf8'), 10);
+      const ownerGone = Number.isInteger(owner) && !processAlive(owner);
+      if (ownerGone || Date.now() - statSync(file).mtimeMs > staleMs) {
         rmSync(file, { force: true });
         continue;
       }
@@ -209,6 +213,16 @@ export function acquireLock(stateDir, name, staleMs, pollMs = 200) {
       continue; // released between the two calls
     }
     Atomics.wait(sleeper, 0, 0, pollMs);
+  }
+}
+
+/** Whether a process with this PID is running (`EPERM` means it runs under another user). */
+export function processAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === 'EPERM';
   }
 }
 
