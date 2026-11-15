@@ -1,4 +1,4 @@
-// F2-Lista and F2-Tel-Dodawanie: the list, and the "Nowa subskrypcja" panel. From 1200px the panel
+// F2-Lista and F2-Tel-Dodawanie: the list, and the add or edit panel. From 1200px the panel
 // is a white column beside the table (the table goes compact by its own width); from 840px to
 // 1200px it slides over the table instead of squeezing it; on the phone it replaces the list.
 .subscriptions {
@@ -135,11 +135,11 @@
 
 @media (max-width: 839.98px) {
   // Room for the fixed bar, so it never covers the last row.
-  .subscriptions:not(.subscriptions--adding) {
+  .subscriptions:not(.subscriptions--panel-open) {
     padding-bottom: 80px;
   }
 
-  .subscriptions--adding .subscriptions__main {
+  .subscriptions--panel-open .subscriptions__main {
     display: none;
   }
 

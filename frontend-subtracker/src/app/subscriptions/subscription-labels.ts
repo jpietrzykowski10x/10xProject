@@ -93,7 +93,15 @@ export function phoneDatePrefix(subscription: Subscription, today: Date): string
   return countdown === null ? '' : `${countdown}, `;
 }
 
-// The status message after a subscription is saved.
+// The status message after a new subscription is saved.
 export function addedSubscriptionMessage(name: string): string {
   return `Dodano subskrypcję „${name}”.`;
 }
+
+// The status message after an edited subscription is saved.
+export function updatedSubscriptionMessage(name: string): string {
+  return `Zapisano zmiany w subskrypcji „${name}”.`;
+}
+
+// The status message when the edited subscription is gone (e.g. deleted in another tab).
+export const missingSubscriptionMessage = 'Tej subskrypcji już nie ma na liście.';

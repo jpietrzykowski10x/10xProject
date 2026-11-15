@@ -1,5 +1,9 @@
-import type { CreateSubscriptionRequest } from './subscription.types';
-import { SubscriptionFormValue, toCreateSubscriptionRequest } from './subscription-request';
+import type { CreateSubscriptionRequest, Subscription } from './subscription.types';
+import {
+  SubscriptionFormValue,
+  toCreateSubscriptionRequest,
+  toSubscriptionFormValue,
+} from './subscription-request';
 
 // The oracle is the API contract (backend create-subscription DTO): the amount is a number, the
 // dates are calendar days as YYYY-MM-DD, the name is trimmed, and the end of the trial goes only
@@ -84,5 +88,111 @@ describe('toCreateSubscriptionRequest', () => {
     ['a trial without its end', { status: 'trial', trialEndDate: null }],
   ])('sends nothing for %s', (_, form) => {
     expect(toCreateSubscriptionRequest({ ...FORM, ...form })).toBeNull();
+  });
+});
+
+// The oracle is the API contract (subscription.types.ts, Subscription): the amount comes as a
+// string with two decimals and a dot, the dates as calendar days YYYY-MM-DD, `trialEndDate` only for
+// a trial. The form shows the amount the Polish way and each day as the same calendar day in any
+// time zone (the suite runs in Warsaw and New York).
+const SUBSCRIPTION: Subscription = {
+  id: 'subscription-1',
+  name: 'Netflix',
+  category: { id: 'category-1', name: 'Rozrywka', isDefault: true },
+  amount: '43.00',
+  billingCycle: 'monthly',
+  paymentMethod: 'blik',
+  status: 'active',
+  trialEndDate: null,
+  nextBillingDate: '2027-01-05',
+  createdAt: '2026-11-13T12:00:00.000Z',
+};
+
+// A Date as the calendar day the datepicker shows, not as an instant.
+function calendarDay(date: Date | null): [number, number, number] | null {
+  return date === null ? null : [date.getFullYear(), date.getMonth() + 1, date.getDate()];
+}
+
+describe('toSubscriptionFormValue', () => {
+  it.each<[string, string]>([
+    ['43.00', '43,00'],
+    ['0.00', '0,00'],
+    ['1234.50', '1234,50'],
+    ['99999.99', '99999,99'],
+  ])('shows the amount %j as %j', (amount, shown) => {
+    expect(toSubscriptionFormValue({ ...SUBSCRIPTION, amount }).amount).toBe(shown);
+  });
+
+  it.each<[string, [number, number, number]]>([
+    ['2027-01-05', [2027, 1, 5]],
+    ['2028-02-29', [2028, 2, 29]],
+    ['2026-12-31', [2026, 12, 31]],
+    // The last Sunday of March: Warsaw moves its clocks that night.
+    ['2027-03-28', [2027, 3, 28]],
+    // The second Sunday of March: New York moves its clocks that night.
+    ['2027-03-14', [2027, 3, 14]],
+  ])('shows the billing day %j as that calendar day', (day, expected) => {
+    const value = toSubscriptionFormValue({ ...SUBSCRIPTION, nextBillingDate: day });
+
+    expect(calendarDay(value.nextBillingDate)).toEqual(expected);
+  });
+
+  it('fills the whole form of an active subscription, without a trial end', () => {
+    expect(toSubscriptionFormValue(SUBSCRIPTION)).toEqual({
+      name: 'Netflix',
+      categoryId: 'category-1',
+      amount: '43,00',
+      billingCycle: 'monthly',
+      paymentMethod: 'blik',
+      status: 'active',
+      trialEndDate: null,
+      nextBillingDate: new Date(2027, 0, 5),
+    });
+  });
+
+  it('fills the end of a trial', () => {
+    const value = toSubscriptionFormValue({
+      ...SUBSCRIPTION,
+      status: 'trial',
+      trialEndDate: '2027-02-28',
+      nextBillingDate: '2027-03-01',
+    });
+
+    expect(value.status).toBe('trial');
+    expect(calendarDay(value.trialEndDate)).toEqual([2027, 2, 28]);
+    expect(calendarDay(value.nextBillingDate)).toEqual([2027, 3, 1]);
+  });
+
+  it('leaves the end of a trial empty when the trial has none', () => {
+    const value = toSubscriptionFormValue({ ...SUBSCRIPTION, status: 'trial', trialEndDate: null });
+
+    expect(value.trialEndDate).toBeNull();
+  });
+
+  // Saving an untouched form sends back what the API gave: the amount as a number, the same
+  // calendar days, the end of the trial only with a trial.
+  it.each<[string, Partial<Subscription>, CreateSubscriptionRequest]>([
+    ['an active subscription', {}, BODY],
+    [
+      'a yearly amount with a fraction',
+      { amount: '1234.50', billingCycle: 'yearly', paymentMethod: 'bank_transfer' },
+      { ...BODY, amount: 1234.5, billingCycle: 'yearly', paymentMethod: 'bank_transfer' },
+    ],
+    ['a zero amount', { amount: '0.00' }, { ...BODY, amount: 0 }],
+    ['the largest amount', { amount: '99999.99' }, { ...BODY, amount: 99999.99 }],
+    [
+      'a trial with its end',
+      { status: 'trial', trialEndDate: '2027-02-28', nextBillingDate: '2027-03-01' },
+      { ...BODY, status: 'trial', trialEndDate: '2027-02-28', nextBillingDate: '2027-03-01' },
+    ],
+    [
+      'a pending cancellation',
+      { status: 'cancelled_pending' },
+      { ...BODY, status: 'cancelled_pending' },
+    ],
+  ])('turns %s back into the API data', (_, subscription, body) => {
+    const value = toSubscriptionFormValue({ ...SUBSCRIPTION, ...subscription });
+
+    expect(toCreateSubscriptionRequest(value)).toStrictEqual(body);
   });
 });

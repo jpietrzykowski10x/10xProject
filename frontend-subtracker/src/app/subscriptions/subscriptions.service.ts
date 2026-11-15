@@ -24,6 +24,11 @@ export class SubscriptionsService {
     return this.http.post<Subscription>(`${this.apiUrl}/subscriptions`, request);
   }
 
+  // The whole subscription is replaced; 404 when it is gone (or belongs to another account).
+  update(id: string, request: CreateSubscriptionRequest): Observable<Subscription> {
+    return this.http.put<Subscription>(`${this.apiUrl}/subscriptions/${id}`, request);
+  }
+
   // Defaults first in their fixed order, then the user's own alphabetically.
   categories(): Observable<Category[]> {
     return this.http.get<Category[]>(`${this.apiUrl}/categories`);

@@ -440,31 +440,31 @@ Brak zmian schematu. Encje się nie zmieniają, więc reguła „migracja na kon
 
 #### Automated
 
-- [x] 1.1 Lint backendu przechodzi: `cd backend-subtracker && npm run lint`
-- [x] 1.2 Build backendu przechodzi: `cd backend-subtracker && npm run build`
-- [x] 1.3 Testy jednostkowe przechodzą: `cd backend-subtracker && npm test`
-- [x] 1.4 Testy e2e API przechodzą, w tym `routes.e2e-spec.ts`: `cd backend-subtracker && npm run test:e2e`
-- [x] 1.5 Sabotaż: po usunięciu filtra `userId` w `update` test dwóch kont jest czerwony; po cofnięciu zmiany znów zielony
+- [x] 1.1 Lint backendu przechodzi: `cd backend-subtracker && npm run lint` — f11c6df
+- [x] 1.2 Build backendu przechodzi: `cd backend-subtracker && npm run build` — f11c6df
+- [x] 1.3 Testy jednostkowe przechodzą: `cd backend-subtracker && npm test` — f11c6df
+- [x] 1.4 Testy e2e API przechodzą, w tym `routes.e2e-spec.ts`: `cd backend-subtracker && npm run test:e2e` — f11c6df
+- [x] 1.5 Sabotaż: po usunięciu filtra `userId` w `update` test dwóch kont jest czerwony; po cofnięciu zmiany znów zielony — f11c6df
 
 #### Manual
 
-- [x] 1.6 `migration:generate` na `subtracker-db` kończy się „No changes in database schema were found” (schemat bez zmian)
+- [x] 1.6 `migration:generate` na `subtracker-db` kończy się „No changes in database schema were found” (schemat bez zmian) — f11c6df
 
 ### Phase 2: Edycja w panelu
 
 #### Automated
 
-- [ ] 2.1 Build frontendu przechodzi: `cd frontend-subtracker && npm run build`
-- [ ] 2.2 Testy frontendu przechodzą w obu strefach: `cd frontend-subtracker && npm run test:ci`
-- [ ] 2.3 Sabotaż: po zamianie `update` na `create` w `submit` test edycji formularza jest czerwony; po cofnięciu zmiany znów zielony
+- [x] 2.1 Build frontendu przechodzi: `cd frontend-subtracker && npm run build`
+- [x] 2.2 Testy frontendu przechodzą w obu strefach: `cd frontend-subtracker && npm run test:ci`
+- [x] 2.3 Sabotaż: po zamianie `update` na `create` w `submit` test edycji formularza jest czerwony; po cofnięciu zmiany znów zielony
 
 #### Manual
 
-- [ ] 2.4 Desktop ≥ 1200 px: „Edytuj” otwiera panel obok tabeli z danymi wiersza, zapis zmienia wiersz i pokazuje komunikat
-- [ ] 2.5 840–1199 px: panel edycji zasłania tabelę, lista jest `inert`, Escape zamyka panel
-- [ ] 2.6 Telefon: „Edytuj” w rozwiniętych szczegółach otwiera pełny widok edycji, a zapis wraca do listy
-- [ ] 2.7 Szkic dodawania, potem „Edytuj” innego wiersza, potem „Dodaj subskrypcję”: formularz jest pusty, bez danych z edycji
-- [ ] 2.8 Trial z datą końca: pole daty jest widoczne i wypełnione, a zmiana statusu na „Aktywna” je ukrywa
+- [x] 2.4 Desktop ≥ 1200 px: „Edytuj” otwiera panel obok tabeli z danymi wiersza, zapis zmienia wiersz i pokazuje komunikat
+- [x] 2.5 840–1199 px: panel edycji zasłania tabelę, lista jest `inert`, Escape zamyka panel
+- [x] 2.6 Telefon: „Edytuj” w rozwiniętych szczegółach otwiera pełny widok edycji, a zapis wraca do listy
+- [x] 2.7 Szkic dodawania, potem „Edytuj” innego wiersza, potem „Dodaj subskrypcję”: formularz jest pusty, bez danych z edycji
+- [x] 2.8 Trial z datą końca: pole daty jest widoczne i wypełnione, a zmiana statusu na „Aktywna” je ukrywa
 
 ### Phase 3: Usuwanie z dialogiem
 

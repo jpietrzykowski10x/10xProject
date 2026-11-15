@@ -1,6 +1,6 @@
 <!-- On desktop the frame scrolls a narrow table sideways, so the page itself never does. It is
-     focusable there, so a keyboard can scroll it: the desktop table has nothing focusable inside
-     (on the phone every row is a button). -->
+     focusable there, so a keyboard can scroll it without stepping through the row actions (on the
+     phone every row is a button). -->
 <div
   class="table__frame"
   role="region"
@@ -88,6 +88,39 @@
       </td>
     </ng-container>
 
+    <!-- Icon buttons; the accessible name and the tooltip carry the action and the subscription. -->
+    <ng-container matColumnDef="actions">
+      <th mat-header-cell *matHeaderCellDef class="table__actions">
+        <span class="table__visually-hidden">Akcje</span>
+      </th>
+      <td
+        mat-cell
+        *matCellDef="let subscription; dataSource: subscriptions()"
+        class="table__actions"
+      >
+        @let editLabel = 'Edytuj ' + subscription.name;
+        @let removeLabel = 'Usuń ' + subscription.name;
+        <button
+          mat-icon-button
+          type="button"
+          [attr.aria-label]="editLabel"
+          [matTooltip]="editLabel"
+          (click)="edit.emit(subscription)"
+        >
+          <ng-container [ngTemplateOutlet]="editIcon" />
+        </button>
+        <button
+          mat-icon-button
+          type="button"
+          [attr.aria-label]="removeLabel"
+          [matTooltip]="removeLabel"
+          (click)="remove.emit(subscription)"
+        >
+          <ng-container [ngTemplateOutlet]="removeIcon" />
+        </button>
+      </td>
+    </ng-container>
+
     <!-- Phone: the whole row is one button -->
     <ng-container matColumnDef="summary">
       <td
@@ -150,6 +183,29 @@
             </div>
           }
         </dl>
+        <!-- Only in an open detail row, so the desktop has one button of each per row. -->
+        @if (isPhone() && expandedId() === subscription.id) {
+          <div class="details__actions">
+            <button
+              mat-stroked-button
+              type="button"
+              [attr.aria-label]="'Edytuj ' + subscription.name"
+              (click)="edit.emit(subscription)"
+            >
+              <ng-container [ngTemplateOutlet]="editIcon" />
+              Edytuj
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              [attr.aria-label]="'Usuń ' + subscription.name"
+              (click)="remove.emit(subscription)"
+            >
+              <ng-container [ngTemplateOutlet]="removeIcon" />
+              Usuń
+            </button>
+          </div>
+        }
       </td>
     </ng-container>
 
@@ -170,3 +226,44 @@
     ></tr>
   </table>
 </div>
+
+<!-- The row action icons, shared by the desktop icon buttons and the phone's text buttons. -->
+<ng-template #editIcon>
+  <!-- A pencil -->
+  <svg
+    class="action-icon"
+    aria-hidden="true"
+    focusable="false"
+    width="20"
+    height="20"
+    viewBox="0 0 20 20"
+  >
+    <path
+      d="M3.5 13.5V16.5H6.5L15.5 7.5L12.5 4.5ZM11 6L14 9"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linejoin="round"
+    />
+  </svg>
+</ng-template>
+<ng-template #removeIcon>
+  <!-- A trash can -->
+  <svg
+    class="action-icon"
+    aria-hidden="true"
+    focusable="false"
+    width="20"
+    height="20"
+    viewBox="0 0 20 20"
+  >
+    <path
+      d="M3.5 5.5H16.5M8 5.5V3.5H12V5.5M5.5 5.5L6.5 16.5H13.5L14.5 5.5M8.5 8.5V13.5M11.5 8.5V13.5"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+</ng-template>
