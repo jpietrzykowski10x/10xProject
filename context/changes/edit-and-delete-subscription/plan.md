@@ -470,27 +470,27 @@ Brak zmian schematu. Encje się nie zmieniają, więc reguła „migracja na kon
 
 #### Automated
 
-- [x] 3.1 Build frontendu przechodzi: `cd frontend-subtracker && npm run build`
-- [x] 3.2 Testy frontendu przechodzą w obu strefach: `cd frontend-subtracker && npm run test:ci`
-- [x] 3.3 Sabotaż: po usunięciu wywołania `delete` w dialogu test „Usuń wysyła DELETE” jest czerwony; po cofnięciu zmiany znów zielony
+- [x] 3.1 Build frontendu przechodzi: `cd frontend-subtracker && npm run build` — d47ed10
+- [x] 3.2 Testy frontendu przechodzą w obu strefach: `cd frontend-subtracker && npm run test:ci` — d47ed10
+- [x] 3.3 Sabotaż: po usunięciu wywołania `delete` w dialogu test „Usuń wysyła DELETE” jest czerwony; po cofnięciu zmiany znów zielony — d47ed10
 
 #### Manual
 
-- [x] 3.4 Desktop: „Usuń” otwiera dialog z nazwą, „Anuluj” zostawia wiersz, „Usuń” usuwa wiersz i pokazuje komunikat
-- [x] 3.5 Telefon: dialog mieści się na ekranie, przyciski są dostępne kciukiem, a usunięcie z rozwiniętych szczegółów działa
-- [x] 3.6 Klawiatura: Tab nie wychodzi z dialogu, Escape go zamyka, a fokus wraca na „Usuń”
-- [x] 3.7 Usunięcie subskrypcji, która jest otwarta w panelu edycji, zamyka panel
-- [x] 3.8 API wyłączone: dialog pokazuje alert i zostaje otwarty
+- [x] 3.4 Desktop: „Usuń” otwiera dialog z nazwą, „Anuluj” zostawia wiersz, „Usuń” usuwa wiersz i pokazuje komunikat — d47ed10
+- [x] 3.5 Telefon: dialog mieści się na ekranie, przyciski są dostępne kciukiem, a usunięcie z rozwiniętych szczegółów działa — d47ed10
+- [x] 3.6 Klawiatura: Tab nie wychodzi z dialogu, Escape go zamyka, a fokus wraca na „Usuń” — d47ed10
+- [x] 3.7 Usunięcie subskrypcji, która jest otwarta w panelu edycji, zamyka panel — d47ed10
+- [x] 3.8 API wyłączone: dialog pokazuje alert i zostaje otwarty — d47ed10
 
 ### Phase 4: Test przeglądarkowy i cookbook
 
 #### Automated
 
-- [ ] 4.1 Build backendu dla API e2e: `cd backend-subtracker && npm run build`
-- [ ] 4.2 Build e2e frontendu: `cd frontend-subtracker && npm run build:e2e`
-- [ ] 4.3 Testy przeglądarkowe przechodzą: `cd frontend-subtracker && npm run e2e`
-- [ ] 4.4 Sabotaż: po zamianie `load(true)` po usunięciu na brak odświeżenia, z ponownym `build:e2e`, test jest czerwony; po cofnięciu zmiany i ponownym buildzie znów zielony
+- [x] 4.1 Build backendu dla API e2e: `cd backend-subtracker && npm run build`
+- [x] 4.2 Build e2e frontendu: `cd frontend-subtracker && npm run build:e2e`
+- [x] 4.3 Testy przeglądarkowe przechodzą: `cd frontend-subtracker && npm run e2e`
+- [x] 4.4 Sabotaż: po zamianie `load(true)` po usunięciu na brak odświeżenia, z ponownym `build:e2e`, test jest czerwony; po cofnięciu zmiany i ponownym buildzie znów zielony
 
 #### Manual
 
-- [ ] 4.5 Wpisy §6.2, §6.4 i §6.5 w `test-plan.md` wskazują istniejące pliki i polecenia
+- [x] 4.5 Wpisy §6.2, §6.4 i §6.5 w `test-plan.md` wskazują istniejące pliki i polecenia
