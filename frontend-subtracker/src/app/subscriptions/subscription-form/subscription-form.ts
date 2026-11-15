@@ -146,6 +146,8 @@ export class SubscriptionForm implements OnInit {
   protected readonly addingCategory = signal(false);
   protected readonly categoryFailed = signal(false);
   protected readonly state = signal<SaveState>('idle');
+  // A save is in flight: the panel keeps the form open until it answers.
+  readonly sending = computed(() => this.state() === 'sending');
 
   private readonly statusValue = toSignal(this.status.valueChanges, {
     initialValue: this.status.value,

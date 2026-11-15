@@ -64,6 +64,7 @@ export class Subscriptions implements OnInit {
   private readonly phoneAddButton = viewChild.required<MatButton>('phoneAddButton');
   private readonly panelTitle = viewChild<ElementRef<HTMLElement>>('panelTitle');
   private readonly listArea = viewChild.required<ElementRef<HTMLElement>>('listArea');
+  private readonly form = viewChild(SubscriptionForm);
   private readonly document = inject(DOCUMENT);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
@@ -105,6 +106,9 @@ export class Subscriptions implements OnInit {
     { initialValue: this.breakpoints.isMatched(WIDE_MEDIA_QUERY) },
   );
   protected readonly listCovered = computed(() => this.panelOpen() && !this.isWide());
+  // While the panel's form (add or edit) is saving, the panel stays as it is: closing or swapping
+  // it would destroy the form and drop the answer, so the save always ends with its message.
+  private readonly formSending = computed(() => this.form()?.sending() ?? false);
 
   constructor() {
     // When the panel starts covering the list (it opens below 1200px, or the window narrows while
@@ -164,6 +168,9 @@ export class Subscriptions implements OnInit {
 
   // From an edit (the list is visible beside the panel from 1200px) it switches to adding.
   protected toggleAdding(): void {
+    if (this.formSending()) {
+      return;
+    }
     if (this.adding()) {
       this.close();
     } else {
@@ -175,6 +182,9 @@ export class Subscriptions implements OnInit {
 
   // Opening an edit drops an add draft. Editing the same subscription again keeps its form.
   protected openEdit(subscription: Subscription): void {
+    if (this.formSending()) {
+      return;
+    }
     const active = this.document.activeElement;
     this.editTrigger = active instanceof HTMLElement ? active : null;
     this.keepAddDraft.set(false);
@@ -195,7 +205,11 @@ export class Subscriptions implements OnInit {
     this.close();
   }
 
+  // Ignored while the form is saving (Escape, the X, "Dodaj subskrypcję" all end up here).
   protected close(): void {
+    if (this.formSending()) {
+      return;
+    }
     const trigger = this.editing() !== null ? this.editTrigger : null;
     this.editTrigger = null;
     this.panel.set(CLOSED);
@@ -241,8 +255,6 @@ export class Subscriptions implements OnInit {
         } else {
           this.focusAddControl();
         }
-        // Cleared first, so the same message after a second delete is announced again.
-        this.statusMessage.set(null);
         this.showStatus(
           result === 'deleted'
             ? deletedSubscriptionMessage(subscription.name)
@@ -253,7 +265,9 @@ export class Subscriptions implements OnInit {
   }
 
   // Set once the list is visible again (on the phone it was hidden), so the region announces it.
+  // Cleared first, so the same message a second time (e.g. after a second delete) is announced.
   private showStatus(message: string): void {
+    this.statusMessage.set(null);
     afterNextRender(() => this.statusMessage.set(message), { injector: this.injector });
   }
 

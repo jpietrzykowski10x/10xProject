@@ -1,6 +1,7 @@
 <h2 mat-dialog-title>Usunąć subskrypcję?</h2>
 <mat-dialog-content>
-  <p class="dialog__text">
+  <!-- The dialog's description (ariaDescribedBy in openDeleteSubscriptionDialog). -->
+  <p id="delete-subscription-description" class="dialog__text">
     Subskrypcja „{{ subscription.name }}” zniknie z listy. Usunięcia nie da się cofnąć.
   </p>
   <p class="dialog__text">
@@ -17,9 +18,7 @@
 <!-- "Anuluj" comes first, so it gets the focus when the dialog opens. While the DELETE is in
      flight both buttons are disabled; "Usuń" keeps the focus (disabledInteractive). -->
 <mat-dialog-actions align="end" class="dialog__actions">
-  <button mat-stroked-button type="button" [disabled]="sending()" (click)="cancel()">
-    Anuluj
-  </button>
+  <button mat-stroked-button type="button" [disabled]="sending()" (click)="cancel()">Anuluj</button>
   <button
     mat-flat-button
     type="button"

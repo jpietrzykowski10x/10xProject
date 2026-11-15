@@ -60,6 +60,10 @@ describe('DeleteSubscriptionDialog', () => {
     const dialog = await loader.getHarness(MatDialogHarness);
     expect(await dialog.getTitleText()).toBe('Usunąć subskrypcję?');
     expect(await dialog.getContentText()).toContain('„Netflix”');
+    // An alert dialog, described by the sentence that names the subscription.
+    expect(await dialog.getRole()).toBe('alertdialog');
+    const describedBy = await dialog.getAriaDescribedby();
+    expect(document.getElementById(describedBy ?? '')?.textContent).toContain('„Netflix”');
   });
 
   // The oracle is the API contract: DELETE /subscriptions/:id, 204 when deleted.

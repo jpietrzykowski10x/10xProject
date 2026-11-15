@@ -124,10 +124,17 @@ export class SubscriptionsService {
     }
     const category = await this.usableCategory(userId, dto.categoryId);
 
-    const saved = await this.subscriptions.save(
-      this.subscriptions.merge(subscription, subscriptionFields(dto, category)),
+    // update(), not save(): save() would INSERT the row again if a DELETE (e.g. from another
+    // tab) removed it after the read above.
+    const fields = subscriptionFields(dto, category);
+    const result = await this.subscriptions.update({ id, userId }, fields);
+    if (!result.affected) {
+      throw new NotFoundException(NOT_FOUND_MESSAGE);
+    }
+    return toSubscriptionResponse(
+      this.subscriptions.merge(subscription, fields),
+      category,
     );
-    return toSubscriptionResponse(saved, category);
   }
 
   async remove(userId: string, id: string): Promise<void> {

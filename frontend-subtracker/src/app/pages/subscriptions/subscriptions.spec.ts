@@ -113,6 +113,43 @@ describe('Subscriptions', () => {
     expect(host.querySelector('#subscription-panel')).toBeNull();
   });
 
+  // Closing the panel would destroy the form and drop the PUT's answer, so while it is in flight
+  // Escape and the X leave the panel open; the answer then closes it with the message.
+  it('keeps the edit panel open while the save is in flight', async () => {
+    const { httpTesting, fixture, loader } = createPage();
+    await fixture.whenStable();
+    httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([NETFLIX]);
+    await fixture.whenStable();
+
+    await (
+      await loader.getHarness(MatButtonHarness.with({ selector: '[aria-label="Edytuj Netflix"]' }))
+    ).click();
+    httpTesting.expectOne({ method: 'GET', url: CATEGORIES_URL }).flush([NETFLIX.category]);
+    await fixture.whenStable();
+    await (await loader.getHarness(MatButtonHarness.with({ text: 'Zapisz zmiany' }))).click();
+    const update = httpTesting.expectOne({
+      method: 'PUT',
+      url: `${SUBSCRIPTIONS_URL}/${NETFLIX.id}`,
+    });
+
+    const host = fixture.nativeElement as HTMLElement;
+    const panel = host.querySelector<HTMLElement>('#subscription-panel');
+    panel?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    host.querySelector<HTMLElement>('[aria-label="Zamknij panel"]')?.click();
+    await fixture.whenStable();
+    expect(host.querySelector('#subscription-panel')).not.toBeNull();
+
+    update.flush(NETFLIX);
+    await fixture.whenStable();
+    httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([NETFLIX]);
+    await fixture.whenStable();
+
+    expect(host.querySelector('#subscription-panel')).toBeNull();
+    expect(host.querySelector('[role="status"]')?.textContent?.trim()).toBe(
+      'Zapisano zmiany w subskrypcji „Netflix”.',
+    );
+  });
+
   it('closes the edit panel on "Anuluj" without saving or reading the list again', async () => {
     const { httpTesting, fixture, loader } = createPage();
     await fixture.whenStable();

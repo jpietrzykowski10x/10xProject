@@ -96,5 +96,29 @@ describe('Subscriptions — account isolation (e2e)', () => {
         await repository(Subscription).findOneByOrFail({ id: created.id }),
       ).toEqual(stored);
     });
+
+    it("refuses an edit that moves a subscription into another account's category", async () => {
+      const { owner, other } = await twoAccounts();
+      const created = (
+        await postSubscription(owner.cookie, subscriptionBody()).expect(201)
+      ).body as SubscriptionResponse;
+      const stored = await repository(Subscription).findOneByOrFail({
+        id: created.id,
+      });
+      const otherCategory = (
+        await postCategory(other.cookie, 'Praca').expect(201)
+      ).body as CategoryResponse;
+
+      await putSubscription(
+        owner.cookie,
+        created.id,
+        subscriptionBody({ name: 'Spotify', categoryId: otherCategory.id }),
+      ).expect(400);
+
+      expect(await getSubscriptions(owner.cookie)).toEqual([created]);
+      expect(
+        await repository(Subscription).findOneByOrFail({ id: created.id }),
+      ).toEqual(stored);
+    });
   });
 });

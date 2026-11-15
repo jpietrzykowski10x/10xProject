@@ -22,6 +22,9 @@ export interface DeleteSubscriptionDialogData {
 // longer on the account. "Anuluj" and Escape close the dialog without a result.
 export type DeleteSubscriptionResult = 'deleted' | 'missing';
 
+// Fixed: only one such dialog is open at a time.
+const DELETE_SUBSCRIPTION_DESCRIPTION_ID = 'delete-subscription-description';
+
 // Opens the confirmation with its focus on "Anuluj", the first button; after "Anuluj" or Escape
 // MatDialog returns the focus to the button that opened it. On the phone it keeps a 16px margin.
 export function openDeleteSubscriptionDialog(
@@ -34,6 +37,9 @@ export function openDeleteSubscriptionDialog(
     DeleteSubscriptionResult
   >(DeleteSubscriptionDialog, {
     data: { subscription },
+    // A destructive confirmation: an alert dialog, described by the sentence naming the subscription.
+    role: 'alertdialog',
+    ariaDescribedBy: DELETE_SUBSCRIPTION_DESCRIPTION_ID,
     autoFocus: 'first-tabbable',
     width: '480px',
     maxWidth: 'calc(100vw - 32px)',

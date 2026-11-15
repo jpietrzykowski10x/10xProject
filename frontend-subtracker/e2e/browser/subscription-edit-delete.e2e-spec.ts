@@ -104,7 +104,7 @@ test('a subscription edited in the panel and then deleted in the dialog stays ch
 
   // 3. Delete: the dialog names the subscription; "Usuń" in it sends DELETE.
   await page.getByRole('button', { name: `Usuń ${editedName}`, exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Usunąć subskrypcję?' });
+  const dialog = page.getByRole('alertdialog', { name: 'Usunąć subskrypcję?' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText(editedName)).toBeVisible();
   await dialog.getByRole('button', { name: 'Usuń', exact: true }).click();
