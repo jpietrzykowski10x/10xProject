@@ -486,11 +486,11 @@ Brak zmian schematu. Encje się nie zmieniają, więc reguła „migracja na kon
 
 #### Automated
 
-- [x] 4.1 Build backendu dla API e2e: `cd backend-subtracker && npm run build`
-- [x] 4.2 Build e2e frontendu: `cd frontend-subtracker && npm run build:e2e`
-- [x] 4.3 Testy przeglądarkowe przechodzą: `cd frontend-subtracker && npm run e2e`
-- [x] 4.4 Sabotaż: po zamianie `load(true)` po usunięciu na brak odświeżenia, z ponownym `build:e2e`, test jest czerwony; po cofnięciu zmiany i ponownym buildzie znów zielony
+- [x] 4.1 Build backendu dla API e2e: `cd backend-subtracker && npm run build` — d02b606
+- [x] 4.2 Build e2e frontendu: `cd frontend-subtracker && npm run build:e2e` — d02b606
+- [x] 4.3 Testy przeglądarkowe przechodzą: `cd frontend-subtracker && npm run e2e` — d02b606
+- [x] 4.4 Sabotaż: po zamianie `load(true)` po usunięciu na brak odświeżenia, z ponownym `build:e2e`, test jest czerwony; po cofnięciu zmiany i ponownym buildzie znów zielony — d02b606
 
 #### Manual
 
-- [x] 4.5 Wpisy §6.2, §6.4 i §6.5 w `test-plan.md` wskazują istniejące pliki i polecenia
+- [x] 4.5 Wpisy §6.2, §6.4 i §6.5 w `test-plan.md` wskazują istniejące pliki i polecenia — d02b606
