@@ -1,0 +1,42 @@
+@let current = state();
+@if (current.kind === 'loading') {
+  <p class="totals__muted">Wczytywanie sum…</p>
+} @else if (current.kind === 'error') {
+  <p class="totals__muted">Nie udało się wczytać sum.</p>
+} @else {
+  @let totals = current.totals;
+  <div class="totals__sums">
+    <div class="totals__monthly">
+      <div class="totals__label">Miesięcznie</div>
+      <div class="totals__amount st-amount">
+        {{ totals.monthly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+      </div>
+    </div>
+    <div class="totals__yearly">
+      <div class="totals__label">Rocznie</div>
+      <div class="st-amount">{{ totals.yearly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}</div>
+    </div>
+  </div>
+
+  <!-- Only categories with a counted subscription, in the API's order (monthly, descending). -->
+  @if (totals.categories.length > 0) {
+    <details class="totals__categories">
+      <summary class="totals__summary">Kategorie</summary>
+      <dl class="totals__list">
+        @for (item of totals.categories; track item.category.id) {
+          <div class="totals__category">
+            <dt class="totals__category-name">{{ item.category.name }}</dt>
+            <dd class="totals__category-monthly st-amount">
+              {{ item.monthly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+            </dd>
+            <!-- "516,00 zł rocznie · 1 subskrypcja" -->
+            <dd class="totals__category-note st-amount">
+              {{ item.yearly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }} rocznie ·
+              {{ subscriptionCountLabel(item.subscriptionCount) }}
+            </dd>
+          </div>
+        }
+      </dl>
+    </details>
+  }
+}

@@ -1,0 +1,109 @@
+// On the navy column and header: white text, labels and notes in --st-navy-soft. Lime stays
+// reserved for the budget bar (S-08).
+:host {
+  display: block;
+  color: #fff;
+}
+
+.totals__muted {
+  margin: 0;
+  color: var(--st-navy-soft);
+  font-size: 14px;
+}
+
+.totals__label {
+  color: var(--st-navy-soft);
+  font-size: 13px;
+}
+
+.totals__sums {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.totals__amount {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.totals__yearly {
+  font-size: 16px;
+}
+
+.totals__categories {
+  margin-top: 16px;
+}
+
+.totals__summary {
+  padding: 4px 0;
+  font-weight: 600;
+  cursor: pointer;
+
+  // The global focus outline is navy, which disappears on the navy column and header.
+  &:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+}
+
+.totals__list {
+  margin: 8px 0 0;
+}
+
+.totals__category {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--st-navy-line);
+
+  dd {
+    margin: 0;
+  }
+}
+
+.totals__category-name {
+  overflow-wrap: anywhere;
+}
+
+.totals__category-monthly {
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.totals__category-note {
+  grid-column: 1 / -1;
+  color: var(--st-navy-soft);
+  font-size: 13px;
+}
+
+// Phone header: the two sums side by side in one row, smaller. The monthly sum goes on the right
+// and the yearly on the left, like the monthly amount and the "rocznie" note of a category row
+// below them. Only the visual order changes: the monthly sum stays first in the DOM.
+:host(.totals--bar) {
+  .totals__sums {
+    flex-direction: row-reverse;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .totals__monthly {
+    text-align: right;
+  }
+
+  .totals__amount {
+    font-size: 22px;
+  }
+
+  .totals__yearly {
+    font-size: 14px;
+  }
+
+  .totals__categories {
+    margin-top: 8px;
+  }
+}

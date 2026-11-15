@@ -312,27 +312,27 @@ Brak zmian schematu i danych. Deploy bez migracji.
 
 #### Automated
 
-- [x] 1.1 Testy jednostkowe przechodzą, w tym `grosze.spec.ts` i `cost-totals.spec.ts`: `cd backend-subtracker && npm test`
-- [x] 1.2 Lint przechodzi: `cd backend-subtracker && npm run lint`
-- [x] 1.3 Build przechodzi: `cd backend-subtracker && npm run build`
-- [x] 1.4 Testy e2e przechodzą, w tym rejestr tras, 401, izolacja i `cost-totals.e2e-spec.ts`: `cd backend-subtracker && npm run test:e2e`
-- [x] 1.5 `npm run migration:generate -- CostTotalsCheck` kończy się „No changes in database schema were found” (zmiana nie dotyka schematu)
+- [x] 1.1 Testy jednostkowe przechodzą, w tym `grosze.spec.ts` i `cost-totals.spec.ts`: `cd backend-subtracker && npm test` — c1b6e25
+- [x] 1.2 Lint przechodzi: `cd backend-subtracker && npm run lint` — c1b6e25
+- [x] 1.3 Build przechodzi: `cd backend-subtracker && npm run build` — c1b6e25
+- [x] 1.4 Testy e2e przechodzą, w tym rejestr tras, 401, izolacja i `cost-totals.e2e-spec.ts`: `cd backend-subtracker && npm run test:e2e` — c1b6e25
+- [x] 1.5 `npm run migration:generate -- CostTotalsCheck` kończy się „No changes in database schema were found” (zmiana nie dotyka schematu) — c1b6e25
 
 #### Manual
 
-- [x] 1.6 Po `dev-local/test-session.mjs seed` odpowiedź `GET /subscriptions/totals` zgadza się z ręcznym przeliczeniem danych z listy
+- [x] 1.6 Po `dev-local/test-session.mjs seed` odpowiedź `GET /subscriptions/totals` zgadza się z ręcznym przeliczeniem danych z listy — c1b6e25
 
 ### Phase 2: Sumy w powłoce zalogowanego
 
 #### Automated
 
-- [ ] 2.1 Testy jednostkowe i komponentów przechodzą w obu strefach czasowych: `cd frontend-subtracker && npm run test:ci`
-- [ ] 2.2 Build produkcyjny przechodzi: `cd frontend-subtracker && npm run build`
-- [ ] 2.3 Istniejące testy przeglądarkowe przechodzą bez zmian: `cd frontend-subtracker && npm run build:e2e && npm run e2e`
+- [x] 2.1 Testy jednostkowe i komponentów przechodzą w obu strefach czasowych: `cd frontend-subtracker && npm run test:ci`
+- [x] 2.2 Build produkcyjny przechodzi: `cd frontend-subtracker && npm run build`
+- [x] 2.3 Istniejące testy przeglądarkowe przechodzą bez zmian: `cd frontend-subtracker && npm run build:e2e && npm run e2e`
 
 #### Manual
 
-- [ ] 2.4 Desktop (≥ 840 px): sumy w granatowej kolumnie, kategorie rozwijają się i zwijają z klawiatury, fokus widoczny
-- [ ] 2.5 Telefon (< 840 px): sumy w nagłówku, rozwijane kategorie nie psują menu ani układu listy
-- [ ] 2.6 Po dodaniu, edycji (także zmianie statusu na „Anulowana”) i usunięciu subskrypcji sumy zmieniają się bez przeładowania i zgadzają z ręcznym wyliczeniem
-- [ ] 2.7 Puste konto pokazuje „0,00 zł” w obu miejscach; po wylogowaniu i zalogowaniu na inne konto w tej samej karcie nie widać sum poprzedniego konta
+- [x] 2.4 Desktop (≥ 840 px): sumy w granatowej kolumnie, kategorie rozwijają się i zwijają z klawiatury, fokus widoczny
+- [x] 2.5 Telefon (< 840 px): sumy w nagłówku, rozwijane kategorie nie psują menu ani układu listy
+- [x] 2.6 Po dodaniu, edycji (także zmianie statusu na „Anulowana”) i usunięciu subskrypcji sumy zmieniają się bez przeładowania i zgadzają z ręcznym wyliczeniem
+- [x] 2.7 Puste konto pokazuje „0,00 zł” w obu miejscach; po wylogowaniu i zalogowaniu na inne konto w tej samej karcie nie widać sum poprzedniego konta

@@ -70,13 +70,20 @@
   outline-offset: 2px;
 }
 
+// The wordmark and the menu button in the first row, the cost totals wrapped to a second one.
 .shell__bar {
   display: none;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   padding: 4px 16px 16px;
   background: var(--st-navy);
   color: #fff;
+}
+
+.shell__bar-totals {
+  flex: 1 0 100%;
+  margin-top: 8px;
 }
 
 .shell__wordmark--bar {

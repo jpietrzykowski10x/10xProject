@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import type {
   Category,
+  CostTotals,
   CreateCategoryRequest,
   CreateSubscriptionRequest,
   Subscription,
@@ -18,6 +19,11 @@ export class SubscriptionsService {
   // Already in display order (status group, then the nearest date, then the name).
   list(): Observable<Subscription[]> {
     return this.http.get<Subscription[]>(`${this.apiUrl}/subscriptions`);
+  }
+
+  // The account's cost totals; the categories come already in display order.
+  totals(): Observable<CostTotals> {
+    return this.http.get<CostTotals>(`${this.apiUrl}/subscriptions/totals`);
   }
 
   create(request: CreateSubscriptionRequest): Observable<Subscription> {

@@ -12,6 +12,8 @@
     >
   </nav>
 
+  <app-cost-totals variant="column" />
+
   <div class="shell__account">
     <p class="shell__email">{{ user()?.email }}</p>
     <button type="button" class="shell__logout" [disabled]="loggingOut()" (click)="logout()">
@@ -27,6 +29,8 @@
       <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" fill="none" />
     </svg>
   </button>
+  <!-- The second row, under the wordmark and the menu button. -->
+  <app-cost-totals variant="bar" class="shell__bar-totals" />
 </header>
 
 <mat-menu #menu="matMenu" xPosition="before">

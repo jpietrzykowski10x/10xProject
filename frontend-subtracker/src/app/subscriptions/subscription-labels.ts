@@ -1,5 +1,6 @@
 // The single source of the Polish names of subscription codes, for the list and the form.
 import { daysFromToday } from '../shared/date-only';
+import { polishPlural } from '../shared/polish-plural';
 import type {
   BillingCycle,
   PaymentMethod,
@@ -110,3 +111,10 @@ export function deletedSubscriptionMessage(name: string): string {
 
 // The status message when the edited subscription is gone (e.g. deleted in another tab).
 export const missingSubscriptionMessage = 'Tej subskrypcji już nie ma na liście.';
+
+const SUBSCRIPTION_FORMS = { one: 'subskrypcja', few: 'subskrypcje', many: 'subskrypcji' };
+
+// "1 subskrypcja", "3 subskrypcje", "12 subskrypcji": the count in a category of the cost totals.
+export function subscriptionCountLabel(count: number): string {
+  return `${count} ${polishPlural(count, SUBSCRIPTION_FORMS)}`;
+}

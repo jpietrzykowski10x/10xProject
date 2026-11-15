@@ -51,3 +51,22 @@ export interface CreateSubscriptionRequest {
 export interface CreateCategoryRequest {
   name: string;
 }
+
+// GET /subscriptions/totals (backend cost-totals.ts). Amounts are in the API's format ("102.82").
+// Only trial, active and cancelled_pending subscriptions count. `monthly` is the sum of the
+// per-subscription monthly amounts (a yearly one divided by 12 and rounded each); `yearly` is the
+// real yearly spend (monthly × 12 plus yearly unchanged).
+export interface CategoryCostTotal {
+  category: Category;
+  monthly: string;
+  yearly: string;
+  subscriptionCount: number;
+}
+
+// `categories` holds only categories with a counted subscription, in display order: monthly
+// descending, then the Polish name order.
+export interface CostTotals {
+  monthly: string;
+  yearly: string;
+  categories: CategoryCostTotal[];
+}
