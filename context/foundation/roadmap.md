@@ -47,7 +47,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-02 | first-subscription-in-list        | użytkownik dodaje subskrypcję ze wszystkimi szczegółami i widzi ją na liście      | S-01, F-02    | FR-004, FR-007, FR-018, US-01 | done |
 | F-03 | frontend-unit-tests               | (foundation) frontend ma test runner, testy jednostkowe w CI i pierwsze testy helperów `shared/` | S-02          | Guardrails                    | done |
 | S-03 | edit-and-delete-subscription      | użytkownik poprawia lub usuwa błędnie dodaną subskrypcję                          | S-02, F-03    | FR-005, FR-006                | done |
-| S-04 | dashboard-cost-totals             | użytkownik widzi sumę miesięczną i roczną z podziałem na kategorie                | S-02          | FR-008, US-01                 | in-progress |
+| S-04 | dashboard-cost-totals             | użytkownik widzi sumę miesięczną i roczną z podziałem na kategorie                | S-02          | FR-008, US-01                 | done |
 | S-05 | subscription-lifecycle            | subskrypcja sama przechodzi trial → active i cancelled_pending → cancelled        | S-02          | FR-013                        | proposed |
 | S-06 | trial-end-reminder                | użytkownik dostaje e-mail 7 dni przed końcem okresu próbnego                      | S-05          | FR-014                        | proposed |
 | S-07 | category-duplicate-warning        | użytkownik widzi ostrzeżenie, gdy kategoria przekroczy jego próg subskrypcji      | S-04          | FR-009, FR-005                | proposed |
@@ -175,7 +175,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - Czy do sum wliczają się subskrypcje w trialu i w cancelled_pending? — Owner: user. Block: no.
 - **Ustalenia z S-02:** `amount` to kwota za cykl (`monthly` / `yearly`), w API string `"43.00"`; lista zwraca także subskrypcje anulowane (`cancelled`), więc sumy muszą je odfiltrować świadomie. Frontend ma już `monthlyAmount` (dzielenie rocznej przez 12 w groszach, `Math.round`) dla dopisku na liście — sumy po stronie API muszą liczyć tak samo (w groszach), inaczej lista i dashboard pokażą różne kwoty.
 - **Risk:** Drugie kryterium sukcesu (100% zgodności sum) — błąd przeliczenia roczne ↔ miesięczne propaguje się do budżetu (S-08), więc S-04 stoi przed alertami.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-05: Automatyczny cykl życia subskrypcji
 
@@ -307,3 +307,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-02: użytkownik dodaje subskrypcję (nazwa, kategoria z predefiniowanej listy lub własna, kwota w PLN, cykl miesięczny/roczny, forma płatności z zamkniętej listy, status, data końca triala, data następnego rozliczenia) i natychmiast widzi ją w tabeli wszystkich swoich subskrypcji.** — Archived 2026-11-11 → `context/archive/2026-11-11-first-subscription-in-list/`. Lesson: —.
 - **F-03: (foundation) `frontend-subtracker` ma działający test runner (`ng test` / `npm test`), testy jednostkowe uruchamiane w CI (`ci.yml`, job `frontend`) i pierwsze testy czystych helperów: `shared/decimal.ts` (`parseDecimal`), `shared/pl-date-adapter.ts` (`parse`, w tym 31.02 i `d.m.rrrr`), `shared/date-only.ts` (`daysFromToday`, `toDateOnly` bez przesunięcia strefy), `subscriptions/subscription-amounts.ts` (`monthlyAmount`) i walidatory formularza subskrypcji. Kontrola celowego uszkodzenia dla każdego testu.** — Archived 2026-11-13 → `context/archive/2026-11-13-frontend-unit-tests/`. Lesson: —.
 - **S-03: użytkownik poprawia dane istniejącej subskrypcji albo trwale usuwa błędnie dodaną — odrębnie od anulowania usługi w cyklu życia.** — Archived 2026-11-15 → `context/archive/2026-11-15-edit-and-delete-subscription/`. Lesson: —.
+- **S-04: użytkownik widzi na dashboardzie łączny koszt subskrypcji miesięcznie i rocznie, z podziałem na kategorie, zgodny z ręcznym wyliczeniem.** — Archived 2026-11-15 → `context/archive/2026-11-15-dashboard-cost-totals/`. Lesson: —.

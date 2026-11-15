@@ -1,10 +1,10 @@
 ---
 change_id: dashboard-cost-totals
 title: Dashboard cost totals
-status: impl_reviewed
+status: archived
 created: 2026-11-15
 updated: 2026-11-15
-archived_at: null
+archived_at: 2026-11-15T18:41:14Z
 ---
 
 ## Notes
