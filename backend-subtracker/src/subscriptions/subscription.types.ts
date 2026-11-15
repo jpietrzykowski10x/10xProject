@@ -51,3 +51,18 @@ export interface SubscriptionResponse {
   nextBillingDate: string;
   createdAt: Date;
 }
+
+// The cost of the counted subscriptions of one category (amounts as in SubscriptionResponse).
+export interface CategoryCostTotal {
+  category: CategoryResponse;
+  monthly: string; // "35.83"
+  yearly: string; // "429.99"
+  subscriptionCount: number;
+}
+
+// GET /subscriptions/totals: the sums are the sums of the category values.
+export interface CostTotalsResponse {
+  monthly: string;
+  yearly: string;
+  categories: CategoryCostTotal[]; // monthly desc, then Polish name order
+}

@@ -30,6 +30,7 @@ describe('Subscriptions — access (e2e)', () => {
     await http().post('/categories').send({ name: 'Praca' }).expect(401);
     await http().get('/subscriptions').expect(401);
     await http().post('/subscriptions').send(subscriptionBody()).expect(401);
+    await http().get('/subscriptions/totals').expect(401);
     await http()
       .put(`/subscriptions/${UNKNOWN_ID}`)
       .send(subscriptionBody())
@@ -66,6 +67,7 @@ describe('Subscriptions — access (e2e)', () => {
     await postCategory(cookie, 'Praca').expect(401);
     await http().get('/subscriptions').set('Cookie', cookie).expect(401);
     await postSubscription(cookie, subscriptionBody()).expect(401);
+    await http().get('/subscriptions/totals').set('Cookie', cookie).expect(401);
     await putSubscription(cookie, UNKNOWN_ID, subscriptionBody()).expect(401);
     await deleteSubscription(cookie, UNKNOWN_ID).expect(401);
   });

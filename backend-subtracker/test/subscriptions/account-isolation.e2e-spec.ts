@@ -5,7 +5,11 @@ import type {
   SubscriptionResponse,
 } from '../../src/subscriptions/subscription.types.js';
 import { createE2eApp, UNKNOWN_ID } from '../support/e2e-app.js';
-import { subscriptionBody, subscriptionRequests } from './subscriptions-e2e.js';
+import {
+  OTHER_CATEGORY_ID,
+  subscriptionBody,
+  subscriptionRequests,
+} from './subscriptions-e2e.js';
 
 // The two-account pattern (test plan §6.4): the owner creates a resource, the other account must
 // not reach it. A new route by id adds its test here and names it in routes.e2e-spec.ts.
@@ -14,7 +18,7 @@ describe('Subscriptions — account isolation (e2e)', () => {
   // the backend-e2e job) with a fake mail transport. Every row these tests create hangs off a
   // recognisable address and is removed at the end.
   const e2e = createE2eApp({ addressPrefix: 'e2e-subscriptions-isolation-' });
-  const { repository, twoAccounts, userIdOf } = e2e;
+  const { repository, signIn, twoAccounts, userIdOf } = e2e;
   const {
     postSubscription,
     putSubscription,
@@ -22,6 +26,7 @@ describe('Subscriptions — account isolation (e2e)', () => {
     postCategory,
     getSubscriptions,
     getCategories,
+    getTotals,
   } = subscriptionRequests(e2e);
 
   beforeAll(() => e2e.start());
@@ -49,6 +54,39 @@ describe('Subscriptions — account isolation (e2e)', () => {
       ).expect(400);
       // The same name is free for another account.
       await postCategory(other.cookie, 'Praca').expect(201);
+    });
+
+    it('sums the costs of each account from its own subscriptions only', async () => {
+      const { owner, other } = await twoAccounts();
+      const empty = await signIn();
+      await postSubscription(
+        owner.cookie,
+        subscriptionBody({ amount: 43 }),
+      ).expect(201);
+      await postSubscription(
+        other.cookie,
+        subscriptionBody({ name: 'Spotify', amount: 19.99 }),
+      ).expect(201);
+
+      const otherTotals = await getTotals(other.cookie);
+      // 1999 gr a month, 1999 × 12 = 23988 gr a year
+      expect(otherTotals).toEqual({
+        monthly: '19.99',
+        yearly: '239.88',
+        categories: [
+          {
+            category: { id: OTHER_CATEGORY_ID, name: 'Inne', isDefault: true },
+            monthly: '19.99',
+            yearly: '239.88',
+            subscriptionCount: 1,
+          },
+        ],
+      });
+      expect(await getTotals(empty.cookie)).toEqual({
+        monthly: '0.00',
+        yearly: '0.00',
+        categories: [],
+      });
     });
 
     it('refuses an unknown category and a userId in the body', async () => {

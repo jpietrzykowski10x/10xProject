@@ -47,7 +47,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-02 | first-subscription-in-list        | użytkownik dodaje subskrypcję ze wszystkimi szczegółami i widzi ją na liście      | S-01, F-02    | FR-004, FR-007, FR-018, US-01 | done |
 | F-03 | frontend-unit-tests               | (foundation) frontend ma test runner, testy jednostkowe w CI i pierwsze testy helperów `shared/` | S-02          | Guardrails                    | done |
 | S-03 | edit-and-delete-subscription      | użytkownik poprawia lub usuwa błędnie dodaną subskrypcję                          | S-02, F-03    | FR-005, FR-006                | done |
-| S-04 | dashboard-cost-totals             | użytkownik widzi sumę miesięczną i roczną z podziałem na kategorie                | S-02          | FR-008, US-01                 | proposed |
+| S-04 | dashboard-cost-totals             | użytkownik widzi sumę miesięczną i roczną z podziałem na kategorie                | S-02          | FR-008, US-01                 | in-progress |
 | S-05 | subscription-lifecycle            | subskrypcja sama przechodzi trial → active i cancelled_pending → cancelled        | S-02          | FR-013                        | proposed |
 | S-06 | trial-end-reminder                | użytkownik dostaje e-mail 7 dni przed końcem okresu próbnego                      | S-05          | FR-014                        | proposed |
 | S-07 | category-duplicate-warning        | użytkownik widzi ostrzeżenie, gdy kategoria przekroczy jego próg subskrypcji      | S-04          | FR-009, FR-005                | proposed |
@@ -175,7 +175,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - Czy do sum wliczają się subskrypcje w trialu i w cancelled_pending? — Owner: user. Block: no.
 - **Ustalenia z S-02:** `amount` to kwota za cykl (`monthly` / `yearly`), w API string `"43.00"`; lista zwraca także subskrypcje anulowane (`cancelled`), więc sumy muszą je odfiltrować świadomie. Frontend ma już `monthlyAmount` (dzielenie rocznej przez 12 w groszach, `Math.round`) dla dopisku na liście — sumy po stronie API muszą liczyć tak samo (w groszach), inaczej lista i dashboard pokażą różne kwoty.
 - **Risk:** Drugie kryterium sukcesu (100% zgodności sum) — błąd przeliczenia roczne ↔ miesięczne propaguje się do budżetu (S-08), więc S-04 stoi przed alertami.
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-05: Automatyczny cykl życia subskrypcji
 
