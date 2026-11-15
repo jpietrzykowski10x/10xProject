@@ -30,7 +30,7 @@
       @if (refreshFailed()) {
         <div class="st-notice st-notice--error subscriptions__error" role="alert">
           <p>Nie udało się odświeżyć listy.</p>
-          <button mat-stroked-button type="button" (click)="load(true)">Spróbuj ponownie</button>
+          <button mat-stroked-button type="button" (click)="retry(true)">Spróbuj ponownie</button>
         </div>
       }
 
@@ -41,7 +41,7 @@
       } @else if (current.kind === 'error') {
         <div class="st-notice st-notice--error subscriptions__error" role="alert">
           <p>Nie udało się wczytać subskrypcji. Serwis jest chwilowo niedostępny.</p>
-          <button mat-stroked-button type="button" (click)="load()">Spróbuj ponownie</button>
+          <button mat-stroked-button type="button" (click)="retry()">Spróbuj ponownie</button>
         </div>
       } @else if (current.subscriptions.length === 0) {
         <p class="subscriptions__panel">Nie masz jeszcze żadnych subskrypcji.</p>

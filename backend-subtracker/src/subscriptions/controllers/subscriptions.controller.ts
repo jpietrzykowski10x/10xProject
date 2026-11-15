@@ -15,7 +15,10 @@ import { CurrentUser } from '../../shared/decorators/current-user.decorator.js';
 import type { AuthUser } from '../../shared/types/auth-user.js';
 import { CreateSubscriptionDto } from '../dtos/create-subscription.dto.js';
 import { SubscriptionsService } from '../services/subscriptions.service.js';
-import type { SubscriptionResponse } from '../subscription.types.js';
+import type {
+  CostTotalsResponse,
+  SubscriptionResponse,
+} from '../subscription.types.js';
 
 @Controller('subscriptions')
 export class SubscriptionsController {
@@ -25,6 +28,13 @@ export class SubscriptionsController {
   @Header('Cache-Control', 'no-store')
   list(@CurrentUser() user: AuthUser): Promise<SubscriptionResponse[]> {
     return this.subscriptions.list(user.id);
+  }
+
+  // A static path, declared before the routes with :id.
+  @Get('totals')
+  @Header('Cache-Control', 'no-store')
+  totals(@CurrentUser() user: AuthUser): Promise<CostTotalsResponse> {
+    return this.subscriptions.totals(user.id);
   }
 
   @Post()

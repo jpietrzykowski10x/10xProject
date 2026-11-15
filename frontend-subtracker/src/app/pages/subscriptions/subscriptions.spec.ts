@@ -9,6 +9,7 @@ import { MatInputHarness } from '@angular/material/input/testing';
 import { provideRouter } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import type {
+  CostTotals,
   CreateSubscriptionRequest,
   Subscription,
 } from '../../subscriptions/subscription.types';
@@ -16,6 +17,7 @@ import { Subscriptions } from './subscriptions';
 
 const SUBSCRIPTIONS_URL = `${environment.apiUrl}/subscriptions`;
 const CATEGORIES_URL = `${environment.apiUrl}/categories`;
+const TOTALS_URL = `${environment.apiUrl}/subscriptions/totals`;
 
 const NETFLIX: Subscription = {
   id: 'subscription-1',
@@ -30,6 +32,16 @@ const NETFLIX: Subscription = {
   createdAt: '2026-11-13T12:00:00.000Z',
 };
 
+// GET /subscriptions/totals for an account with only NETFLIX, and for an empty one.
+const NETFLIX_TOTALS: CostTotals = {
+  monthly: '43.00',
+  yearly: '516.00',
+  categories: [
+    { category: NETFLIX.category, monthly: '43.00', yearly: '516.00', subscriptionCount: 1 },
+  ],
+};
+const NO_TOTALS: CostTotals = { monthly: '0.00', yearly: '0.00', categories: [] };
+
 function createPage() {
   TestBed.configureTestingModule({
     imports: [Subscriptions],
@@ -40,18 +52,33 @@ function createPage() {
   return { httpTesting, fixture, loader: TestbedHarnessEnvironment.loader(fixture) };
 }
 
+// The shell reads the cost totals once on start, beside the page's list; the page reads them again
+// after every change.
+function flushTotals(httpTesting: HttpTestingController, totals: CostTotals): void {
+  httpTesting.expectOne({ method: 'GET', url: TOTALS_URL }).flush(totals);
+}
+
+// The monthly sum in the desktop column, with its spaces made plain ("43,00 zł").
+function columnMonthly(host: HTMLElement): string | undefined {
+  return host
+    .querySelector('app-cost-totals:not(.totals--bar) .totals__amount')
+    ?.textContent?.replace(/\s+/g, ' ')
+    .trim();
+}
+
 describe('Subscriptions', () => {
   afterEach(() => {
     TestBed.inject(HttpTestingController).verify();
   });
 
   // Only proves the page is created and its template rendered with the providers it has in the
-  // app (a lost import or provider fails here). The page reads the list on start, and an empty
-  // list mounts the subscription form, which reads the categories.
+  // app (a lost import or provider fails here). The page reads the list on start (its shell the
+  // cost totals), and an empty list mounts the subscription form, which reads the categories.
   it('should create', async () => {
     const { httpTesting, fixture } = createPage();
     await fixture.whenStable();
 
+    flushTotals(httpTesting, NO_TOTALS);
     httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([]);
     await fixture.whenStable();
     httpTesting.expectOne({ method: 'GET', url: CATEGORIES_URL }).flush([]);
@@ -62,10 +89,11 @@ describe('Subscriptions', () => {
 
   // The oracle is the API contract (PUT /subscriptions/:id takes the create body) and the plan's
   // flow: "Edytuj" opens the panel with the row's data, a save shows the status message and reads
-  // the list again. Only the HTTP boundary is replaced.
-  it('edits a subscription from its row and reads the list again after the save', async () => {
+  // the list and the cost totals again. Only the HTTP boundary is replaced.
+  it('edits a subscription from its row and reads the list and totals again after the save', async () => {
     const { httpTesting, fixture, loader } = createPage();
     await fixture.whenStable();
+    flushTotals(httpTesting, NETFLIX_TOTALS);
     httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([NETFLIX]);
     await fixture.whenStable();
 
@@ -105,6 +133,7 @@ describe('Subscriptions', () => {
     await fixture.whenStable();
 
     httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([updated]);
+    flushTotals(httpTesting, NETFLIX_TOTALS);
     await fixture.whenStable();
 
     expect(host.querySelector('[role="status"]')?.textContent?.trim()).toBe(
@@ -118,6 +147,7 @@ describe('Subscriptions', () => {
   it('keeps the edit panel open while the save is in flight', async () => {
     const { httpTesting, fixture, loader } = createPage();
     await fixture.whenStable();
+    flushTotals(httpTesting, NETFLIX_TOTALS);
     httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([NETFLIX]);
     await fixture.whenStable();
 
@@ -142,6 +172,7 @@ describe('Subscriptions', () => {
     update.flush(NETFLIX);
     await fixture.whenStable();
     httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([NETFLIX]);
+    flushTotals(httpTesting, NETFLIX_TOTALS);
     await fixture.whenStable();
 
     expect(host.querySelector('#subscription-panel')).toBeNull();
@@ -153,6 +184,7 @@ describe('Subscriptions', () => {
   it('closes the edit panel on "Anuluj" without saving or reading the list again', async () => {
     const { httpTesting, fixture, loader } = createPage();
     await fixture.whenStable();
+    flushTotals(httpTesting, NETFLIX_TOTALS);
     httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([NETFLIX]);
     await fixture.whenStable();
 
@@ -171,15 +203,42 @@ describe('Subscriptions', () => {
     expect(host.querySelector('#subscription-panel')).toBeNull();
     httpTesting.expectNone({ method: 'PUT', url: `${SUBSCRIPTIONS_URL}/${NETFLIX.id}` });
     httpTesting.expectNone({ method: 'GET', url: SUBSCRIPTIONS_URL });
+    httpTesting.expectNone({ method: 'GET', url: TOTALS_URL });
+  });
+
+  // With the API down on entry both the list and the totals fail; "Spróbuj ponownie" reads both
+  // again, so the shell does not keep "Nie udało się wczytać sum." until the next change.
+  it('reads the list and the totals again on "Spróbuj ponownie" after a failed start', async () => {
+    const { httpTesting, fixture, loader } = createPage();
+    await fixture.whenStable();
+    const failure = { status: 500, statusText: 'Server Error' };
+    httpTesting.expectOne({ method: 'GET', url: TOTALS_URL }).flush('error', failure);
+    httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush('error', failure);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.textContent).toContain('Nie udało się wczytać sum.');
+
+    await (await loader.getHarness(MatButtonHarness.with({ text: 'Spróbuj ponownie' }))).click();
+
+    httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([NETFLIX]);
+    flushTotals(httpTesting, NETFLIX_TOTALS);
+    await fixture.whenStable();
+
+    expect(columnMonthly(host)).toBe('43,00 zł');
+    expect(host.textContent).not.toContain('Nie udało się wczytać sum.');
   });
 
   // The oracle is the API contract (DELETE /subscriptions/:id answers 204) and the plan's flow:
-  // "Usuń" asks in a dialog, the confirmed delete shows the status message and reads the list again.
-  it('deletes a subscription after the confirmation and reads the list again', async () => {
+  // "Usuń" asks in a dialog, the confirmed delete shows the status message and reads the list and
+  // the cost totals again; the new totals reach the shell.
+  it('deletes a subscription after the confirmation and reads the list and totals again', async () => {
     const { httpTesting, fixture, loader } = createPage();
     await fixture.whenStable();
+    flushTotals(httpTesting, NETFLIX_TOTALS);
     httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([NETFLIX]);
     await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(columnMonthly(host)).toBe('43,00 zł');
 
     await (
       await loader.getHarness(MatButtonHarness.with({ selector: '[aria-label="Usuń Netflix"]' }))
@@ -197,11 +256,12 @@ describe('Subscriptions', () => {
     await fixture.whenStable();
 
     httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([]);
+    flushTotals(httpTesting, NO_TOTALS);
     await fixture.whenStable();
     // The empty list does not open the add panel by itself after the first answer.
     httpTesting.expectNone({ method: 'GET', url: CATEGORIES_URL });
 
-    const host = fixture.nativeElement as HTMLElement;
+    expect(columnMonthly(host)).toBe('0,00 zł');
     expect(host.querySelector('[role="status"]')?.textContent?.trim()).toBe(
       'Usunięto subskrypcję „Netflix”.',
     );

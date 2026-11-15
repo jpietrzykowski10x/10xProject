@@ -2,6 +2,7 @@ import type { Test } from 'supertest';
 import { DEFAULT_CATEGORIES } from '../../src/subscriptions/default-categories.js';
 import type {
   CategoryResponse,
+  CostTotalsResponse,
   SubscriptionResponse,
 } from '../../src/subscriptions/subscription.types.js';
 import type { E2eApp } from '../support/e2e-app.js';
@@ -24,7 +25,8 @@ export const subscriptionBody = (
   ...overrides,
 });
 
-// Requests shared by the subscription e2e files. The list requests expect 200 without caching.
+// Requests shared by the subscription e2e files. The list and totals requests expect 200 without
+// caching.
 export interface SubscriptionRequests {
   postSubscription: (cookie: string, body: Record<string, unknown>) => Test;
   putSubscription: (
@@ -36,6 +38,7 @@ export interface SubscriptionRequests {
   postCategory: (cookie: string, name: string) => Test;
   getSubscriptions: (cookie: string) => Promise<SubscriptionResponse[]>;
   getCategories: (cookie: string) => Promise<CategoryResponse[]>;
+  getTotals: (cookie: string) => Promise<CostTotalsResponse>;
 }
 
 export function subscriptionRequests(e2e: E2eApp): SubscriptionRequests {
@@ -74,6 +77,15 @@ export function subscriptionRequests(e2e: E2eApp): SubscriptionRequests {
         .expect('Cache-Control', 'no-store')
     ).body as CategoryResponse[];
 
+  const getTotals = async (cookie: string) =>
+    (
+      await http()
+        .get('/subscriptions/totals')
+        .set('Cookie', cookie)
+        .expect(200)
+        .expect('Cache-Control', 'no-store')
+    ).body as CostTotalsResponse;
+
   return {
     postSubscription,
     putSubscription,
@@ -81,5 +93,6 @@ export function subscriptionRequests(e2e: E2eApp): SubscriptionRequests {
     postCategory,
     getSubscriptions,
     getCategories,
+    getTotals,
   };
 }

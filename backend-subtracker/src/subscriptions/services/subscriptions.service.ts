@@ -6,10 +6,12 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { CreateSubscriptionDto } from '../dtos/create-subscription.dto.js';
+import { COUNTED_STATUSES, costTotals } from '../cost-totals.js';
 import type { Category } from '../entities/category.entity.js';
 import { Subscription } from '../entities/subscription.entity.js';
 import { subscriptionOrder } from '../subscription-order.js';
 import {
+  type CostTotalsResponse,
   SubscriptionSort,
   type SubscriptionResponse,
   SubscriptionStatus,
@@ -94,6 +96,26 @@ export class SubscriptionsService {
     }
     const rows = await query.getMany();
     return rows.map((row) => toSubscriptionResponse(row, row.category));
+  }
+
+  // Summed in JS on whole grosze (cost-totals.ts); SQL only picks the counted rows of the account,
+  // so there is no SUM and no ORDER BY here.
+  async totals(userId: string): Promise<CostTotalsResponse> {
+    const rows = await this.subscriptions
+      .createQueryBuilder(LIST_ALIAS)
+      .innerJoinAndSelect(`${LIST_ALIAS}.category`, 'category')
+      .where(`${LIST_ALIAS}.userId = :userId`, { userId })
+      .andWhere(`${LIST_ALIAS}.status IN (:...statuses)`, {
+        statuses: COUNTED_STATUSES,
+      })
+      .getMany();
+    return costTotals(
+      rows.map((row) => ({
+        amount: row.amount,
+        billingCycle: row.billingCycle,
+        category: toCategoryResponse(row.category),
+      })),
+    );
   }
 
   async create(

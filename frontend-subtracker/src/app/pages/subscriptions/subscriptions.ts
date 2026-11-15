@@ -22,6 +22,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { map, type Subscription as RxSubscription } from 'rxjs';
 import { AppShell } from '../../layout/app-shell/app-shell';
 import { PHONE_MEDIA_QUERY, WIDE_MEDIA_QUERY } from '../../shared/breakpoints';
+import { CostTotalsStore } from '../../subscriptions/cost-totals.store';
 import { openDeleteSubscriptionDialog } from '../../subscriptions/delete-subscription-dialog/delete-subscription-dialog';
 import { SubscriptionForm } from '../../subscriptions/subscription-form/subscription-form';
 import {
@@ -58,6 +59,7 @@ export class Subscriptions implements OnInit {
   private readonly injector = inject(Injector);
   private readonly breakpoints = inject(BreakpointObserver);
   private readonly dialog = inject(MatDialog);
+  private readonly totals = inject(CostTotalsStore);
   // On a mat-flat-button host the template ref is the MatButton instance (no nativeElement);
   // MatButton has its own focus().
   private readonly addButton = viewChild.required<MatButton>('addButton');
@@ -217,7 +219,15 @@ export class Subscriptions implements OnInit {
     this.focusAfterClose(trigger);
   }
 
-  // The saved subscription takes its place in the API's order, so the list is read again.
+  // "Spróbuj ponownie" after a failed read: the cost totals in the shell most likely failed with the
+  // list, so they are read again too, quietly (totals already shown stay until the answer).
+  protected retry(quiet = false): void {
+    this.load(quiet);
+    this.totals.refresh();
+  }
+
+  // The saved subscription takes its place in the API's order, so the list is read again; so are
+  // the cost totals in the shell, quietly.
   protected onSaved(subscription: Subscription): void {
     const message =
       this.editing() === null
@@ -227,6 +237,7 @@ export class Subscriptions implements OnInit {
     this.close();
     this.showStatus(message);
     this.load(true);
+    this.totals.refresh();
   }
 
   // The edited subscription is gone (deleted in another tab); the list is read again without it.
@@ -235,6 +246,7 @@ export class Subscriptions implements OnInit {
     this.close();
     this.showStatus(missingSubscriptionMessage);
     this.load(true);
+    this.totals.refresh();
   }
 
   // "Usuń" in a row asks for a confirmation; the dialog sends the DELETE itself. Without a result
@@ -261,6 +273,7 @@ export class Subscriptions implements OnInit {
             : missingSubscriptionMessage,
         );
         this.load(true);
+        this.totals.refresh();
       });
   }
 
