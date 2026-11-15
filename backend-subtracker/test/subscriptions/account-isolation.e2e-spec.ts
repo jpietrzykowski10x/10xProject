@@ -1,5 +1,9 @@
 import { DEFAULT_CATEGORIES } from '../../src/subscriptions/default-categories.js';
-import type { CategoryResponse } from '../../src/subscriptions/subscription.types.js';
+import { Subscription } from '../../src/subscriptions/entities/subscription.entity.js';
+import type {
+  CategoryResponse,
+  SubscriptionResponse,
+} from '../../src/subscriptions/subscription.types.js';
 import { createE2eApp, UNKNOWN_ID } from '../support/e2e-app.js';
 import { subscriptionBody, subscriptionRequests } from './subscriptions-e2e.js';
 
@@ -10,9 +14,15 @@ describe('Subscriptions — account isolation (e2e)', () => {
   // the backend-e2e job) with a fake mail transport. Every row these tests create hangs off a
   // recognisable address and is removed at the end.
   const e2e = createE2eApp({ addressPrefix: 'e2e-subscriptions-isolation-' });
-  const { twoAccounts, userIdOf } = e2e;
-  const { postSubscription, postCategory, getSubscriptions, getCategories } =
-    subscriptionRequests(e2e);
+  const { repository, twoAccounts, userIdOf } = e2e;
+  const {
+    postSubscription,
+    putSubscription,
+    deleteSubscription,
+    postCategory,
+    getSubscriptions,
+    getCategories,
+  } = subscriptionRequests(e2e);
 
   beforeAll(() => e2e.start());
 
@@ -55,6 +65,36 @@ describe('Subscriptions — account isolation (e2e)', () => {
         subscriptionBody({ userId: await userIdOf(other.address) }),
       ).expect(400);
       expect(await getSubscriptions(other.cookie)).toEqual([]);
+    });
+
+    it("lets no account change or delete another account's subscription", async () => {
+      const { owner, other } = await twoAccounts();
+      const created = (
+        await postSubscription(owner.cookie, subscriptionBody()).expect(201)
+      ).body as SubscriptionResponse;
+      const stored = await repository(Subscription).findOneByOrFail({
+        id: created.id,
+      });
+      // A body that would pass for the other account's own subscription.
+      const otherCategory = (
+        await postCategory(other.cookie, 'Praca').expect(201)
+      ).body as CategoryResponse;
+
+      await putSubscription(
+        other.cookie,
+        created.id,
+        subscriptionBody({
+          name: 'Spotify',
+          categoryId: otherCategory.id,
+          amount: 19.99,
+        }),
+      ).expect(404);
+      await deleteSubscription(other.cookie, created.id).expect(404);
+
+      expect(await getSubscriptions(owner.cookie)).toEqual([created]);
+      expect(
+        await repository(Subscription).findOneByOrFail({ id: created.id }),
+      ).toEqual(stored);
     });
   });
 });
