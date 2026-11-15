@@ -326,13 +326,13 @@ Brak zmian schematu i danych. Deploy bez migracji.
 
 #### Automated
 
-- [x] 2.1 Testy jednostkowe i komponentów przechodzą w obu strefach czasowych: `cd frontend-subtracker && npm run test:ci`
-- [x] 2.2 Build produkcyjny przechodzi: `cd frontend-subtracker && npm run build`
-- [x] 2.3 Istniejące testy przeglądarkowe przechodzą bez zmian: `cd frontend-subtracker && npm run build:e2e && npm run e2e`
+- [x] 2.1 Testy jednostkowe i komponentów przechodzą w obu strefach czasowych: `cd frontend-subtracker && npm run test:ci` — f551413
+- [x] 2.2 Build produkcyjny przechodzi: `cd frontend-subtracker && npm run build` — f551413
+- [x] 2.3 Istniejące testy przeglądarkowe przechodzą bez zmian: `cd frontend-subtracker && npm run build:e2e && npm run e2e` — f551413
 
 #### Manual
 
-- [x] 2.4 Desktop (≥ 840 px): sumy w granatowej kolumnie, kategorie rozwijają się i zwijają z klawiatury, fokus widoczny
-- [x] 2.5 Telefon (< 840 px): sumy w nagłówku, rozwijane kategorie nie psują menu ani układu listy
-- [x] 2.6 Po dodaniu, edycji (także zmianie statusu na „Anulowana”) i usunięciu subskrypcji sumy zmieniają się bez przeładowania i zgadzają z ręcznym wyliczeniem
-- [x] 2.7 Puste konto pokazuje „0,00 zł” w obu miejscach; po wylogowaniu i zalogowaniu na inne konto w tej samej karcie nie widać sum poprzedniego konta
+- [x] 2.4 Desktop (≥ 840 px): sumy w granatowej kolumnie, kategorie rozwijają się i zwijają z klawiatury, fokus widoczny — f551413
+- [x] 2.5 Telefon (< 840 px): sumy w nagłówku, rozwijane kategorie nie psują menu ani układu listy — f551413
+- [x] 2.6 Po dodaniu, edycji (także zmianie statusu na „Anulowana”) i usunięciu subskrypcji sumy zmieniają się bez przeładowania i zgadzają z ręcznym wyliczeniem — f551413
+- [x] 2.7 Puste konto pokazuje „0,00 zł” w obu miejscach; po wylogowaniu i zalogowaniu na inne konto w tej samej karcie nie widać sum poprzedniego konta — f551413

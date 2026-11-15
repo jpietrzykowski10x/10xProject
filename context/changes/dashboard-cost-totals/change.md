@@ -1,7 +1,7 @@
 ---
 change_id: dashboard-cost-totals
 title: Dashboard cost totals
-status: implementing
+status: implemented
 created: 2026-11-15
 updated: 2026-11-15
 archived_at: null
