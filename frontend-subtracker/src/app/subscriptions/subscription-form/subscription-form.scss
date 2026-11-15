@@ -66,6 +66,17 @@
   }
 }
 
+// Editing: "Zapisz zmiany" and "Anuluj" share the row (and the phone's sticky bar) equally.
+.form__actions--split {
+  display: flex;
+  gap: 8px;
+
+  button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
 .form--sticky .form__actions {
   position: sticky;
   bottom: 0;

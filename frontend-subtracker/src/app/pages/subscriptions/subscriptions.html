@@ -1,5 +1,5 @@
 <app-shell>
-  <div class="subscriptions" [class.subscriptions--adding]="adding()">
+  <div class="subscriptions" [class.subscriptions--panel-open]="panelOpen()">
     <!-- While the panel covers the list (drawer below 1200px, whole area on the phone) the list is
          inert; on the phone CSS also hides it. -->
     <div #listArea class="subscriptions__main" [attr.inert]="listCovered() ? '' : null">
@@ -11,7 +11,7 @@
           mat-flat-button
           type="button"
           class="subscriptions__add"
-          [attr.aria-controls]="formMounted() ? 'new-subscription-panel' : null"
+          [attr.aria-controls]="addFormMounted() ? 'subscription-panel' : null"
           [attr.aria-expanded]="adding()"
           (click)="toggleAdding()"
         >
@@ -21,7 +21,7 @@
 
       <!-- The live region is always there, so a message put into it is announced. -->
       <div role="status">
-        @if (addedMessage(); as message) {
+        @if (statusMessage(); as message) {
           <p class="st-notice st-notice--success">{{ message }}</p>
         }
       </div>
@@ -47,7 +47,11 @@
         <p class="subscriptions__panel">Nie masz jeszcze żadnych subskrypcji.</p>
       } @else {
         <!-- One table for desktop and phone; it switches its columns at 840px. -->
-        <app-subscription-table [subscriptions]="current.subscriptions" />
+        <app-subscription-table
+          [subscriptions]="current.subscriptions"
+          (edit)="openEdit($event)"
+          (remove)="confirmRemove($event)"
+        />
       }
 
       <!-- Phone only: the main action stays at the bottom of the screen (F2-Tel-Lista). -->
@@ -56,7 +60,7 @@
           #phoneAddButton
           mat-flat-button
           type="button"
-          [attr.aria-controls]="formMounted() ? 'new-subscription-panel' : null"
+          [attr.aria-controls]="addFormMounted() ? 'subscription-panel' : null"
           [attr.aria-expanded]="adding()"
           (click)="toggleAdding()"
         >
@@ -69,15 +73,15 @@
          Escape closes it, unless it is closing a select inside the form (onPanelEscape). -->
     @if (formMounted()) {
       <section
-        id="new-subscription-panel"
+        id="subscription-panel"
         class="add-panel"
-        aria-labelledby="new-subscription-title"
-        [hidden]="!adding()"
+        aria-labelledby="subscription-panel-title"
+        [hidden]="!panelOpen()"
         (keydown.escape)="onPanelEscape($event)"
       >
         <div class="add-panel__header">
-          <h2 #panelTitle id="new-subscription-title" class="add-panel__title" tabindex="-1">
-            Nowa subskrypcja
+          <h2 #panelTitle id="subscription-panel-title" class="add-panel__title" tabindex="-1">
+            {{ editing() === null ? 'Nowa subskrypcja' : 'Edycja subskrypcji' }}
           </h2>
           <button
             type="button"
@@ -90,7 +94,17 @@
             </svg>
           </button>
         </div>
-        <app-subscription-form [stickyActions]="isPhone()" (saved)="onSaved($event)" />
+        <!-- A new form for every target (adding, or each edited subscription), so no values leak
+             from one to the next; the form reads its subscription once, on init. -->
+        @for (key of [panelKey()]; track key) {
+          <app-subscription-form
+            [subscription]="editing()"
+            [stickyActions]="isPhone()"
+            (saved)="onSaved($event)"
+            (missing)="onMissing()"
+            (cancelled)="close()"
+          />
+        }
       </section>
     }
   </div>

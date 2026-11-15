@@ -18,11 +18,18 @@ import {
 import { isPlatformBrowser } from '@angular/common';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButton } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { map, type Subscription as RxSubscription } from 'rxjs';
 import { AppShell } from '../../layout/app-shell/app-shell';
 import { PHONE_MEDIA_QUERY, WIDE_MEDIA_QUERY } from '../../shared/breakpoints';
+import { openDeleteSubscriptionDialog } from '../../subscriptions/delete-subscription-dialog/delete-subscription-dialog';
 import { SubscriptionForm } from '../../subscriptions/subscription-form/subscription-form';
-import { addedSubscriptionMessage } from '../../subscriptions/subscription-labels';
+import {
+  addedSubscriptionMessage,
+  deletedSubscriptionMessage,
+  missingSubscriptionMessage,
+  updatedSubscriptionMessage,
+} from '../../subscriptions/subscription-labels';
 import type { Subscription } from '../../subscriptions/subscription.types';
 import { SubscriptionsService } from '../../subscriptions/subscriptions.service';
 import { SubscriptionTable } from './subscription-table/subscription-table';
@@ -30,10 +37,15 @@ import { SubscriptionTable } from './subscription-table/subscription-table';
 type ListState =
   { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; subscriptions: Subscription[] };
 
-// F2-Lista and F2-Tel-Dodawanie: the list and one "adding" state with the "Nowa subskrypcja"
-// panel. Only CSS decides how the panel looks: a column beside the table from 1200px, a drawer
-// over it from 840px, the whole content area (list hidden) on the phone. It is one element with
-// one form, so typed data survives a resize.
+type PanelMode =
+  { kind: 'closed' } | { kind: 'add' } | { kind: 'edit'; subscription: Subscription };
+
+const CLOSED: PanelMode = { kind: 'closed' };
+
+// F2-Lista and F2-Tel-Dodawanie: the list and one panel, for adding ("Nowa subskrypcja") or
+// editing a row ("Edycja subskrypcji"). Only CSS decides how the panel looks: a column beside the
+// table from 1200px, a drawer over it from 840px, the whole content area (list hidden) on the
+// phone. It is one element with one form, so typed data survives a resize.
 @Component({
   selector: 'app-subscriptions',
   imports: [AppShell, MatButton, SubscriptionForm, SubscriptionTable],
@@ -45,12 +57,14 @@ export class Subscriptions implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
   private readonly breakpoints = inject(BreakpointObserver);
+  private readonly dialog = inject(MatDialog);
   // On a mat-flat-button host the template ref is the MatButton instance (no nativeElement);
   // MatButton has its own focus().
   private readonly addButton = viewChild.required<MatButton>('addButton');
   private readonly phoneAddButton = viewChild.required<MatButton>('phoneAddButton');
   private readonly panelTitle = viewChild<ElementRef<HTMLElement>>('panelTitle');
   private readonly listArea = viewChild.required<ElementRef<HTMLElement>>('listArea');
+  private readonly form = viewChild(SubscriptionForm);
   private readonly document = inject(DOCUMENT);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
@@ -59,11 +73,26 @@ export class Subscriptions implements OnInit {
 
   protected readonly state = signal<ListState>({ kind: 'loading' });
   private loadRequest?: RxSubscription;
-  protected readonly adding = signal(false);
-  // The form stays in the DOM after a plain close, so reopening continues with the typed data;
-  // a save removes it, so the next opening starts with an empty form.
-  protected readonly formMounted = signal(false);
-  protected readonly addedMessage = signal<string | null>(null);
+  protected readonly panel = signal<PanelMode>(CLOSED);
+  // The add form stays in the DOM after a plain close, so reopening continues with the typed
+  // data; a save or opening an edit drops it, so the next opening starts with an empty form.
+  // An edit form never stays: closing it removes it.
+  private readonly keepAddDraft = signal(false);
+  protected readonly adding = computed(() => this.panel().kind === 'add');
+  protected readonly panelOpen = computed(() => this.panel().kind !== 'closed');
+  protected readonly editing = computed(() => {
+    const panel = this.panel();
+    return panel.kind === 'edit' ? panel.subscription : null;
+  });
+  protected readonly formMounted = computed(() => this.panelOpen() || this.keepAddDraft());
+  // Which form is mounted: a new one is created whenever this changes, so the values of one
+  // target never leak into the next (add → edit A → edit B → add).
+  protected readonly panelKey = computed(() => this.editing()?.id ?? 'new');
+  // The "Dodaj subskrypcję" buttons control the panel only while it holds the add form.
+  protected readonly addFormMounted = computed(() => this.formMounted() && this.editing() === null);
+  // The "Edytuj" button that opened the edit panel; the focus returns to it on close.
+  private editTrigger: HTMLElement | null = null;
+  protected readonly statusMessage = signal<string | null>(null);
   // A failed quiet load (after a save) keeps the list on screen and offers to read it again.
   protected readonly refreshFailed = signal(false);
   protected readonly isPhone = toSignal(
@@ -76,7 +105,10 @@ export class Subscriptions implements OnInit {
     this.breakpoints.observe(WIDE_MEDIA_QUERY).pipe(map((state) => state.matches)),
     { initialValue: this.breakpoints.isMatched(WIDE_MEDIA_QUERY) },
   );
-  protected readonly listCovered = computed(() => this.adding() && !this.isWide());
+  protected readonly listCovered = computed(() => this.panelOpen() && !this.isWide());
+  // While the panel's form (add or edit) is saving, the panel stays as it is: closing or swapping
+  // it would destroy the form and drop the answer, so the save always ends with its message.
+  private readonly formSending = computed(() => this.form()?.sending() ?? false);
 
   constructor() {
     // When the panel starts covering the list (it opens below 1200px, or the window narrows while
@@ -134,12 +166,29 @@ export class Subscriptions implements OnInit {
       });
   }
 
+  // From an edit (the list is visible beside the panel from 1200px) it switches to adding.
   protected toggleAdding(): void {
+    if (this.formSending()) {
+      return;
+    }
     if (this.adding()) {
       this.close();
     } else {
-      this.open();
+      this.editTrigger = null;
+      this.keepAddDraft.set(true);
+      this.open({ kind: 'add' });
     }
+  }
+
+  // Opening an edit drops an add draft. Editing the same subscription again keeps its form.
+  protected openEdit(subscription: Subscription): void {
+    if (this.formSending()) {
+      return;
+    }
+    const active = this.document.activeElement;
+    this.editTrigger = active instanceof HTMLElement ? active : null;
+    this.keepAddDraft.set(false);
+    this.open({ kind: 'edit', subscription });
   }
 
   // Escape closes the panel, except when it is closing an open select inside the form: the
@@ -156,29 +205,77 @@ export class Subscriptions implements OnInit {
     this.close();
   }
 
+  // Ignored while the form is saving (Escape, the X, "Dodaj subskrypcję" all end up here).
   protected close(): void {
-    this.adding.set(false);
+    if (this.formSending()) {
+      return;
+    }
+    const trigger = this.editing() !== null ? this.editTrigger : null;
+    this.editTrigger = null;
+    this.panel.set(CLOSED);
     this.autoOpenDecided = true;
-    this.focusAddControl();
+    this.focusAfterClose(trigger);
   }
 
-  // The new subscription takes its place in the API's order, so the list is read again.
+  // The saved subscription takes its place in the API's order, so the list is read again.
   protected onSaved(subscription: Subscription): void {
-    this.formMounted.set(false);
+    const message =
+      this.editing() === null
+        ? addedSubscriptionMessage(subscription.name)
+        : updatedSubscriptionMessage(subscription.name);
+    this.keepAddDraft.set(false);
     this.close();
-    // Set once the list is visible again (on the phone it was hidden), so the region announces it.
-    afterNextRender(() => this.addedMessage.set(addedSubscriptionMessage(subscription.name)), {
-      injector: this.injector,
-    });
+    this.showStatus(message);
     this.load(true);
   }
 
-  private open(): void {
+  // The edited subscription is gone (deleted in another tab); the list is read again without it.
+  protected onMissing(): void {
+    this.editTrigger = null;
+    this.close();
+    this.showStatus(missingSubscriptionMessage);
+    this.load(true);
+  }
+
+  // "Usuń" in a row asks for a confirmation; the dialog sends the DELETE itself. Without a result
+  // nothing changes and MatDialog returns the focus to "Usuń". After a delete (or a 404: it was
+  // already gone) the row and its "Usuń" disappear with the next load, so the focus moves to the
+  // "Dodaj subskrypcję" control. An edit panel of that subscription closes; any other panel stays.
+  protected confirmRemove(subscription: Subscription): void {
+    openDeleteSubscriptionDialog(this.dialog, subscription)
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        if (result === undefined) {
+          return;
+        }
+        if (this.editing()?.id === subscription.id) {
+          this.editTrigger = null;
+          this.close();
+        } else {
+          this.focusAddControl();
+        }
+        this.showStatus(
+          result === 'deleted'
+            ? deletedSubscriptionMessage(subscription.name)
+            : missingSubscriptionMessage,
+        );
+        this.load(true);
+      });
+  }
+
+  // Set once the list is visible again (on the phone it was hidden), so the region announces it.
+  // Cleared first, so the same message a second time (e.g. after a second delete) is announced.
+  private showStatus(message: string): void {
+    this.statusMessage.set(null);
+    afterNextRender(() => this.statusMessage.set(message), { injector: this.injector });
+  }
+
+  private open(mode: PanelMode): void {
     this.autoOpenDecided = true;
-    this.addedMessage.set(null);
+    this.statusMessage.set(null);
     this.refreshFailed.set(false);
-    this.formMounted.set(true);
-    this.adding.set(true);
+    this.panel.set(mode);
     afterNextRender(
       () => {
         // The phone add view replaces the list, so it starts at the top of the page.
@@ -198,16 +295,32 @@ export class Subscriptions implements OnInit {
     }
     this.autoOpenDecided = true;
     if (empty && !this.isPhone()) {
-      this.formMounted.set(true);
-      this.adding.set(true);
+      this.keepAddDraft.set(true);
+      this.panel.set({ kind: 'add' });
     }
   }
 
-  // Back to the "Dodaj subskrypcję" control of the current width; on the phone it reappears
-  // with the list, so the focus waits for the next render.
+  // Back to the "Edytuj" button that opened an edit, if it is still on the list, otherwise to
+  // the "Dodaj subskrypcję" control of the current width. On the phone both reappear with the
+  // list, so the focus waits for the next render.
+  private focusAfterClose(trigger: HTMLElement | null): void {
+    afterNextRender(
+      () => {
+        if (trigger?.isConnected) {
+          trigger.focus();
+        } else {
+          this.addControl().focus();
+        }
+      },
+      { injector: this.injector },
+    );
+  }
+
   private focusAddControl(): void {
-    afterNextRender(() => (this.isPhone() ? this.phoneAddButton() : this.addButton()).focus(), {
-      injector: this.injector,
-    });
+    afterNextRender(() => this.addControl().focus(), { injector: this.injector });
+  }
+
+  private addControl(): MatButton {
+    return this.isPhone() ? this.phoneAddButton() : this.addButton();
   }
 }

@@ -83,21 +83,25 @@ let fixture: ComponentFixture<SubscriptionForm>;
 let loader: HarnessLoader;
 let httpTesting: HttpTestingController;
 
-// Creates the form and renders it; GET /categories is left open for the test to answer.
-async function createForm(): Promise<void> {
+// Creates the form (editing `subscription`, if given) and renders it; GET /categories is left open
+// for the test to answer.
+async function createForm(subscription: Subscription | null = null): Promise<void> {
   TestBed.configureTestingModule({
     imports: [SubscriptionForm],
     providers: [provideHttpClient(), provideHttpClientTesting()],
   });
   httpTesting = TestBed.inject(HttpTestingController);
   fixture = TestBed.createComponent(SubscriptionForm);
+  if (subscription !== null) {
+    fixture.componentRef.setInput('subscription', subscription);
+  }
   loader = TestbedHarnessEnvironment.loader(fixture);
   await fixture.whenStable();
 }
 
 // The usual start: the form with its category list loaded.
-async function createLoadedForm(): Promise<void> {
-  await createForm();
+async function createLoadedForm(subscription: Subscription | null = null): Promise<void> {
+  await createForm(subscription);
   httpTesting.expectOne({ method: 'GET', url: CATEGORIES_URL }).flush([CATEGORY]);
   await fixture.whenStable();
 }
@@ -413,5 +417,149 @@ describe('SubscriptionForm typed text in the POST /subscriptions body', () => {
 
     expectNothingSaved();
     expect(await (await field(label)).hasErrors()).toBe(true);
+  });
+});
+
+// The oracle is the API contract of GET and PUT /subscriptions/:id (subscription.types.ts): the form
+// shows what the API gave (the amount the Polish way, the days as dd.mm.rrrr) and saves the whole
+// body of CreateSubscriptionRequest back with PUT, never with POST. A 404 means the subscription is
+// gone, which is not a save.
+describe('SubscriptionForm editing a subscription', () => {
+  const SUBSCRIPTION_URL = `${SUBSCRIPTIONS_URL}/${SAVED.id}`;
+  const SAVE_CHANGES = 'Zapisz zmiany';
+
+  const TRIAL: Subscription = {
+    ...SAVED,
+    status: 'trial',
+    trialEndDate: '2027-01-05',
+    nextBillingDate: '2027-01-06',
+  };
+
+  async function inputValue(label: string): Promise<string> {
+    const input = await (await field(label)).getControl(MatInputHarness);
+    if (input === null) {
+      throw new Error(`No text input in the field "${label}".`);
+    }
+    return input.getValue();
+  }
+
+  async function selectedText(label: string): Promise<string> {
+    const select = await (await field(label)).getControl(MatSelectHarness);
+    if (select === null) {
+      throw new Error(`No select in the field "${label}".`);
+    }
+    return select.getValueText();
+  }
+
+  // The single PUT /subscriptions/:id the save sent, answered with `answer`.
+  function expectUpdatedBody(answer: Subscription = SAVED): CreateSubscriptionRequest {
+    const request = httpTesting.expectOne({ method: 'PUT', url: SUBSCRIPTION_URL });
+    const body = request.request.body as CreateSubscriptionRequest;
+    request.flush(answer);
+    return body;
+  }
+
+  it('shows the data of the subscription', async () => {
+    await createLoadedForm(SAVED);
+
+    expect(await inputValue(NAME)).toBe('Netflix');
+    expect(await selectedText(CATEGORY_FIELD)).toBe(CATEGORY.name);
+    expect(await inputValue(AMOUNT)).toBe('43,00');
+    expect(await selectedText(PAYMENT_METHOD)).toBe('BLIK');
+    expect(await selectedText(STATUS)).toBe('Aktywna');
+    expect(await inputValue(NEXT_BILLING)).toBe('05.01.2027');
+    expect(await fieldCount(TRIAL_END)).toBe(0);
+  });
+
+  it('shows the end of a trial in its own field', async () => {
+    await createLoadedForm(TRIAL);
+
+    expect(await fieldCount(TRIAL_END)).toBe(1);
+    expect(await inputValue(TRIAL_END)).toBe('05.01.2027');
+    expect(await inputValue(NEXT_BILLING)).toBe('06.01.2027');
+  });
+
+  it('saves an untouched form with PUT and the whole body, and emits the saved subscription', async () => {
+    await createLoadedForm(SAVED);
+    const saved = vi.fn();
+    fixture.componentInstance.saved.subscribe(saved);
+
+    await clickButton(SAVE_CHANGES);
+
+    expectNothingSaved();
+    expect(expectUpdatedBody()).toEqual(BODY);
+    expect(saved).toHaveBeenCalledWith(SAVED);
+  });
+
+  it('saves an untouched trial with its end', async () => {
+    await createLoadedForm(TRIAL);
+
+    await clickButton(SAVE_CHANGES);
+
+    expect(expectUpdatedBody(TRIAL)).toEqual({
+      ...BODY,
+      status: 'trial',
+      trialEndDate: '2027-01-05',
+      nextBillingDate: '2027-01-06',
+    });
+  });
+
+  it('saves a trial turned active without the end of the trial', async () => {
+    await createLoadedForm(TRIAL);
+
+    await pick(STATUS, 'Aktywna');
+    await clickButton(SAVE_CHANGES);
+
+    expect(expectUpdatedBody()).toEqual({ ...BODY, nextBillingDate: '2027-01-06' });
+  });
+
+  it('emits missing, not saved, when the subscription is gone', async () => {
+    await createLoadedForm(SAVED);
+    const saved = vi.fn();
+    const missing = vi.fn();
+    fixture.componentInstance.saved.subscribe(saved);
+    fixture.componentInstance.missing.subscribe(missing);
+
+    await clickButton(SAVE_CHANGES);
+    httpTesting
+      .expectOne({ method: 'PUT', url: SUBSCRIPTION_URL })
+      .flush({ message: 'Not Found' }, { status: 404, statusText: 'Not Found' });
+    await fixture.whenStable();
+
+    expect(missing).toHaveBeenCalledTimes(1);
+    expect(saved).not.toHaveBeenCalled();
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('[role="alert"]').length).toBe(
+      0,
+    );
+  });
+
+  it('has no "Zapisz subskrypcję" button while editing', async () => {
+    await createLoadedForm(SAVED);
+
+    expect(await loader.getAllHarnesses(MatButtonHarness.with({ text: SAVE }))).toHaveLength(0);
+  });
+
+  it('emits cancelled on "Anuluj" and sends nothing, even with a changed field', async () => {
+    await createLoadedForm(SAVED);
+    const cancelled = vi.fn();
+    const saved = vi.fn();
+    fixture.componentInstance.cancelled.subscribe(cancelled);
+    fixture.componentInstance.saved.subscribe(saved);
+
+    await typeInto(NAME, 'Netflix Premium');
+    await clickButton('Anuluj');
+
+    expect(cancelled).toHaveBeenCalledTimes(1);
+    expect(saved).not.toHaveBeenCalled();
+    httpTesting.expectNone({ method: 'PUT', url: SUBSCRIPTION_URL });
+    expectNothingSaved();
+  });
+});
+
+describe('SubscriptionForm adding a subscription', () => {
+  it('has no "Anuluj" button', async () => {
+    await createLoadedForm();
+
+    expect(await loader.getAllHarnesses(MatButtonHarness.with({ text: 'Anuluj' }))).toHaveLength(0);
   });
 });

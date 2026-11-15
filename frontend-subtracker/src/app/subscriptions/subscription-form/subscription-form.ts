@@ -39,7 +39,7 @@ import { PlDatepickerIntl } from '../../shared/pl-datepicker-intl';
 import { notBeforeDate } from '../../shared/validation/not-before-date';
 import { trimmedRequired } from '../../shared/validation/trimmed-required';
 import { BILLING_CYCLE_LABELS, PAYMENT_METHOD_LABELS, STATUS_LABELS } from '../subscription-labels';
-import { toCreateSubscriptionRequest } from '../subscription-request';
+import { toCreateSubscriptionRequest, toSubscriptionFormValue } from '../subscription-request';
 import { amountValidator } from '../subscription-validators';
 import {
   BillingCycle,
@@ -64,9 +64,10 @@ const notNewCategory = (control: AbstractControl<string>): ValidationErrors | nu
 
 const keysOf = <K extends string>(labels: Record<K, string>): K[] => Object.keys(labels) as K[];
 
-// The FR-004 form, in the field order of F2-Lista: the add panel on /subscriptions uses it at every
-// width (a column, a drawer or the phone's full add view). It saves the subscription itself and
-// emits it once the API has accepted it.
+// The FR-004 form, in the field order of F2-Lista: the panel on /subscriptions uses it at every
+// width (a column, a drawer or the phone's full view). It saves the subscription itself (a new one,
+// or the one in `subscription`) and emits it once the API has accepted it. The edited subscription
+// is read once, on init: the panel creates a new form for every subscription it edits.
 @Component({
   selector: 'app-subscription-form',
   imports: [
@@ -102,7 +103,13 @@ const keysOf = <K extends string>(labels: Record<K, string>): K[] => Object.keys
 export class SubscriptionForm implements OnInit {
   // The save button sticks to the bottom of the screen (the phone add view, F2-Tel-Dodawanie).
   readonly stickyActions = input(false, { transform: booleanAttribute });
+  // The subscription being edited; null adds a new one.
+  readonly subscription = input<Subscription | null>(null);
   readonly saved = output<Subscription>();
+  // The edited subscription is gone (404), e.g. deleted in another tab.
+  readonly missing = output<void>();
+  // "Anuluj" while editing: the panel closes without saving.
+  readonly cancelled = output<void>();
 
   private readonly subscriptions = inject(SubscriptionsService);
   private readonly destroyRef = inject(DestroyRef);
@@ -139,6 +146,8 @@ export class SubscriptionForm implements OnInit {
   protected readonly addingCategory = signal(false);
   protected readonly categoryFailed = signal(false);
   protected readonly state = signal<SaveState>('idle');
+  // A save is in flight: the panel keeps the form open until it answers.
+  readonly sending = computed(() => this.state() === 'sending');
 
   private readonly statusValue = toSignal(this.status.valueChanges, {
     initialValue: this.status.value,
@@ -174,6 +183,11 @@ export class SubscriptionForm implements OnInit {
   }
 
   ngOnInit(): void {
+    const subscription = this.subscription();
+    if (subscription !== null) {
+      // Before the first render, and with valueChanges: a trial status enables its end date.
+      this.form.setValue(toSubscriptionFormValue(subscription));
+    }
     this.loadCategories();
   }
 
@@ -250,17 +264,26 @@ export class SubscriptionForm implements OnInit {
       return;
     }
 
+    const edited = this.subscription();
     this.state.set('sending');
-    this.subscriptions
-      .create(request)
+    (edited === null
+      ? this.subscriptions.create(request)
+      : this.subscriptions.update(edited.id, request)
+    )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (subscription) => {
           this.state.set('idle');
           this.saved.emit(subscription);
         },
-        error: (error: HttpErrorResponse) =>
-          this.state.set(error.status === 400 ? 'invalid' : 'unavailable'),
+        error: (error: HttpErrorResponse) => {
+          if (edited !== null && error.status === 404) {
+            this.state.set('idle');
+            this.missing.emit();
+            return;
+          }
+          this.state.set(error.status === 400 ? 'invalid' : 'unavailable');
+        },
       });
   }
 

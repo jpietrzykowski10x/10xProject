@@ -1,5 +1,10 @@
 import { Session } from '../../src/auth/entities/session.entity.js';
-import { createE2eApp, PAST, type SignedIn } from '../support/e2e-app.js';
+import {
+  createE2eApp,
+  PAST,
+  type SignedIn,
+  UNKNOWN_ID,
+} from '../support/e2e-app.js';
 import { subscriptionBody, subscriptionRequests } from './subscriptions-e2e.js';
 
 describe('Subscriptions — access (e2e)', () => {
@@ -8,8 +13,13 @@ describe('Subscriptions — access (e2e)', () => {
   // recognisable address and is removed at the end.
   const e2e = createE2eApp({ addressPrefix: 'e2e-subscriptions-access-' });
   const { http, repository, signIn, userIdOf } = e2e;
-  const { postSubscription, postCategory, getCategories } =
-    subscriptionRequests(e2e);
+  const {
+    postSubscription,
+    putSubscription,
+    deleteSubscription,
+    postCategory,
+    getCategories,
+  } = subscriptionRequests(e2e);
 
   beforeAll(() => e2e.start());
 
@@ -20,6 +30,11 @@ describe('Subscriptions — access (e2e)', () => {
     await http().post('/categories').send({ name: 'Praca' }).expect(401);
     await http().get('/subscriptions').expect(401);
     await http().post('/subscriptions').send(subscriptionBody()).expect(401);
+    await http()
+      .put(`/subscriptions/${UNKNOWN_ID}`)
+      .send(subscriptionBody())
+      .expect(401);
+    await http().delete(`/subscriptions/${UNKNOWN_ID}`).expect(401);
   });
 
   // The global guard is covered on /auth/me in test/auth/session.e2e-spec.ts; this keeps it on the
@@ -51,5 +66,7 @@ describe('Subscriptions — access (e2e)', () => {
     await postCategory(cookie, 'Praca').expect(401);
     await http().get('/subscriptions').set('Cookie', cookie).expect(401);
     await postSubscription(cookie, subscriptionBody()).expect(401);
+    await putSubscription(cookie, UNKNOWN_ID, subscriptionBody()).expect(401);
+    await deleteSubscription(cookie, UNKNOWN_ID).expect(401);
   });
 });

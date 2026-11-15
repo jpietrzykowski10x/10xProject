@@ -1,5 +1,6 @@
 import { MagicLinkToken } from '../../src/auth/entities/magic-link-token.entity.js';
 import { Session } from '../../src/auth/entities/session.entity.js';
+import { DEFAULT_CATEGORIES } from '../../src/subscriptions/default-categories.js';
 import { Category } from '../../src/subscriptions/entities/category.entity.js';
 import { Subscription } from '../../src/subscriptions/entities/subscription.entity.js';
 import type {
@@ -8,7 +9,7 @@ import type {
 } from '../../src/subscriptions/subscription.types.js';
 import { UserRole } from '../../src/users/entities/user-role.entity.js';
 import { User } from '../../src/users/entities/user.entity.js';
-import { createE2eApp } from '../support/e2e-app.js';
+import { createE2eApp, UNKNOWN_ID } from '../support/e2e-app.js';
 import {
   OTHER_CATEGORY_ID,
   subscriptionBody,
@@ -21,8 +22,13 @@ describe('Subscriptions — list (e2e)', () => {
   // recognisable address and is removed at the end.
   const e2e = createE2eApp({ addressPrefix: 'e2e-subscriptions-list-' });
   const { repository, signIn, userIdOf } = e2e;
-  const { postSubscription, postCategory, getSubscriptions } =
-    subscriptionRequests(e2e);
+  const {
+    postSubscription,
+    putSubscription,
+    deleteSubscription,
+    postCategory,
+    getSubscriptions,
+  } = subscriptionRequests(e2e);
 
   beforeAll(() => e2e.start());
 
@@ -190,5 +196,141 @@ describe('Subscriptions — list (e2e)', () => {
     expect(await repository(Category).countBy({ id: OTHER_CATEGORY_ID })).toBe(
       1,
     );
+  });
+
+  describe('edit and delete', () => {
+    const add = async (cookie: string, overrides = {}) =>
+      (await postSubscription(cookie, subscriptionBody(overrides)).expect(201))
+        .body as SubscriptionResponse;
+
+    it('replaces every field and keeps the creation time', async () => {
+      const { cookie } = await signIn();
+      const created = await add(cookie);
+
+      const updated = await putSubscription(cookie, created.id, {
+        name: '  Spotify  ',
+        categoryId: DEFAULT_CATEGORIES[0].id,
+        amount: 19.9,
+        billingCycle: 'yearly',
+        paymentMethod: 'blik',
+        status: 'cancelled_pending',
+        nextBillingDate: '2027-01-31',
+      }).expect(200);
+
+      const expected = {
+        id: created.id,
+        name: 'Spotify',
+        category: { ...DEFAULT_CATEGORIES[0], isDefault: true },
+        amount: '19.90',
+        billingCycle: 'yearly',
+        paymentMethod: 'blik',
+        status: 'cancelled_pending',
+        trialEndDate: null,
+        nextBillingDate: '2027-01-31',
+        createdAt: created.createdAt,
+      };
+      expect(updated.body).toEqual(expected);
+      expect(await getSubscriptions(cookie)).toEqual([expected]);
+    });
+
+    it('clears the trial end date when a trial becomes active', async () => {
+      const { cookie } = await signIn();
+      const created = await add(cookie, {
+        status: 'trial',
+        trialEndDate: '2026-11-20',
+        nextBillingDate: '2026-11-20',
+      });
+
+      await putSubscription(
+        cookie,
+        created.id,
+        subscriptionBody({ status: 'active' }),
+      ).expect(200);
+
+      const [listed] = await getSubscriptions(cookie);
+      expect(listed).toMatchObject({ status: 'active', trialEndDate: null });
+    });
+
+    it('needs the trial end date when an active subscription becomes a trial', async () => {
+      const { cookie } = await signIn();
+      const created = await add(cookie);
+
+      await putSubscription(
+        cookie,
+        created.id,
+        subscriptionBody({ status: 'trial' }),
+      ).expect(400);
+      const updated = await putSubscription(
+        cookie,
+        created.id,
+        subscriptionBody({
+          status: 'trial',
+          trialEndDate: '2026-11-10',
+          nextBillingDate: '2026-11-15',
+        }),
+      ).expect(200);
+
+      expect(updated.body).toMatchObject({
+        status: 'trial',
+        trialEndDate: '2026-11-10',
+      });
+    });
+
+    it('moves a subscription to an own category of the user', async () => {
+      const { cookie } = await signIn();
+      const created = await add(cookie);
+      const category = (await postCategory(cookie, 'Praca').expect(201))
+        .body as CategoryResponse;
+
+      const updated = await putSubscription(
+        cookie,
+        created.id,
+        subscriptionBody({ categoryId: category.id }),
+      ).expect(200);
+
+      expect((updated.body as SubscriptionResponse).category).toEqual(category);
+    });
+
+    it('refuses an invalid body and keeps the subscription', async () => {
+      const { cookie } = await signIn();
+      const created = await add(cookie);
+
+      await putSubscription(
+        cookie,
+        created.id,
+        subscriptionBody({ amount: -1 }),
+      ).expect(400);
+
+      expect(await getSubscriptions(cookie)).toEqual([created]);
+    });
+
+    it('answers 400 for an id that is not a UUID and 404 for an unknown one', async () => {
+      const { cookie } = await signIn();
+
+      await putSubscription(cookie, 'not-a-uuid', subscriptionBody()).expect(
+        400,
+      );
+      await deleteSubscription(cookie, 'not-a-uuid').expect(400);
+      await putSubscription(cookie, UNKNOWN_ID, subscriptionBody()).expect(404);
+      await deleteSubscription(cookie, UNKNOWN_ID).expect(404);
+    });
+
+    it('deletes a subscription once and leaves the rest alone', async () => {
+      const { cookie } = await signIn();
+      const category = (await postCategory(cookie, 'Praca').expect(201))
+        .body as CategoryResponse;
+      const removed = await add(cookie, { categoryId: category.id });
+      const kept = await add(cookie, { name: 'Spotify' });
+
+      const response = await deleteSubscription(cookie, removed.id).expect(204);
+
+      expect(response.text).toBe('');
+      expect(await getSubscriptions(cookie)).toEqual([kept]);
+      expect(await repository(Subscription).countBy({ id: removed.id })).toBe(
+        0,
+      );
+      expect(await repository(Category).countBy({ id: category.id })).toBe(1);
+      await deleteSubscription(cookie, removed.id).expect(404);
+    });
   });
 });

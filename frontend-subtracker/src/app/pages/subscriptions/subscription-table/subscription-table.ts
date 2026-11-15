@@ -1,8 +1,10 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { CurrencyPipe } from '@angular/common';
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { CurrencyPipe, NgTemplateOutlet } from '@angular/common';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
+import { MatTooltip } from '@angular/material/tooltip';
 import { map } from 'rxjs';
 import { PHONE_MEDIA_QUERY } from '../../../shared/breakpoints';
 import { DateOnlyPipe } from '../../../shared/date-only.pipe';
@@ -19,21 +21,34 @@ import {
 } from '../../../subscriptions/subscription-labels';
 import type { Subscription } from '../../../subscriptions/subscription.types';
 
-const DESKTOP_COLUMNS = ['name', 'payment', 'status', 'date', 'amount'];
+const DESKTOP_COLUMNS = ['name', 'payment', 'status', 'date', 'amount', 'actions'];
 const PHONE_COLUMNS = ['summary'];
 
-// One table for both layouts. Desktop (F2-Lista): five columns with a header row. Phone
-// (F2-Tel-Lista): one column whose cell is a button expanding a detail row; the header row gets
-// no cells there, so the phone carries no hidden desktop headers. /subscriptions is rendered only
-// in the browser (RenderMode.Client), so the breakpoint is known before the first paint.
+// One table for both layouts. Desktop (F2-Lista): five columns and the row actions, with a header
+// row. Phone (F2-Tel-Lista): one column whose cell is a button expanding a detail row, which holds
+// the row actions; the header row gets no cells there, so the phone carries no hidden desktop
+// headers. /subscriptions is rendered only in the browser (RenderMode.Client), so the breakpoint is
+// known before the first paint. The table only emits the actions; the page handles them.
 @Component({
   selector: 'app-subscription-table',
-  imports: [CurrencyPipe, DateOnlyPipe, MatTableModule, TypedCellDef, TypedRowDef],
+  imports: [
+    CurrencyPipe,
+    DateOnlyPipe,
+    MatButton,
+    MatIconButton,
+    MatTableModule,
+    MatTooltip,
+    NgTemplateOutlet,
+    TypedCellDef,
+    TypedRowDef,
+  ],
   templateUrl: './subscription-table.html',
   styleUrl: './subscription-table.scss',
 })
 export class SubscriptionTable {
   readonly subscriptions = input.required<Subscription[]>();
+  readonly edit = output<Subscription>();
+  readonly remove = output<Subscription>();
 
   private readonly breakpoints = inject(BreakpointObserver);
 

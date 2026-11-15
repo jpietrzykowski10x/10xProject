@@ -35,11 +35,13 @@
   }
 }
 
-// Fills the frame at every width. Material's own `min-width: 100%` is replaced by the 700px floor
-// below (and 0 on the phone), so the width has to be set here.
+// Fills the frame at every width. Material's own `min-width: 100%` is replaced by the 840px floor
+// below (and 0 on the phone), so the width has to be set here. The floor equals the width at which
+// the compact table takes over (the container query below), so no frame width lies between the
+// two: a full table never gets a frame narrower than its floor.
 .table {
   width: 100%;
-  min-width: 700px;
+  min-width: 840px;
 
   .mat-mdc-header-cell,
   .mat-mdc-cell {
@@ -110,15 +112,46 @@
   display: none;
 }
 
-// Compact desktop table: the payment column moves under the name ("Streaming · BLIK") and the
-// cells tighten, so the table fits from about 520px; below that the frame scrolls.
-@container (max-width: 680px) {
+// The row actions: two 40px icon buttons side by side at the right edge, the column as narrow as
+// they are (96px with its 8px sides, 88px in the compact table). The smaller top padding puts the
+// icons level with the first line of text in the other cells.
+.table .table__actions {
+  width: 1%;
+  padding: 4px 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+// A header for screen readers only: the column of buttons has no visible heading.
+.table__visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+// Compact desktop table, for every frame narrower than the full table's 840px floor: the payment
+// column moves under the name ("Streaming · BLIK"), the cells tighten and the notes under the date
+// and the amount may wrap. The narrowest desktop frame is about 534px (a 1200px window with the
+// panel beside the table: 1200 - 240 sidebar - 64 content padding - 360 panel - 2 border); the
+// 500px floor stays below it, so the floor never scrolls the frame.
+@container (max-width: 839.98px) {
   .table:not(.table--phone) {
-    min-width: 520px;
+    min-width: 500px;
 
     .mat-mdc-header-cell,
     .mat-mdc-cell {
       padding: 10px 12px;
+    }
+
+    .table__actions {
+      padding: 2px 4px;
+    }
+
+    .table__note {
+      white-space: normal;
     }
 
     .table__payment {
@@ -150,6 +183,14 @@
 
   .table__row--expanded .mat-mdc-cell {
     border-bottom-width: 0;
+  }
+
+  // The expanded row and its details read as one selected block. --st-page is the neutral light
+  // grey of the page: not a success, warning or error tint, which carry meaning here. The muted
+  // text stays about 6:1 on it and the orange status about 5:1 (5.4:1 on white).
+  .table__row--expanded .mat-mdc-cell,
+  .table__detail-row--open .mat-mdc-cell {
+    background: var(--st-page);
   }
 
   .table__details {
@@ -221,5 +262,23 @@
   dd {
     margin: 0;
     text-align: right;
+  }
+}
+
+// Phone: the row actions under the details of an expanded row.
+.details__actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--st-line-soft);
+
+  button {
+    flex: 1 1 0;
+  }
+
+  // The icon before the text, on the text's line.
+  .action-icon {
+    margin-right: 6px;
+    vertical-align: -4px;
   }
 }

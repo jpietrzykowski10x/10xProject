@@ -1,11 +1,15 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Header,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseUUIDPipe,
   Post,
+  Put,
 } from '@nestjs/common';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator.js';
 import type { AuthUser } from '../../shared/types/auth-user.js';
@@ -30,5 +34,24 @@ export class SubscriptionsController {
     @Body() dto: CreateSubscriptionDto,
   ): Promise<SubscriptionResponse> {
     return this.subscriptions.create(user.id, dto);
+  }
+
+  // ParseUUIDPipe answers 400 for an id that is not a UUID before it reaches the query.
+  @Put(':id')
+  update(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateSubscriptionDto,
+  ): Promise<SubscriptionResponse> {
+    return this.subscriptions.update(user.id, id, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<void> {
+    return this.subscriptions.remove(user.id, id);
   }
 }

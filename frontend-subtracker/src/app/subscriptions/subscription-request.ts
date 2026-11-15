@@ -1,13 +1,14 @@
-import { toDateOnly } from '../shared/date-only';
+import { parseDateOnly, toDateOnly } from '../shared/date-only';
 import { parseAmount } from './subscription-validators';
 import type {
   BillingCycle,
   CreateSubscriptionRequest,
   PaymentMethod,
+  Subscription,
   SubscriptionStatus,
 } from './subscription.types';
 
-// The add form's value as getRawValue() gives it: the amount as typed, the dates as picked.
+// The form's value as getRawValue() gives it: the amount as typed, the dates as picked.
 export interface SubscriptionFormValue {
   name: string;
   categoryId: string;
@@ -45,5 +46,25 @@ export function toCreateSubscriptionRequest(
     ...(trial && value.trialEndDate !== null
       ? { trialEndDate: toDateOnly(value.trialEndDate) }
       : {}),
+  };
+}
+
+// The form's value for an existing subscription, the reverse of toCreateSubscriptionRequest: the
+// amount the Polish way ("43.00" → "43,00"), the calendar days as local Dates, and the end of the
+// trial only for a trial.
+export function toSubscriptionFormValue(subscription: Subscription): SubscriptionFormValue {
+  const trialEndDate =
+    subscription.status === 'trial' && subscription.trialEndDate !== null
+      ? parseDateOnly(subscription.trialEndDate)
+      : null;
+  return {
+    name: subscription.name,
+    categoryId: subscription.category.id,
+    amount: subscription.amount.replace('.', ','),
+    billingCycle: subscription.billingCycle,
+    paymentMethod: subscription.paymentMethod,
+    status: subscription.status,
+    trialEndDate,
+    nextBillingDate: parseDateOnly(subscription.nextBillingDate),
   };
 }

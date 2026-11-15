@@ -27,6 +27,12 @@ export const subscriptionBody = (
 // Requests shared by the subscription e2e files. The list requests expect 200 without caching.
 export interface SubscriptionRequests {
   postSubscription: (cookie: string, body: Record<string, unknown>) => Test;
+  putSubscription: (
+    cookie: string,
+    id: string,
+    body: Record<string, unknown>,
+  ) => Test;
+  deleteSubscription: (cookie: string, id: string) => Test;
   postCategory: (cookie: string, name: string) => Test;
   getSubscriptions: (cookie: string) => Promise<SubscriptionResponse[]>;
   getCategories: (cookie: string) => Promise<CategoryResponse[]>;
@@ -37,6 +43,15 @@ export function subscriptionRequests(e2e: E2eApp): SubscriptionRequests {
 
   const postSubscription = (cookie: string, body: Record<string, unknown>) =>
     http().post('/subscriptions').set('Cookie', cookie).send(body);
+
+  const putSubscription = (
+    cookie: string,
+    id: string,
+    body: Record<string, unknown>,
+  ) => http().put(`/subscriptions/${id}`).set('Cookie', cookie).send(body);
+
+  const deleteSubscription = (cookie: string, id: string) =>
+    http().delete(`/subscriptions/${id}`).set('Cookie', cookie);
 
   const postCategory = (cookie: string, name: string) =>
     http().post('/categories').set('Cookie', cookie).send({ name });
@@ -61,6 +76,8 @@ export function subscriptionRequests(e2e: E2eApp): SubscriptionRequests {
 
   return {
     postSubscription,
+    putSubscription,
+    deleteSubscription,
     postCategory,
     getSubscriptions,
     getCategories,

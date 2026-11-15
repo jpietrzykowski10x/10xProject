@@ -159,9 +159,20 @@
     </p>
   }
 
-  <div class="form__actions">
+  <!-- An edit can be left without saving; its changes are dropped with the form. -->
+  <div class="form__actions" [class.form__actions--split]="subscription() !== null">
     <button mat-flat-button type="submit" [disabled]="state() === 'sending'">
-      Zapisz subskrypcję
+      {{ subscription() === null ? 'Zapisz subskrypcję' : 'Zapisz zmiany' }}
     </button>
+    @if (subscription() !== null) {
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="state() === 'sending'"
+        (click)="cancelled.emit()"
+      >
+        Anuluj
+      </button>
+    }
   </div>
 </form>
