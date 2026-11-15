@@ -454,33 +454,33 @@ Brak zmian schematu. Encje się nie zmieniają, więc reguła „migracja na kon
 
 #### Automated
 
-- [x] 2.1 Build frontendu przechodzi: `cd frontend-subtracker && npm run build`
-- [x] 2.2 Testy frontendu przechodzą w obu strefach: `cd frontend-subtracker && npm run test:ci`
-- [x] 2.3 Sabotaż: po zamianie `update` na `create` w `submit` test edycji formularza jest czerwony; po cofnięciu zmiany znów zielony
+- [x] 2.1 Build frontendu przechodzi: `cd frontend-subtracker && npm run build` — b7d8154
+- [x] 2.2 Testy frontendu przechodzą w obu strefach: `cd frontend-subtracker && npm run test:ci` — b7d8154
+- [x] 2.3 Sabotaż: po zamianie `update` na `create` w `submit` test edycji formularza jest czerwony; po cofnięciu zmiany znów zielony — b7d8154
 
 #### Manual
 
-- [x] 2.4 Desktop ≥ 1200 px: „Edytuj” otwiera panel obok tabeli z danymi wiersza, zapis zmienia wiersz i pokazuje komunikat
-- [x] 2.5 840–1199 px: panel edycji zasłania tabelę, lista jest `inert`, Escape zamyka panel
-- [x] 2.6 Telefon: „Edytuj” w rozwiniętych szczegółach otwiera pełny widok edycji, a zapis wraca do listy
-- [x] 2.7 Szkic dodawania, potem „Edytuj” innego wiersza, potem „Dodaj subskrypcję”: formularz jest pusty, bez danych z edycji
-- [x] 2.8 Trial z datą końca: pole daty jest widoczne i wypełnione, a zmiana statusu na „Aktywna” je ukrywa
+- [x] 2.4 Desktop ≥ 1200 px: „Edytuj” otwiera panel obok tabeli z danymi wiersza, zapis zmienia wiersz i pokazuje komunikat — b7d8154
+- [x] 2.5 840–1199 px: panel edycji zasłania tabelę, lista jest `inert`, Escape zamyka panel — b7d8154
+- [x] 2.6 Telefon: „Edytuj” w rozwiniętych szczegółach otwiera pełny widok edycji, a zapis wraca do listy — b7d8154
+- [x] 2.7 Szkic dodawania, potem „Edytuj” innego wiersza, potem „Dodaj subskrypcję”: formularz jest pusty, bez danych z edycji — b7d8154
+- [x] 2.8 Trial z datą końca: pole daty jest widoczne i wypełnione, a zmiana statusu na „Aktywna” je ukrywa — b7d8154
 
 ### Phase 3: Usuwanie z dialogiem
 
 #### Automated
 
-- [ ] 3.1 Build frontendu przechodzi: `cd frontend-subtracker && npm run build`
-- [ ] 3.2 Testy frontendu przechodzą w obu strefach: `cd frontend-subtracker && npm run test:ci`
-- [ ] 3.3 Sabotaż: po usunięciu wywołania `delete` w dialogu test „Usuń wysyła DELETE” jest czerwony; po cofnięciu zmiany znów zielony
+- [x] 3.1 Build frontendu przechodzi: `cd frontend-subtracker && npm run build`
+- [x] 3.2 Testy frontendu przechodzą w obu strefach: `cd frontend-subtracker && npm run test:ci`
+- [x] 3.3 Sabotaż: po usunięciu wywołania `delete` w dialogu test „Usuń wysyła DELETE” jest czerwony; po cofnięciu zmiany znów zielony
 
 #### Manual
 
-- [ ] 3.4 Desktop: „Usuń” otwiera dialog z nazwą, „Anuluj” zostawia wiersz, „Usuń” usuwa wiersz i pokazuje komunikat
-- [ ] 3.5 Telefon: dialog mieści się na ekranie, przyciski są dostępne kciukiem, a usunięcie z rozwiniętych szczegółów działa
-- [ ] 3.6 Klawiatura: Tab nie wychodzi z dialogu, Escape go zamyka, a fokus wraca na „Usuń”
-- [ ] 3.7 Usunięcie subskrypcji, która jest otwarta w panelu edycji, zamyka panel
-- [ ] 3.8 API wyłączone: dialog pokazuje alert i zostaje otwarty
+- [x] 3.4 Desktop: „Usuń” otwiera dialog z nazwą, „Anuluj” zostawia wiersz, „Usuń” usuwa wiersz i pokazuje komunikat
+- [x] 3.5 Telefon: dialog mieści się na ekranie, przyciski są dostępne kciukiem, a usunięcie z rozwiniętych szczegółów działa
+- [x] 3.6 Klawiatura: Tab nie wychodzi z dialogu, Escape go zamyka, a fokus wraca na „Usuń”
+- [x] 3.7 Usunięcie subskrypcji, która jest otwarta w panelu edycji, zamyka panel
+- [x] 3.8 API wyłączone: dialog pokazuje alert i zostaje otwarty
 
 ### Phase 4: Test przeglądarkowy i cookbook
 

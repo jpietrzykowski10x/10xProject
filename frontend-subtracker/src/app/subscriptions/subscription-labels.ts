@@ -103,5 +103,10 @@ export function updatedSubscriptionMessage(name: string): string {
   return `Zapisano zmiany w subskrypcji „${name}”.`;
 }
 
+// The status message after a subscription is deleted.
+export function deletedSubscriptionMessage(name: string): string {
+  return `Usunięto subskrypcję „${name}”.`;
+}
+
 // The status message when the edited subscription is gone (e.g. deleted in another tab).
 export const missingSubscriptionMessage = 'Tej subskrypcji już nie ma na liście.';

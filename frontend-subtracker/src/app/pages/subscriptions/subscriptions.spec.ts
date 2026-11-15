@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { TestBed } from '@angular/core/testing';
 import { MatButtonHarness } from '@angular/material/button/testing';
+import { MatDialogHarness } from '@angular/material/dialog/testing';
 import { MatFormFieldHarness } from '@angular/material/form-field/testing';
 import { MatInputHarness } from '@angular/material/input/testing';
 import { provideRouter } from '@angular/router';
@@ -133,5 +134,40 @@ describe('Subscriptions', () => {
     expect(host.querySelector('#subscription-panel')).toBeNull();
     httpTesting.expectNone({ method: 'PUT', url: `${SUBSCRIPTIONS_URL}/${NETFLIX.id}` });
     httpTesting.expectNone({ method: 'GET', url: SUBSCRIPTIONS_URL });
+  });
+
+  // The oracle is the API contract (DELETE /subscriptions/:id answers 204) and the plan's flow:
+  // "Usuń" asks in a dialog, the confirmed delete shows the status message and reads the list again.
+  it('deletes a subscription after the confirmation and reads the list again', async () => {
+    const { httpTesting, fixture, loader } = createPage();
+    await fixture.whenStable();
+    httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([NETFLIX]);
+    await fixture.whenStable();
+
+    await (
+      await loader.getHarness(MatButtonHarness.with({ selector: '[aria-label="Usuń Netflix"]' }))
+    ).click();
+    await fixture.whenStable();
+
+    const dialog =
+      await TestbedHarnessEnvironment.documentRootLoader(fixture).getHarness(MatDialogHarness);
+    httpTesting.expectNone({ method: 'DELETE', url: `${SUBSCRIPTIONS_URL}/${NETFLIX.id}` });
+    await (await dialog.getHarness(MatButtonHarness.with({ text: 'Usuń' }))).click();
+
+    httpTesting
+      .expectOne({ method: 'DELETE', url: `${SUBSCRIPTIONS_URL}/${NETFLIX.id}` })
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+
+    httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([]);
+    await fixture.whenStable();
+    // The empty list does not open the add panel by itself after the first answer.
+    httpTesting.expectNone({ method: 'GET', url: CATEGORIES_URL });
+
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('[role="status"]')?.textContent?.trim()).toBe(
+      'Usunięto subskrypcję „Netflix”.',
+    );
+    expect(host.textContent).toContain('Nie masz jeszcze żadnych subskrypcji.');
   });
 });

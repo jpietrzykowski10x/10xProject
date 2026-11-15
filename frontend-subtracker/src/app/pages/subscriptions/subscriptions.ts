@@ -18,12 +18,15 @@ import {
 import { isPlatformBrowser } from '@angular/common';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButton } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { map, type Subscription as RxSubscription } from 'rxjs';
 import { AppShell } from '../../layout/app-shell/app-shell';
 import { PHONE_MEDIA_QUERY, WIDE_MEDIA_QUERY } from '../../shared/breakpoints';
+import { openDeleteSubscriptionDialog } from '../../subscriptions/delete-subscription-dialog/delete-subscription-dialog';
 import { SubscriptionForm } from '../../subscriptions/subscription-form/subscription-form';
 import {
   addedSubscriptionMessage,
+  deletedSubscriptionMessage,
   missingSubscriptionMessage,
   updatedSubscriptionMessage,
 } from '../../subscriptions/subscription-labels';
@@ -54,6 +57,7 @@ export class Subscriptions implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
   private readonly breakpoints = inject(BreakpointObserver);
+  private readonly dialog = inject(MatDialog);
   // On a mat-flat-button host the template ref is the MatButton instance (no nativeElement);
   // MatButton has its own focus().
   private readonly addButton = viewChild.required<MatButton>('addButton');
@@ -219,6 +223,35 @@ export class Subscriptions implements OnInit {
     this.load(true);
   }
 
+  // "Usuń" in a row asks for a confirmation; the dialog sends the DELETE itself. Without a result
+  // nothing changes and MatDialog returns the focus to "Usuń". After a delete (or a 404: it was
+  // already gone) the row and its "Usuń" disappear with the next load, so the focus moves to the
+  // "Dodaj subskrypcję" control. An edit panel of that subscription closes; any other panel stays.
+  protected confirmRemove(subscription: Subscription): void {
+    openDeleteSubscriptionDialog(this.dialog, subscription)
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        if (result === undefined) {
+          return;
+        }
+        if (this.editing()?.id === subscription.id) {
+          this.editTrigger = null;
+          this.close();
+        } else {
+          this.focusAddControl();
+        }
+        // Cleared first, so the same message after a second delete is announced again.
+        this.statusMessage.set(null);
+        this.showStatus(
+          result === 'deleted'
+            ? deletedSubscriptionMessage(subscription.name)
+            : missingSubscriptionMessage,
+        );
+        this.load(true);
+      });
+  }
+
   // Set once the list is visible again (on the phone it was hidden), so the region announces it.
   private showStatus(message: string): void {
     afterNextRender(() => this.statusMessage.set(message), { injector: this.injector });
@@ -262,10 +295,18 @@ export class Subscriptions implements OnInit {
         if (trigger?.isConnected) {
           trigger.focus();
         } else {
-          (this.isPhone() ? this.phoneAddButton() : this.addButton()).focus();
+          this.addControl().focus();
         }
       },
       { injector: this.injector },
     );
+  }
+
+  private focusAddControl(): void {
+    afterNextRender(() => this.addControl().focus(), { injector: this.injector });
+  }
+
+  private addControl(): MatButton {
+    return this.isPhone() ? this.phoneAddButton() : this.addButton();
   }
 }

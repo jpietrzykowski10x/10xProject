@@ -47,8 +47,11 @@
         <p class="subscriptions__panel">Nie masz jeszcze żadnych subskrypcji.</p>
       } @else {
         <!-- One table for desktop and phone; it switches its columns at 840px. -->
-        <!-- "Usuń" (remove) is handled in a later phase. -->
-        <app-subscription-table [subscriptions]="current.subscriptions" (edit)="openEdit($event)" />
+        <app-subscription-table
+          [subscriptions]="current.subscriptions"
+          (edit)="openEdit($event)"
+          (remove)="confirmRemove($event)"
+        />
       }
 
       <!-- Phone only: the main action stays at the bottom of the screen (F2-Tel-Lista). -->

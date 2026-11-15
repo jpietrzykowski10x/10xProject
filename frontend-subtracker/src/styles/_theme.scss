@@ -113,11 +113,11 @@ html {
   );
 
   // Only the main action (mat-flat-button) is green; secondary actions use stroked/text buttons.
+  // All of them keep Material's default 40px height, so a pair differs only in colour.
   @include mat.button-overrides(
     (
       filled-container-color: $green,
       filled-label-text-color: $white,
-      filled-container-height: 48px,
       filled-container-shape: $shape,
       outlined-container-shape: $shape,
       text-container-shape: $shape,

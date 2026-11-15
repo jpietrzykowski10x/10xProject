@@ -1,0 +1,32 @@
+<h2 mat-dialog-title>Usunąć subskrypcję?</h2>
+<mat-dialog-content>
+  <p class="dialog__text">
+    Subskrypcja „{{ subscription.name }}” zniknie z listy. Usunięcia nie da się cofnąć.
+  </p>
+  <p class="dialog__text">
+    Jeśli rezygnujesz z usługi, nie usuwaj subskrypcji, tylko zmień jej status na „{{
+      statusLabels.cancelled_pending
+    }}” albo „{{ statusLabels.cancelled }}”.
+  </p>
+  @if (failed()) {
+    <p class="st-notice st-notice--error dialog__error" role="alert">
+      Nie udało się usunąć subskrypcji. Spróbuj ponownie.
+    </p>
+  }
+</mat-dialog-content>
+<!-- "Anuluj" comes first, so it gets the focus when the dialog opens. While the DELETE is in
+     flight both buttons are disabled; "Usuń" keeps the focus (disabledInteractive). -->
+<mat-dialog-actions align="end" class="dialog__actions">
+  <button mat-stroked-button type="button" [disabled]="sending()" (click)="cancel()">
+    Anuluj
+  </button>
+  <button
+    mat-flat-button
+    type="button"
+    disabledInteractive
+    [disabled]="sending()"
+    (click)="confirm()"
+  >
+    Usuń
+  </button>
+</mat-dialog-actions>
