@@ -219,6 +219,13 @@ export class Subscriptions implements OnInit {
     this.focusAfterClose(trigger);
   }
 
+  // "Spróbuj ponownie" after a failed read: the cost totals in the shell most likely failed with the
+  // list, so they are read again too, quietly (totals already shown stay until the answer).
+  protected retry(quiet = false): void {
+    this.load(quiet);
+    this.totals.refresh();
+  }
+
   // The saved subscription takes its place in the API's order, so the list is read again; so are
   // the cost totals in the shell, quietly.
   protected onSaved(subscription: Subscription): void {

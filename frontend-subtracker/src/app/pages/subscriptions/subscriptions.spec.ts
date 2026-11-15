@@ -206,6 +206,28 @@ describe('Subscriptions', () => {
     httpTesting.expectNone({ method: 'GET', url: TOTALS_URL });
   });
 
+  // With the API down on entry both the list and the totals fail; "Spróbuj ponownie" reads both
+  // again, so the shell does not keep "Nie udało się wczytać sum." until the next change.
+  it('reads the list and the totals again on "Spróbuj ponownie" after a failed start', async () => {
+    const { httpTesting, fixture, loader } = createPage();
+    await fixture.whenStable();
+    const failure = { status: 500, statusText: 'Server Error' };
+    httpTesting.expectOne({ method: 'GET', url: TOTALS_URL }).flush('error', failure);
+    httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush('error', failure);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.textContent).toContain('Nie udało się wczytać sum.');
+
+    await (await loader.getHarness(MatButtonHarness.with({ text: 'Spróbuj ponownie' }))).click();
+
+    httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([NETFLIX]);
+    flushTotals(httpTesting, NETFLIX_TOTALS);
+    await fixture.whenStable();
+
+    expect(columnMonthly(host)).toBe('43,00 zł');
+    expect(host.textContent).not.toContain('Nie udało się wczytać sum.');
+  });
+
   // The oracle is the API contract (DELETE /subscriptions/:id answers 204) and the plan's flow:
   // "Usuń" asks in a dialog, the confirmed delete shows the status message and reads the list and
   // the cost totals again; the new totals reach the shell.

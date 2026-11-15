@@ -9,6 +9,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { environment } from '../../environments/environment';
 import type { MockInstance } from 'vitest';
+import { CostTotalsStore } from '../subscriptions/cost-totals.store';
 import { sessionExpiredInterceptor } from './session-expired.interceptor';
 
 // The oracle is the rule "a 401 from the API outside /auth/ means the session ended while the page
@@ -21,6 +22,7 @@ const API = environment.apiUrl;
 let http: HttpClient;
 let httpTesting: HttpTestingController;
 let navigateByUrl: MockInstance<Router['navigateByUrl']>;
+let clearTotals: MockInstance<CostTotalsStore['clear']>;
 
 beforeEach(() => {
   TestBed.configureTestingModule({
@@ -34,6 +36,7 @@ beforeEach(() => {
   httpTesting = TestBed.inject(HttpTestingController);
   // Observed on the real Router; resolved so no real navigation runs against an empty route table.
   navigateByUrl = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+  clearTotals = vi.spyOn(TestBed.inject(CostTotalsStore), 'clear');
 });
 
 afterEach(() => {
@@ -55,6 +58,8 @@ it('sends the visitor to /sign-in on a 401 from an API route and still passes th
 
   expect(navigateByUrl).toHaveBeenCalledTimes(1);
   expect(navigateByUrl).toHaveBeenCalledWith('/sign-in');
+  // The ended session's cost totals are dropped, like on a sign-out.
+  expect(clearTotals).toHaveBeenCalledTimes(1);
   expect(error).toBeInstanceOf(HttpErrorResponse);
   expect(error?.status).toBe(401);
 });
@@ -68,6 +73,7 @@ it.each([
   const error = failRequest(url, status);
 
   expect(navigateByUrl).not.toHaveBeenCalled();
+  expect(clearTotals).not.toHaveBeenCalled();
   expect(error?.status).toBe(status);
 });
 
