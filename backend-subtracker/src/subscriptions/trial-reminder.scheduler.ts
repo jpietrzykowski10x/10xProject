@@ -37,7 +37,8 @@ export class TrialReminderScheduler
     void this.run();
   }
 
-  // Lets a run in progress finish before the database connection closes.
+  // Lets a run in progress finish before app.close() closes the database connection (e2e tests).
+  // In production main.ts does not enable shutdown hooks, so a stopped process ends the run as is.
   async beforeApplicationShutdown(): Promise<void> {
     await this.idle();
   }
@@ -67,8 +68,9 @@ export class TrialReminderScheduler
   }
 
   private async runOnce(): Promise<void> {
-    const today = calendarDayIn(APP_TIME_ZONE, new Date());
+    let today: string | undefined;
     try {
+      today = calendarDayIn(APP_TIME_ZONE, new Date());
       const result = await this.reminders.sendDue(today);
       if (result.usersNotified + result.usersFailed > 0) {
         // Black on green, so the run stands out among Nest's lines like the startup lines of
@@ -89,10 +91,11 @@ export class TrialReminderScheduler
         `Trial reminder run failed: ${error instanceof Error ? error.message : 'non-error value thrown'}`,
       );
       // The date only: no error text and no user data in the mail. notifyOperator never rejects.
+      const day = today ?? 'nieznany';
       await this.mail.notifyOperator({
         subject: 'SubTracker: przebieg przypomnień o trialu nie powiódł się',
-        text: `Przebieg przypomnień o kończących się okresach próbnych nie powiódł się.\ndzień: ${today}\nSzczegóły w logu API.`,
-        html: `<p>Przebieg przypomnień o kończących się okresach próbnych nie powiódł się.</p><p>dzień: ${escapeHtml(today)}<br>Szczegóły w logu API.</p>`,
+        text: `Przebieg przypomnień o kończących się okresach próbnych nie powiódł się.\ndzień: ${day}\nSzczegóły w logu API.`,
+        html: `<p>Przebieg przypomnień o kończących się okresach próbnych nie powiódł się.</p><p>dzień: ${escapeHtml(day)}<br>Szczegóły w logu API.</p>`,
       });
     }
   }

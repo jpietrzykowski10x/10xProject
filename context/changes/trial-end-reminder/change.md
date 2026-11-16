@@ -1,7 +1,7 @@
 ---
 change_id: trial-end-reminder
 title: Trial end reminder
-status: implementing
+status: impl_reviewed
 created: 2026-11-16
 updated: 2026-11-16
 archived_at: null

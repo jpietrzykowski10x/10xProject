@@ -23,7 +23,7 @@ describe('Subscriptions — trial reminder job (e2e)', () => {
   const e2e = createE2eApp({
     addressPrefix: 'e2e-subscriptions-trial-reminder-',
   });
-  const { repository, signIn, sent, failMailTo } = e2e;
+  const { repository, signIn, sent, failMailTo, isFileAddress } = e2e;
   const { postSubscription, putSubscription, cancelSubscription } =
     subscriptionRequests(e2e);
 
@@ -67,9 +67,6 @@ describe('Subscriptions — trial reminder job (e2e)', () => {
   // Mail to the address sent from the given position of `sent` on.
   const mailTo = (address: string, from: number) =>
     sent.slice(from).filter((message) => message.to === address);
-
-  const isFileAddress = (address: string) =>
-    address.startsWith('e2e-subscriptions-trial-reminder-');
 
   beforeAll(async () => {
     // start() also waits for the background startup run of the reminders.

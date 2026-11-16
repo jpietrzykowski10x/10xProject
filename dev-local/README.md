@@ -51,6 +51,12 @@ To use the cookie: in Chrome DevTools on `http://localhost:4200` run the printed
 by hand in DevTools → Application → Cookies (`subtracker_session`, path `/`). Signing in with the
 real e-mail link also works — `seed` and `cleanup` do not need the browser's session.
 
+**Trial reminders after e2e tests.** Every `npm run test:e2e` starts the API with a fake mail
+transport, and its startup trial reminder run covers the whole `subtracker-db-dev`: trials of your
+own account that end within 7 days get `subscription.trial_reminder_sent_for` set although no mail
+went out. To check reminders by hand after running e2e tests, add the trial again, or move its end
+date in the edit form (a new end date re-arms the reminder), then restart `npm run start:dev`.
+
 ## Rules for adding a script
 
 - No passwords, tokens, host names, IP addresses or personal data (e-mail addresses, real names)

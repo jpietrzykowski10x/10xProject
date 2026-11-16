@@ -336,5 +336,5 @@ Kolumna nullable, bez backfillu. Pierwszy start po deployu wyśle przypomnienia 
 #### Manual
 
 - [x] 3.2 Prawdziwy mail dociera do Gmaila przez SMTP MyDevil z polskimi znakami i linkiem — 413733e
-- [x] 3.3 Po deployu health-check przechodzi przy pierwszej próbie, log pokazuje przebieg przypomnień — 413733e
+- [ ] 3.3 Po deployu health-check przechodzi przy pierwszej próbie, log pokazuje przebieg przypomnień — po merge'u
 - [x] 3.4 Opisy w backend-patterns, test-plan i CLAUDE.md zgadzają się z kodem — 413733e
