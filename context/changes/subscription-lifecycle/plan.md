@@ -469,8 +469,8 @@ Job działa na całej tabeli, ale filtruje po indeksach `(status, data)`; przesu
 
 #### Automated
 
-- [x] 5.1 Lint backendu przechodzi po zmianach dokumentacji
+- [x] 5.1 Lint backendu przechodzi po zmianach dokumentacji — f4d8eae
 
 #### Manual
 
-- [x] 5.2 Przepis w backend-patterns.md i test-plan §6 wystarcza do testu joba S-06
+- [x] 5.2 Przepis w backend-patterns.md i test-plan §6 wystarcza do testu joba S-06 — f4d8eae
