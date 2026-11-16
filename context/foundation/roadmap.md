@@ -49,7 +49,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-03 | edit-and-delete-subscription      | użytkownik poprawia lub usuwa błędnie dodaną subskrypcję                          | S-02, F-03    | FR-005, FR-006                | done |
 | S-04 | dashboard-cost-totals             | użytkownik widzi sumę miesięczną i roczną z podziałem na kategorie                | S-02          | FR-008, US-01                 | done |
 | S-05 | subscription-lifecycle            | subskrypcja sama przechodzi trial → active i cancelled_pending → cancelled        | S-02          | FR-013                        | done |
-| S-06 | trial-end-reminder                | użytkownik dostaje e-mail 7 dni przed końcem okresu próbnego                      | S-05          | FR-014                        | in-progress |
+| S-06 | trial-end-reminder                | użytkownik dostaje e-mail 7 dni przed końcem okresu próbnego                      | S-05          | FR-014                        | done |
 | S-07 | category-duplicate-warning        | użytkownik widzi ostrzeżenie, gdy kategoria przekroczy jego próg subskrypcji      | S-04          | FR-009, FR-005                | proposed |
 | S-08 | budget-limits-and-alerts          | użytkownik ustawia limity budżetu i widzi alert przy 80% / 100%                   | S-04          | FR-010, FR-011, FR-005        | proposed |
 | S-09 | admin-account-management          | administrator odblokowuje konto lub resetuje dostęp i wgląda w dane użytkownika   | S-02          | FR-002                        | proposed |
@@ -202,7 +202,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - Jak wykryć, że przypomnienie nie wyszło (proces padł, e-mail odrzucony), skoro nie ma monitoringu? — Owner: user. Block: no.
 - **Risk:** Rdzeń obietnicy produktu i wg pre-mortem w `infrastructure.md` najcichsza możliwa awaria; ryzyko duplikatów lub pominięć przy restarcie procesu.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-07: Ostrzeżenie o duplikatach w kategorii
 
@@ -309,3 +309,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-03: użytkownik poprawia dane istniejącej subskrypcji albo trwale usuwa błędnie dodaną — odrębnie od anulowania usługi w cyklu życia.** — Archived 2026-11-15 → `context/archive/2026-11-15-edit-and-delete-subscription/`. Lesson: —.
 - **S-04: użytkownik widzi na dashboardzie łączny koszt subskrypcji miesięcznie i rocznie, z podziałem na kategorie, zgodny z ręcznym wyliczeniem.** — Archived 2026-11-15 → `context/archive/2026-11-15-dashboard-cost-totals/`. Lesson: —.
 - **S-05: użytkownik anuluje subskrypcję (trafia do cancelled_pending), a system sam przenosi subskrypcje trial → active po dacie końca triala i cancelled_pending → cancelled po dacie następnego rozliczenia.** — Archived 2026-11-16 → `context/archive/2026-11-15-subscription-lifecycle/`. Lesson: —.
+- **S-06: użytkownik z subskrypcją w trialu dostaje e-mail 7 dni przed końcem okresu próbnego — dokładnie raz.** — Archived 2026-11-16 → `context/archive/2026-11-16-trial-end-reminder/`. Lesson: —.
