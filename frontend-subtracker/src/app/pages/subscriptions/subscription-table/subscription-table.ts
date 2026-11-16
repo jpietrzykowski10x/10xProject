@@ -47,8 +47,11 @@ const PHONE_COLUMNS = ['summary'];
 })
 export class SubscriptionTable {
   readonly subscriptions = input.required<Subscription[]>();
-  // The subscription whose "Przywróć" is in flight; its button stays disabled until the answer.
+  // The subscription whose "Przywróć" is in flight. One resume at a time: every "Przywróć" stays
+  // disabled until the answer, so no click is silently ignored.
   readonly resumingId = input<string | null>(null);
+  // The subscription whose edit is being saved; its cancel, resume and delete wait for the answer.
+  readonly savingId = input<string | null>(null);
   readonly edit = output<Subscription>();
   readonly remove = output<Subscription>();
   // "Anuluj subskrypcję" (active, trial) and "Przywróć" (cancelled_pending); a cancelled

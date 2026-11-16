@@ -5,8 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity.js';
+import { Repository, type QueryDeepPartialEntity } from 'typeorm';
 import type { CreateSubscriptionDto } from '../dtos/create-subscription.dto.js';
 import { COUNTED_STATUSES, costTotals } from '../cost-totals.js';
 import type { Category } from '../entities/category.entity.js';

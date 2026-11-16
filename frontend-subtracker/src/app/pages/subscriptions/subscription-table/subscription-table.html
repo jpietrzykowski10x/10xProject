@@ -115,6 +115,8 @@
           <button
             mat-icon-button
             type="button"
+            disabledInteractive
+            [disabled]="savingId() === subscription.id"
             [attr.aria-label]="cancelLabel"
             [matTooltip]="cancelLabel"
             (click)="cancel.emit(subscription)"
@@ -123,12 +125,13 @@
           </button>
         } @else if (subscription.status === 'cancelled_pending') {
           @let resumeLabel = 'Przywróć ' + subscription.name;
-          <!-- Disabled while its POST is in flight; it keeps the focus (disabledInteractive). -->
+          <!-- Disabled while any resume (or the row's edit save) is in flight; it keeps the focus
+               (disabledInteractive). -->
           <button
             mat-icon-button
             type="button"
             disabledInteractive
-            [disabled]="resumingId() === subscription.id"
+            [disabled]="resumingId() !== null || savingId() === subscription.id"
             [attr.aria-label]="resumeLabel"
             [matTooltip]="resumeLabel"
             (click)="resume.emit(subscription)"
@@ -139,6 +142,8 @@
         <button
           mat-icon-button
           type="button"
+          disabledInteractive
+          [disabled]="savingId() === subscription.id"
           [attr.aria-label]="removeLabel"
           [matTooltip]="removeLabel"
           (click)="remove.emit(subscription)"
@@ -219,6 +224,8 @@
                 mat-stroked-button
                 type="button"
                 class="details__lifecycle"
+                disabledInteractive
+                [disabled]="savingId() === subscription.id"
                 [attr.aria-label]="'Anuluj subskrypcję ' + subscription.name"
                 (click)="cancel.emit(subscription)"
               >
@@ -231,7 +238,7 @@
                 type="button"
                 class="details__lifecycle"
                 disabledInteractive
-                [disabled]="resumingId() === subscription.id"
+                [disabled]="resumingId() !== null || savingId() === subscription.id"
                 [attr.aria-label]="'Przywróć ' + subscription.name"
                 (click)="resume.emit(subscription)"
               >
@@ -251,6 +258,8 @@
             <button
               mat-stroked-button
               type="button"
+              disabledInteractive
+              [disabled]="savingId() === subscription.id"
               [attr.aria-label]="'Usuń ' + subscription.name"
               (click)="remove.emit(subscription)"
             >

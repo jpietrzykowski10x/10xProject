@@ -55,6 +55,7 @@
         <app-subscription-table
           [subscriptions]="current.subscriptions"
           [resumingId]="resumingId()"
+          [savingId]="savingId()"
           (edit)="openEdit($event)"
           (remove)="confirmRemove($event)"
           (cancel)="confirmCancel($event)"

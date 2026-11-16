@@ -138,9 +138,9 @@ describe('SubscriptionTable', () => {
     expect(resume).toHaveBeenCalledExactlyOnceWith(pending);
   });
 
-  // The button keeps the focus while disabled (disabledInteractive), so a click still emits; the
-  // page ignores it while a resume is in flight.
-  it('disables "Przywróć" of the row whose resume is in flight', async () => {
+  // The button keeps the focus while disabled (disabledInteractive). The page sends one resume at a
+  // time, so every "Przywróć" is disabled while one is in flight; other actions stay.
+  it('disables every "Przywróć" while a resume is in flight', async () => {
     const pending: Subscription = { ...NETFLIX, status: 'cancelled_pending' };
     const other: Subscription = { ...SPOTIFY, status: 'cancelled_pending' };
     const fixture = await createTable(false, [pending, other]);
@@ -149,7 +149,34 @@ describe('SubscriptionTable', () => {
     await fixture.whenStable();
 
     expect(await (await buttonsNamed(fixture, 'Przywróć Netflix'))[0].isDisabled()).toBe(true);
+    expect(await (await buttonsNamed(fixture, 'Przywróć Spotify'))[0].isDisabled()).toBe(true);
+    expect(await (await buttonsNamed(fixture, 'Usuń Spotify'))[0].isDisabled()).toBe(false);
+
+    fixture.componentRef.setInput('resumingId', null);
+    await fixture.whenStable();
     expect(await (await buttonsNamed(fixture, 'Przywróć Spotify'))[0].isDisabled()).toBe(false);
+  });
+
+  // A save of the edit form (a full PUT) after a cancel, resume or delete would undo it or fail,
+  // so these actions of the row being saved wait for the answer; "Edytuj" and other rows stay.
+  it('disables cancel, resume and delete of the row whose edit is being saved', async () => {
+    const pending: Subscription = { ...SPOTIFY, status: 'cancelled_pending' };
+    const fixture = await createTable(false, [NETFLIX, pending]);
+
+    fixture.componentRef.setInput('savingId', NETFLIX.id);
+    await fixture.whenStable();
+
+    const disabled = async (name: string) => (await buttonsNamed(fixture, name))[0].isDisabled();
+    expect(await disabled('Anuluj subskrypcję Netflix')).toBe(true);
+    expect(await disabled('Usuń Netflix')).toBe(true);
+    expect(await disabled('Edytuj Netflix')).toBe(false);
+    expect(await disabled('Przywróć Spotify')).toBe(false);
+    expect(await disabled('Usuń Spotify')).toBe(false);
+
+    fixture.componentRef.setInput('savingId', pending.id);
+    await fixture.whenStable();
+    expect(await disabled('Przywróć Spotify')).toBe(true);
+    expect(await disabled('Anuluj subskrypcję Netflix')).toBe(false);
   });
 
   it('on the phone offers the lifecycle action in the expanded row', async () => {

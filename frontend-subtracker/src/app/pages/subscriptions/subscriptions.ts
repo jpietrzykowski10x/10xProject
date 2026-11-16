@@ -121,6 +121,12 @@ export class Subscriptions implements OnInit {
   // While the panel's form (add or edit) is saving, the panel stays as it is: closing or swapping
   // it would destroy the form and drop the answer, so the save always ends with its message.
   private readonly formSending = computed(() => this.form()?.sending() ?? false);
+  // The subscription whose edit is being saved. From 1200px its row stays clickable beside the
+  // panel, so its cancel, resume and delete are disabled until the answer: the panel cannot close
+  // during the save, and a later save of its form (a full PUT) would undo such an action.
+  protected readonly savingId = computed(() =>
+    this.formSending() ? (this.editing()?.id ?? null) : null,
+  );
 
   constructor() {
     // When the panel starts covering the list (it opens below 1200px, or the window narrows while
@@ -264,6 +270,9 @@ export class Subscriptions implements OnInit {
   // already gone) the row and its "Usuń" disappear with the next load, so the focus moves to the
   // "Dodaj subskrypcję" control. An edit panel of that subscription closes; any other panel stays.
   protected confirmRemove(subscription: Subscription): void {
+    if (this.savingId() === subscription.id) {
+      return;
+    }
     openDeleteSubscriptionDialog(this.dialog, subscription)
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -292,6 +301,9 @@ export class Subscriptions implements OnInit {
   // swaps the row's action, so the focus moves like after a delete; an edit panel of that
   // subscription closes, because its form holds the old status and saving would undo the cancel.
   protected confirmCancel(subscription: Subscription): void {
+    if (this.savingId() === subscription.id) {
+      return;
+    }
     openCancelSubscriptionDialog(this.dialog, subscription)
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -313,7 +325,7 @@ export class Subscriptions implements OnInit {
   // "Przywróć" needs no confirmation: it only undoes a cancel. While the POST is in flight the
   // button is disabled; a failure keeps the list as it is, with a message.
   protected resume(subscription: Subscription): void {
-    if (this.resumingId() !== null) {
+    if (this.resumingId() !== null || this.savingId() === subscription.id) {
       return;
     }
     this.resumingId.set(subscription.id);
