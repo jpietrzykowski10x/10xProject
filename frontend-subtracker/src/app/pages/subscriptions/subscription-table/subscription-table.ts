@@ -47,8 +47,14 @@ const PHONE_COLUMNS = ['summary'];
 })
 export class SubscriptionTable {
   readonly subscriptions = input.required<Subscription[]>();
+  // The subscription whose "Przywróć" is in flight; its button stays disabled until the answer.
+  readonly resumingId = input<string | null>(null);
   readonly edit = output<Subscription>();
   readonly remove = output<Subscription>();
+  // "Anuluj subskrypcję" (active, trial) and "Przywróć" (cancelled_pending); a cancelled
+  // subscription has neither.
+  readonly cancel = output<Subscription>();
+  readonly resume = output<Subscription>();
 
   private readonly breakpoints = inject(BreakpointObserver);
 
@@ -75,6 +81,10 @@ export class SubscriptionTable {
 
   protected readonly trackById = (_index: number, subscription: Subscription): string =>
     subscription.id;
+
+  protected cancellable(subscription: Subscription): boolean {
+    return subscription.status === 'active' || subscription.status === 'trial';
+  }
 
   protected toggle(id: string): void {
     this.expandedId.update((current) => (current === id ? null : id));

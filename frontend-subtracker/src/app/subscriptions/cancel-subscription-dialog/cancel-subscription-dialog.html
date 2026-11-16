@@ -1,0 +1,33 @@
+<h2 mat-dialog-title>Anulować subskrypcję?</h2>
+<mat-dialog-content>
+  <!-- The dialog's description (ariaDescribedBy in openCancelSubscriptionDialog). A cancelled
+       trial ends with the trial, without a payment; anything else runs to its billing date. -->
+  <p id="cancel-subscription-description" class="dialog__text">
+    @if (subscription.status === 'trial') {
+      Okres próbny „{{ subscription.name }}” kończy się {{ endDate | dateOnly }}. Po tym dniu
+      subskrypcja zostanie anulowana bez płatności.
+    } @else {
+      Subskrypcja „{{ subscription.name }}” będzie oznaczona jako
+      {{ statusLabels.cancelled_pending }} i zniknie z sum po {{ endDate | dateOnly }}.
+    }
+  </p>
+  @if (failed()) {
+    <p class="st-notice st-notice--error dialog__error" role="alert">
+      Nie udało się anulować subskrypcji. Spróbuj ponownie.
+    </p>
+  }
+</mat-dialog-content>
+<!-- "Wróć" comes first, so it gets the focus when the dialog opens. While the POST is in flight
+     both buttons are disabled; "Anuluj subskrypcję" keeps the focus (disabledInteractive). -->
+<mat-dialog-actions align="end" class="dialog__actions">
+  <button mat-stroked-button type="button" [disabled]="sending()" (click)="back()">Wróć</button>
+  <button
+    mat-flat-button
+    type="button"
+    disabledInteractive
+    [disabled]="sending()"
+    (click)="confirm()"
+  >
+    Anuluj subskrypcję
+  </button>
+</mat-dialog-actions>

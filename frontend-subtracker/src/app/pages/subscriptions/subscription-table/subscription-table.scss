@@ -112,9 +112,10 @@
   display: none;
 }
 
-// The row actions: two 40px icon buttons side by side at the right edge, the column as narrow as
-// they are (96px with its 8px sides, 88px in the compact table). The smaller top padding puts the
-// icons level with the first line of text in the other cells.
+// The row actions: up to three 40px icon buttons side by side at the right edge ("Edytuj", then
+// "Anuluj subskrypcję" or "Przywróć", then "Usuń"), the column as narrow as they are (136px with
+// its 8px sides). The smaller top padding puts the icons level with the first line of text in the
+// other cells.
 .table .table__actions {
   width: 1%;
   padding: 4px 8px;
@@ -146,8 +147,18 @@
       padding: 10px 12px;
     }
 
+    // Three 40px buttons would make the column 128px and the table about 555px, wider than the
+    // narrowest frame. 32px buttons (Material's density -2, without the 48px touch target that
+    // would overlap the neighbour) keep the column at 104px and the table under 534px.
     .table__actions {
       padding: 2px 4px;
+
+      @include mat.icon-button-overrides(
+        (
+          state-layer-size: 32px,
+          touch-target-display: none,
+        )
+      );
     }
 
     .table__note {
@@ -265,15 +276,22 @@
   }
 }
 
-// Phone: the row actions under the details of an expanded row.
+// Phone: the row actions under the details of an expanded row. "Anuluj subskrypcję" or
+// "Przywróć" fills a line of its own, "Edytuj" and "Usuń" share the next one, so even a 320px
+// screen fits every label.
 .details__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   padding-top: 12px;
   border-top: 1px solid var(--st-line-soft);
 
   button {
     flex: 1 1 0;
+  }
+
+  .details__lifecycle {
+    flex-basis: 100%;
   }
 
   // The icon before the text, on the text's line.

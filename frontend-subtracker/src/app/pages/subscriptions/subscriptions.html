@@ -26,6 +26,11 @@
         }
       </div>
 
+      <!-- A failed "Przywróć": the list below is unchanged. -->
+      @if (actionError(); as error) {
+        <p class="st-notice st-notice--error" role="alert">{{ error }}</p>
+      }
+
       <!-- After a save the list is read again; when that fails the old list stays below. -->
       @if (refreshFailed()) {
         <div class="st-notice st-notice--error subscriptions__error" role="alert">
@@ -49,8 +54,11 @@
         <!-- One table for desktop and phone; it switches its columns at 840px. -->
         <app-subscription-table
           [subscriptions]="current.subscriptions"
+          [resumingId]="resumingId()"
           (edit)="openEdit($event)"
           (remove)="confirmRemove($event)"
+          (cancel)="confirmCancel($event)"
+          (resume)="resume($event)"
         />
       }
 

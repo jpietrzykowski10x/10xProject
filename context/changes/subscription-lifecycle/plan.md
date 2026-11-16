@@ -265,7 +265,7 @@ Akcje w wierszu listy (desktop i telefon), dialog anulowania, nowy tekst w dialo
 
 **File**: `frontend-subtracker/src/app/subscriptions/cancel-subscription-dialog/` (nowy, wzorzec `delete-subscription-dialog`)
 
-**Intent**: Alertdialog „Anulować subskrypcję?”: dla `active` „Subskrypcja „X” będzie oznaczona jako W trakcie anulowania i zniknie z sum po {data rozliczenia}.”; dla `trial` „Okres próbny kończy się {koniec triala}. Po tym dniu subskrypcja zostanie anulowana bez płatności.”. Przyciski „Wróć” (pierwszy, z fokusem) i „Anuluj subskrypcję”; dialog sam wysyła żądanie, w trakcie oba przyciski wyłączone, błąd sieci pokazuje komunikat w dialogu.
+**Intent**: Alertdialog „Anulować subskrypcję?”: dla `active` „Subskrypcja „X” będzie oznaczona jako W trakcie anulowania i zniknie z sum po {data rozliczenia}.”; dla `trial` „Okres próbny „X” kończy się {koniec triala}. Po tym dniu subskrypcja zostanie anulowana bez płatności.”. Przyciski „Wróć” (pierwszy, z fokusem) i „Anuluj subskrypcję”; dialog sam wysyła żądanie, w trakcie oba przyciski wyłączone, błąd sieci pokazuje komunikat w dialogu.
 
 **Contract**: `openCancelSubscriptionDialog(dialog, subscription)` zwraca wynik `'cancelled' | 'missing' | 'conflict' | undefined` (404 → `missing`, 409 → `conflict`).
 
@@ -441,29 +441,29 @@ Job działa na całej tabeli, ale filtruje po indeksach `(status, data)`; przesu
 
 #### Automated
 
-- [x] 3.1 Migracja stosuje się na subtracker-db
-- [x] 3.2 Brak różnicy encji względem bazy referencyjnej
-- [x] 3.3 Testy jednostkowe, lint i build przechodzą
-- [x] 3.4 Testy e2e przechodzą, w tym auth-cleanup.e2e-spec.ts
+- [x] 3.1 Migracja stosuje się na subtracker-db — d97b7f6
+- [x] 3.2 Brak różnicy encji względem bazy referencyjnej — d97b7f6
+- [x] 3.3 Testy jednostkowe, lint i build przechodzą — d97b7f6
+- [x] 3.4 Testy e2e przechodzą, w tym auth-cleanup.e2e-spec.ts — d97b7f6
 
 #### Manual
 
-- [x] 3.5 Przegląd wygenerowanej migracji: tylko pięć indeksów
+- [x] 3.5 Przegląd wygenerowanej migracji: tylko pięć indeksów — d97b7f6
 
 ### Phase 4: Frontend — akcje Anuluj i Przywróć
 
 #### Automated
 
-- [ ] 4.1 Testy frontu w obu strefach przechodzą
-- [ ] 4.2 Build przechodzi
-- [ ] 4.3 Playwright przechodzi, w tym subscription-cancel.e2e-spec.ts
+- [x] 4.1 Testy frontu w obu strefach przechodzą
+- [x] 4.2 Build przechodzi
+- [x] 4.3 Playwright przechodzi, w tym subscription-cancel.e2e-spec.ts
 
 #### Manual
 
-- [ ] 4.4 Desktop: anulowanie active i trial, przywrócenie, sumy
-- [ ] 4.5 Telefon: akcje w rozwiniętym wierszu, dialog, brak poziomego scrolla
-- [ ] 4.6 Anulowanie subskrypcji otwartej w edycji zamyka panel
-- [ ] 4.7 Klawiatura: Escape w dialogu i powrót fokusu
+- [x] 4.4 Desktop: anulowanie active i trial, przywrócenie, sumy
+- [x] 4.5 Telefon: akcje w rozwiniętym wierszu, dialog, brak poziomego scrolla
+- [x] 4.6 Anulowanie subskrypcji otwartej w edycji zamyka panel
+- [x] 4.7 Klawiatura: Escape w dialogu i powrót fokusu
 
 ### Phase 5: Dokumentacja i cookbook
 

@@ -40,6 +40,17 @@ export class SubscriptionsService {
     return this.http.delete<void>(`${this.apiUrl}/subscriptions/${id}`);
   }
 
+  // active or trial → cancelled_pending (a trial's billing date becomes its end, the trial date
+  // null); 409 from any other status, 404 when it is gone (or belongs to another account).
+  cancel(id: string): Observable<Subscription> {
+    return this.http.post<Subscription>(`${this.apiUrl}/subscriptions/${id}/cancel`, null);
+  }
+
+  // cancelled_pending → active, dates unchanged; 409 from any other status, 404 like cancel.
+  resume(id: string): Observable<Subscription> {
+    return this.http.post<Subscription>(`${this.apiUrl}/subscriptions/${id}/resume`, null);
+  }
+
   // Defaults first in their fixed order, then the user's own alphabetically.
   categories(): Observable<Category[]> {
     return this.http.get<Category[]>(`${this.apiUrl}/categories`);
