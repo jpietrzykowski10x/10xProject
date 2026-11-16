@@ -1,6 +1,7 @@
 import { Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -26,6 +27,8 @@ import { UsersModule } from './users/users.module.js';
         retryDelay: 3000,
       }),
     }),
+    // Cron jobs of the feature modules (e.g. the subscription lifecycle job).
+    ScheduleModule.forRoot(),
     MailModule,
     UsersModule,
     AuthModule,

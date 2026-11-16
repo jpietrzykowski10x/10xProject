@@ -17,6 +17,8 @@ describe('Subscriptions — access (e2e)', () => {
     postSubscription,
     putSubscription,
     deleteSubscription,
+    cancelSubscription,
+    resumeSubscription,
     postCategory,
     getCategories,
   } = subscriptionRequests(e2e);
@@ -36,6 +38,8 @@ describe('Subscriptions — access (e2e)', () => {
       .send(subscriptionBody())
       .expect(401);
     await http().delete(`/subscriptions/${UNKNOWN_ID}`).expect(401);
+    await http().post(`/subscriptions/${UNKNOWN_ID}/cancel`).expect(401);
+    await http().post(`/subscriptions/${UNKNOWN_ID}/resume`).expect(401);
   });
 
   // The global guard is covered on /auth/me in test/auth/session.e2e-spec.ts; this keeps it on the
@@ -70,5 +74,7 @@ describe('Subscriptions — access (e2e)', () => {
     await http().get('/subscriptions/totals').set('Cookie', cookie).expect(401);
     await putSubscription(cookie, UNKNOWN_ID, subscriptionBody()).expect(401);
     await deleteSubscription(cookie, UNKNOWN_ID).expect(401);
+    await cancelSubscription(cookie, UNKNOWN_ID).expect(401);
+    await resumeSubscription(cookie, UNKNOWN_ID).expect(401);
   });
 });

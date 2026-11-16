@@ -64,4 +64,24 @@ export class SubscriptionsController {
   ): Promise<void> {
     return this.subscriptions.remove(user.id, id);
   }
+
+  // Actions without a body: 404 for another account's or an unknown id, 409 when the status does
+  // not allow the action.
+  @Post(':id/cancel')
+  @HttpCode(HttpStatus.OK)
+  cancel(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<SubscriptionResponse> {
+    return this.subscriptions.cancel(user.id, id);
+  }
+
+  @Post(':id/resume')
+  @HttpCode(HttpStatus.OK)
+  resume(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<SubscriptionResponse> {
+    return this.subscriptions.resume(user.id, id);
+  }
 }

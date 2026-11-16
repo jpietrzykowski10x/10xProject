@@ -16,19 +16,25 @@ import {
   viewChild,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButton } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { map, type Subscription as RxSubscription } from 'rxjs';
 import { AppShell } from '../../layout/app-shell/app-shell';
 import { PHONE_MEDIA_QUERY, WIDE_MEDIA_QUERY } from '../../shared/breakpoints';
+import { openCancelSubscriptionDialog } from '../../subscriptions/cancel-subscription-dialog/cancel-subscription-dialog';
 import { CostTotalsStore } from '../../subscriptions/cost-totals.store';
 import { openDeleteSubscriptionDialog } from '../../subscriptions/delete-subscription-dialog/delete-subscription-dialog';
 import { SubscriptionForm } from '../../subscriptions/subscription-form/subscription-form';
 import {
   addedSubscriptionMessage,
+  cancelledSubscriptionMessage,
+  conflictSubscriptionMessage,
   deletedSubscriptionMessage,
   missingSubscriptionMessage,
+  resumedSubscriptionMessage,
+  resumeFailedMessage,
   updatedSubscriptionMessage,
 } from '../../subscriptions/subscription-labels';
 import type { Subscription } from '../../subscriptions/subscription.types';
@@ -95,6 +101,10 @@ export class Subscriptions implements OnInit {
   // The "Edytuj" button that opened the edit panel; the focus returns to it on close.
   private editTrigger: HTMLElement | null = null;
   protected readonly statusMessage = signal<string | null>(null);
+  // A failed "Przywróć" (network or server error); the list stays as it was.
+  protected readonly actionError = signal<string | null>(null);
+  // The subscription whose "Przywróć" is in flight; its button is disabled until the answer.
+  protected readonly resumingId = signal<string | null>(null);
   // A failed quiet load (after a save) keeps the list on screen and offers to read it again.
   protected readonly refreshFailed = signal(false);
   protected readonly isPhone = toSignal(
@@ -111,6 +121,12 @@ export class Subscriptions implements OnInit {
   // While the panel's form (add or edit) is saving, the panel stays as it is: closing or swapping
   // it would destroy the form and drop the answer, so the save always ends with its message.
   private readonly formSending = computed(() => this.form()?.sending() ?? false);
+  // The subscription whose edit is being saved. From 1200px its row stays clickable beside the
+  // panel, so its cancel, resume and delete are disabled until the answer: the panel cannot close
+  // during the save, and a later save of its form (a full PUT) would undo such an action.
+  protected readonly savingId = computed(() =>
+    this.formSending() ? (this.editing()?.id ?? null) : null,
+  );
 
   constructor() {
     // When the panel starts covering the list (it opens below 1200px, or the window narrows while
@@ -254,6 +270,9 @@ export class Subscriptions implements OnInit {
   // already gone) the row and its "Usuń" disappear with the next load, so the focus moves to the
   // "Dodaj subskrypcję" control. An edit panel of that subscription closes; any other panel stays.
   protected confirmRemove(subscription: Subscription): void {
+    if (this.savingId() === subscription.id) {
+      return;
+    }
     openDeleteSubscriptionDialog(this.dialog, subscription)
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -277,6 +296,77 @@ export class Subscriptions implements OnInit {
       });
   }
 
+  // "Anuluj subskrypcję" in a row asks for a confirmation; the dialog sends the POST itself.
+  // Without a result nothing changes and MatDialog returns the focus to the button. Any answer
+  // swaps the row's action, so the focus moves like after a delete; an edit panel of that
+  // subscription closes, because its form holds the old status and saving would undo the cancel.
+  protected confirmCancel(subscription: Subscription): void {
+    if (this.savingId() === subscription.id) {
+      return;
+    }
+    openCancelSubscriptionDialog(this.dialog, subscription)
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        if (result === undefined) {
+          return;
+        }
+        this.afterLifecycleAction(
+          subscription,
+          result === 'cancelled'
+            ? cancelledSubscriptionMessage(subscription.name)
+            : result === 'missing'
+              ? missingSubscriptionMessage
+              : conflictSubscriptionMessage,
+        );
+      });
+  }
+
+  // "Przywróć" needs no confirmation: it only undoes a cancel. While the POST is in flight the
+  // button is disabled; a failure keeps the list as it is, with a message.
+  protected resume(subscription: Subscription): void {
+    if (this.resumingId() !== null || this.savingId() === subscription.id) {
+      return;
+    }
+    this.resumingId.set(subscription.id);
+    this.actionError.set(null);
+    this.subscriptions
+      .resume(subscription.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.resumingId.set(null);
+          this.afterLifecycleAction(subscription, resumedSubscriptionMessage(subscription.name));
+        },
+        error: (error: HttpErrorResponse) => {
+          this.resumingId.set(null);
+          if (error.status === 404) {
+            this.afterLifecycleAction(subscription, missingSubscriptionMessage);
+          } else if (error.status === 409) {
+            this.afterLifecycleAction(subscription, conflictSubscriptionMessage);
+          } else {
+            this.actionError.set(resumeFailedMessage(subscription.name));
+          }
+        },
+      });
+  }
+
+  // After a cancel or resume (or its 404/409) the row's action button is replaced with the next
+  // load, so, like after a delete, an edit panel of that subscription closes and otherwise the
+  // focus moves to "Dodaj subskrypcję". The list and the cost totals are read again.
+  private afterLifecycleAction(subscription: Subscription, message: string): void {
+    if (this.editing()?.id === subscription.id) {
+      this.editTrigger = null;
+      this.close();
+    } else {
+      this.focusAddControl();
+    }
+    this.actionError.set(null);
+    this.showStatus(message);
+    this.load(true);
+    this.totals.refresh();
+  }
+
   // Set once the list is visible again (on the phone it was hidden), so the region announces it.
   // Cleared first, so the same message a second time (e.g. after a second delete) is announced.
   private showStatus(message: string): void {
@@ -287,6 +377,7 @@ export class Subscriptions implements OnInit {
   private open(mode: PanelMode): void {
     this.autoOpenDecided = true;
     this.statusMessage.set(null);
+    this.actionError.set(null);
     this.refreshFailed.set(false);
     this.panel.set(mode);
     afterNextRender(

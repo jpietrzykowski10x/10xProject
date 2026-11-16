@@ -58,8 +58,9 @@ export function referenceDate(subscription: Subscription): string {
     : subscription.nextBillingDate;
 }
 
-// "dziś", "jutro", "za N dni"; null for a past day: the status job (S-05) may not have moved the
-// subscription on yet, and "za -3 dni" makes no sense.
+// "dziś", "jutro", "za N dni"; null for a past day, since "za -3 dni" makes no sense. The lifecycle
+// job (S-05) moves past dates on daily at 00:05 and on every API start, so a past day here means at
+// most a day's delay (or a list opened before midnight).
 export function relativeDays(days: number | null): string | null {
   if (days === null || days < 0) {
     return null;
@@ -108,6 +109,25 @@ export function updatedSubscriptionMessage(name: string): string {
 export function deletedSubscriptionMessage(name: string): string {
   return `Usunięto subskrypcję „${name}”.`;
 }
+
+// The status message after a subscription is cancelled (it is now cancelled_pending).
+export function cancelledSubscriptionMessage(name: string): string {
+  return `Anulowano subskrypcję „${name}”.`;
+}
+
+// The status message after a cancelled_pending subscription is resumed (it is active again).
+export function resumedSubscriptionMessage(name: string): string {
+  return `Przywrócono subskrypcję „${name}”.`;
+}
+
+// The error when "Przywróć" did not reach the API or the API failed; the list stays as it was.
+export function resumeFailedMessage(name: string): string {
+  return `Nie udało się przywrócić subskrypcji „${name}”. Spróbuj ponownie.`;
+}
+
+// The status message when a cancel or resume finds the subscription in another status (409),
+// e.g. changed in another tab; the list is read again.
+export const conflictSubscriptionMessage = 'Stan subskrypcji zmienił się w międzyczasie.';
 
 // The status message when the edited subscription is gone (e.g. deleted in another tab).
 export const missingSubscriptionMessage = 'Tej subskrypcji już nie ma na liście.';

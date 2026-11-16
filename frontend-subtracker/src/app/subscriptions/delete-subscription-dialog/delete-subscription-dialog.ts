@@ -10,7 +10,6 @@ import {
   MatDialogRef,
   MatDialogTitle,
 } from '@angular/material/dialog';
-import { STATUS_LABELS } from '../subscription-labels';
 import type { Subscription } from '../subscription.types';
 import { SubscriptionsService } from '../subscriptions.service';
 
@@ -64,7 +63,6 @@ export class DeleteSubscriptionDialog {
 
   protected readonly sending = signal(false);
   protected readonly failed = signal(false);
-  protected readonly statusLabels = STATUS_LABELS;
 
   // Without a result, like Escape (a static mat-dialog-close would return an empty string).
   protected cancel(): void {

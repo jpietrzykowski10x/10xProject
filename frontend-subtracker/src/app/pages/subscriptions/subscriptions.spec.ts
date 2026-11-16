@@ -181,6 +181,45 @@ describe('Subscriptions', () => {
     );
   });
 
+  // From 1200px the row stays clickable beside the panel. While its edit is saving the panel cannot
+  // close, so a cancel then would leave a form with the old status whose next save undoes it.
+  it('does not cancel a subscription while its edit is being saved', async () => {
+    const { httpTesting, fixture, loader } = createPage();
+    await fixture.whenStable();
+    flushTotals(httpTesting, NETFLIX_TOTALS);
+    httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([NETFLIX]);
+    await fixture.whenStable();
+
+    await (
+      await loader.getHarness(MatButtonHarness.with({ selector: '[aria-label="Edytuj Netflix"]' }))
+    ).click();
+    httpTesting.expectOne({ method: 'GET', url: CATEGORIES_URL }).flush([NETFLIX.category]);
+    await fixture.whenStable();
+    await (await loader.getHarness(MatButtonHarness.with({ text: 'Zapisz zmiany' }))).click();
+    const update = httpTesting.expectOne({
+      method: 'PUT',
+      url: `${SUBSCRIPTIONS_URL}/${NETFLIX.id}`,
+    });
+    await fixture.whenStable();
+
+    const cancel = await loader.getHarness(
+      MatButtonHarness.with({ selector: '[aria-label="Anuluj subskrypcję Netflix"]' }),
+    );
+    expect(await cancel.isDisabled()).toBe(true);
+    await cancel.click();
+    await fixture.whenStable();
+    expect(
+      await TestbedHarnessEnvironment.documentRootLoader(fixture).getAllHarnesses(MatDialogHarness),
+    ).toHaveLength(0);
+
+    update.flush(NETFLIX);
+    await fixture.whenStable();
+    httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([NETFLIX]);
+    flushTotals(httpTesting, NETFLIX_TOTALS);
+    await fixture.whenStable();
+    httpTesting.expectNone({ method: 'POST', url: `${SUBSCRIPTIONS_URL}/${NETFLIX.id}/cancel` });
+  });
+
   it('closes the edit panel on "Anuluj" without saving or reading the list again', async () => {
     const { httpTesting, fixture, loader } = createPage();
     await fixture.whenStable();
@@ -266,5 +305,197 @@ describe('Subscriptions', () => {
       'Usunięto subskrypcję „Netflix”.',
     );
     expect(host.textContent).toContain('Nie masz jeszcze żadnych subskrypcji.');
+  });
+
+  // The oracle is the API contract (POST /subscriptions/:id/cancel answers 200 with the
+  // subscription) and the plan's flow: the dialog confirms, the edit panel of that subscription
+  // closes (its form holds the old status, a save would undo the cancel), the status message shows
+  // and the list and the cost totals are read again.
+  it('cancels a subscription open in the edit panel, closes the panel and reads the list and totals again', async () => {
+    const { httpTesting, fixture, loader } = createPage();
+    await fixture.whenStable();
+    flushTotals(httpTesting, NETFLIX_TOTALS);
+    httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([NETFLIX]);
+    await fixture.whenStable();
+
+    await (
+      await loader.getHarness(MatButtonHarness.with({ selector: '[aria-label="Edytuj Netflix"]' }))
+    ).click();
+    httpTesting.expectOne({ method: 'GET', url: CATEGORIES_URL }).flush([NETFLIX.category]);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('#subscription-panel')).not.toBeNull();
+
+    await (
+      await loader.getHarness(
+        MatButtonHarness.with({ selector: '[aria-label="Anuluj subskrypcję Netflix"]' }),
+      )
+    ).click();
+    await fixture.whenStable();
+    const dialog =
+      await TestbedHarnessEnvironment.documentRootLoader(fixture).getHarness(MatDialogHarness);
+    await (await dialog.getHarness(MatButtonHarness.with({ text: 'Anuluj subskrypcję' }))).click();
+
+    const cancelled: Subscription = { ...NETFLIX, status: 'cancelled_pending' };
+    httpTesting
+      .expectOne({ method: 'POST', url: `${SUBSCRIPTIONS_URL}/${NETFLIX.id}/cancel` })
+      .flush(cancelled);
+    await fixture.whenStable();
+
+    httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([cancelled]);
+    // A cancelled_pending subscription still counts until its billing date.
+    flushTotals(httpTesting, NETFLIX_TOTALS);
+    await fixture.whenStable();
+
+    expect(host.querySelector('#subscription-panel')).toBeNull();
+    expect(host.querySelector('[role="status"]')?.textContent?.trim()).toBe(
+      'Anulowano subskrypcję „Netflix”.',
+    );
+    expect(columnMonthly(host)).toBe('43,00 zł');
+    // The row now offers "Przywróć" instead.
+    expect(
+      await loader.getAllHarnesses(
+        MatButtonHarness.with({ selector: '[aria-label="Przywróć Netflix"]' }),
+      ),
+    ).toHaveLength(1);
+  });
+
+  // POST /subscriptions/:id/resume answers 200; "Przywróć" has no dialog.
+  it('resumes a cancelled_pending subscription and reads the list and totals again', async () => {
+    const pending: Subscription = { ...NETFLIX, status: 'cancelled_pending' };
+    const { httpTesting, fixture, loader } = createPage();
+    await fixture.whenStable();
+    flushTotals(httpTesting, NETFLIX_TOTALS);
+    httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([pending]);
+    await fixture.whenStable();
+
+    const resume = await loader.getHarness(
+      MatButtonHarness.with({ selector: '[aria-label="Przywróć Netflix"]' }),
+    );
+    await resume.click();
+    const request = httpTesting.expectOne({
+      method: 'POST',
+      url: `${SUBSCRIPTIONS_URL}/${NETFLIX.id}/resume`,
+    });
+    // Disabled while in flight; a second click sends nothing.
+    expect(await resume.isDisabled()).toBe(true);
+    await resume.click();
+    httpTesting.expectNone({ method: 'POST', url: `${SUBSCRIPTIONS_URL}/${NETFLIX.id}/resume` });
+
+    request.flush(NETFLIX);
+    await fixture.whenStable();
+    httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([NETFLIX]);
+    flushTotals(httpTesting, NETFLIX_TOTALS);
+    await fixture.whenStable();
+
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('[role="status"]')?.textContent?.trim()).toBe(
+      'Przywrócono subskrypcję „Netflix”.',
+    );
+    expect(
+      await loader.getAllHarnesses(
+        MatButtonHarness.with({ selector: '[aria-label="Anuluj subskrypcję Netflix"]' }),
+      ),
+    ).toHaveLength(1);
+  });
+
+  // The cancel dialog answers 'missing' (404: deleted, e.g. in another tab) or 'conflict' (409:
+  // the status changed); the page shows the message and reads the list and the totals again.
+  it.each([
+    { status: 404, statusText: 'Not Found', message: 'Tej subskrypcji już nie ma na liście.' },
+    {
+      status: 409,
+      statusText: 'Conflict',
+      message: 'Stan subskrypcji zmienił się w międzyczasie.',
+    },
+  ])(
+    'reads the list and totals again with a message when the cancel answers $status',
+    async ({ status, statusText, message }) => {
+      const { httpTesting, fixture, loader } = createPage();
+      await fixture.whenStable();
+      flushTotals(httpTesting, NETFLIX_TOTALS);
+      httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([NETFLIX]);
+      await fixture.whenStable();
+
+      await (
+        await loader.getHarness(
+          MatButtonHarness.with({ selector: '[aria-label="Anuluj subskrypcję Netflix"]' }),
+        )
+      ).click();
+      await fixture.whenStable();
+      const dialog =
+        await TestbedHarnessEnvironment.documentRootLoader(fixture).getHarness(MatDialogHarness);
+      await (
+        await dialog.getHarness(MatButtonHarness.with({ text: 'Anuluj subskrypcję' }))
+      ).click();
+      httpTesting
+        .expectOne({ method: 'POST', url: `${SUBSCRIPTIONS_URL}/${NETFLIX.id}/cancel` })
+        .flush(null, { status, statusText });
+      await fixture.whenStable();
+
+      httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([]);
+      flushTotals(httpTesting, NETFLIX_TOTALS);
+      await fixture.whenStable();
+
+      const host = fixture.nativeElement as HTMLElement;
+      expect(host.querySelector('[role="status"]')?.textContent?.trim()).toBe(message);
+    },
+  );
+
+  // 409: the status changed in the meantime (e.g. in another tab); the list is read again.
+  it('reads the list again with a message when the resume finds another status (409)', async () => {
+    const pending: Subscription = { ...NETFLIX, status: 'cancelled_pending' };
+    const { httpTesting, fixture, loader } = createPage();
+    await fixture.whenStable();
+    flushTotals(httpTesting, NETFLIX_TOTALS);
+    httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([pending]);
+    await fixture.whenStable();
+
+    await (
+      await loader.getHarness(
+        MatButtonHarness.with({ selector: '[aria-label="Przywróć Netflix"]' }),
+      )
+    ).click();
+    httpTesting
+      .expectOne({ method: 'POST', url: `${SUBSCRIPTIONS_URL}/${NETFLIX.id}/resume` })
+      .flush(null, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([NETFLIX]);
+    flushTotals(httpTesting, NETFLIX_TOTALS);
+    await fixture.whenStable();
+
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('[role="status"]')?.textContent?.trim()).toBe(
+      'Stan subskrypcji zmienił się w międzyczasie.',
+    );
+  });
+
+  it('keeps the list with an alert when the resume fails', async () => {
+    const pending: Subscription = { ...NETFLIX, status: 'cancelled_pending' };
+    const { httpTesting, fixture, loader } = createPage();
+    await fixture.whenStable();
+    flushTotals(httpTesting, NETFLIX_TOTALS);
+    httpTesting.expectOne({ method: 'GET', url: SUBSCRIPTIONS_URL }).flush([pending]);
+    await fixture.whenStable();
+
+    const resume = await loader.getHarness(
+      MatButtonHarness.with({ selector: '[aria-label="Przywróć Netflix"]' }),
+    );
+    await resume.click();
+    httpTesting
+      .expectOne({ method: 'POST', url: `${SUBSCRIPTIONS_URL}/${NETFLIX.id}/resume` })
+      .flush(null, { status: 500, statusText: 'Internal Server Error' });
+    await fixture.whenStable();
+
+    httpTesting.expectNone({ method: 'GET', url: SUBSCRIPTIONS_URL });
+    httpTesting.expectNone({ method: 'GET', url: TOTALS_URL });
+    const host = fixture.nativeElement as HTMLElement;
+    const alerts = host.querySelectorAll('[role="alert"]');
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].textContent?.trim()).toBe(
+      'Nie udało się przywrócić subskrypcji „Netflix”. Spróbuj ponownie.',
+    );
+    // The button is enabled again for another try.
+    expect(await resume.isDisabled()).toBe(false);
   });
 });

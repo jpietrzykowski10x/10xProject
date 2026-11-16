@@ -109,9 +109,41 @@
         >
           <ng-container [ngTemplateOutlet]="editIcon" />
         </button>
+        <!-- At most one of the two lifecycle actions; a cancelled subscription has none. -->
+        @if (cancellable(subscription)) {
+          @let cancelLabel = 'Anuluj subskrypcję ' + subscription.name;
+          <button
+            mat-icon-button
+            type="button"
+            disabledInteractive
+            [disabled]="savingId() === subscription.id"
+            [attr.aria-label]="cancelLabel"
+            [matTooltip]="cancelLabel"
+            (click)="cancel.emit(subscription)"
+          >
+            <ng-container [ngTemplateOutlet]="cancelIcon" />
+          </button>
+        } @else if (subscription.status === 'cancelled_pending') {
+          @let resumeLabel = 'Przywróć ' + subscription.name;
+          <!-- Disabled while any resume (or the row's edit save) is in flight; it keeps the focus
+               (disabledInteractive). -->
+          <button
+            mat-icon-button
+            type="button"
+            disabledInteractive
+            [disabled]="resumingId() !== null || savingId() === subscription.id"
+            [attr.aria-label]="resumeLabel"
+            [matTooltip]="resumeLabel"
+            (click)="resume.emit(subscription)"
+          >
+            <ng-container [ngTemplateOutlet]="resumeIcon" />
+          </button>
+        }
         <button
           mat-icon-button
           type="button"
+          disabledInteractive
+          [disabled]="savingId() === subscription.id"
           [attr.aria-label]="removeLabel"
           [matTooltip]="removeLabel"
           (click)="remove.emit(subscription)"
@@ -186,6 +218,34 @@
         <!-- Only in an open detail row, so the desktop has one button of each per row. -->
         @if (isPhone() && expandedId() === subscription.id) {
           <div class="details__actions">
+            <!-- The lifecycle action takes a line of its own above "Edytuj" and "Usuń". -->
+            @if (cancellable(subscription)) {
+              <button
+                mat-stroked-button
+                type="button"
+                class="details__lifecycle"
+                disabledInteractive
+                [disabled]="savingId() === subscription.id"
+                [attr.aria-label]="'Anuluj subskrypcję ' + subscription.name"
+                (click)="cancel.emit(subscription)"
+              >
+                <ng-container [ngTemplateOutlet]="cancelIcon" />
+                Anuluj subskrypcję
+              </button>
+            } @else if (subscription.status === 'cancelled_pending') {
+              <button
+                mat-stroked-button
+                type="button"
+                class="details__lifecycle"
+                disabledInteractive
+                [disabled]="resumingId() !== null || savingId() === subscription.id"
+                [attr.aria-label]="'Przywróć ' + subscription.name"
+                (click)="resume.emit(subscription)"
+              >
+                <ng-container [ngTemplateOutlet]="resumeIcon" />
+                Przywróć
+              </button>
+            }
             <button
               mat-stroked-button
               type="button"
@@ -198,6 +258,8 @@
             <button
               mat-stroked-button
               type="button"
+              disabledInteractive
+              [disabled]="savingId() === subscription.id"
               [attr.aria-label]="'Usuń ' + subscription.name"
               (click)="remove.emit(subscription)"
             >
@@ -243,6 +305,45 @@
       fill="none"
       stroke="currentColor"
       stroke-width="1.6"
+      stroke-linejoin="round"
+    />
+  </svg>
+</ng-template>
+<ng-template #cancelIcon>
+  <!-- A circle crossed out -->
+  <svg
+    class="action-icon"
+    aria-hidden="true"
+    focusable="false"
+    width="20"
+    height="20"
+    viewBox="0 0 20 20"
+  >
+    <path
+      d="M10 3.5A6.5 6.5 0 1 0 10 16.5A6.5 6.5 0 1 0 10 3.5ZM5.4 5.4L14.6 14.6"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linecap="round"
+    />
+  </svg>
+</ng-template>
+<ng-template #resumeIcon>
+  <!-- An arrow turning back -->
+  <svg
+    class="action-icon"
+    aria-hidden="true"
+    focusable="false"
+    width="20"
+    height="20"
+    viewBox="0 0 20 20"
+  >
+    <path
+      d="M7.5 5L4.5 8L7.5 11M4.5 8H12A4 4 0 0 1 12 16H8"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linecap="round"
       stroke-linejoin="round"
     />
   </svg>

@@ -6,3 +6,7 @@ export const SESSION_TTL = 30 * 24 * 60 * 60 * 1000;
 
 // Stored with each consent, so accounts that accepted the placeholder policy stay recognisable.
 export const PRIVACY_POLICY_VERSION = '0-placeholder';
+
+// How long expired tokens and expired or revoked sessions stay before the cleanup job deletes
+// them, in milliseconds.
+export const CLEANUP_RETENTION = 7 * 24 * 60 * 60 * 1000;
