@@ -304,28 +304,28 @@ Kolumna nullable, bez backfillu. Pierwszy start po deployu wyśle przypomnienia 
 
 #### Automated
 
-- [x] 1.1 Migracja wygenerowana, przejrzana i zastosowana; ponowny migration:generate nie widzi zmian
-- [x] 1.2 Testy jednostkowe przechodzą (npm test)
-- [x] 1.3 Lint i typy (npm run lint && npm run build)
+- [x] 1.1 Migracja wygenerowana, przejrzana i zastosowana; ponowny migration:generate nie widzi zmian — e6e8e62
+- [x] 1.2 Testy jednostkowe przechodzą (npm test) — e6e8e62
+- [x] 1.3 Lint i typy (npm run lint && npm run build) — e6e8e62
 
 #### Manual
 
-- [x] 1.4 Treść przykładowego maila czyta się naturalnie dla jednej i trzech pozycji
+- [x] 1.4 Treść przykładowego maila czyta się naturalnie dla jednej i trzech pozycji — e6e8e62
 
 ### Phase 2: Job przypomnień
 
 #### Automated
 
-- [ ] 2.1 Testy jednostkowe przechodzą (npm test)
-- [ ] 2.2 Nowy plik e2e trial-reminder przechodzi
-- [ ] 2.3 Cały zestaw e2e przechodzi (npm run test:e2e)
-- [ ] 2.4 Lint i typy (npm run lint && npm run build)
-- [ ] 2.5 Sabotaż: bez IS DISTINCT FROM czerwony drugi przebieg, bez zwolnienia czerwone konto C
+- [x] 2.1 Testy jednostkowe przechodzą (npm test)
+- [x] 2.2 Nowy plik e2e trial-reminder przechodzi
+- [x] 2.3 Cały zestaw e2e przechodzi (npm run test:e2e)
+- [x] 2.4 Lint i typy (npm run lint && npm run build)
+- [x] 2.5 Sabotaż: bez IS DISTINCT FROM czerwony drugi przebieg, bez zwolnienia czerwone konto C
 
 #### Manual
 
-- [ ] 2.6 start:dev startuje bez czekania na wysyłkę, a mail ma poprawne pozycje, daty, kwoty i link
-- [ ] 2.7 Restart API tego samego dnia nie wysyła drugiego maila
+- [x] 2.6 start:dev startuje bez czekania na wysyłkę, a mail ma poprawne pozycje, daty, kwoty i link
+- [x] 2.7 Restart API tego samego dnia nie wysyła drugiego maila
 
 ### Phase 3: Dokumentacja i weryfikacja ręczna
 

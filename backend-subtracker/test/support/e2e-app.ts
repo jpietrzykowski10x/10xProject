@@ -20,6 +20,7 @@ import { MAIL_TRANSPORT } from '../../src/mail/mail.transport.js';
 import type { MailMessage } from '../../src/mail/mail.types.js';
 import { Category } from '../../src/subscriptions/entities/category.entity.js';
 import { Subscription } from '../../src/subscriptions/entities/subscription.entity.js';
+import { TrialReminderScheduler } from '../../src/subscriptions/trial-reminder.scheduler.js';
 import { UserRole } from '../../src/users/entities/user-role.entity.js';
 import { User } from '../../src/users/entities/user.entity.js';
 
@@ -81,8 +82,12 @@ export interface E2eApp {
   readonly app: INestApplication<App>;
   readonly dataSource: DataSource;
   readonly env: EnvConfig;
-  // Every mail the app tried to send, in order.
+  // Every mail the app tried to send, in order, including failed ones and mail to addresses of
+  // other files or accounts (the startup run of a job, operator alerts).
   readonly sent: MailMessage[];
+  // While on, the fake transport records mail to this address in `sent` and then fails like an
+  // unreachable SMTP server.
+  failMailTo: (address: string, fail: boolean) => void;
   http: () => Agent;
   repository: <T extends ObjectLiteral>(entity: new () => T) => Repository<T>;
   newAddress: () => string;
@@ -114,6 +119,7 @@ export function createE2eApp({
 }: E2eAppOptions): E2eApp {
   const addressPattern = `${addressPrefix}%${ADDRESS_DOMAIN}`;
   const sent: MailMessage[] = [];
+  const failingAddresses = new Set<string>();
   let addressCounter = 0;
   let started: Started | undefined;
 
@@ -129,6 +135,18 @@ export function createE2eApp({
     current().dataSource.getRepository(entity);
   const newAddress = () =>
     `${addressPrefix}${Date.now()}-${++addressCounter}${ADDRESS_DOMAIN}`;
+  // The same addresses as addressPattern; mail to other addresses has no audit row to wait for
+  // in this file.
+  const isFileAddress = (address: string) =>
+    address.startsWith(addressPrefix) && address.endsWith(ADDRESS_DOMAIN);
+
+  const failMailTo = (address: string, fail: boolean) => {
+    if (fail) {
+      failingAddresses.add(address);
+    } else {
+      failingAddresses.delete(address);
+    }
+  };
 
   // Subscriptions and categories first: they hang off the users. Session, token and role rows
   // block deleting a user (ON DELETE NO ACTION).
@@ -194,7 +212,10 @@ export function createE2eApp({
       .useValue({
         send: (message: MailMessage) => {
           sent.push(message);
-          return Promise.resolve();
+          // No SMTP fields, so MailService treats it as a server failure, not a rejected address.
+          return failingAddresses.has(message.to)
+            ? Promise.reject(new Error('connection refused'))
+            : Promise.resolve();
         },
       })
       .compile();
@@ -214,6 +235,9 @@ export function createE2eApp({
       // The production policy (CORS, CSRF, headers), so these tests cover what main.ts serves.
       applyHttpSecurity(app, env.CORS_ORIGINS);
       await app.init();
+      // The startup run of the trial reminders goes in the background; it must end before a
+      // test adds its rows, or it could mark a file's fresh trial as reminded.
+      await app.get(TrialReminderScheduler).idle();
       started = { app, dataSource: app.get(DataSource), env };
       // Leftovers of a run that was killed before its cleanup.
       await removeTestData();
@@ -231,12 +255,13 @@ export function createE2eApp({
     }
     const { app } = started;
     try {
-      // Audit rows are written after the transport finishes.
+      // Audit rows are written after the transport finishes. Only this file's addresses: a job
+      // run can also mail other accounts of the database, and a failure mails the operator.
       await vi.waitFor(
         async () => {
           expect(
             await repository(Mail).countBy({ recipient: Like(addressPattern) }),
-          ).toBe(sent.length);
+          ).toBe(sent.filter((message) => isFileAddress(message.to)).length);
         },
         { timeout: 5000 },
       );
@@ -263,6 +288,7 @@ export function createE2eApp({
       return current().env;
     },
     sent,
+    failMailTo,
     http,
     repository,
     newAddress,
