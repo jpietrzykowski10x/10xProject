@@ -1,10 +1,10 @@
 ---
 change_id: subscription-lifecycle
 title: Subscription lifecycle
-status: impl_reviewed
+status: archived
 created: 2026-11-15
 updated: 2026-11-16
-archived_at: null
+archived_at: 2026-11-16T13:24:57Z
 ---
 
 ## Notes
