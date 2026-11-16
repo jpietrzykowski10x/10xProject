@@ -415,27 +415,27 @@ Job działa na całej tabeli, ale filtruje po indeksach `(status, data)`; przesu
 
 #### Automated
 
-- [x] 1.1 Testy jednostkowe backendu przechodzą
-- [x] 1.2 Lint przechodzi
-- [x] 1.3 Build przechodzi
-- [x] 1.4 Testy e2e API przechodzą, w tym nowy plik akcji i rejestr tras
+- [x] 1.1 Testy jednostkowe backendu przechodzą — 752351f
+- [x] 1.2 Lint przechodzi — 752351f
+- [x] 1.3 Build przechodzi — 752351f
+- [x] 1.4 Testy e2e API przechodzą, w tym nowy plik akcji i rejestr tras — 752351f
 
 #### Manual
 
-- [x] 1.5 Anulowanie triala przez API zwraca datę rozliczenia równą dawnemu końcowi triala, ponowne anulowanie 409
+- [x] 1.5 Anulowanie triala przez API zwraca datę rozliczenia równą dawnemu końcowi triala, ponowne anulowanie 409 — 752351f
 
 ### Phase 2: Scheduler i job cyklu życia
 
 #### Automated
 
-- [ ] 2.1 Testy jednostkowe (w tym calendar-day i reguły joba) przechodzą
-- [ ] 2.2 Lint i build przechodzą
-- [ ] 2.3 Testy e2e przechodzą, w tym subscription-lifecycle.e2e-spec.ts
+- [x] 2.1 Testy jednostkowe (w tym calendar-day i reguły joba) przechodzą
+- [x] 2.2 Lint i build przechodzą
+- [x] 2.3 Testy e2e przechodzą, w tym subscription-lifecycle.e2e-spec.ts
 
 #### Manual
 
-- [ ] 2.4 Przeszłe daty w bazie dev zmieniają się po restarcie start:dev, log z liczbami przejść
-- [ ] 2.5 Lista po restarcie API pokazuje nowe statusy i daty, sumy bez zamkniętej subskrypcji
+- [x] 2.4 Przeszłe daty w bazie dev zmieniają się po restarcie start:dev, log z liczbami przejść
+- [x] 2.5 Lista po restarcie API pokazuje nowe statusy i daty, sumy bez zamkniętej subskrypcji
 
 ### Phase 3: Sprzątanie tokenów i sesji
 

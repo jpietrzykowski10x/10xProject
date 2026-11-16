@@ -20,6 +20,13 @@ import { Category } from './category.entity.js';
 // node-pg returns numeric as a string and date as 'YYYY-MM-DD', so both stay strings here: no
 // float rounding of money and no time-zone shift of calendar days.
 @Entity('subscription')
+// For the lifecycle job: pending cancellations and active subscriptions by billing date, trials by
+// the end of the trial.
+@Index('IDX_subscription_status_next_billing_date', [
+  'status',
+  'nextBillingDate',
+])
+@Index('IDX_subscription_status_trial_end_date', ['status', 'trialEndDate'])
 export class Subscription {
   @PrimaryGeneratedColumn('uuid')
   id: string;
