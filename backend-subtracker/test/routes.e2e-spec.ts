@@ -61,6 +61,20 @@ const EXPECTED_ROUTES: ExpectedRoute[] = [
     twoAccountTest:
       "lets no account change or delete another account's subscription",
   },
+  {
+    method: 'POST',
+    path: '/subscriptions/:id/cancel',
+    access: 'session',
+    twoAccountTest:
+      "lets no account cancel or resume another account's subscription",
+  },
+  {
+    method: 'POST',
+    path: '/subscriptions/:id/resume',
+    access: 'session',
+    twoAccountTest:
+      "lets no account cancel or resume another account's subscription",
+  },
 ];
 
 // The sources of every e2e file except this one, whose list names the tests itself.

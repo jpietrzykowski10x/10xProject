@@ -1,14 +1,22 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity.js';
 import type { CreateSubscriptionDto } from '../dtos/create-subscription.dto.js';
 import { COUNTED_STATUSES, costTotals } from '../cost-totals.js';
 import type { Category } from '../entities/category.entity.js';
 import { Subscription } from '../entities/subscription.entity.js';
+import {
+  CANCELLABLE_STATUSES,
+  CANCELLED_STATUS,
+  RESUMABLE_STATUSES,
+  RESUMED_STATUS,
+} from '../subscription-lifecycle.js';
 import { subscriptionOrder } from '../subscription-order.js';
 import {
   type CostTotalsResponse,
@@ -22,6 +30,10 @@ const LIST_ALIAS = 'subscription';
 
 // The same for another account's id and for an id no row has.
 const NOT_FOUND_MESSAGE = 'Subscription not found';
+
+// An action (cancel, resume) on a subscription whose status does not allow it.
+const WRONG_STATUS_MESSAGE =
+  'The subscription status does not allow this action';
 
 type SubscriptionFields = Pick<
   Subscription,
@@ -164,6 +176,56 @@ export class SubscriptionsService {
     if (!result.affected) {
       throw new NotFoundException(NOT_FOUND_MESSAGE);
     }
+  }
+
+  // Dates stay as they are, except that a cancelled trial ends with the trial: Postgres evaluates
+  // every SET expression on the old row, so COALESCE reads trial_end_date before it is cleared.
+  cancel(userId: string, id: string): Promise<SubscriptionResponse> {
+    return this.transition(userId, id, CANCELLABLE_STATUSES, {
+      status: CANCELLED_STATUS,
+      nextBillingDate: () => 'COALESCE(trial_end_date, next_billing_date)',
+      trialEndDate: null,
+    });
+  }
+
+  resume(userId: string, id: string): Promise<SubscriptionResponse> {
+    return this.transition(userId, id, RESUMABLE_STATUSES, {
+      status: RESUMED_STATUS,
+    });
+  }
+
+  // One conditional UPDATE, so an action and the lifecycle job never overwrite each other: the row
+  // changes only while it belongs to the account and is still in one of the allowed statuses.
+  private async transition(
+    userId: string,
+    id: string,
+    from: readonly SubscriptionStatus[],
+    changes: QueryDeepPartialEntity<Subscription>,
+  ): Promise<SubscriptionResponse> {
+    const result = await this.subscriptions
+      .createQueryBuilder()
+      .update(Subscription)
+      .set(changes)
+      .where('id = :id', { id })
+      .andWhere('user_id = :userId', { userId })
+      .andWhere('status IN (:...from)', { from })
+      .execute();
+    if (!result.affected) {
+      const exists = await this.subscriptions.existsBy({ id, userId });
+      throw exists
+        ? new ConflictException(WRONG_STATUS_MESSAGE)
+        : new NotFoundException(NOT_FOUND_MESSAGE);
+    }
+
+    const subscription = await this.subscriptions.findOne({
+      where: { id, userId },
+      relations: { category: true },
+    });
+    // Deleted (e.g. from another tab) right after the update.
+    if (subscription === null) {
+      throw new NotFoundException(NOT_FOUND_MESSAGE);
+    }
+    return toSubscriptionResponse(subscription, subscription.category);
   }
 
   private async usableCategory(
