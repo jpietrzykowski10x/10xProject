@@ -69,6 +69,12 @@ export class Subscription {
   @Column({ name: 'trial_end_date', type: 'date', nullable: true })
   trialEndDate: string | null;
 
+  // The trial end date that the trial reminder went out (or is being sent) for. A reminder is due
+  // again only when trial_end_date differs from it, so moving the end date re-arms the reminder.
+  // Not part of the API response.
+  @Column({ name: 'trial_reminder_sent_for', type: 'date', nullable: true })
+  trialReminderSentFor: string | null;
+
   @Column({ name: 'next_billing_date', type: 'date' })
   nextBillingDate: string;
 

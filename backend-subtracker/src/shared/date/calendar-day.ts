@@ -45,3 +45,30 @@ export function addMonthsClamped(day: string, months: number): string {
     String(Math.min(dayOfMonth, lastDay)).padStart(2, '0'),
   ].join('-');
 }
+
+// The UTC midnight of a YYYY-MM-DD day as milliseconds; refuses anything that is not a real day.
+function utcMidnightOf(day: string): number {
+  if (!isDateOnly(day)) {
+    throw new Error(`Not a YYYY-MM-DD day: ${JSON.stringify(day)}`);
+  }
+  const [year, month, dayOfMonth] = day.split('-').map(Number);
+  return Date.UTC(year, month - 1, dayOfMonth);
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// The day N days later (or earlier, for a negative N). Counted on UTC, where every day has 24
+// hours, so a daylight saving change in the process's time zone cannot shift it.
+export function addDays(day: string, days: number): string {
+  if (!Number.isInteger(days)) {
+    throw new Error(`Not a whole number of days: ${days}`);
+  }
+  return new Date(utcMidnightOf(day) + days * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+}
+
+// The number of calendar days from one day to another (negative when `to` is earlier).
+export function daysBetween(from: string, to: string): number {
+  return Math.round((utcMidnightOf(to) - utcMidnightOf(from)) / DAY_MS);
+}
