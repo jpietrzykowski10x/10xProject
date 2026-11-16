@@ -454,23 +454,23 @@ Job działa na całej tabeli, ale filtruje po indeksach `(status, data)`; przesu
 
 #### Automated
 
-- [x] 4.1 Testy frontu w obu strefach przechodzą
-- [x] 4.2 Build przechodzi
-- [x] 4.3 Playwright przechodzi, w tym subscription-cancel.e2e-spec.ts
+- [x] 4.1 Testy frontu w obu strefach przechodzą — 7c45999
+- [x] 4.2 Build przechodzi — 7c45999
+- [x] 4.3 Playwright przechodzi, w tym subscription-cancel.e2e-spec.ts — 7c45999
 
 #### Manual
 
-- [x] 4.4 Desktop: anulowanie active i trial, przywrócenie, sumy
-- [x] 4.5 Telefon: akcje w rozwiniętym wierszu, dialog, brak poziomego scrolla
-- [x] 4.6 Anulowanie subskrypcji otwartej w edycji zamyka panel
-- [x] 4.7 Klawiatura: Escape w dialogu i powrót fokusu
+- [x] 4.4 Desktop: anulowanie active i trial, przywrócenie, sumy — 7c45999
+- [x] 4.5 Telefon: akcje w rozwiniętym wierszu, dialog, brak poziomego scrolla — 7c45999
+- [x] 4.6 Anulowanie subskrypcji otwartej w edycji zamyka panel — 7c45999
+- [x] 4.7 Klawiatura: Escape w dialogu i powrót fokusu — 7c45999
 
 ### Phase 5: Dokumentacja i cookbook
 
 #### Automated
 
-- [ ] 5.1 Lint backendu przechodzi po zmianach dokumentacji
+- [x] 5.1 Lint backendu przechodzi po zmianach dokumentacji
 
 #### Manual
 
-- [ ] 5.2 Przepis w backend-patterns.md i test-plan §6 wystarcza do testu joba S-06
+- [x] 5.2 Przepis w backend-patterns.md i test-plan §6 wystarcza do testu joba S-06
