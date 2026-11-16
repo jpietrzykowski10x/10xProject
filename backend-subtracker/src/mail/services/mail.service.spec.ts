@@ -80,10 +80,12 @@ describe('MailService', () => {
   });
 
   describe('sendToUser', () => {
-    it('sends through the user channel and audits SENT', async () => {
+    it('sends through the user channel, audits SENT and resolves to true', async () => {
       const { service, send, rows } = setup();
 
-      await service.sendToUser(MailType.MAGIC_LINK, USER, content);
+      await expect(
+        service.sendToUser(MailType.MAGIC_LINK, USER, content),
+      ).resolves.toBe(true);
 
       expect(send).toHaveBeenCalledExactlyOnceWith({
         channel: 'user',
@@ -101,13 +103,13 @@ describe('MailService', () => {
       ]);
     });
 
-    it('audits FAILED with a truncated error and does not reject', async () => {
+    it('audits FAILED with a truncated error and resolves to false after an SMTP error', async () => {
       const { service, send, rows } = setup();
       send.mockRejectedValueOnce(new Error('x'.repeat(600)));
 
       await expect(
         service.sendToUser(MailType.MAGIC_LINK, USER, content),
-      ).resolves.toBeUndefined();
+      ).resolves.toBe(false);
 
       expect(rows[0]).toMatchObject({
         status: MailStatus.FAILED,
@@ -150,7 +152,9 @@ describe('MailService', () => {
         const { service, send, rows } = setup();
         send.mockRejectedValueOnce(refused('RCPT TO', 550));
 
-        await service.sendToUser(MailType.MAGIC_LINK, USER, content);
+        await expect(
+          service.sendToUser(MailType.MAGIC_LINK, USER, content),
+        ).resolves.toBe(false);
 
         expect(send).toHaveBeenCalledTimes(1);
         expect(rows[0]).toMatchObject({
@@ -224,7 +228,7 @@ describe('MailService', () => {
 
       await expect(
         service.sendToUser(MailType.MAGIC_LINK, USER, content),
-      ).resolves.toBeUndefined();
+      ).resolves.toBe(false);
 
       expect(send).toHaveBeenCalledTimes(2);
       expect(rows.map((row) => [row.type, row.status])).toEqual([
@@ -233,13 +237,13 @@ describe('MailService', () => {
       ]);
     });
 
-    it('only logs when the audit write fails', async () => {
+    it('only logs when the audit write fails, and still resolves to true', async () => {
       const { service, mails, send } = setup();
       mails.save.mockRejectedValueOnce(new Error('db down'));
 
       await expect(
         service.sendToUser(MailType.MAGIC_LINK, USER, content),
-      ).resolves.toBeUndefined();
+      ).resolves.toBe(true);
 
       expect(send).toHaveBeenCalledTimes(1);
       expect(logError).toHaveBeenCalledWith(expect.stringContaining('db down'));
@@ -252,7 +256,7 @@ describe('MailService', () => {
 
       await expect(
         service.sendToUser(MailType.MAGIC_LINK, USER, content),
-      ).resolves.toBeUndefined();
+      ).resolves.toBe(false);
 
       expect(send.mock.calls[1][0].text).toContain('brak');
     });

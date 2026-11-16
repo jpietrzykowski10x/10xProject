@@ -47,6 +47,8 @@ function isRecipientRejected(error: unknown): boolean {
 
 // Neither public method rejects: callers fire mail after their response or transaction, and a
 // mail problem must not change their outcome. Failures end up in the audit row and in the logs.
+// sendToUser resolves to whether the transport accepted the mail (true even when the audit row
+// could not be saved), so a caller that keeps a "sent" marker can release it after a failure.
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
@@ -65,11 +67,17 @@ export class MailService {
     type: UserMailType,
     to: string,
     content: MailContent,
-  ): Promise<void> {
-    const { needsAlert, rowId } = await this.deliver('user', type, to, content);
+  ): Promise<boolean> {
+    const { sent, needsAlert, rowId } = await this.deliver(
+      'user',
+      type,
+      to,
+      content,
+    );
     if (needsAlert) {
       await this.alertOperatorAboutFailure(type, rowId);
     }
+    return sent;
   }
 
   async notifyOperator(content: MailContent): Promise<void> {
@@ -93,7 +101,7 @@ export class MailService {
     type: MailType,
     to: string,
     content: MailContent,
-  ): Promise<{ needsAlert: boolean; rowId: string | null }> {
+  ): Promise<{ sent: boolean; needsAlert: boolean; rowId: string | null }> {
     try {
       await this.transport.send({ channel, to, ...content });
     } catch (error) {
@@ -104,10 +112,10 @@ export class MailService {
       const rowId = await this.saveAudit(type, to, errorMessage);
       const recipientRejected = isRecipientRejected(error);
       this.logFailure(type, error, rowId, recipientRejected);
-      return { needsAlert: !recipientRejected, rowId };
+      return { sent: false, needsAlert: !recipientRejected, rowId };
     }
     const rowId = await this.saveAudit(type, to, null);
-    return { needsAlert: false, rowId };
+    return { sent: true, needsAlert: false, rowId };
   }
 
   // SMTP messages can quote the address, so the full text stays in the audit row, next to it.
