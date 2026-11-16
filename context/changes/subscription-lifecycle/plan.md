@@ -428,27 +428,27 @@ Job działa na całej tabeli, ale filtruje po indeksach `(status, data)`; przesu
 
 #### Automated
 
-- [x] 2.1 Testy jednostkowe (w tym calendar-day i reguły joba) przechodzą
-- [x] 2.2 Lint i build przechodzą
-- [x] 2.3 Testy e2e przechodzą, w tym subscription-lifecycle.e2e-spec.ts
+- [x] 2.1 Testy jednostkowe (w tym calendar-day i reguły joba) przechodzą — 7787ac9
+- [x] 2.2 Lint i build przechodzą — 7787ac9
+- [x] 2.3 Testy e2e przechodzą, w tym subscription-lifecycle.e2e-spec.ts — 7787ac9
 
 #### Manual
 
-- [x] 2.4 Przeszłe daty w bazie dev zmieniają się po restarcie start:dev, log z liczbami przejść
-- [x] 2.5 Lista po restarcie API pokazuje nowe statusy i daty, sumy bez zamkniętej subskrypcji
+- [x] 2.4 Przeszłe daty w bazie dev zmieniają się po restarcie start:dev, log z liczbami przejść — 7787ac9
+- [x] 2.5 Lista po restarcie API pokazuje nowe statusy i daty, sumy bez zamkniętej subskrypcji — 7787ac9
 
 ### Phase 3: Sprzątanie tokenów i sesji
 
 #### Automated
 
-- [ ] 3.1 Migracja stosuje się na subtracker-db
-- [ ] 3.2 Brak różnicy encji względem bazy referencyjnej
-- [ ] 3.3 Testy jednostkowe, lint i build przechodzą
-- [ ] 3.4 Testy e2e przechodzą, w tym auth-cleanup.e2e-spec.ts
+- [x] 3.1 Migracja stosuje się na subtracker-db
+- [x] 3.2 Brak różnicy encji względem bazy referencyjnej
+- [x] 3.3 Testy jednostkowe, lint i build przechodzą
+- [x] 3.4 Testy e2e przechodzą, w tym auth-cleanup.e2e-spec.ts
 
 #### Manual
 
-- [ ] 3.5 Przegląd wygenerowanej migracji: tylko pięć indeksów
+- [x] 3.5 Przegląd wygenerowanej migracji: tylko pięć indeksów
 
 ### Phase 4: Frontend — akcje Anuluj i Przywróć
 

@@ -32,9 +32,13 @@ export class Session {
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
+  // Indexed: the cleanup job deletes by it.
+  @Index('IDX_session_expires_at')
   @Column({ name: 'expires_at', type: 'timestamptz' })
   expiresAt: Date;
 
+  // Indexed: the cleanup job deletes by it.
+  @Index('IDX_session_revoked_at')
   @Column({ name: 'revoked_at', type: 'timestamptz', nullable: true })
   revokedAt: Date | null;
 

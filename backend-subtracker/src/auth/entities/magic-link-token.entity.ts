@@ -30,6 +30,8 @@ export class MagicLinkToken {
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
+  // Indexed: the cleanup job deletes by it.
+  @Index('IDX_magic_link_token_expires_at')
   @Column({ name: 'expires_at', type: 'timestamptz' })
   expiresAt: Date;
 
