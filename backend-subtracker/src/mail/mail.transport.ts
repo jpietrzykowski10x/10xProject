@@ -30,6 +30,11 @@ function smtpSender(settings: SmtpSettings): Send {
     // Without this nodemailer falls back to plaintext when STARTTLS is not offered or gets stripped.
     requireTLS: !settings.secure,
     auth: { user: settings.username, pass: settings.password },
+    // A hanging server fails the mail instead of holding a sign-in request or the trial reminder
+    // run (one user after another) for minutes; nodemailer's defaults reach 10 minutes.
+    connectionTimeout: 30_000,
+    greetingTimeout: 30_000,
+    socketTimeout: 30_000,
   });
   return async (message) => {
     await transporter.sendMail({

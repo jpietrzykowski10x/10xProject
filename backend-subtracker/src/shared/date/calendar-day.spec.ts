@@ -4,6 +4,7 @@ import {
   APP_TIME_ZONE,
   calendarDayIn,
   daysBetween,
+  formatPolishDate,
 } from './calendar-day.js';
 
 describe('calendarDayIn', () => {
@@ -158,5 +159,20 @@ describe('daysBetween', () => {
     ['2026-03-01', '2026-3-1'],
   ])('refuses %j → %j', (from, to) => {
     expect(() => daysBetween(from, to)).toThrow();
+  });
+});
+
+describe('formatPolishDate', () => {
+  it.each([
+    ['2026-11-20', '20.11.2026'],
+    // leading zeros stay
+    ['2026-01-05', '05.01.2026'],
+    ['2028-02-29', '29.02.2028'],
+  ])('formats %j as %j', (day, expected) => {
+    expect(formatPolishDate(day)).toBe(expected);
+  });
+
+  it.each(['2026-02-30', '2026-3-1', '20.11.2026', ''])('refuses %j', (day) => {
+    expect(() => formatPolishDate(day)).toThrow();
   });
 });

@@ -316,25 +316,25 @@ Kolumna nullable, bez backfillu. Pierwszy start po deployu wyśle przypomnienia 
 
 #### Automated
 
-- [x] 2.1 Testy jednostkowe przechodzą (npm test)
-- [x] 2.2 Nowy plik e2e trial-reminder przechodzi
-- [x] 2.3 Cały zestaw e2e przechodzi (npm run test:e2e)
-- [x] 2.4 Lint i typy (npm run lint && npm run build)
-- [x] 2.5 Sabotaż: bez IS DISTINCT FROM czerwony drugi przebieg, bez zwolnienia czerwone konto C
+- [x] 2.1 Testy jednostkowe przechodzą (npm test) — 3a7269f
+- [x] 2.2 Nowy plik e2e trial-reminder przechodzi — 3a7269f
+- [x] 2.3 Cały zestaw e2e przechodzi (npm run test:e2e) — 3a7269f
+- [x] 2.4 Lint i typy (npm run lint && npm run build) — 3a7269f
+- [x] 2.5 Sabotaż: bez IS DISTINCT FROM czerwony drugi przebieg, bez zwolnienia czerwone konto C — 3a7269f
 
 #### Manual
 
-- [x] 2.6 start:dev startuje bez czekania na wysyłkę, a mail ma poprawne pozycje, daty, kwoty i link
-- [x] 2.7 Restart API tego samego dnia nie wysyła drugiego maila
+- [x] 2.6 start:dev startuje bez czekania na wysyłkę, a mail ma poprawne pozycje, daty, kwoty i link — 3a7269f
+- [x] 2.7 Restart API tego samego dnia nie wysyła drugiego maila — 3a7269f
 
 ### Phase 3: Dokumentacja i weryfikacja ręczna
 
 #### Automated
 
-- [ ] 3.1 Pełny zestaw nadal zielony (npm test, test:e2e, lint)
+- [x] 3.1 Pełny zestaw nadal zielony (npm test, test:e2e, lint) — 413733e
 
 #### Manual
 
-- [ ] 3.2 Prawdziwy mail dociera do Gmaila przez SMTP MyDevil z polskimi znakami i linkiem
-- [ ] 3.3 Po deployu health-check przechodzi przy pierwszej próbie, log pokazuje przebieg przypomnień
-- [ ] 3.4 Opisy w backend-patterns, test-plan i CLAUDE.md zgadzają się z kodem
+- [x] 3.2 Prawdziwy mail dociera do Gmaila przez SMTP MyDevil z polskimi znakami i linkiem — 413733e
+- [ ] 3.3 Po deployu health-check przechodzi przy pierwszej próbie, log pokazuje przebieg przypomnień — po merge'u
+- [x] 3.4 Opisy w backend-patterns, test-plan i CLAUDE.md zgadzają się z kodem — 413733e

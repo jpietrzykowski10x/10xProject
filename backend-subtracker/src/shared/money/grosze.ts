@@ -13,6 +13,13 @@ export function toGrosze(amount: string): number {
   return Number(match[1]) * 100 + Number(match[2]);
 }
 
+// An amount in the API's format written the Polish way, "43.00" → "43,00 zł" (e.g. in a mail).
+// The string is only reformatted, never parsed into a float; any other format throws.
+export function formatPln(amount: string): string {
+  toGrosze(amount);
+  return `${amount.replace('.', ',')} zł`;
+}
+
 // A non-negative whole number of grosze in the API's format (10282 → "102.82").
 export function fromGrosze(grosze: number): string {
   if (!Number.isSafeInteger(grosze) || grosze < 0) {

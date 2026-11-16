@@ -68,6 +68,15 @@ export function addDays(day: string, days: number): string {
     .slice(0, 10);
 }
 
+// A YYYY-MM-DD day in the Polish notation, DD.MM.YYYY (e.g. in a mail); refuses anything else.
+export function formatPolishDate(day: string): string {
+  if (!isDateOnly(day)) {
+    throw new Error(`Not a YYYY-MM-DD day: ${JSON.stringify(day)}`);
+  }
+  const [year, month, dayOfMonth] = day.split('-');
+  return `${dayOfMonth}.${month}.${year}`;
+}
+
 // The number of calendar days from one day to another (negative when `to` is earlier).
 export function daysBetween(from: string, to: string): number {
   return Math.round((utcMidnightOf(to) - utcMidnightOf(from)) / DAY_MS);

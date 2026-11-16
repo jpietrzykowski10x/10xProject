@@ -1,4 +1,4 @@
-import { fromGrosze, toGrosze } from './grosze.js';
+import { formatPln, fromGrosze, toGrosze } from './grosze.js';
 
 describe('grosze', () => {
   it.each([
@@ -24,5 +24,19 @@ describe('grosze', () => {
 
   it.each([-1, 1.5, Number.NaN])('refuses %d grosze', (grosze) => {
     expect(() => fromGrosze(grosze)).toThrow();
+  });
+});
+
+describe('formatPln', () => {
+  it.each([
+    ['0.00', '0,00 zł'],
+    ['43.00', '43,00 zł'],
+    ['1234.50', '1234,50 zł'],
+  ])('formats %j as %j', (amount, expected) => {
+    expect(formatPln(amount)).toBe(expected);
+  });
+
+  it.each(['12.9', '1,00', '-1.00'])('refuses %j', (amount) => {
+    expect(() => formatPln(amount)).toThrow();
   });
 });

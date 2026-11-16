@@ -1,7 +1,11 @@
 import { escapeHtml } from '../mail/escape-html.js';
 import type { MailContent } from '../mail/mail.types.js';
-import { addDays, daysBetween } from '../shared/date/calendar-day.js';
-import { toGrosze } from '../shared/money/grosze.js';
+import {
+  addDays,
+  daysBetween,
+  formatPolishDate,
+} from '../shared/date/calendar-day.js';
+import { formatPln } from '../shared/money/grosze.js';
 import { BillingCycle } from './subscription.types.js';
 
 // A trial is reminded about when its end is at most this many days ahead: from today up to and
@@ -52,16 +56,9 @@ function daysLeftLabel(today: string, trialEndDate: string): string {
   return `za ${days} dni`;
 }
 
-// YYYY-MM-DD → DD.MM.YYYY
-function polishDate(day: string): string {
-  const [year, month, dayOfMonth] = day.split('-');
-  return `${dayOfMonth}.${month}.${year}`;
-}
-
-// "43.00" → "43,00 zł / mies."; the string is only reformatted, never parsed into a float.
+// "43.00" → "43,00 zł / mies."
 function amountPerCycle(amount: string, cycle: BillingCycle): string {
-  toGrosze(amount); // refuses anything but the API's two-decimal format
-  return `${amount.replace('.', ',')} zł / ${CYCLE_LABELS[cycle]}`;
+  return `${formatPln(amount)} / ${CYCLE_LABELS[cycle]}`;
 }
 
 // The one mail a run sends to a user, listing all of that user's trials due for a reminder.
@@ -82,7 +79,7 @@ export function trialReminderMail({
     .map((item) => ({
       name: item.name,
       daysLeft: daysLeftLabel(today, item.trialEndDate),
-      endDate: polishDate(item.trialEndDate),
+      endDate: formatPolishDate(item.trialEndDate),
       price: amountPerCycle(item.amount, item.billingCycle),
     }));
 

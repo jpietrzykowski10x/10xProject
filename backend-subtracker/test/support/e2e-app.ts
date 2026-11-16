@@ -88,6 +88,8 @@ export interface E2eApp {
   // While on, the fake transport records mail to this address in `sent` and then fails like an
   // unreachable SMTP server.
   failMailTo: (address: string, fail: boolean) => void;
+  // Whether the address is one of this file's (its prefix and ADDRESS_DOMAIN), e.g. to filter `sent`.
+  isFileAddress: (address: string) => boolean;
   http: () => Agent;
   repository: <T extends ObjectLiteral>(entity: new () => T) => Repository<T>;
   newAddress: () => string;
@@ -289,6 +291,7 @@ export function createE2eApp({
     },
     sent,
     failMailTo,
+    isFileAddress,
     http,
     repository,
     newAddress,
