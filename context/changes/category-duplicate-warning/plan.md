@@ -387,7 +387,9 @@ Przy wielu subskrypcjach lub kategoriach przewija się dziś cała strona. Na de
 
 - Desktop, wiele subskrypcji: strona nie ma przewijania okna; przewija się lista/tabela, nagłówki kolumn zostają widoczne, na `/dashboard` analogicznie
 - Desktop, rozwinięte „Kategorie” przy wielu kategoriach: „SubTracker” na górze i konto z „Wyloguj” na dole zostają na miejscu, przewija się lista kategorii
-- Telefon: zachowanie bez zmian
+- Telefon: strona się nie przewija; przewija się lista/tabela (karty na `/dashboard`), a rozwinięte „Kategorie” w pasku przewijają się w sobie i nie wypychają treści
+
+**Addendum (po weryfikacji ręcznej, za zgodą użytkownika)**: cienki, półprzezroczysty pasek przewijania dla całej aplikacji (`styles.scss`, tokeny `--st-scrollbar-*` z wariantem na granat) oraz widoczne podświetlenie aktywnego linku w obu nawigacjach (klasy `--active` istniały bez stylu). Przegląd S-07 F4.
 
 **Implementation Note**: Po zakończeniu fazy i przejściu weryfikacji automatycznej zatrzymaj się i poczekaj, aż człowiek potwierdzi weryfikację ręczną.
 

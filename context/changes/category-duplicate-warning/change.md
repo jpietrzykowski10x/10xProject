@@ -1,7 +1,7 @@
 ---
 change_id: category-duplicate-warning
 title: Ostrzeżenie o duplikatach w kategorii (S-07)
-status: implemented
+status: impl_reviewed
 created: 2026-11-17
 updated: 2026-11-17
 archived_at: null

@@ -3,6 +3,7 @@ import {
   APP_TIME_ZONE,
   calendarDayIn,
 } from '../../src/shared/date/calendar-day.js';
+import { BackfillOwnCategorySettings1794951132638 } from '../../src/database/migrations/1794951132638-BackfillOwnCategorySettings.js';
 import { DEFAULT_CATEGORIES } from '../../src/subscriptions/default-categories.js';
 import { CategorySetting } from '../../src/subscriptions/entities/category-setting.entity.js';
 import { Subscription } from '../../src/subscriptions/entities/subscription.entity.js';
@@ -263,6 +264,35 @@ describe('Budget — duplicate thresholds (e2e)', () => {
     expect(thresholdIn(budget, own.id)).toBe(4);
     expect(thresholdIn(budget, GRY_ID)).toBe(7);
     expect(thresholdIn(budget, STREAMING_ID)).toBe(1);
+  });
+
+  // The data migration touches every account's own categories, but only adds what POST /categories
+  // adds anyway, so running it again on the shared test database is harmless (idempotent).
+  it('gives own categories from before S-07 the threshold 3 and keeps saved ones', async () => {
+    const { cookie, address } = await signIn();
+    const userId = await userIdOf(address);
+    const old = (await postCategory(cookie, 'Stara').expect(201))
+      .body as CategoryResponse;
+    const saved = (await postCategory(cookie, 'Zapisana').expect(201))
+      .body as CategoryResponse;
+    // "Stara" as it is in production before S-07: no row at all.
+    await repository(CategorySetting).delete({ userId, categoryId: old.id });
+    await putBudget(cookie, {
+      defaultDuplicateThreshold: 6,
+      categories: [{ categoryId: saved.id, duplicateThreshold: 5 }],
+    }).expect(200);
+
+    const queryRunner = e2e.dataSource.createQueryRunner();
+    try {
+      await new BackfillOwnCategorySettings1794951132638().up(queryRunner);
+    } finally {
+      await queryRunner.release();
+    }
+
+    const budget = await getBudget(cookie);
+    expect(thresholdIn(budget, old.id)).toBe(3);
+    expect(thresholdIn(budget, saved.id)).toBe(5);
+    expect(thresholdIn(budget, GRY_ID)).toBe(6);
   });
 
   // The job sees every account, so "today" is the real day in Warsaw (test plan §6.4).
