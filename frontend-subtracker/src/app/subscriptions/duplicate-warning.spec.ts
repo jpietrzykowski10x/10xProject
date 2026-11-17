@@ -1,7 +1,8 @@
-import { mostSevereDuplicateWarning } from './duplicate-warning';
 import { duplicateWarningNote, duplicateWarningsSummary } from './subscription-labels';
 import type { CategoryCostTotal, DuplicateWarning } from './subscription.types';
 
+// A category without a limit (S-08), so only its duplicate warning counts. The most severe state
+// of the categories is tested with both kinds of alert in budget-alert.spec.ts.
 function category(
   duplicateWarning: DuplicateWarning,
   subscriptionCount = 1,
@@ -14,21 +15,10 @@ function category(
     subscriptionCount,
     duplicateThreshold,
     duplicateWarning,
+    monthlyLimit: null,
+    budgetAlert: 'none',
   };
 }
-
-// The oracle is the plan of S-07 (phase 2): exceeded > reached > none.
-describe('mostSevereDuplicateWarning', () => {
-  it.each([
-    [[], 'none'],
-    [['none', 'none'], 'none'],
-    [['none', 'reached'], 'reached'],
-    [['reached', 'exceeded', 'none'], 'exceeded'],
-    [['exceeded', 'reached'], 'exceeded'],
-  ] as const)('picks %j as %j', (warnings, expected) => {
-    expect(mostSevereDuplicateWarning(warnings.map((warning) => category(warning)))).toBe(expected);
-  });
-});
 
 // The oracle is the plan of S-07 (phase 2) and the Polish plural forms of "kategoria".
 describe('duplicateWarningNote', () => {

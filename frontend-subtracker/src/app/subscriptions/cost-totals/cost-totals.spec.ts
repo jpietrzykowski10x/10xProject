@@ -15,6 +15,8 @@ const TOTALS_URL = `${environment.apiUrl}/subscriptions/totals`;
 const EXAMPLE: CostTotalsResponse = {
   monthly: '102.82',
   yearly: '1233.87',
+  monthlyLimit: null,
+  budgetAlert: 'none',
   categories: [
     {
       category: { id: 'category-streaming', name: 'Streaming', isDefault: true },
@@ -23,6 +25,8 @@ const EXAMPLE: CostTotalsResponse = {
       subscriptionCount: 1,
       duplicateThreshold: 3,
       duplicateWarning: 'none',
+      monthlyLimit: null,
+      budgetAlert: 'none',
     },
     {
       category: { id: 'category-praca', name: 'Praca', isDefault: true },
@@ -31,6 +35,8 @@ const EXAMPLE: CostTotalsResponse = {
       subscriptionCount: 1,
       duplicateThreshold: 3,
       duplicateWarning: 'none',
+      monthlyLimit: null,
+      budgetAlert: 'none',
     },
     {
       category: { id: 'category-muzyka', name: 'Muzyka', isDefault: true },
@@ -39,11 +45,19 @@ const EXAMPLE: CostTotalsResponse = {
       subscriptionCount: 1,
       duplicateThreshold: 3,
       duplicateWarning: 'none',
+      monthlyLimit: null,
+      budgetAlert: 'none',
     },
   ],
 };
 
-const EMPTY: CostTotalsResponse = { monthly: '0.00', yearly: '0.00', categories: [] };
+const EMPTY: CostTotalsResponse = {
+  monthly: '0.00',
+  yearly: '0.00',
+  monthlyLimit: null,
+  budgetAlert: 'none',
+  categories: [],
+};
 
 // pl-PL prints no-break spaces ("1 233,87 zł"); the assertions compare plain spaces.
 function text(element: Element | null | undefined): string {
@@ -212,6 +226,178 @@ describe('CostTotals', () => {
       expect([...host.querySelectorAll('.totals__category-warning')].map((dd) => text(dd))).toEqual(
         ['Osiągnięto próg: 2 z 2', 'Przekroczono próg: 3 z 2'],
       );
+    });
+  });
+
+  // S-08 (FR-010, FR-011): the limits must show exactly as the API reports them. The oracle is the
+  // API contract (backend budget-alert.ts) and the plan of S-08: the share rounded down, the bar
+  // full at most, the state in words next to the colour.
+  describe('budget limits', () => {
+    const [streaming, praca] = EXAMPLE.categories;
+    // 10282 gr of 20000 gr = 51.41% → 51%
+    const WITH_LIMIT: CostTotalsResponse = { ...EXAMPLE, monthlyLimit: '200.00' };
+
+    async function flush(totals: CostTotalsResponse, variant: 'column' | 'bar' = 'column') {
+      const { httpTesting, fixture, host } = await createTotals(variant);
+      httpTesting.expectOne({ method: 'GET', url: TOTALS_URL }).flush(totals);
+      await fixture.whenStable();
+      return host;
+    }
+
+    it('shows no bar, no usage and no limit line without limits', async () => {
+      const host = await flush(EXAMPLE);
+
+      expect(host.querySelector('[role="progressbar"]')).toBeNull();
+      expect(host.querySelector('.totals__budget')).toBeNull();
+      expect(host.querySelectorAll('.totals__category-limit')).toHaveLength(0);
+      expect(text(host)).not.toContain('Limit');
+    });
+
+    it.each(['column', 'bar'] as const)(
+      'shows the bar of the overall limit under the monthly sum in the %s',
+      async (variant) => {
+        const host = await flush(WITH_LIMIT, variant);
+
+        expect(host.querySelector('.totals__monthly + .totals__budget')).not.toBeNull();
+        const bar = host.querySelector('[role="progressbar"]');
+        expect(bar?.getAttribute('aria-label')).toBe('Wykorzystanie limitu miesięcznego');
+        expect(bar?.getAttribute('aria-valuemin')).toBe('0');
+        expect(bar?.getAttribute('aria-valuemax')).toBe('100');
+        expect(bar?.getAttribute('aria-valuenow')).toBe('51');
+        expect(bar?.getAttribute('aria-valuetext')).toBe('102,82 z 200,00 zł (51%)');
+        expect(text(host.querySelector('.totals__budget-usage'))).toBe('102,82 z 200,00 zł (51%)');
+        // Below 80%: the lime bar, no alert and no icon.
+        expect(host.querySelector('.totals__budget')?.hasAttribute('data-alert')).toBe(false);
+        expect(host.querySelectorAll('.totals__budget app-duplicate-warning-icon')).toHaveLength(0);
+      },
+    );
+
+    it('rounds the share down, so just under the limit never shows 100%', async () => {
+      const host = await flush({
+        ...EXAMPLE,
+        monthly: '199.99',
+        monthlyLimit: '200.00',
+        budgetAlert: 'near',
+      });
+
+      expect(text(host.querySelector('.totals__budget-usage'))).toBe('199,99 z 200,00 zł (99%)');
+      expect(host.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('99');
+    });
+
+    it.each([
+      // 17000 of 20000 gr = 85%
+      ['near', '170.00', 'reached', 'Zbliżasz się do limitu', '85', '170,00 z 200,00 zł (85%)'],
+      ['reached', '200.00', 'exceeded', 'Wykorzystano limit', '100', '200,00 z 200,00 zł (100%)'],
+      // 25000 of 20000 gr = 125%, the bar stays full
+      ['exceeded', '250.00', 'exceeded', 'Przekroczono limit', '100', '250,00 z 200,00 zł (125%)'],
+    ] as const)(
+      'marks an overall limit in the %j state',
+      async (alert, monthly, level, note, valueNow, usage) => {
+        const host = await flush({
+          ...EXAMPLE,
+          monthly,
+          monthlyLimit: '200.00',
+          budgetAlert: alert,
+        });
+
+        const budget = host.querySelector('.totals__budget');
+        expect(budget?.getAttribute('data-alert')).toBe(alert);
+        expect(budget?.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe(
+          valueNow,
+        );
+        expect(text(budget?.querySelector('.totals__budget-usage'))).toBe(usage);
+        expect(text(budget?.querySelector('.totals__budget-note'))).toBe(note);
+        expect(
+          budget?.querySelector('app-duplicate-warning-icon')?.getAttribute('data-warning'),
+        ).toBe(level);
+      },
+    );
+
+    it('shows the limit of a category and its alert in words', async () => {
+      const host = await flush({
+        ...EXAMPLE,
+        categories: [
+          { ...streaming, monthly: '90.00', monthlyLimit: '80.00', budgetAlert: 'exceeded' },
+          { ...praca, monthlyLimit: '100.00' },
+        ],
+      });
+
+      const rows = [...host.querySelectorAll('.totals__category')];
+      expect(rows.map((row) => text(row.querySelector('.totals__category-limit')))).toEqual([
+        'Limit: 90,00 z 80,00 zł',
+        'Limit: 35,83 z 100,00 zł',
+      ]);
+      expect(rows.map((row) => row.getAttribute('data-warning'))).toEqual(['exceeded', null]);
+      const [warning] = rows[0].querySelectorAll('.totals__category-warning');
+      expect(text(warning)).toBe('Przekroczono limit');
+      expect(warning.getAttribute('data-alert')).toBe('exceeded');
+      expect(rows[1].querySelectorAll('.totals__category-warning')).toHaveLength(0);
+    });
+
+    it('marks a category close to its limit in orange', async () => {
+      const host = await flush({
+        ...EXAMPLE,
+        categories: [{ ...streaming, monthlyLimit: '50.00', budgetAlert: 'near' }],
+      });
+
+      const row = host.querySelector('.totals__category');
+      expect(row?.getAttribute('data-warning')).toBe('reached');
+      expect(text(row?.querySelector('.totals__category-warning'))).toBe('Zbliżasz się do limitu');
+      expect(host.querySelector('summary')?.getAttribute('data-warning')).toBe('reached');
+    });
+
+    it('marks the summary with the most severe state of duplicates and limits together', async () => {
+      const host = await flush({
+        ...EXAMPLE,
+        categories: [
+          {
+            ...streaming,
+            subscriptionCount: 2,
+            duplicateThreshold: 2,
+            duplicateWarning: 'reached',
+          },
+          { ...praca, monthlyLimit: '35.83', budgetAlert: 'reached' },
+        ],
+      });
+
+      const summary = host.querySelector('summary');
+      expect(summary?.getAttribute('data-warning')).toBe('exceeded');
+      const icon = summary?.querySelector('app-duplicate-warning-icon');
+      expect(icon?.getAttribute('data-warning')).toBe('exceeded');
+      expect(icon?.querySelector('svg')?.getAttribute('aria-label')).toBe(
+        '1 kategoria osiągnęła próg, 1 kategoria wykorzystała limit',
+      );
+    });
+
+    it('gives a row with both alerts one outline and two descriptions', async () => {
+      const host = await flush({
+        ...EXAMPLE,
+        categories: [
+          {
+            ...streaming,
+            subscriptionCount: 2,
+            duplicateThreshold: 2,
+            duplicateWarning: 'reached',
+            monthlyLimit: '40.00',
+            budgetAlert: 'exceeded',
+          },
+        ],
+      });
+
+      const rows = host.querySelectorAll('.totals__category');
+      expect(rows).toHaveLength(1);
+      expect(rows[0].getAttribute('data-warning')).toBe('exceeded');
+      expect(rows[0].querySelectorAll('app-duplicate-warning-icon')).toHaveLength(1);
+      const warnings = [...rows[0].querySelectorAll('.totals__category-warning')];
+      expect(warnings.map((dd) => text(dd))).toEqual([
+        'Osiągnięto próg: 2 z 2',
+        'Przekroczono limit',
+      ]);
+      // Each description keeps the colour of its own state.
+      expect(warnings.map((dd) => dd.getAttribute('data-warning'))).toEqual([
+        'reached',
+        'exceeded',
+      ]);
     });
   });
 

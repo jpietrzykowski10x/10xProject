@@ -4,7 +4,8 @@
   display: flex;
   flex-direction: column;
   color: #fff;
-  // S-07: the alert colours of the duplicate warning icon, remapped to the pair readable on navy.
+  // S-07/S-08: the alert colours of the warning icon, the budget bar and the descriptions, remapped
+  // to the pair readable on navy.
   --st-alert-warning: var(--st-alert-warning-on-navy);
   --st-alert-danger: var(--st-alert-danger-on-navy);
 }
@@ -34,6 +35,57 @@
 
 .totals__yearly {
   font-size: 16px;
+}
+
+// S-08: the bar of the overall monthly limit, lime below 80% of it, then the alert colours. The
+// text under it says the share and the state in words, so the colour is never the only sign.
+.totals__budget {
+  --totals-budget: var(--st-lime);
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.totals__budget[data-alert='near'] {
+  --totals-budget: var(--st-alert-warning);
+}
+
+.totals__budget[data-alert='reached'],
+.totals__budget[data-alert='exceeded'] {
+  --totals-budget: var(--st-alert-danger);
+}
+
+.totals__budget-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--st-navy-line);
+}
+
+.totals__budget-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--totals-budget);
+}
+
+.totals__budget-text {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 8px;
+  font-size: 13px;
+}
+
+.totals__budget-usage {
+  color: var(--st-on-navy-soft);
+}
+
+.totals__budget-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--totals-budget);
 }
 
 // The expanded categories scroll on their own, under the "Kategorie" heading, which stays: in the
@@ -105,8 +157,8 @@
   margin-left: 6px;
 }
 
-// S-07: a category with a duplicate warning gets a 1px outline and a description in the colour of
-// its state. The negative margin keeps its text aligned with the rows around it.
+// S-07/S-08: a category with a duplicate warning or a limit alert gets one 1px outline in the colour
+// of its most severe state, and a description of each. The negative margin keeps its text aligned with the rows around it.
 .totals__category[data-warning] {
   --totals-warning: var(--st-alert-warning);
 
@@ -128,21 +180,42 @@
   --totals-warning: var(--st-alert-danger);
 }
 
+// S-08: a limit line under the note of a category with a limit.
+.totals__category-limit {
+  grid-column: 1 / -1;
+  color: var(--st-on-navy-soft);
+  font-size: 13px;
+}
+
+// Each description (duplicates, limit) takes the colour of its own state; the outline takes the
+// most severe of them.
 .totals__category-warning {
   grid-column: 1 / -1;
-  color: var(--totals-warning);
+  color: var(--st-alert-warning);
   font-size: 13px;
+}
+
+.totals__category-warning[data-warning='exceeded'] {
+  color: var(--st-alert-danger);
 }
 
 // Phone header: the two sums side by side in one row, smaller. The monthly sum goes on the right
 // and the yearly on the left, like the monthly amount and the "rocznie" note of a category row
 // below them. Only the visual order changes: the monthly sum stays first in the DOM.
 :host(.totals--bar) {
+  // The budget bar (S-08) goes last on a line of its own, under both sums, at full width.
   .totals__sums {
     flex-direction: row-reverse;
+    flex-wrap: wrap;
     align-items: flex-end;
     justify-content: space-between;
-    gap: 16px;
+    gap: 6px 16px;
+  }
+
+  .totals__budget {
+    flex-basis: 100%;
+    order: 1;
+    gap: 4px;
   }
 
   .totals__monthly {

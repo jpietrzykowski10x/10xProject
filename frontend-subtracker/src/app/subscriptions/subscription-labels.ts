@@ -1,9 +1,12 @@
 // The single source of the Polish names of subscription codes, for the list and the form.
+import { formatNumber } from '@angular/common';
 import { daysFromToday } from '../shared/date-only';
 import { polishPlural } from '../shared/polish-plural';
+import { budgetUsagePercent, countBudgetAlerts } from './budget-alert';
 import { countDuplicateWarnings } from './duplicate-warning';
 import type {
   BillingCycle,
+  BudgetAlert,
   CategoryCostTotal,
   PaymentMethod,
   Subscription,
@@ -177,5 +180,76 @@ export function duplicateWarningsSummary(categories: readonly CategoryCostTotal[
   if (reached > 0) {
     parts.push(`${reached} ${polishPlural(reached, REACHED_FORMS)} próg`);
   }
+  return parts.length > 0 ? parts.join(', ') : null;
+}
+
+// S-08: the state of a monthly limit in words, so colour is never the only information.
+export const BUDGET_ALERT_LABELS: Record<Exclude<BudgetAlert, 'none'>, string> = {
+  near: 'Zbliżasz się do limitu',
+  reached: 'Wykorzystano limit',
+  exceeded: 'Przekroczono limit',
+};
+
+// The words of a budget alert; null without one.
+export function budgetAlertNote(alert: BudgetAlert): string | null {
+  return alert === 'none' ? null : BUDGET_ALERT_LABELS[alert];
+}
+
+// An API amount in the Polish number format of `locale` ("1233.87" → "1 233,87").
+function formatAmount(amount: string, locale: string): string {
+  return formatNumber(Number(amount), locale, '1.2-2');
+}
+
+// "170,00 z 200,00 zł (85%)": the spending against a limit, the share rounded down (99.9% shows
+// as 99%). A limit of 0 has no share, so it shows only "5,00 z 0,00 zł".
+export function budgetUsageText(spent: string, limit: string, locale: string): string {
+  const usage = `${formatAmount(spent, locale)} z ${formatAmount(limit, locale)} zł`;
+  const percent = budgetUsagePercent(spent, limit);
+  return percent === null ? usage : `${usage} (${percent}%)`;
+}
+
+// "Limit: 90,00 z 80,00 zł": a category's monthly sum against its limit; null without a limit.
+export function categoryLimitNote(item: CategoryCostTotal, locale: string): string | null {
+  return item.monthlyLimit === null
+    ? null
+    : `Limit: ${formatAmount(item.monthly, locale)} z ${formatAmount(item.monthlyLimit, locale)} zł`;
+}
+
+const USED_FORMS = {
+  one: 'kategoria wykorzystała',
+  few: 'kategorie wykorzystały',
+  many: 'kategorii wykorzystało',
+};
+const NEAR_FORMS = {
+  one: 'kategoria zbliża się',
+  few: 'kategorie zbliżają się',
+  many: 'kategorii zbliża się',
+};
+
+// The spoken limit state of the categories: "1 kategoria przekroczyła limit, 2 kategorie zbliżają
+// się do limitu"; null when no category is close to its limit.
+export function budgetAlertsSummary(categories: readonly CategoryCostTotal[]): string | null {
+  const parts: string[] = [];
+  const exceeded = countBudgetAlerts(categories, 'exceeded');
+  if (exceeded > 0) {
+    parts.push(`${exceeded} ${polishPlural(exceeded, EXCEEDED_FORMS)} limit`);
+  }
+  const reached = countBudgetAlerts(categories, 'reached');
+  if (reached > 0) {
+    parts.push(`${reached} ${polishPlural(reached, USED_FORMS)} limit`);
+  }
+  const near = countBudgetAlerts(categories, 'near');
+  if (near > 0) {
+    parts.push(`${near} ${polishPlural(near, NEAR_FORMS)} do limitu`);
+  }
+  return parts.length > 0 ? parts.join(', ') : null;
+}
+
+// The spoken state of the collapsed category list, duplicates first, then limits: "1 kategoria
+// przekroczyła próg, 1 kategoria zbliża się do limitu"; null when no category warns.
+export function categoryAlertsSummary(categories: readonly CategoryCostTotal[]): string | null {
+  const parts = [duplicateWarningsSummary(categories), budgetAlertsSummary(categories)].filter(
+    (part): part is string => part !== null,
+  );
   return parts.length > 0 ? parts.join(', ') : null;
 }

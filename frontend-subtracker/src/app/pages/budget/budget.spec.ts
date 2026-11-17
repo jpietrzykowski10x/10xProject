@@ -32,7 +32,13 @@ const BUDGET: BudgetResponse = {
     },
   ],
 };
-const NO_TOTALS: CostTotals = { monthly: '0.00', yearly: '0.00', categories: [] };
+const NO_TOTALS: CostTotals = {
+  monthly: '0.00',
+  yearly: '0.00',
+  monthlyLimit: null,
+  budgetAlert: 'none',
+  categories: [],
+};
 
 type Loader = ReturnType<typeof TestbedHarnessEnvironment.loader>;
 

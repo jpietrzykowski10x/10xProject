@@ -335,28 +335,28 @@ Nowe kolumny są nullable, więc migracja nie wymaga backfillu ani okna na danyc
 
 #### Automated
 
-- [x] 1.1 Migracja wygenerowana i zastosowana na `subtracker-db`: `npm run migration:run`, a `npm run migration:generate -- Check` kończy się „No changes in database schema were found” (z `backend-subtracker/`)
-- [x] 1.2 Lint backendu przechodzi: `npm run lint`
-- [x] 1.3 Build backendu przechodzi: `npm run build`
-- [x] 1.4 Testy unit backendu przechodzą: `npm test`
-- [x] 1.5 Testy e2e API przechodzą: `npm run test:e2e`
+- [x] 1.1 Migracja wygenerowana i zastosowana na `subtracker-db`: `npm run migration:run`, a `npm run migration:generate -- Check` kończy się „No changes in database schema were found” (z `backend-subtracker/`) — 198e870
+- [x] 1.2 Lint backendu przechodzi: `npm run lint` — 198e870
+- [x] 1.3 Build backendu przechodzi: `npm run build` — 198e870
+- [x] 1.4 Testy unit backendu przechodzą: `npm test` — 198e870
+- [x] 1.5 Testy e2e API przechodzą: `npm run test:e2e` — 198e870
 
 #### Manual
 
-- [x] 1.6 Przegląd migracji: dwie kolumny `numeric(10,2) NULL`, `duplicate_threshold` nullable, bez zmian kluczy i indeksów
-- [x] 1.7 `GET /budget` i `GET /subscriptions/totals` na `subtracker-db-dev` po `PUT /budget` z limitem zwracają nowe pola z oczekiwanymi wartościami
+- [x] 1.6 Przegląd migracji: dwie kolumny `numeric(10,2) NULL`, `duplicate_threshold` nullable, bez zmian kluczy i indeksów — 198e870
+- [x] 1.7 `GET /budget` i `GET /subscriptions/totals` na `subtracker-db-dev` po `PUT /budget` z limitem zwracają nowe pola z oczekiwanymi wartościami — 198e870
 
 ### Phase 2: Frontend: limit w kolumnie sum
 
 #### Automated
 
-- [ ] 2.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci` (z `frontend-subtracker/`)
-- [ ] 2.2 Build produkcyjny przechodzi (AOT, budżet stylów): `npm run build`
+- [x] 2.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci` (z `frontend-subtracker/`)
+- [x] 2.2 Build produkcyjny przechodzi (AOT, budżet stylów): `npm run build`
 
 #### Manual
 
-- [ ] 2.3 Na desktopie i telefonie pasek limitu pod sumą jest czytelny na granacie w trzech kolorach (poniżej 80%, 80–99%, ≥100%), a bez limitu go nie ma
-- [ ] 2.4 Rozwinięty wiersz kategorii z limitem pokazuje „Limit: …” i alert; kategoria z oboma alertami ma jeden obrys i dwa opisy
+- [x] 2.3 Na desktopie i telefonie pasek limitu pod sumą jest czytelny na granacie w trzech kolorach (poniżej 80%, 80–99%, ≥100%), a bez limitu go nie ma
+- [x] 2.4 Rozwinięty wiersz kategorii z limitem pokazuje „Limit: …” i alert; kategoria z oboma alertami ma jeden obrys i dwa opisy
 
 ### Phase 3: Frontend: `/budget` i `/dashboard`
 

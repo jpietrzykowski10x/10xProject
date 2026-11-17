@@ -25,7 +25,13 @@ describe('AppShell', () => {
     const fixture = TestBed.createComponent(AppShell);
     await fixture.whenStable();
 
-    const totals: CostTotals = { monthly: '0.00', yearly: '0.00', categories: [] };
+    const totals: CostTotals = {
+      monthly: '0.00',
+      yearly: '0.00',
+      monthlyLimit: null,
+      budgetAlert: 'none',
+      categories: [],
+    };
     httpTesting.expectOne({ method: 'GET', url: TOTALS_URL }).flush(totals);
     await fixture.whenStable();
 
@@ -44,7 +50,13 @@ describe('AppShell', () => {
     await fixture.whenStable();
     httpTesting
       .expectOne({ method: 'GET', url: TOTALS_URL })
-      .flush({ monthly: '0.00', yearly: '0.00', categories: [] } satisfies CostTotals);
+      .flush({
+        monthly: '0.00',
+        yearly: '0.00',
+        monthlyLimit: null,
+        budgetAlert: 'none',
+        categories: [],
+      } satisfies CostTotals);
     await fixture.whenStable();
 
     const links = Array.from(

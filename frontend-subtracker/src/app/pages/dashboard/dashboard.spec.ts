@@ -13,6 +13,8 @@ const TOTALS_URL = `${environment.apiUrl}/subscriptions/totals`;
 const WARNED: CostTotals = {
   monthly: '96.99',
   yearly: '1163.88',
+  monthlyLimit: null,
+  budgetAlert: 'none',
   categories: [
     {
       category: { id: 'category-streaming', name: 'Streaming', isDefault: true },
@@ -21,6 +23,8 @@ const WARNED: CostTotals = {
       subscriptionCount: 3,
       duplicateThreshold: 2,
       duplicateWarning: 'exceeded',
+      monthlyLimit: null,
+      budgetAlert: 'none',
     },
     {
       category: { id: 'category-muzyka', name: 'Muzyka', isDefault: true },
@@ -29,10 +33,18 @@ const WARNED: CostTotals = {
       subscriptionCount: 1,
       duplicateThreshold: 3,
       duplicateWarning: 'none',
+      monthlyLimit: null,
+      budgetAlert: 'none',
     },
   ],
 };
-const NO_TOTALS: CostTotals = { monthly: '0.00', yearly: '0.00', categories: [] };
+const NO_TOTALS: CostTotals = {
+  monthly: '0.00',
+  yearly: '0.00',
+  monthlyLimit: null,
+  budgetAlert: 'none',
+  categories: [],
+};
 
 function text(element: Element | null | undefined): string {
   return (element?.textContent ?? '').replace(/\s+/g, ' ').trim();
