@@ -150,4 +150,84 @@ describe('UpdateBudgetDto', () => {
       }),
     ).toEqual(['categories']);
   });
+
+  // The oracle is the S-08 plan, phase 1 item 4: a limit is an amount of 0–99 999.99 zł with at
+  // most two decimals sent as a number, null removes it, and a category names at least one field.
+  it.each([0, 99999.99, 12.5, null])(
+    'accepts an overall limit of %j',
+    async (value) => {
+      expect(await failedProperties({ monthlyLimit: value })).toEqual([]);
+    },
+  );
+
+  it.each([
+    ['below 0', -1],
+    ['above 99 999.99', 100000],
+    ['with three decimals', 1.001],
+    ['a string', '10'],
+  ])('refuses an overall limit %s', async (_case, value) => {
+    expect(await failedProperties({ monthlyLimit: value })).toEqual([
+      'monthlyLimit',
+    ]);
+  });
+
+  it.each([0, 99999.99, null])(
+    'accepts a category with only a limit of %j',
+    async (value) => {
+      expect(
+        await failedProperties({
+          categories: [{ categoryId: FIRST_ID, monthlyLimit: value }],
+        }),
+      ).toEqual([]);
+    },
+  );
+
+  it.each([
+    ['below 0', -1],
+    ['above 99 999.99', 100000],
+    ['with three decimals', 1.001],
+    ['a string', '10'],
+  ])('refuses a category limit %s', async (_case, value) => {
+    expect(
+      await failedProperties({
+        categories: [{ categoryId: FIRST_ID, monthlyLimit: value }],
+      }),
+    ).toEqual(['categories']);
+  });
+
+  it('refuses a category that names neither a threshold nor a limit', async () => {
+    expect(
+      await failedProperties({ categories: [{ categoryId: FIRST_ID }] }),
+    ).toEqual(['categories']);
+  });
+
+  it('accepts a category with both a threshold and a limit', async () => {
+    expect(
+      await failedProperties({
+        categories: [
+          { categoryId: FIRST_ID, duplicateThreshold: 2, monthlyLimit: 80 },
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it('refuses a null threshold next to a limit', async () => {
+    expect(
+      await failedProperties({
+        categories: [
+          { categoryId: FIRST_ID, duplicateThreshold: null, monthlyLimit: 80 },
+        ],
+      }),
+    ).toEqual(['categories']);
+  });
+
+  it('accepts all three fields together', async () => {
+    expect(
+      await failedProperties({
+        defaultDuplicateThreshold: 4,
+        monthlyLimit: 200,
+        categories: [{ categoryId: FIRST_ID, monthlyLimit: null }],
+      }),
+    ).toEqual([]);
+  });
 });

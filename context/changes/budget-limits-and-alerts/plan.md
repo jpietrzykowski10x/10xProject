@@ -335,16 +335,16 @@ Nowe kolumny są nullable, więc migracja nie wymaga backfillu ani okna na danyc
 
 #### Automated
 
-- [ ] 1.1 Migracja wygenerowana i zastosowana na `subtracker-db`: `npm run migration:run`, a `npm run migration:generate -- Check` kończy się „No changes in database schema were found” (z `backend-subtracker/`)
-- [ ] 1.2 Lint backendu przechodzi: `npm run lint`
-- [ ] 1.3 Build backendu przechodzi: `npm run build`
-- [ ] 1.4 Testy unit backendu przechodzą: `npm test`
-- [ ] 1.5 Testy e2e API przechodzą: `npm run test:e2e`
+- [x] 1.1 Migracja wygenerowana i zastosowana na `subtracker-db`: `npm run migration:run`, a `npm run migration:generate -- Check` kończy się „No changes in database schema were found” (z `backend-subtracker/`)
+- [x] 1.2 Lint backendu przechodzi: `npm run lint`
+- [x] 1.3 Build backendu przechodzi: `npm run build`
+- [x] 1.4 Testy unit backendu przechodzą: `npm test`
+- [x] 1.5 Testy e2e API przechodzą: `npm run test:e2e`
 
 #### Manual
 
-- [ ] 1.6 Przegląd migracji: dwie kolumny `numeric(10,2) NULL`, `duplicate_threshold` nullable, bez zmian kluczy i indeksów
-- [ ] 1.7 `GET /budget` i `GET /subscriptions/totals` na `subtracker-db-dev` po `PUT /budget` z limitem zwracają nowe pola z oczekiwanymi wartościami
+- [x] 1.6 Przegląd migracji: dwie kolumny `numeric(10,2) NULL`, `duplicate_threshold` nullable, bez zmian kluczy i indeksów
+- [x] 1.7 `GET /budget` i `GET /subscriptions/totals` na `subtracker-db-dev` po `PUT /budget` z limitem zwracają nowe pola z oczekiwanymi wartościami
 
 ### Phase 2: Frontend: limit w kolumnie sum
 

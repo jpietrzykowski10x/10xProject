@@ -1,9 +1,6 @@
 import {
   IsEnum,
-  IsNumber,
   IsUUID,
-  Max,
-  Min,
   ValidateBy,
   type ValidationArguments,
 } from 'class-validator';
@@ -14,6 +11,7 @@ import {
   SUBSCRIPTION_NAME_MAX_LENGTH,
   SubscriptionStatus,
 } from '../subscription.types.js';
+import { IsAmount } from '../../shared/validation/amount.js';
 import { IsDateOnly, isDateOnly } from '../../shared/validation/date-only.js';
 import { TrimmedString } from '../../shared/validation/trimmed-string.js';
 
@@ -64,9 +62,7 @@ export class CreateSubscriptionDto {
   @IsUUID()
   categoryId: string;
 
-  @IsNumber({ allowNaN: false, allowInfinity: false, maxDecimalPlaces: 2 })
-  @Min(0)
-  @Max(AMOUNT_MAX)
+  @IsAmount(AMOUNT_MAX)
   amount: number;
 
   @IsEnum(BillingCycle)

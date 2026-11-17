@@ -78,9 +78,11 @@ describe('Budget — duplicate thresholds (e2e)', () => {
     // The order of GET /categories: the defaults, then the account's own.
     expect(budget).toEqual({
       defaultDuplicateThreshold: 3,
+      monthlyLimit: null,
       categories: (await getCategories(cookie)).map((category) => ({
         category,
         duplicateThreshold: 3,
+        monthlyLimit: null,
       })),
     });
     expect(budget.categories).toHaveLength(DEFAULT_CATEGORIES.length + 1);
@@ -424,5 +426,278 @@ describe('Budget — duplicate thresholds (e2e)', () => {
     const { cookie } = await signIn();
 
     await putBudget(cookie, body).expect(400);
+  });
+
+  // S-08: the overall and category monthly limits, saved by the same PUT /budget and compared in
+  // the totals with the monthly sums on every read.
+  describe('monthly limits', () => {
+    // The limit of one category on the budget page.
+    const limitIn = (budget: BudgetResponse, categoryId: string) =>
+      budget.categories.find((row) => row.category.id === categoryId)
+        ?.monthlyLimit;
+
+    // The limit and alert of each category in the totals, by category name.
+    const alerts = (totals: CostTotalsResponse) =>
+      totals.categories.map(({ category, monthlyLimit, budgetAlert }) => ({
+        name: category.name,
+        monthlyLimit,
+        budgetAlert,
+      }));
+
+    it('gives a new account no limits and no alert', async () => {
+      const { cookie } = await signIn();
+      await create(cookie, { categoryId: STREAMING_ID, amount: 43 });
+
+      const budget = await getBudget(cookie);
+      expect(budget.monthlyLimit).toBeNull();
+      expect(budget.categories.map((row) => row.monthlyLimit)).toEqual(
+        budget.categories.map(() => null),
+      );
+      expect(await getTotals(cookie)).toMatchObject({
+        monthly: '43.00',
+        monthlyLimit: null,
+        budgetAlert: 'none',
+        categories: [{ monthlyLimit: null, budgetAlert: 'none' }],
+      });
+    });
+
+    // The oracle is the S-08 plan: below 80% no alert, from 80% near, exactly the limit reached,
+    // above it exceeded, all against the monthly total.
+    it('alerts in the totals by the overall limit', async () => {
+      const { cookie, address } = await signIn();
+      const saved = (await putBudget(cookie, { monthlyLimit: 100 }).expect(200))
+        .body as BudgetResponse;
+      expect(saved.monthlyLimit).toBe('100.00');
+      expect(saved).toEqual(await getBudget(cookie));
+      // Only the limit was written; the default threshold keeps its value.
+      expect(
+        await repository(BudgetSettings).findOneByOrFail({
+          userId: await userIdOf(address),
+        }),
+      ).toMatchObject({ defaultDuplicateThreshold: 3, monthlyLimit: '100.00' });
+
+      const steps: [string, number, string, string][] = [
+        // 79.99 of 100.00: below 80%
+        ['Netflix', 79.99, '79.99', 'none'],
+        // 80.00 of 100.00: exactly 80%
+        ['HBO Max', 0.01, '80.00', 'near'],
+        // 100.00 of 100.00: exactly the limit
+        ['Disney+', 20, '100.00', 'reached'],
+        // 100.01 of 100.00: one grosz over
+        ['SkyShowtime', 0.01, '100.01', 'exceeded'],
+      ];
+      for (const [name, amount, monthly, budgetAlert] of steps) {
+        await create(cookie, { name, amount });
+        expect(await getTotals(cookie)).toMatchObject({
+          monthly,
+          monthlyLimit: '100.00',
+          budgetAlert,
+        });
+      }
+    });
+
+    it('compares a category limit with the monthly sum of the category', async () => {
+      const { cookie } = await signIn();
+      // 959.40 a year: 95940 / 12 = 7995 gr a month; with 50.00 a month 12995 gr in Streaming.
+      await create(cookie, {
+        name: 'Netflix',
+        categoryId: STREAMING_ID,
+        amount: 959.4,
+        billingCycle: 'yearly',
+      });
+      await create(cookie, {
+        name: 'HBO Max',
+        categoryId: STREAMING_ID,
+        amount: 50,
+      });
+      await create(cookie, { name: 'Steam', categoryId: GRY_ID, amount: 10 });
+
+      await putBudget(cookie, {
+        categories: [
+          // 129.95 of 129.95: reached
+          { categoryId: STREAMING_ID, monthlyLimit: 129.95 },
+          // 10.00 of 12.50: exactly 80%
+          { categoryId: GRY_ID, monthlyLimit: 12.5 },
+        ],
+      }).expect(200);
+
+      const totals = await getTotals(cookie);
+      expect(totals.monthlyLimit).toBeNull();
+      expect(totals.budgetAlert).toBe('none');
+      expect(alerts(totals)).toEqual([
+        { name: 'Streaming', monthlyLimit: '129.95', budgetAlert: 'reached' },
+        { name: 'Gry', monthlyLimit: '12.50', budgetAlert: 'near' },
+      ]);
+    });
+
+    it("saves a category limit without freezing the category's threshold", async () => {
+      const { cookie, address } = await signIn();
+      const userId = await userIdOf(address);
+      for (const name of ['Steam', 'Xbox Game Pass']) {
+        await create(cookie, { name, categoryId: GRY_ID, amount: 30 });
+      }
+
+      await putBudget(cookie, {
+        categories: [{ categoryId: GRY_ID, monthlyLimit: 50 }],
+      }).expect(200);
+
+      // The row exists for the limit alone, its threshold stays null.
+      expect(
+        await repository(CategorySetting).findOneByOrFail({
+          userId,
+          categoryId: GRY_ID,
+        }),
+      ).toMatchObject({ duplicateThreshold: null, monthlyLimit: '50.00' });
+      let budget = await getBudget(cookie);
+      expect(thresholdIn(budget, GRY_ID)).toBe(3);
+      expect(limitIn(budget, GRY_ID)).toBe('50.00');
+
+      // A new default still reaches the category, and the limit stays.
+      await putBudget(cookie, { defaultDuplicateThreshold: 2 }).expect(200);
+      budget = await getBudget(cookie);
+      expect(thresholdIn(budget, GRY_ID)).toBe(2);
+      expect(limitIn(budget, GRY_ID)).toBe('50.00');
+      // 2 × 30.00 = 60.00 of 50.00: exceeded; 2 subscriptions at the default threshold 2: reached.
+      expect(await getTotals(cookie)).toMatchObject({
+        categories: [
+          {
+            duplicateThreshold: 2,
+            duplicateWarning: 'reached',
+            monthlyLimit: '50.00',
+            budgetAlert: 'exceeded',
+          },
+        ],
+      });
+
+      // Requests naming a threshold for one category and a limit for another change only what
+      // each names.
+      await putBudget(cookie, {
+        categories: [
+          { categoryId: GRY_ID, duplicateThreshold: 5 },
+          { categoryId: STREAMING_ID, monthlyLimit: 20 },
+        ],
+      }).expect(200);
+      await putBudget(cookie, {
+        categories: [
+          { categoryId: STREAMING_ID, duplicateThreshold: 1 },
+          { categoryId: GRY_ID, monthlyLimit: 70 },
+        ],
+      }).expect(200);
+      budget = await getBudget(cookie);
+      expect(thresholdIn(budget, GRY_ID)).toBe(5);
+      expect(limitIn(budget, GRY_ID)).toBe('70.00');
+      expect(thresholdIn(budget, STREAMING_ID)).toBe(1);
+      expect(limitIn(budget, STREAMING_ID)).toBe('20.00');
+    });
+
+    it('removes a limit given as null and keeps the rest', async () => {
+      const { cookie } = await signIn();
+      await create(cookie, { categoryId: STREAMING_ID, amount: 43 });
+      await putBudget(cookie, {
+        defaultDuplicateThreshold: 4,
+        monthlyLimit: 40,
+        categories: [
+          { categoryId: STREAMING_ID, duplicateThreshold: 0, monthlyLimit: 40 },
+        ],
+      }).expect(200);
+      expect(await getTotals(cookie)).toMatchObject({
+        budgetAlert: 'exceeded',
+        categories: [{ budgetAlert: 'exceeded' }],
+      });
+
+      const saved = (
+        await putBudget(cookie, {
+          monthlyLimit: null,
+          categories: [{ categoryId: STREAMING_ID, monthlyLimit: null }],
+        }).expect(200)
+      ).body as BudgetResponse;
+
+      expect(saved.monthlyLimit).toBeNull();
+      expect(saved.defaultDuplicateThreshold).toBe(4);
+      expect(limitIn(saved, STREAMING_ID)).toBeNull();
+      expect(thresholdIn(saved, STREAMING_ID)).toBe(0);
+      expect(await getTotals(cookie)).toMatchObject({
+        monthlyLimit: null,
+        budgetAlert: 'none',
+        categories: [
+          {
+            duplicateThreshold: 0,
+            duplicateWarning: 'exceeded',
+            monthlyLimit: null,
+            budgetAlert: 'none',
+          },
+        ],
+      });
+    });
+
+    it("keeps each account's limits to itself", async () => {
+      const { owner, other } = await twoAccounts();
+      const ownersCategory = (
+        await postCategory(owner.cookie, 'Praca').expect(201)
+      ).body as CategoryResponse;
+      await putBudget(owner.cookie, {
+        monthlyLimit: 100,
+        categories: [{ categoryId: ownersCategory.id, monthlyLimit: 20 }],
+      }).expect(200);
+      await create(other.cookie, { amount: 90 });
+
+      const otherBudget = await getBudget(other.cookie);
+      expect(otherBudget.monthlyLimit).toBeNull();
+      expect(
+        otherBudget.categories.map((row) => row.category.id),
+      ).not.toContain(ownersCategory.id);
+      expect(await getTotals(other.cookie)).toMatchObject({
+        monthlyLimit: null,
+        budgetAlert: 'none',
+      });
+
+      // Another account's category refuses the whole request, the own limit in it included.
+      await putBudget(other.cookie, {
+        monthlyLimit: 5,
+        categories: [{ categoryId: ownersCategory.id, monthlyLimit: 0 }],
+      }).expect(400);
+      expect(
+        await repository(BudgetSettings).countBy({
+          userId: await userIdOf(other.address),
+        }),
+      ).toBe(0);
+
+      await putBudget(other.cookie, { monthlyLimit: 5 }).expect(200);
+      const ownerBudget = await getBudget(owner.cookie);
+      expect(ownerBudget.monthlyLimit).toBe('100.00');
+      expect(limitIn(ownerBudget, ownersCategory.id)).toBe('20.00');
+      expect((await getTotals(other.cookie)).budgetAlert).toBe('exceeded');
+    });
+
+    it.each([
+      ['an overall limit above 99 999.99', { monthlyLimit: 100000 }],
+      ['an overall limit below 0', { monthlyLimit: -1 }],
+      ['an overall limit with three decimals', { monthlyLimit: 1.001 }],
+      ['an overall limit as a string', { monthlyLimit: '10' }],
+      [
+        'a category limit above 99 999.99',
+        { categories: [{ categoryId: STREAMING_ID, monthlyLimit: 100000 }] },
+      ],
+      [
+        'a category naming neither field',
+        { categories: [{ categoryId: STREAMING_ID }] },
+      ],
+      [
+        'a null threshold next to a limit',
+        {
+          categories: [
+            {
+              categoryId: STREAMING_ID,
+              duplicateThreshold: null,
+              monthlyLimit: 10,
+            },
+          ],
+        },
+      ],
+    ])('answers 400 for %s', async (_case, body) => {
+      const { cookie } = await signIn();
+
+      await putBudget(cookie, body).expect(400);
+    });
   });
 });

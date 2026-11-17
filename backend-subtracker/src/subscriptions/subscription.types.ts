@@ -1,3 +1,4 @@
+import type { BudgetAlert } from './budget-alert.js';
 import type { DuplicateWarning } from './duplicate-warning.js';
 
 // Codes of the closed lists, stored as varchar. Display names live in the frontend.
@@ -63,25 +64,35 @@ export interface CategoryCostTotal {
   // The category's threshold of active subscriptions and how the count compares with it (S-07).
   duplicateThreshold: number;
   duplicateWarning: DuplicateWarning;
+  // The category's monthly limit (null: none) and how its monthly sum compares with it (S-08).
+  monthlyLimit: string | null;
+  budgetAlert: BudgetAlert;
 }
 
 // GET /subscriptions/totals: the sums are the sums of the category values.
 export interface CostTotalsResponse {
   monthly: string;
   yearly: string;
+  // The overall monthly limit (null: none) and how the monthly total compares with it (S-08).
+  monthlyLimit: string | null;
+  budgetAlert: BudgetAlert;
   categories: CategoryCostTotal[]; // monthly desc, then Polish name order
 }
 
-// One category on the budget page with its settings (S-07: the duplicate threshold).
+// One category on the budget page with its settings (S-07: the duplicate threshold; S-08: the
+// monthly limit, null when none).
 export interface CategoryBudget {
   category: CategoryResponse;
   duplicateThreshold: number;
+  monthlyLimit: string | null;
 }
 
 // GET and PUT /budget: the user's default threshold (DEFAULT_DUPLICATE_THRESHOLD until they save
 // one) and every category of the user, defaults first, in the order of GET /categories. A category
-// without a stored threshold shows the user's current default.
+// without a stored threshold shows the user's current default. The overall limit is null until
+// the user saves one.
 export interface BudgetResponse {
   defaultDuplicateThreshold: number;
+  monthlyLimit: string | null;
   categories: CategoryBudget[];
 }

@@ -112,10 +112,10 @@ export class SubscriptionsService {
   }
 
   // Summed in JS on whole grosze (cost-totals.ts); SQL only picks the counted rows of the account,
-  // so there is no SUM and no ORDER BY here. The duplicate warnings are worked out on every read
-  // from the user's thresholds, so no warning state is stored.
+  // so there is no SUM and no ORDER BY here. The duplicate warnings and limit alerts are worked out
+  // on every read from the user's budget settings, so no warning or alert state is stored.
   async totals(userId: string): Promise<CostTotalsResponse> {
-    const [rows, thresholds] = await Promise.all([
+    const [rows, settings] = await Promise.all([
       this.subscriptions
         .createQueryBuilder(LIST_ALIAS)
         .innerJoinAndSelect(`${LIST_ALIAS}.category`, 'category')
@@ -124,7 +124,7 @@ export class SubscriptionsService {
           statuses: COUNTED_STATUSES,
         })
         .getMany(),
-      this.budget.duplicateThresholds(userId),
+      this.budget.budgetSettings(userId),
     ]);
     return costTotals(
       rows.map((row) => ({
@@ -132,7 +132,7 @@ export class SubscriptionsService {
         billingCycle: row.billingCycle,
         category: toCategoryResponse(row.category),
       })),
-      thresholds,
+      settings,
     );
   }
 

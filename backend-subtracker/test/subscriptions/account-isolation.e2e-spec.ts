@@ -73,6 +73,8 @@ describe('Subscriptions — account isolation (e2e)', () => {
       expect(otherTotals).toEqual({
         monthly: '19.99',
         yearly: '239.88',
+        monthlyLimit: null,
+        budgetAlert: 'none',
         categories: [
           {
             category: { id: OTHER_CATEGORY_ID, name: 'Inne', isDefault: true },
@@ -81,12 +83,16 @@ describe('Subscriptions — account isolation (e2e)', () => {
             subscriptionCount: 1,
             duplicateThreshold: 3,
             duplicateWarning: 'none',
+            monthlyLimit: null,
+            budgetAlert: 'none',
           },
         ],
       });
       expect(await getTotals(empty.cookie)).toEqual({
         monthly: '0.00',
         yearly: '0.00',
+        monthlyLimit: null,
+        budgetAlert: 'none',
         categories: [],
       });
     });

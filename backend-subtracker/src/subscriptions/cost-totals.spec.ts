@@ -1,12 +1,11 @@
+import { BudgetAlert } from './budget-alert.js';
 import {
   COUNTED_STATUSES,
   costTotals,
   type CostTotalsRow,
+  type UserBudgetSettings,
 } from './cost-totals.js';
-import {
-  type DuplicateThresholds,
-  DuplicateWarning,
-} from './duplicate-warning.js';
+import { DuplicateWarning } from './duplicate-warning.js';
 import {
   BillingCycle,
   type CategoryResponse,
@@ -19,10 +18,13 @@ const category = (id: string, name: string): CategoryResponse => ({
   isDefault: false,
 });
 
-// No stored settings: every category has the default of 3 (DEFAULT_DUPLICATE_THRESHOLD).
-const NO_SETTINGS: DuplicateThresholds = {
+// No stored settings: every category has the default of 3 (DEFAULT_DUPLICATE_THRESHOLD) and no
+// limit applies.
+const NO_SETTINGS: UserBudgetSettings = {
   defaultThreshold: 3,
   byCategory: new Map(),
+  monthlyLimit: null,
+  limitByCategory: new Map(),
 };
 
 const STREAMING = category('c1', 'Streaming');
@@ -77,6 +79,8 @@ describe('costTotals', () => {
       {
         monthly,
         yearly: amount,
+        monthlyLimit: null,
+        budgetAlert: BudgetAlert.NONE,
         categories: [
           {
             category: PRACA,
@@ -85,6 +89,8 @@ describe('costTotals', () => {
             subscriptionCount: 1,
             duplicateThreshold: 3,
             duplicateWarning: DuplicateWarning.NONE,
+            monthlyLimit: null,
+            budgetAlert: BudgetAlert.NONE,
           },
         ],
       },
@@ -120,6 +126,8 @@ describe('costTotals', () => {
       monthly: '102.82',
       // 51600 + 28788 + 42999 = 123387 gr
       yearly: '1233.87',
+      monthlyLimit: null,
+      budgetAlert: BudgetAlert.NONE,
       categories: [
         {
           category: STREAMING,
@@ -128,6 +136,8 @@ describe('costTotals', () => {
           subscriptionCount: 1,
           duplicateThreshold: 3,
           duplicateWarning: DuplicateWarning.NONE,
+          monthlyLimit: null,
+          budgetAlert: BudgetAlert.NONE,
         },
         {
           category: PRACA,
@@ -136,6 +146,8 @@ describe('costTotals', () => {
           subscriptionCount: 1,
           duplicateThreshold: 3,
           duplicateWarning: DuplicateWarning.NONE,
+          monthlyLimit: null,
+          budgetAlert: BudgetAlert.NONE,
         },
         {
           category: MUZYKA,
@@ -144,6 +156,8 @@ describe('costTotals', () => {
           subscriptionCount: 1,
           duplicateThreshold: 3,
           duplicateWarning: DuplicateWarning.NONE,
+          monthlyLimit: null,
+          budgetAlert: BudgetAlert.NONE,
         },
       ],
     });
@@ -160,6 +174,8 @@ describe('costTotals', () => {
       monthly: '2.02',
       // 1206 + 1206 = 2412 gr
       yearly: '24.12',
+      monthlyLimit: null,
+      budgetAlert: BudgetAlert.NONE,
       categories: [
         {
           category: PRACA,
@@ -168,6 +184,8 @@ describe('costTotals', () => {
           subscriptionCount: 2,
           duplicateThreshold: 3,
           duplicateWarning: DuplicateWarning.NONE,
+          monthlyLimit: null,
+          budgetAlert: BudgetAlert.NONE,
         },
       ],
     });
@@ -231,6 +249,7 @@ describe('costTotals', () => {
         row('10.00', BillingCycle.MONTHLY, MUZYKA),
       ],
       {
+        ...NO_SETTINGS,
         defaultThreshold: 2,
         byCategory: new Map([
           [PRACA.id, 3],
@@ -283,7 +302,11 @@ describe('costTotals', () => {
           row('10.00', BillingCycle.MONTHLY, MUZYKA),
           row('10.00', BillingCycle.MONTHLY, MUZYKA),
         ],
-        { defaultThreshold, byCategory: new Map([[PRACA.id, 1]]) },
+        {
+          ...NO_SETTINGS,
+          defaultThreshold,
+          byCategory: new Map([[PRACA.id, 1]]),
+        },
       );
 
       expect(totals.categories).toMatchObject([
@@ -300,6 +323,114 @@ describe('costTotals', () => {
     expect(costTotals([], NO_SETTINGS)).toEqual({
       monthly: '0.00',
       yearly: '0.00',
+      monthlyLimit: null,
+      budgetAlert: BudgetAlert.NONE,
+      categories: [],
+    });
+  });
+
+  // The oracle is the S-08 plan: a limit is compared with the same monthly sum the response shows,
+  // in which a yearly subscription counts as its amount / 12 rounded per subscription (risk #4).
+  it.each([
+    // 9594 gr / 12 = 799.5 → 800 gr: exactly 80% of 10.00 zł → near
+    ['95.94', '8.00', BudgetAlert.NEAR],
+    // 9593 gr / 12 = 799.41… → 799 gr: below 80% (800 gr) → none
+    ['95.93', '7.99', BudgetAlert.NONE],
+  ])(
+    'compares a yearly %j (%j a month) with a limit of 10.00 as %j',
+    (amount, monthly, expected) => {
+      const totals = costTotals([row(amount, BillingCycle.YEARLY)], {
+        ...NO_SETTINGS,
+        monthlyLimit: '10.00',
+        limitByCategory: new Map([[PRACA.id, '10.00']]),
+      });
+
+      expect(totals).toMatchObject({
+        monthly,
+        monthlyLimit: '10.00',
+        budgetAlert: expected,
+        categories: [{ monthly, monthlyLimit: '10.00', budgetAlert: expected }],
+      });
+    },
+  );
+
+  it('compares a limit with the sum of the rounded monthly amounts', () => {
+    // 1206 / 12 = 100.5 → 101 gr each; 101 + 101 = 202 gr: exactly the limit of 2.02 → reached.
+    // The yearly sum divided by 12 (2412 / 12 = 201 gr) would only be near.
+    const totals = costTotals(
+      [row('12.06', BillingCycle.YEARLY), row('12.06', BillingCycle.YEARLY)],
+      {
+        ...NO_SETTINGS,
+        monthlyLimit: '2.02',
+        limitByCategory: new Map([[PRACA.id, '2.02']]),
+      },
+    );
+
+    expect(totals).toMatchObject({
+      monthly: '2.02',
+      budgetAlert: BudgetAlert.REACHED,
+      categories: [{ monthly: '2.02', budgetAlert: BudgetAlert.REACHED }],
+    });
+  });
+
+  it('gives each category its own limit and the total the overall one', () => {
+    // Streaming 50.00 against 40.00 → exceeded; Praca 30.00 against 30.00 → reached; Muzyka
+    // 10.00 with a settings row but no limit → none. The total 90.00 against 100.00 → near.
+    const totals = costTotals(
+      [
+        row('50.00', BillingCycle.MONTHLY, STREAMING),
+        row('30.00', BillingCycle.MONTHLY, PRACA),
+        row('10.00', BillingCycle.MONTHLY, MUZYKA),
+      ],
+      {
+        ...NO_SETTINGS,
+        monthlyLimit: '100.00',
+        limitByCategory: new Map([
+          [STREAMING.id, '40.00'],
+          [PRACA.id, '30.00'],
+          [MUZYKA.id, null],
+        ]),
+      },
+    );
+
+    expect(totals.monthlyLimit).toBe('100.00');
+    expect(totals.budgetAlert).toBe(BudgetAlert.NEAR);
+    expect(
+      totals.categories.map(
+        ({ category: { name }, monthlyLimit, budgetAlert }) => ({
+          name,
+          monthlyLimit,
+          budgetAlert,
+        }),
+      ),
+    ).toEqual([
+      {
+        name: 'Streaming',
+        monthlyLimit: '40.00',
+        budgetAlert: BudgetAlert.EXCEEDED,
+      },
+      {
+        name: 'Praca',
+        monthlyLimit: '30.00',
+        budgetAlert: BudgetAlert.REACHED,
+      },
+      { name: 'Muzyka', monthlyLimit: null, budgetAlert: BudgetAlert.NONE },
+    ]);
+  });
+
+  it('leaves out a category with a limit but no counted subscriptions', () => {
+    const totals = costTotals([], {
+      ...NO_SETTINGS,
+      monthlyLimit: '0.00',
+      limitByCategory: new Map([[PRACA.id, '0.00']]),
+    });
+
+    // Nothing spent under a limit of 0 is no alert.
+    expect(totals).toEqual({
+      monthly: '0.00',
+      yearly: '0.00',
+      monthlyLimit: '0.00',
+      budgetAlert: BudgetAlert.NONE,
       categories: [],
     });
   });

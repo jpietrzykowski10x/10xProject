@@ -1,4 +1,5 @@
 import { fromGrosze, toGrosze } from '../shared/money/grosze.js';
+import { BudgetAlert, budgetAlert } from './budget-alert.js';
 import {
   type DuplicateThresholds,
   duplicateWarning,
@@ -46,14 +47,26 @@ interface CategorySum {
   subscriptionCount: number;
 }
 
+// A user's budget settings as the totals need them: the duplicate thresholds (S-07) and the
+// monthly limits (S-08) in the API's amount format. A null limit, or a category missing from the
+// map, means no limit.
+export interface UserBudgetSettings extends DuplicateThresholds {
+  monthlyLimit: string | null;
+  limitByCategory: ReadonlyMap<string, string | null>;
+}
+
+const alertOf = (spentGrosze: number, limit: string | null): BudgetAlert =>
+  budgetAlert(spentGrosze, limit === null ? null : toGrosze(limit));
+
 // The cost totals of rows already filtered to COUNTED_STATUSES. Everything is summed in whole
 // grosze; the monthly total is the sum of the per-subscription rounded amounts, never the yearly
 // sum divided by 12. Categories go from the highest monthly cost down, a tie by the name in
-// Polish order, then by id, so the order never depends on the input order. `thresholds` are the
-// user's duplicate thresholds; a category without a stored one has the user's default.
+// Polish order, then by id, so the order never depends on the input order. `settings` are the
+// user's duplicate thresholds (a category without a stored one has the user's default) and
+// monthly limits, each compared with the same monthly sum the response shows.
 export function costTotals(
   rows: readonly CostTotalsRow[],
-  thresholds: DuplicateThresholds,
+  settings: UserBudgetSettings,
 ): CostTotalsResponse {
   const sums = new Map<string, CategorySum>();
   for (const row of rows) {
@@ -77,7 +90,8 @@ export function costTotals(
       a.category.id.localeCompare(b.category.id),
   );
   const categories: CategoryCostTotal[] = ordered.map((sum) => {
-    const duplicateThreshold = thresholdOf(thresholds, sum.category.id);
+    const duplicateThreshold = thresholdOf(settings, sum.category.id);
+    const monthlyLimit = settings.limitByCategory.get(sum.category.id) ?? null;
     return {
       category: sum.category,
       monthly: fromGrosze(sum.monthly),
@@ -88,11 +102,16 @@ export function costTotals(
         sum.subscriptionCount,
         duplicateThreshold,
       ),
+      monthlyLimit,
+      budgetAlert: alertOf(sum.monthly, monthlyLimit),
     };
   });
+  const monthly = ordered.reduce((total, sum) => total + sum.monthly, 0);
   return {
-    monthly: fromGrosze(ordered.reduce((total, sum) => total + sum.monthly, 0)),
+    monthly: fromGrosze(monthly),
     yearly: fromGrosze(ordered.reduce((total, sum) => total + sum.yearly, 0)),
+    monthlyLimit: settings.monthlyLimit,
+    budgetAlert: alertOf(monthly, settings.monthlyLimit),
     categories,
   };
 }

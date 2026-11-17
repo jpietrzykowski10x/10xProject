@@ -4,6 +4,7 @@ import {
   DUPLICATE_THRESHOLD_MIN,
   DuplicateWarning,
   duplicateWarning,
+  thresholdOf,
 } from './duplicate-warning.js';
 
 // The oracle is the rule from the S-07 plan: more than the threshold is exceeded, exactly the
@@ -37,5 +38,25 @@ describe('duplicateWarning', () => {
     expect(DEFAULT_DUPLICATE_THRESHOLD).toBe(3);
     expect(DUPLICATE_THRESHOLD_MIN).toBe(0);
     expect(DUPLICATE_THRESHOLD_MAX).toBe(99);
+  });
+});
+
+// The oracle is the S-08 plan: a row saved only for a limit has a null threshold, which follows
+// the user's current default exactly like a category without a row.
+describe('thresholdOf', () => {
+  const thresholds = {
+    defaultThreshold: 5,
+    byCategory: new Map<string, number | null>([
+      ['stored', 0],
+      ['limit-only', null],
+    ]),
+  };
+
+  it.each([
+    ['a stored threshold', 'stored', 0],
+    ['a row with a null threshold', 'limit-only', 5],
+    ['no row', 'missing', 5],
+  ])('takes the threshold for %s', (_case, categoryId, expected) => {
+    expect(thresholdOf(thresholds, categoryId)).toBe(expected);
   });
 });
