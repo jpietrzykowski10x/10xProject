@@ -38,8 +38,10 @@
 
       <h2 class="dashboard__subtitle">Kategorie</h2>
 
-      <!-- Desktop: one table row per category, in the API's order (monthly, descending). -->
-      <div class="dashboard__frame">
+      <!-- Desktop: one table row per category, in the API's order (monthly, descending). The frame
+           scrolls the rows that do not fit; focusable, so a keyboard can scroll it too (the table
+           itself has nothing to focus). -->
+      <div class="dashboard__frame" role="region" aria-label="Kategorie" tabindex="0">
         <table class="dashboard__table">
           <thead>
             <tr>
@@ -83,8 +85,8 @@
         </table>
       </div>
 
-      <!-- Phone: the same categories as a list of cards. -->
-      <ul class="dashboard__cards">
+      <!-- Phone: the same categories as a list of cards, scrolled like the table's frame. -->
+      <ul class="dashboard__cards" aria-label="Kategorie" tabindex="0">
         @for (item of totals.categories; track item.category.id) {
           @let warning = item.duplicateWarning;
           <li class="dashboard__card" [attr.data-warning]="warning">

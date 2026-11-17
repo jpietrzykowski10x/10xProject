@@ -171,4 +171,10 @@ html {
   --st-alert-danger: #{$error};
   --st-alert-warning-on-navy: #{$amber-on-navy};
   --st-alert-danger-on-navy: #{$red-on-navy};
+  // Scrollbars: a thin, translucent thumb on a transparent track (styles.scss). The navy column and
+  // header switch to the -on-navy pair.
+  --st-scrollbar-thumb: #{rgba($navy, 0.22)};
+  --st-scrollbar-thumb-hover: #{rgba($navy, 0.4)};
+  --st-scrollbar-thumb-on-navy: rgba(255, 255, 255, 0.22);
+  --st-scrollbar-thumb-hover-on-navy: rgba(255, 255, 255, 0.4);
 }

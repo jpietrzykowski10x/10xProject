@@ -1,7 +1,8 @@
 // On the navy column and header: white text, labels and notes in --st-navy-soft. Lime stays
 // reserved for the budget bar (S-08).
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
   color: #fff;
   // S-07: the alert colours of the duplicate warning icon, remapped to the pair readable on navy.
   --st-alert-warning: var(--st-alert-warning-on-navy);
@@ -35,12 +36,23 @@
   font-size: 16px;
 }
 
+// The expanded categories scroll on their own, under the "Kategorie" heading, which stays: in the
+// desktop column the list takes only the height the shell leaves it (min-height: 0), in the phone
+// header it stops at a share of the screen. The padding (cancelled by the margins) keeps room inside
+// the scroll area for the outline of a warned row and the heading's focus outline.
 .totals__categories {
-  margin-top: 16px;
+  min-height: 0;
+  margin: 12px -8px 0;
+  padding: 4px 8px 0;
+  overflow-y: auto;
 }
 
 .totals__summary {
+  position: sticky;
+  z-index: 1;
+  top: 0;
   padding: 4px 0;
+  background: var(--st-navy);
   font-weight: 600;
   cursor: pointer;
 
@@ -146,6 +158,8 @@
   }
 
   .totals__categories {
-    margin-top: 8px;
+    max-height: 60vh;
+    max-height: 60dvh;
+    margin-top: 4px;
   }
 }

@@ -345,7 +345,55 @@ Dwie nowe strony w app-shellu, linki w obu nawigacjach, formularz progów z odś
 
 ---
 
-## Phase 4: Dokumentacja i weryfikacja
+## Phase 4: Frontend: przewijanie wewnątrz app-shella (dopisane 2026-11-17)
+
+### Overview
+
+Przy wielu subskrypcjach lub kategoriach przewija się dziś cała strona. Na desktopie (≥ 840 px) app-shell ma zajmować dokładnie wysokość okna, a przewijać się mają tylko elementy, które się nie mieszczą (decyzja użytkownika po weryfikacji fazy 3).
+
+### Changes Required:
+
+#### 1. Kolumna granatowa
+
+**File**: `frontend-subtracker/src/app/layout/app-shell/app-shell.{html,scss}`, `subscriptions/cost-totals/cost-totals.scss`
+
+**Contract**:
+- Kolumna ma wysokość okna. Wordmark „SubTracker” zawsze na górze, konto i „Wyloguj” zawsze na dole.
+- Środek (nawigacja i sumy) nie wypycha dołu: gdy rozwinięte „Kategorie” się nie mieszczą, przewija się lista kategorii (lub środek kolumny), a sumy i nagłówek „Kategorie” zostają widoczne, jeśli to możliwe bez komplikowania układu.
+
+#### 2. Treść stron
+
+**File**: `layout/app-shell/app-shell.scss`, `pages/subscriptions/*.scss`, `pages/dashboard/dashboard.scss`, w razie potrzeby `pages/budget/budget.scss`
+
+**Contract**:
+- Obszar treści ma wysokość okna, a nagłówek strony (tytuł, akcje) zostaje na miejscu.
+- Lista/tabela subskrypcji i tabela kategorii na `/dashboard` przewijają się we własnym obszarze, a nagłówki kolumn zostają widoczne (`position: sticky` albo przewijane `tbody`).
+- Panel dodawania/edycji subskrypcji na desktopie nadal działa i przewija się sam, jeśli jest wyższy od okna.
+- `/budget` (formularz) może przewijać się w obszarze treści; przycisk „Zapisz” pozostaje osiągalny.
+
+#### 3. Telefon (< 840 px)
+
+**Contract** (zmienione przez użytkownika w trakcie fazy): także na telefonie strona się nie przewija. Nagłówek z paskiem sum zostaje u góry, w obszarze treści przewija się sama lista/tabela (karty na `/dashboard`), nagłówki kolumn zostają widoczne tam, gdzie są. Rozwinięte „Kategorie” w pasku przewijają się w sobie, z wysokością ograniczoną względem okna (ok. 60dvh, do dostrojenia na żywo), więc nagłówek nie wypycha treści. `/budget` i stan dodawania mogą przewijać się w obszarze treści. Wysokość przez `100dvh`, żeby paski przeglądarki mobilnej nie ucinały treści.
+
+### Success Criteria:
+
+#### Automated Verification:
+
+- Testy frontendu przechodzą w obu strefach: `npm run test:ci`
+- Build produkcyjny przechodzi (budżet stylów): `npm run build`
+- Testy e2e przechodzą na buildzie e2e: `npm run build:e2e && npm run e2e`
+
+#### Manual Verification:
+
+- Desktop, wiele subskrypcji: strona nie ma przewijania okna; przewija się lista/tabela, nagłówki kolumn zostają widoczne, na `/dashboard` analogicznie
+- Desktop, rozwinięte „Kategorie” przy wielu kategoriach: „SubTracker” na górze i konto z „Wyloguj” na dole zostają na miejscu, przewija się lista kategorii
+- Telefon: zachowanie bez zmian
+
+**Implementation Note**: Po zakończeniu fazy i przejściu weryfikacji automatycznej zatrzymaj się i poczekaj, aż człowiek potwierdzi weryfikację ręczną.
+
+---
+
+## Phase 5: Dokumentacja i weryfikacja
 
 ### Overview
 
@@ -465,26 +513,40 @@ Nowa tabela bez danych, więc bez backfillu. Na produkcji migracja wchodzi przez
 
 #### Automated
 
-- [x] 3.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci`
-- [x] 3.2 Build produkcyjny przechodzi: `npm run build`
-- [x] 3.3 Testy e2e przechodzą na buildzie e2e (w tym `render-modes` z nowymi trasami): `npm run build:e2e && npm run e2e`
-- [x] 3.7 Migracja `BudgetSettings` zastosowana na `subtracker-db`, a `npm run migration:generate -- Check` kończy się „No changes in database schema were found”
-- [x] 3.8 Backend: `npm run lint`, `npm run build`, `npm test`, `npm run test:e2e`
+- [x] 3.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci` — d365d74
+- [x] 3.2 Build produkcyjny przechodzi: `npm run build` — d365d74
+- [x] 3.3 Testy e2e przechodzą na buildzie e2e (w tym `render-modes` z nowymi trasami): `npm run build:e2e && npm run e2e` — d365d74
+- [x] 3.7 Migracja `BudgetSettings` zastosowana na `subtracker-db`, a `npm run migration:generate -- Check` kończy się „No changes in database schema were found” — d365d74
+- [x] 3.8 Backend: `npm run lint`, `npm run build`, `npm test`, `npm run test:e2e` — d365d74
 
 #### Manual
 
-- [x] 3.4 Na `/budget` zmiana progu Streaming na 1 przy dwóch subskrypcjach zmienia flagę w kolumnie na czerwoną bez przeładowania strony
-- [x] 3.5 `/dashboard` na desktopie i telefonie pokazuje kategorie, progi i statusy, a linki w obu nawigacjach podświetlają aktywną stronę
-- [x] 3.6 Bezpośrednie wejście na `/dashboard` i `/budget` bez sesji przekierowuje na `/sign-in`
-- [x] 3.9 Przegląd migracji `BudgetSettings`: PK/FK `user_id` z `CASCADE`, domyślne 3
-- [x] 3.10 Na `/budget` „Zapisz” jest nieaktywny bez zmian; zmiana domyślnego progu na 4 i dodanie nowej kategorii (formularz subskrypcji) daje tej kategorii 4
+- [x] 3.4 Na `/budget` zmiana progu Streaming na 1 przy dwóch subskrypcjach zmienia flagę w kolumnie na czerwoną bez przeładowania strony — d365d74
+- [x] 3.5 `/dashboard` na desktopie i telefonie pokazuje kategorie, progi i statusy, a linki w obu nawigacjach podświetlają aktywną stronę — d365d74
+- [x] 3.6 Bezpośrednie wejście na `/dashboard` i `/budget` bez sesji przekierowuje na `/sign-in` — d365d74
+- [x] 3.9 Przegląd migracji `BudgetSettings`: PK/FK `user_id` z `CASCADE`, domyślne 3 — d365d74
+- [x] 3.10 Na `/budget` „Zapisz” jest nieaktywny bez zmian; zmiana domyślnego progu na 4 i dodanie nowej kategorii (formularz subskrypcji) daje tej kategorii 4 — d365d74
 
-### Phase 4: Dokumentacja i weryfikacja
+### Phase 4: Frontend: przewijanie wewnątrz app-shella
 
 #### Automated
 
-- [ ] 4.1 Formatowanie dokumentów i kodu bez zmian po prettierze: `npm run format` w `backend-subtracker/` nie zmienia plików
+- [x] 4.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci`
+- [x] 4.2 Build produkcyjny przechodzi (budżet stylów): `npm run build`
+- [x] 4.3 Testy e2e przechodzą na buildzie e2e: `npm run build:e2e && npm run e2e`
 
 #### Manual
 
-- [ ] 4.2 Dokumenty opisują reguły zgodnie z kodem (przegląd przy `/10x-impl-review`)
+- [x] 4.4 Desktop, wiele subskrypcji: strona nie ma przewijania okna; przewija się lista/tabela, nagłówki kolumn zostają widoczne, na `/dashboard` analogicznie
+- [x] 4.5 Desktop, rozwinięte „Kategorie” przy wielu kategoriach: „SubTracker” na górze i konto z „Wyloguj” na dole zostają na miejscu, przewija się lista kategorii
+- [x] 4.6 Telefon: strona się nie przewija; przewija się lista/tabela (karty na `/dashboard`), a rozwinięte „Kategorie” w pasku przewijają się w sobie i nie wypychają treści
+
+### Phase 5: Dokumentacja i weryfikacja
+
+#### Automated
+
+- [ ] 5.1 Formatowanie dokumentów i kodu bez zmian po prettierze: `npm run format` w `backend-subtracker/` nie zmienia plików
+
+#### Manual
+
+- [ ] 5.2 Dokumenty opisują reguły zgodnie z kodem (przegląd przy `/10x-impl-review`)

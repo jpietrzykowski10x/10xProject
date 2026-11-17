@@ -1,19 +1,33 @@
 // Desktop: navy column on the left. Below 840px a navy header with a menu button replaces it.
+// The shell is exactly as tall as the window (dvh, so a phone's browser bars never cut it) and the
+// window never scrolls. Only what does not fit scrolls in its own area: the expanded categories of
+// the totals (cost-totals.scss), and the content area, where a page may scroll its own list or
+// table. min-height: 0 lets those areas shrink below their content.
 :host {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   background: var(--st-page);
 }
 
+// The column scrolls as a whole only when even its fixed parts are taller than the window.
 .shell__column {
   display: flex;
   flex: 0 0 var(--st-column-width);
   flex-direction: column;
   gap: 32px;
   box-sizing: border-box;
+  min-height: 0;
   padding: 24px;
+  overflow-y: auto;
   background: var(--st-navy);
   color: #fff;
+  --st-scrollbar-thumb: var(--st-scrollbar-thumb-on-navy);
+  --st-scrollbar-thumb-hover: var(--st-scrollbar-thumb-hover-on-navy);
+}
+
+.shell__totals {
+  min-height: 0;
 }
 
 .shell__wordmark {
@@ -85,6 +99,8 @@
   padding: 4px 16px 16px;
   background: var(--st-navy);
   color: #fff;
+  --st-scrollbar-thumb: var(--st-scrollbar-thumb-on-navy);
+  --st-scrollbar-thumb-hover: var(--st-scrollbar-thumb-hover-on-navy);
 }
 
 .shell__bar-totals {
@@ -124,10 +140,17 @@
   overflow-wrap: anywhere;
 }
 
+// A page's root element takes the rest of the height (`flex: 1 1 0; min-height: 0` in its own
+// styles) or, like the budget form, keeps its height and scrolls here.
 .shell__content {
+  display: flex;
   flex: 1 1 0;
+  flex-direction: column;
+  box-sizing: border-box;
   min-width: 0;
+  min-height: 0;
   padding: 28px 32px 40px;
+  overflow-y: auto;
 }
 
 @media (max-width: 839.98px) {
@@ -144,7 +167,6 @@
   }
 
   .shell__content {
-    flex: 1 1 auto;
     padding: 16px;
   }
 }

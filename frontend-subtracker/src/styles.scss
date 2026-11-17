@@ -16,6 +16,31 @@ button:not(.mat-mdc-button-base):focus-visible {
   outline-offset: 2px;
 }
 
+/* Scroll areas (table frames, the categories list, the navy column): a thin, quiet bar. Firefox and
+   Chromium 121+ use the standard properties; Safari and older Chromium use the -webkit- ones. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--st-scrollbar-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: var(--st-scrollbar-thumb);
+
+  &:hover {
+    background: var(--st-scrollbar-thumb-hover);
+  }
+}
+
 /* Amounts line up in columns. */
 .st-amount {
   font-variant-numeric: tabular-nums;

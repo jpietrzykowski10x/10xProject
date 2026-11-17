@@ -1,5 +1,14 @@
 // S-07: the cost summary. Light background, so the warning icon keeps the light alert colours
 // (--st-alert-warning / --st-alert-danger); only the navy shell remaps them.
+// The page fills the shell's content area and the window never scrolls: the header and the sums
+// stay, the categories (table or cards) scroll in their own area.
+.dashboard {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .dashboard__header {
   display: flex;
   flex-wrap: wrap;
@@ -80,17 +89,29 @@
   font-weight: 600;
 }
 
-// The frame scrolls a narrow table sideways, so the page itself never does.
+// The frame scrolls the rows that do not fit and a narrow table sideways, so the page never does.
+.dashboard__frame,
+.dashboard__cards {
+  min-height: 0;
+  overflow: auto;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+}
+
 .dashboard__frame {
-  overflow-x: auto;
   border: 1px solid var(--st-line);
   border-radius: 4px;
   background: var(--mat-sys-surface);
 }
 
+// Separate borders (no spacing), so the sticky column names keep their bottom line.
 .dashboard__table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
 
   th,
   td {
@@ -100,7 +121,12 @@
     vertical-align: middle;
   }
 
+  // The column names stay at the top of the frame; opaque, so the rows do not show through.
   thead th {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    background: var(--mat-sys-surface);
     color: var(--st-muted);
     font-size: 13px;
     font-weight: 500;

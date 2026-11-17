@@ -3,8 +3,12 @@
 // _theme.scss, because only this table uses them.
 @use '@angular/material' as mat;
 
+// A flex column that may shrink below its rows (min-height: 0), so the page can hand it the height
+// left under its header and the frame scrolls the rows (subscriptions.scss).
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 
   @include mat.table-overrides(
     (
@@ -21,10 +25,12 @@
 }
 
 // The frame is a size container: the table goes compact by its own width, so the same rule
-// covers a narrow window and (phase 3) the add panel standing beside the table.
+// covers a narrow window and (phase 3) the add panel standing beside the table. It also scrolls
+// the rows that do not fit in the window, under the sticky column names.
 .table__frame {
   container-type: inline-size;
-  overflow-x: auto;
+  min-height: 0;
+  overflow: auto;
   border: 1px solid var(--st-line);
   border-radius: 4px;
   background: var(--mat-sys-surface);
@@ -48,6 +54,14 @@
     padding: 12px 16px;
     vertical-align: top;
     white-space: normal;
+  }
+
+  // The column names stay at the top of the frame; opaque, so the rows do not show through.
+  .mat-mdc-header-cell {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    background: var(--mat-sys-surface);
   }
 
   // The last data row would draw its divider on top of the frame's border. With
