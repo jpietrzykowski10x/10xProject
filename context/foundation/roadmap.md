@@ -51,7 +51,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-05 | subscription-lifecycle            | subskrypcja sama przechodzi trial → active i cancelled_pending → cancelled        | S-02          | FR-013                        | done |
 | S-06 | trial-end-reminder                | użytkownik dostaje e-mail 7 dni przed końcem okresu próbnego                      | S-05          | FR-014                        | done |
 | S-07 | category-duplicate-warning        | użytkownik widzi ostrzeżenie, gdy kategoria przekroczy jego próg subskrypcji      | S-04          | FR-009, FR-005                | done |
-| S-08 | budget-limits-and-alerts          | użytkownik ustawia limity budżetu i widzi alert przy 80% / 100%                   | S-04          | FR-010, FR-011, FR-005        | proposed |
+| S-08 | budget-limits-and-alerts          | użytkownik ustawia limity budżetu i widzi alert przy 80% / 100%                   | S-04          | FR-010, FR-011, FR-005        | planning |
 | S-09 | admin-account-management          | administrator odblokowuje konto lub resetuje dostęp i wgląda w dane użytkownika   | S-02          | FR-002                        | proposed |
 | S-10 | account-deletion                  | użytkownik sam usuwa swoje konto razem ze wszystkimi danymi                       | S-02          | NFR (usunięcie danych w 30 dni) | proposed |
 
@@ -227,7 +227,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Opiera się na sumach z S-04 — błąd tam daje fałszywe alerty; progi stałe 80/100% (konfigurowalne odłożone jako FR-017).
-- **Status:** proposed
+- **Status:** planning
 
 ### S-09: Zarządzanie kontami przez administratora
 
