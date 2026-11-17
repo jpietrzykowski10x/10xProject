@@ -1,6 +1,7 @@
 import type { Test } from 'supertest';
 import { DEFAULT_CATEGORIES } from '../../src/subscriptions/default-categories.js';
 import type {
+  BudgetResponse,
   CategoryResponse,
   CostTotalsResponse,
   SubscriptionResponse,
@@ -41,6 +42,8 @@ export interface SubscriptionRequests {
   getSubscriptions: (cookie: string) => Promise<SubscriptionResponse[]>;
   getCategories: (cookie: string) => Promise<CategoryResponse[]>;
   getTotals: (cookie: string) => Promise<CostTotalsResponse>;
+  getBudget: (cookie: string) => Promise<BudgetResponse>;
+  putBudget: (cookie: string, body: Record<string, unknown>) => Test;
 }
 
 export function subscriptionRequests(e2e: E2eApp): SubscriptionRequests {
@@ -94,6 +97,18 @@ export function subscriptionRequests(e2e: E2eApp): SubscriptionRequests {
         .expect('Cache-Control', 'no-store')
     ).body as CostTotalsResponse;
 
+  const getBudget = async (cookie: string) =>
+    (
+      await http()
+        .get('/budget')
+        .set('Cookie', cookie)
+        .expect(200)
+        .expect('Cache-Control', 'no-store')
+    ).body as BudgetResponse;
+
+  const putBudget = (cookie: string, body: Record<string, unknown>) =>
+    http().put('/budget').set('Cookie', cookie).send(body);
+
   return {
     postSubscription,
     putSubscription,
@@ -104,5 +119,7 @@ export function subscriptionRequests(e2e: E2eApp): SubscriptionRequests {
     getSubscriptions,
     getCategories,
     getTotals,
+    getBudget,
+    putBudget,
   };
 }

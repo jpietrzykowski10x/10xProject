@@ -1,0 +1,103 @@
+// @Type() reads design-time metadata; in the app Nest loads this polyfill.
+import 'reflect-metadata';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { UpdateBudgetDto } from './update-budget.dto.js';
+
+const FIRST_ID = '8312d1ba-9f14-4fe2-b611-ebd2538c2721';
+const SECOND_ID = '2f6b7c1e-4d3a-4b8e-9c2f-0a1b2c3d4e5f';
+
+// The same options as the global ValidationPipe (app.module.ts), without implicit conversion.
+async function failedProperties(body: unknown): Promise<string[]> {
+  const dto = plainToInstance(UpdateBudgetDto, body);
+  const errors = await validate(dto, {
+    whitelist: true,
+    forbidNonWhitelisted: true,
+  });
+  return errors.map((error) => error.property);
+}
+
+const threshold = (duplicateThreshold: unknown, categoryId = FIRST_ID) => ({
+  categories: [{ categoryId, duplicateThreshold }],
+});
+
+describe('UpdateBudgetDto', () => {
+  it.each([0, 2, 99])('accepts a threshold of %j', async (value) => {
+    expect(await failedProperties(threshold(value))).toEqual([]);
+  });
+
+  it.each([
+    ['below 0', -1],
+    ['above 99', 100],
+    ['not a whole number', 1.5],
+    ['a string', '2'],
+    ['missing', undefined],
+    ['null', null],
+  ])('refuses a threshold %s', async (_case, value) => {
+    expect(await failedProperties(threshold(value))).toEqual(['categories']);
+  });
+
+  it('accepts several distinct categories', async () => {
+    expect(
+      await failedProperties({
+        categories: [
+          { categoryId: FIRST_ID, duplicateThreshold: 0 },
+          { categoryId: SECOND_ID, duplicateThreshold: 99 },
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it('refuses the same category twice', async () => {
+    expect(
+      await failedProperties({
+        categories: [
+          { categoryId: FIRST_ID, duplicateThreshold: 1 },
+          { categoryId: FIRST_ID, duplicateThreshold: 3 },
+        ],
+      }),
+    ).toEqual(['categories']);
+  });
+
+  it.each([
+    ['empty', []],
+    ['missing', undefined],
+    ['not a list', { categoryId: FIRST_ID, duplicateThreshold: 2 }],
+    [
+      'longer than 200',
+      Array.from({ length: 201 }, (_, index) => ({
+        categoryId: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+        duplicateThreshold: 2,
+      })),
+    ],
+  ])('refuses a categories list that is %s', async (_case, categories) => {
+    expect(await failedProperties({ categories })).toEqual(['categories']);
+  });
+
+  it('accepts 200 categories', async () => {
+    const categories = Array.from({ length: 200 }, (_, index) => ({
+      categoryId: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+      duplicateThreshold: 2,
+    }));
+    expect(await failedProperties({ categories })).toEqual([]);
+  });
+
+  it('refuses a categoryId that is not a UUID', async () => {
+    expect(await failedProperties(threshold(2, 'inne'))).toEqual([
+      'categories',
+    ]);
+  });
+
+  it('refuses a userId in the body and in a category', async () => {
+    expect(
+      await failedProperties({ ...threshold(2), userId: FIRST_ID }),
+    ).toEqual(['userId']);
+    expect(
+      await failedProperties({
+        categories: [
+          { categoryId: FIRST_ID, duplicateThreshold: 2, userId: SECOND_ID },
+        ],
+      }),
+    ).toEqual(['categories']);
+  });
+});

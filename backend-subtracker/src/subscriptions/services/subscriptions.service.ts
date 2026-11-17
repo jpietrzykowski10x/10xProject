@@ -23,6 +23,7 @@ import {
   type SubscriptionResponse,
   SubscriptionStatus,
 } from '../subscription.types.js';
+import { BudgetService } from './budget.service.js';
 import { CategoriesService, toCategoryResponse } from './categories.service.js';
 
 const LIST_ALIAS = 'subscription';
@@ -92,6 +93,7 @@ export class SubscriptionsService {
     @InjectRepository(Subscription)
     private readonly subscriptions: Repository<Subscription>,
     private readonly categories: CategoriesService,
+    private readonly budget: BudgetService,
   ) {}
 
   async list(
@@ -110,22 +112,27 @@ export class SubscriptionsService {
   }
 
   // Summed in JS on whole grosze (cost-totals.ts); SQL only picks the counted rows of the account,
-  // so there is no SUM and no ORDER BY here.
+  // so there is no SUM and no ORDER BY here. The duplicate warnings are worked out on every read
+  // from the user's thresholds, so no warning state is stored.
   async totals(userId: string): Promise<CostTotalsResponse> {
-    const rows = await this.subscriptions
-      .createQueryBuilder(LIST_ALIAS)
-      .innerJoinAndSelect(`${LIST_ALIAS}.category`, 'category')
-      .where(`${LIST_ALIAS}.userId = :userId`, { userId })
-      .andWhere(`${LIST_ALIAS}.status IN (:...statuses)`, {
-        statuses: COUNTED_STATUSES,
-      })
-      .getMany();
+    const [rows, thresholds] = await Promise.all([
+      this.subscriptions
+        .createQueryBuilder(LIST_ALIAS)
+        .innerJoinAndSelect(`${LIST_ALIAS}.category`, 'category')
+        .where(`${LIST_ALIAS}.userId = :userId`, { userId })
+        .andWhere(`${LIST_ALIAS}.status IN (:...statuses)`, {
+          statuses: COUNTED_STATUSES,
+        })
+        .getMany(),
+      this.budget.duplicateThresholds(userId),
+    ]);
     return costTotals(
       rows.map((row) => ({
         amount: row.amount,
         billingCycle: row.billingCycle,
         category: toCategoryResponse(row.category),
       })),
+      thresholds,
     );
   }
 

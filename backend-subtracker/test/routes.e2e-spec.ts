@@ -42,6 +42,8 @@ const EXPECTED_ROUTES: ExpectedRoute[] = [
   { method: 'GET', path: '/auth/session', access: 'public' },
   { method: 'GET', path: '/auth/me', access: 'session' },
   { method: 'POST', path: '/auth/logout', access: 'public' },
+  { method: 'GET', path: '/budget', access: 'session' },
+  { method: 'PUT', path: '/budget', access: 'session' },
   { method: 'GET', path: '/categories', access: 'session' },
   { method: 'POST', path: '/categories', access: 'session' },
   { method: 'GET', path: '/subscriptions', access: 'session' },

@@ -1,5 +1,9 @@
 import { fromGrosze, toGrosze } from '../shared/money/grosze.js';
 import {
+  DEFAULT_DUPLICATE_THRESHOLD,
+  duplicateWarning,
+} from './duplicate-warning.js';
+import {
   BillingCycle,
   type CategoryCostTotal,
   type CategoryResponse,
@@ -44,8 +48,12 @@ interface CategorySum {
 // The cost totals of rows already filtered to COUNTED_STATUSES. Everything is summed in whole
 // grosze; the monthly total is the sum of the per-subscription rounded amounts, never the yearly
 // sum divided by 12. Categories go from the highest monthly cost down, a tie by the name in
-// Polish order, then by id, so the order never depends on the input order.
-export function costTotals(rows: readonly CostTotalsRow[]): CostTotalsResponse {
+// Polish order, then by id, so the order never depends on the input order. `thresholds` maps a
+// category id to the user's duplicate threshold; a category missing from it has the default.
+export function costTotals(
+  rows: readonly CostTotalsRow[],
+  thresholds: ReadonlyMap<string, number>,
+): CostTotalsResponse {
   const sums = new Map<string, CategorySum>();
   for (const row of rows) {
     const grosze = toGrosze(row.amount);
@@ -67,12 +75,21 @@ export function costTotals(rows: readonly CostTotalsRow[]): CostTotalsResponse {
       a.category.name.localeCompare(b.category.name, 'pl') ||
       a.category.id.localeCompare(b.category.id),
   );
-  const categories: CategoryCostTotal[] = ordered.map((sum) => ({
-    category: sum.category,
-    monthly: fromGrosze(sum.monthly),
-    yearly: fromGrosze(sum.yearly),
-    subscriptionCount: sum.subscriptionCount,
-  }));
+  const categories: CategoryCostTotal[] = ordered.map((sum) => {
+    const duplicateThreshold =
+      thresholds.get(sum.category.id) ?? DEFAULT_DUPLICATE_THRESHOLD;
+    return {
+      category: sum.category,
+      monthly: fromGrosze(sum.monthly),
+      yearly: fromGrosze(sum.yearly),
+      subscriptionCount: sum.subscriptionCount,
+      duplicateThreshold,
+      duplicateWarning: duplicateWarning(
+        sum.subscriptionCount,
+        duplicateThreshold,
+      ),
+    };
+  });
   return {
     monthly: fromGrosze(ordered.reduce((total, sum) => total + sum.monthly, 0)),
     yearly: fromGrosze(ordered.reduce((total, sum) => total + sum.yearly, 0)),

@@ -76,6 +76,25 @@ export class CategoriesService {
     }
   }
 
+  // Whether every id names a default category or one of the user's own, in one query. The ids must
+  // be distinct (the DTOs check it), so a count short of their number means one is unknown.
+  async allUsable(
+    userId: string,
+    categoryIds: readonly string[],
+  ): Promise<boolean> {
+    if (categoryIds.length === 0) {
+      return true;
+    }
+    const usable = await this.categories
+      .createQueryBuilder('category')
+      .where('category.id IN (:...categoryIds)', { categoryIds })
+      .andWhere('(category.userId IS NULL OR category.userId = :userId)', {
+        userId,
+      })
+      .getCount();
+    return usable === categoryIds.length;
+  }
+
   // A default category or one of the user's own; anything else is unknown to this user.
   findUsable(userId: string, categoryId: string): Promise<Category | null> {
     return this.categories.findOne({
