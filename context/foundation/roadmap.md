@@ -214,6 +214,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Prosta reguła, ale musi się przeliczać po każdej zmianie (Business Logic); stoi po S-04, bo flaga żyje na dashboardzie.
+- **Notes (dostarczono, 2026-11-17):** flaga ma dwa stany: pomarańczowy „osiągnięto próg” (liczba = próg ≥ 1) i czerwony „przekroczono” (liczba > próg); próg 0–99 bez wyłączania. Domyślny próg jest per użytkownik (startowo 3, nie 2), kopiowany do nowej własnej kategorii. Nowe strony `/dashboard` (pełne podsumowanie) i `/budget` (progi), flaga także w kolumnie sum. S-08 rozszerza `budget_settings` (limit całościowy), `category_setting` (limit kategorii) i stronę `/budget`.
 - **Status:** in-progress
 
 ### S-08: Limity budżetu i alerty

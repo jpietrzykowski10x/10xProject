@@ -531,22 +531,22 @@ Nowa tabela bez danych, więc bez backfillu. Na produkcji migracja wchodzi przez
 
 #### Automated
 
-- [x] 4.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci`
-- [x] 4.2 Build produkcyjny przechodzi (budżet stylów): `npm run build`
-- [x] 4.3 Testy e2e przechodzą na buildzie e2e: `npm run build:e2e && npm run e2e`
+- [x] 4.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci` — 9bd298f
+- [x] 4.2 Build produkcyjny przechodzi (budżet stylów): `npm run build` — 9bd298f
+- [x] 4.3 Testy e2e przechodzą na buildzie e2e: `npm run build:e2e && npm run e2e` — 9bd298f
 
 #### Manual
 
-- [x] 4.4 Desktop, wiele subskrypcji: strona nie ma przewijania okna; przewija się lista/tabela, nagłówki kolumn zostają widoczne, na `/dashboard` analogicznie
-- [x] 4.5 Desktop, rozwinięte „Kategorie” przy wielu kategoriach: „SubTracker” na górze i konto z „Wyloguj” na dole zostają na miejscu, przewija się lista kategorii
-- [x] 4.6 Telefon: strona się nie przewija; przewija się lista/tabela (karty na `/dashboard`), a rozwinięte „Kategorie” w pasku przewijają się w sobie i nie wypychają treści
+- [x] 4.4 Desktop, wiele subskrypcji: strona nie ma przewijania okna; przewija się lista/tabela, nagłówki kolumn zostają widoczne, na `/dashboard` analogicznie — 9bd298f
+- [x] 4.5 Desktop, rozwinięte „Kategorie” przy wielu kategoriach: „SubTracker” na górze i konto z „Wyloguj” na dole zostają na miejscu, przewija się lista kategorii — 9bd298f
+- [x] 4.6 Telefon: strona się nie przewija; przewija się lista/tabela (karty na `/dashboard`), a rozwinięte „Kategorie” w pasku przewijają się w sobie i nie wypychają treści — 9bd298f
 
 ### Phase 5: Dokumentacja i weryfikacja
 
 #### Automated
 
-- [ ] 5.1 Formatowanie dokumentów i kodu bez zmian po prettierze: `npm run format` w `backend-subtracker/` nie zmienia plików
+- [x] 5.1 Formatowanie dokumentów i kodu bez zmian po prettierze: `npm run format` w `backend-subtracker/` nie zmienia plików
 
 #### Manual
 
-- [ ] 5.2 Dokumenty opisują reguły zgodnie z kodem (przegląd przy `/10x-impl-review`)
+- [x] 5.2 Dokumenty opisują reguły zgodnie z kodem (przegląd przy `/10x-impl-review`)
