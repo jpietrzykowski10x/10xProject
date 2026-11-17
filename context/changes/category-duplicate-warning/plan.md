@@ -545,8 +545,8 @@ Nowa tabela bez danych, więc bez backfillu. Na produkcji migracja wchodzi przez
 
 #### Automated
 
-- [x] 5.1 Formatowanie dokumentów i kodu bez zmian po prettierze: `npm run format` w `backend-subtracker/` nie zmienia plików
+- [x] 5.1 Formatowanie dokumentów i kodu bez zmian po prettierze: `npm run format` w `backend-subtracker/` nie zmienia plików — 9d83dd5
 
 #### Manual
 
-- [x] 5.2 Dokumenty opisują reguły zgodnie z kodem (przegląd przy `/10x-impl-review`)
+- [x] 5.2 Dokumenty opisują reguły zgodnie z kodem (przegląd przy `/10x-impl-review`) — 9d83dd5
