@@ -3,6 +3,9 @@
 :host {
   display: block;
   color: #fff;
+  // S-07: the alert colours of the duplicate warning icon, remapped to the pair readable on navy.
+  --st-alert-warning: var(--st-alert-warning-on-navy);
+  --st-alert-danger: var(--st-alert-danger-on-navy);
 }
 
 .totals__muted {
@@ -64,6 +67,11 @@
   }
 }
 
+// S-07: a 1px gap between rows, so the outline of a warned row does not merge with its neighbours.
+.totals__category + .totals__category {
+  margin-top: 1px;
+}
+
 .totals__category-name {
   overflow-wrap: anywhere;
 }
@@ -77,6 +85,40 @@
 .totals__category-note {
   grid-column: 1 / -1;
   color: var(--st-navy-soft);
+  font-size: 13px;
+}
+
+.totals__summary-icon,
+.totals__category-icon {
+  margin-left: 6px;
+}
+
+// S-07: a category with a duplicate warning gets a 1px outline and a description in the colour of
+// its state. The negative margin keeps its text aligned with the rows around it.
+.totals__category[data-warning] {
+  --totals-warning: var(--st-alert-warning);
+
+  margin-inline: -8px;
+  padding-inline: 8px;
+  border-radius: 4px;
+  outline: 1px solid var(--totals-warning);
+  outline-offset: -1px;
+}
+
+// The separator line shows only between two rows without an outline: a warned row hides its own
+// top line and the one of the row below it. Transparent, not removed, so the rows do not shift.
+.totals__category[data-warning],
+.totals__category[data-warning] + .totals__category {
+  border-top-color: transparent;
+}
+
+.totals__category[data-warning='exceeded'] {
+  --totals-warning: var(--st-alert-danger);
+}
+
+.totals__category-warning {
+  grid-column: 1 / -1;
+  color: var(--totals-warning);
   font-size: 13px;
 }
 

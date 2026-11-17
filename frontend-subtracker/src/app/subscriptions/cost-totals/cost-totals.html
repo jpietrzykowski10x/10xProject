@@ -20,12 +20,30 @@
 
   <!-- Only categories with a counted subscription, in the API's order (monthly, descending). -->
   @if (totals.categories.length > 0) {
+    @let worst = worstWarning();
     <details class="totals__categories">
-      <summary class="totals__summary">Kategorie</summary>
+      <!-- S-07: the most severe duplicate warning stays visible while the list is collapsed. -->
+      <summary class="totals__summary" [attr.data-warning]="worst === 'none' ? null : worst">
+        Kategorie
+        @if (worst !== 'none') {
+          <app-duplicate-warning-icon
+            class="totals__summary-icon"
+            [level]="worst"
+            [label]="warningsSummary()"
+          />
+        }
+      </summary>
       <dl class="totals__list">
         @for (item of totals.categories; track item.category.id) {
-          <div class="totals__category">
-            <dt class="totals__category-name">{{ item.category.name }}</dt>
+          @let warning = item.duplicateWarning;
+          <div class="totals__category" [attr.data-warning]="warning === 'none' ? null : warning">
+            <dt class="totals__category-name">
+              {{ item.category.name }}
+              <!-- Decorative: the description below says it in words. -->
+              @if (warning !== 'none') {
+                <app-duplicate-warning-icon class="totals__category-icon" [level]="warning" />
+              }
+            </dt>
             <dd class="totals__category-monthly st-amount">
               {{ item.monthly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
             </dd>
@@ -34,6 +52,10 @@
               {{ item.yearly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }} rocznie ·
               {{ subscriptionCountLabel(item.subscriptionCount) }}
             </dd>
+            <!-- "Przekroczono próg: 3 z 2" -->
+            @if (duplicateWarningNote(item); as note) {
+              <dd class="totals__category-warning">{{ note }}</dd>
+            }
           </div>
         }
       </dl>

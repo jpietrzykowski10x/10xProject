@@ -27,6 +27,10 @@ $error-tint: #fdecea;
 $warning-text: #6b4100;
 $warning-tint: #fdf1dc;
 $orange: #b54708; // 5.4:1 on white; clearly lighter than $warning-text (8.8:1)
+// Alert colours for the navy column and header: $orange and $error are too dark there (2.7:1 and
+// 1.9:1 on $navy), and these two too light on the page (under 2.2:1), so navy gets its own pair.
+$amber-on-navy: #fdb022; // 8.0:1 on $navy
+$red-on-navy: #ff6b6b; // 5.3:1 on $navy
 
 html {
   color-scheme: light;
@@ -160,4 +164,11 @@ html {
   --st-status-active: #{$green};
   --st-status-cancelled-pending: #{$orange};
   --st-status-cancelled: #{$muted};
+  // Alerts (S-07 duplicate warning, S-08 budget): orange when a limit is reached, red when it is
+  // exceeded. On light backgrounds 5.0:1 and 7.2:1 on --st-page; the navy column and header use the
+  // -on-navy pair. Every one is readable as text too, so a description may take the alert colour.
+  --st-alert-warning: #{$orange};
+  --st-alert-danger: #{$error};
+  --st-alert-warning-on-navy: #{$amber-on-navy};
+  --st-alert-danger-on-navy: #{$red-on-navy};
 }

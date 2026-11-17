@@ -395,28 +395,28 @@ Nowa tabela bez danych, więc bez backfillu. Na produkcji migracja wchodzi przez
 
 #### Automated
 
-- [x] 1.1 Migracja wygenerowana i zastosowana na `subtracker-db`: `npm run migration:run` (z `backend-subtracker/`), a `npm run migration:generate -- Check` kończy się „No changes in database schema were found”
-- [x] 1.2 Lint backendu przechodzi: `npm run lint`
-- [x] 1.3 Build backendu przechodzi: `npm run build`
-- [x] 1.4 Testy unit backendu przechodzą: `npm test`
-- [x] 1.5 Testy e2e API przechodzą: `npm run test:e2e`
+- [x] 1.1 Migracja wygenerowana i zastosowana na `subtracker-db`: `npm run migration:run` (z `backend-subtracker/`), a `npm run migration:generate -- Check` kończy się „No changes in database schema were found” — 79046fd
+- [x] 1.2 Lint backendu przechodzi: `npm run lint` — 79046fd
+- [x] 1.3 Build backendu przechodzi: `npm run build` — 79046fd
+- [x] 1.4 Testy unit backendu przechodzą: `npm test` — 79046fd
+- [x] 1.5 Testy e2e API przechodzą: `npm run test:e2e` — 79046fd
 
 #### Manual
 
-- [x] 1.6 Przegląd wygenerowanej migracji: PK `(user_id, category_id)`, indeks na `category_id`, `ON DELETE CASCADE` tylko na `user_id`, domyślne 2
-- [x] 1.7 `GET /budget` i `GET /subscriptions/totals` na `subtracker-db-dev` (np. przez `dev-local/test-session.mjs seed`) zwracają nowe pola z oczekiwanymi wartościami
+- [x] 1.6 Przegląd wygenerowanej migracji: PK `(user_id, category_id)`, indeks na `category_id`, `ON DELETE CASCADE` tylko na `user_id`, domyślne 2 — 79046fd
+- [x] 1.7 `GET /budget` i `GET /subscriptions/totals` na `subtracker-db-dev` (np. przez `dev-local/test-session.mjs seed`) zwracają nowe pola z oczekiwanymi wartościami — 79046fd
 
 ### Phase 2: Frontend: flaga w kolumnie sum
 
 #### Automated
 
-- [ ] 2.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci` (z `frontend-subtracker/`)
-- [ ] 2.2 Build produkcyjny przechodzi (AOT, budżet stylów): `npm run build`
+- [x] 2.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci` (z `frontend-subtracker/`)
+- [x] 2.2 Build produkcyjny przechodzi (AOT, budżet stylów): `npm run build`
 
 #### Manual
 
-- [ ] 2.3 Na desktopie i na telefonie (< 840 px) zwinięte „Kategorie” pokazują pomarańczową albo czerwoną ikonę, a po rozwinięciu wiersz ma ikonę, obrys 1px i opis
-- [ ] 2.4 Kolory i obrys są czytelne na granatowym tle (ocena na żywo; w razie potrzeby korekta tokenów)
+- [x] 2.3 Na desktopie i na telefonie (< 840 px) zwinięte „Kategorie” pokazują pomarańczową albo czerwoną ikonę, a po rozwinięciu wiersz ma ikonę, obrys 1px i opis
+- [x] 2.4 Kolory i obrys są czytelne na granatowym tle (ocena na żywo; w razie potrzeby korekta tokenów)
 
 ### Phase 3: Frontend: strony `/budget` i `/dashboard`
 

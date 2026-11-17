@@ -1,8 +1,10 @@
 // The single source of the Polish names of subscription codes, for the list and the form.
 import { daysFromToday } from '../shared/date-only';
 import { polishPlural } from '../shared/polish-plural';
+import { countDuplicateWarnings } from './duplicate-warning';
 import type {
   BillingCycle,
+  CategoryCostTotal,
   PaymentMethod,
   Subscription,
   SubscriptionStatus,
@@ -137,4 +139,43 @@ const SUBSCRIPTION_FORMS = { one: 'subskrypcja', few: 'subskrypcje', many: 'subs
 // "1 subskrypcja", "3 subskrypcje", "12 subskrypcji": the count in a category of the cost totals.
 export function subscriptionCountLabel(count: number): string {
   return `${count} ${polishPlural(count, SUBSCRIPTION_FORMS)}`;
+}
+
+// The description of a category's duplicate warning (S-07): "Osiągnięto próg: 2 z 2",
+// "Przekroczono próg: 3 z 2"; null without a warning.
+export function duplicateWarningNote(item: CategoryCostTotal): string | null {
+  switch (item.duplicateWarning) {
+    case 'reached':
+      return `Osiągnięto próg: ${item.subscriptionCount} z ${item.duplicateThreshold}`;
+    case 'exceeded':
+      return `Przekroczono próg: ${item.subscriptionCount} z ${item.duplicateThreshold}`;
+    default:
+      return null;
+  }
+}
+
+const EXCEEDED_FORMS = {
+  one: 'kategoria przekroczyła',
+  few: 'kategorie przekroczyły',
+  many: 'kategorii przekroczyło',
+};
+const REACHED_FORMS = {
+  one: 'kategoria osiągnęła',
+  few: 'kategorie osiągnęły',
+  many: 'kategorii osiągnęło',
+};
+
+// The spoken state of the collapsed category list: "1 kategoria przekroczyła próg, 2 kategorie
+// osiągnęły próg"; null when no category warns.
+export function duplicateWarningsSummary(categories: readonly CategoryCostTotal[]): string | null {
+  const parts: string[] = [];
+  const exceeded = countDuplicateWarnings(categories, 'exceeded');
+  if (exceeded > 0) {
+    parts.push(`${exceeded} ${polishPlural(exceeded, EXCEEDED_FORMS)} próg`);
+  }
+  const reached = countDuplicateWarnings(categories, 'reached');
+  if (reached > 0) {
+    parts.push(`${reached} ${polishPlural(reached, REACHED_FORMS)} próg`);
+  }
+  return parts.length > 0 ? parts.join(', ') : null;
 }

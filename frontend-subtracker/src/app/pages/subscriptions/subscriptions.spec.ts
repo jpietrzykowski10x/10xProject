@@ -37,7 +37,14 @@ const NETFLIX_TOTALS: CostTotals = {
   monthly: '43.00',
   yearly: '516.00',
   categories: [
-    { category: NETFLIX.category, monthly: '43.00', yearly: '516.00', subscriptionCount: 1 },
+    {
+      category: NETFLIX.category,
+      monthly: '43.00',
+      yearly: '516.00',
+      subscriptionCount: 1,
+      duplicateThreshold: 2,
+      duplicateWarning: 'none',
+    },
   ],
 };
 const NO_TOTALS: CostTotals = { monthly: '0.00', yearly: '0.00', categories: [] };

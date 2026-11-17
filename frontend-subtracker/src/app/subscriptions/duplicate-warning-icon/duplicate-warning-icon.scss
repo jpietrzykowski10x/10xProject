@@ -1,0 +1,14 @@
+:host {
+  display: inline-flex;
+  flex: none;
+  vertical-align: -2px;
+  color: var(--st-alert-warning);
+}
+
+:host([data-warning='exceeded']) {
+  color: var(--st-alert-danger);
+}
+
+svg {
+  display: block;
+}
