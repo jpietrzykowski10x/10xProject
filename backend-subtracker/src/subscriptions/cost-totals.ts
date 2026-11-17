@@ -1,7 +1,8 @@
 import { fromGrosze, toGrosze } from '../shared/money/grosze.js';
 import {
-  DEFAULT_DUPLICATE_THRESHOLD,
+  type DuplicateThresholds,
   duplicateWarning,
+  thresholdOf,
 } from './duplicate-warning.js';
 import {
   BillingCycle,
@@ -48,11 +49,11 @@ interface CategorySum {
 // The cost totals of rows already filtered to COUNTED_STATUSES. Everything is summed in whole
 // grosze; the monthly total is the sum of the per-subscription rounded amounts, never the yearly
 // sum divided by 12. Categories go from the highest monthly cost down, a tie by the name in
-// Polish order, then by id, so the order never depends on the input order. `thresholds` maps a
-// category id to the user's duplicate threshold; a category missing from it has the default.
+// Polish order, then by id, so the order never depends on the input order. `thresholds` are the
+// user's duplicate thresholds; a category without a stored one has the user's default.
 export function costTotals(
   rows: readonly CostTotalsRow[],
-  thresholds: ReadonlyMap<string, number>,
+  thresholds: DuplicateThresholds,
 ): CostTotalsResponse {
   const sums = new Map<string, CategorySum>();
   for (const row of rows) {
@@ -76,8 +77,7 @@ export function costTotals(
       a.category.id.localeCompare(b.category.id),
   );
   const categories: CategoryCostTotal[] = ordered.map((sum) => {
-    const duplicateThreshold =
-      thresholds.get(sum.category.id) ?? DEFAULT_DUPLICATE_THRESHOLD;
+    const duplicateThreshold = thresholdOf(thresholds, sum.category.id);
     return {
       category: sum.category,
       monthly: fromGrosze(sum.monthly),

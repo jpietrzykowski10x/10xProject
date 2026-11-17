@@ -1,0 +1,114 @@
+<app-shell>
+  <div class="dashboard">
+    <div class="dashboard__header">
+      <h1 class="dashboard__title">Dashboard</h1>
+      <a class="dashboard__link" routerLink="/budget">Zmień progi</a>
+    </div>
+
+    @let current = state();
+    @if (current.kind === 'loading') {
+      <!-- No role="status": a live region inserted together with its text is often not read. -->
+      <p class="dashboard__panel">Wczytywanie podsumowania…</p>
+    } @else if (current.kind === 'error') {
+      <div class="st-notice st-notice--error dashboard__error" role="alert">
+        <p>Nie udało się wczytać podsumowania. Serwis jest chwilowo niedostępny.</p>
+        <button mat-stroked-button type="button" (click)="retry()">Spróbuj ponownie</button>
+      </div>
+    } @else if (current.totals.categories.length === 0) {
+      <p class="dashboard__panel">
+        Nie masz jeszcze żadnych aktywnych subskrypcji.
+        <a routerLink="/subscriptions">Dodaj pierwszą subskrypcję</a>
+      </p>
+    } @else {
+      @let totals = current.totals;
+      <div class="dashboard__sums">
+        <div class="dashboard__sum">
+          <div class="dashboard__sum-label">Miesięcznie</div>
+          <div class="dashboard__sum-amount st-amount">
+            {{ totals.monthly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+          </div>
+        </div>
+        <div class="dashboard__sum">
+          <div class="dashboard__sum-label">Rocznie</div>
+          <div class="dashboard__sum-amount st-amount">
+            {{ totals.yearly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+          </div>
+        </div>
+      </div>
+
+      <h2 class="dashboard__subtitle">Kategorie</h2>
+
+      <!-- Desktop: one table row per category, in the API's order (monthly, descending). -->
+      <div class="dashboard__frame">
+        <table class="dashboard__table">
+          <thead>
+            <tr>
+              <th scope="col">Kategoria</th>
+              <th scope="col" class="dashboard__number">Miesięcznie</th>
+              <th scope="col" class="dashboard__number">Rocznie</th>
+              <th scope="col" class="dashboard__number">Subskrypcje</th>
+              <th scope="col" class="dashboard__number">Próg</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of totals.categories; track item.category.id) {
+              @let warning = item.duplicateWarning;
+              <tr
+                class="dashboard__row"
+                [attr.data-category]="item.category.id"
+                [attr.data-warning]="warning"
+              >
+                <th scope="row" class="dashboard__name">{{ item.category.name }}</th>
+                <td class="dashboard__number st-amount">
+                  {{ item.monthly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+                </td>
+                <td class="dashboard__number st-amount">
+                  {{ item.yearly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+                </td>
+                <td class="dashboard__number">{{ item.subscriptionCount }}</td>
+                <td class="dashboard__number">{{ item.duplicateThreshold }}</td>
+                <td>
+                  <span class="dashboard__status">
+                    <!-- Decorative: the words next to it say what happened. -->
+                    @if (warning !== 'none') {
+                      <app-duplicate-warning-icon [level]="warning" />
+                    }
+                    {{ statusNote(item) }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Phone: the same categories as a list of cards. -->
+      <ul class="dashboard__cards">
+        @for (item of totals.categories; track item.category.id) {
+          @let warning = item.duplicateWarning;
+          <li class="dashboard__card" [attr.data-warning]="warning">
+            <div class="dashboard__card-head">
+              <span class="dashboard__name">{{ item.category.name }}</span>
+              <span class="st-amount">
+                {{ item.monthly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+              </span>
+            </div>
+            <!-- "516,00 zł rocznie · 1 subskrypcja · próg 2" -->
+            <div class="dashboard__note st-amount">
+              {{ item.yearly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }} rocznie ·
+              {{ subscriptionCountLabel(item.subscriptionCount) }} · próg
+              {{ item.duplicateThreshold }}
+            </div>
+            <div class="dashboard__status">
+              @if (warning !== 'none') {
+                <app-duplicate-warning-icon [level]="warning" />
+              }
+              {{ statusNote(item) }}
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</app-shell>

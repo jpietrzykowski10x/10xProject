@@ -60,8 +60,9 @@ describe('UpdateBudgetDto', () => {
   });
 
   it.each([
-    ['empty', []],
+    // without a default either, so the body names nothing to change
     ['missing', undefined],
+    ['null', null],
     ['not a list', { categoryId: FIRST_ID, duplicateThreshold: 2 }],
     [
       'longer than 200',
@@ -72,6 +73,55 @@ describe('UpdateBudgetDto', () => {
     ],
   ])('refuses a categories list that is %s', async (_case, categories) => {
     expect(await failedProperties({ categories })).toEqual(['categories']);
+  });
+
+  // The oracle is the S-07 plan, phase 3 item 6: both fields are optional, at least one is required,
+  // and the default has the same 0–99 range as a category threshold.
+  it('refuses an empty body', async () => {
+    expect(await failedProperties({})).toEqual(['categories']);
+  });
+
+  it.each([0, 3, 99])(
+    'accepts only a default threshold of %j',
+    async (value) => {
+      expect(
+        await failedProperties({ defaultDuplicateThreshold: value }),
+      ).toEqual([]);
+    },
+  );
+
+  it.each([
+    ['below 0', -1],
+    ['above 99', 100],
+    ['not a whole number', 1.5],
+    ['a string', '3'],
+    ['null', null],
+  ])('refuses a default threshold %s', async (_case, value) => {
+    expect(
+      await failedProperties({ defaultDuplicateThreshold: value }),
+    ).toEqual(['defaultDuplicateThreshold']);
+  });
+
+  it('accepts a default threshold together with categories', async () => {
+    expect(
+      await failedProperties({ defaultDuplicateThreshold: 4, ...threshold(1) }),
+    ).toEqual([]);
+  });
+
+  it('accepts an empty categories list, as the field is present', async () => {
+    expect(await failedProperties({ categories: [] })).toEqual([]);
+    expect(
+      await failedProperties({ defaultDuplicateThreshold: 4, categories: [] }),
+    ).toEqual([]);
+  });
+
+  it('refuses a categories list that is not a list next to a valid default', async () => {
+    expect(
+      await failedProperties({
+        defaultDuplicateThreshold: 4,
+        categories: null,
+      }),
+    ).toEqual(['categories']);
   });
 
   it('accepts 200 categories', async () => {

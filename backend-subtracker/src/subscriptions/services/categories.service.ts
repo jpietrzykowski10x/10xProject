@@ -4,10 +4,12 @@ import { IsNull, Repository } from 'typeorm';
 import { isUniqueViolation } from '../../shared/database/unique-violation.js';
 import { toNameKey } from '../../shared/text/name-key.js';
 import { DEFAULT_CATEGORIES } from '../default-categories.js';
+import { CategorySetting } from '../entities/category-setting.entity.js';
 import {
   Category,
   CATEGORY_OWNER_NAME_INDEX,
 } from '../entities/category.entity.js';
+import { defaultDuplicateThresholdOf } from '../entities/budget-settings.entity.js';
 import type { CategoryResponse } from '../subscription.types.js';
 
 const DEFAULT_ORDER = new Map<string, number>(
@@ -63,9 +65,25 @@ export class CategoriesService {
       throw new ConflictException();
     }
 
+    // The new category gets a copy of the user's current default threshold in the same
+    // transaction, so a later change of the default leaves it alone.
     try {
-      const category = await this.categories.save(
-        this.categories.create({ userId, name, nameKey }),
+      const category = await this.categories.manager.transaction(
+        async (manager) => {
+          const duplicateThreshold = await defaultDuplicateThresholdOf(
+            manager,
+            userId,
+          );
+          const saved = await manager.save(
+            manager.create(Category, { userId, name, nameKey }),
+          );
+          await manager.insert(CategorySetting, {
+            userId,
+            categoryId: saved.id,
+            duplicateThreshold,
+          });
+          return saved;
+        },
       );
       return toCategoryResponse(category);
     } catch (error) {

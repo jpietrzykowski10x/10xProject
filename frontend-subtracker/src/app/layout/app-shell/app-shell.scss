@@ -33,6 +33,12 @@
   text-decoration: none;
 }
 
+// The current page: a green bar beside the link (aria-current="page" says it to a screen reader).
+.shell__nav-link--active {
+  padding-left: 12px;
+  box-shadow: inset 3px 0 0 var(--st-green);
+}
+
 .shell__account {
   display: flex;
   flex-direction: column;
@@ -104,7 +110,12 @@
   cursor: pointer;
 }
 
-// Rendered in the overlay, but declared in this template, so it keeps the component styles.
+// Rendered in the overlay, but declared in this template, so they keep the component styles.
+.shell__menu-link--active {
+  box-shadow: inset 3px 0 0 var(--st-green);
+  font-weight: 600;
+}
+
 .shell__menu-email {
   margin: 0;
   padding: 8px 12px;

@@ -21,7 +21,7 @@ const EXAMPLE: CostTotalsResponse = {
       monthly: '43.00',
       yearly: '516.00',
       subscriptionCount: 1,
-      duplicateThreshold: 2,
+      duplicateThreshold: 3,
       duplicateWarning: 'none',
     },
     {
@@ -29,7 +29,7 @@ const EXAMPLE: CostTotalsResponse = {
       monthly: '35.83',
       yearly: '429.99',
       subscriptionCount: 1,
-      duplicateThreshold: 2,
+      duplicateThreshold: 3,
       duplicateWarning: 'none',
     },
     {
@@ -37,7 +37,7 @@ const EXAMPLE: CostTotalsResponse = {
       monthly: '23.99',
       yearly: '287.88',
       subscriptionCount: 1,
-      duplicateThreshold: 2,
+      duplicateThreshold: 3,
       duplicateWarning: 'none',
     },
   ],
@@ -132,8 +132,19 @@ describe('CostTotals', () => {
   // the API contract (backend duplicate-warning.ts): reached at the threshold, exceeded above it.
   describe('duplicate warnings', () => {
     const [streaming, praca, muzyka] = EXAMPLE.categories;
-    const REACHED = { ...streaming, subscriptionCount: 2, duplicateWarning: 'reached' as const };
-    const EXCEEDED = { ...muzyka, subscriptionCount: 3, duplicateWarning: 'exceeded' as const };
+    // Both with a stored threshold of 2.
+    const REACHED = {
+      ...streaming,
+      subscriptionCount: 2,
+      duplicateThreshold: 2,
+      duplicateWarning: 'reached' as const,
+    };
+    const EXCEEDED = {
+      ...muzyka,
+      subscriptionCount: 3,
+      duplicateThreshold: 2,
+      duplicateWarning: 'exceeded' as const,
+    };
 
     it('shows no icon and no outline when no category warns', async () => {
       const { httpTesting, fixture, host } = await createTotals();

@@ -3,7 +3,10 @@ import {
   costTotals,
   type CostTotalsRow,
 } from './cost-totals.js';
-import { DuplicateWarning } from './duplicate-warning.js';
+import {
+  type DuplicateThresholds,
+  DuplicateWarning,
+} from './duplicate-warning.js';
 import {
   BillingCycle,
   type CategoryResponse,
@@ -16,8 +19,11 @@ const category = (id: string, name: string): CategoryResponse => ({
   isDefault: false,
 });
 
-// No stored thresholds: every category has the default of 2.
-const NO_SETTINGS: ReadonlyMap<string, number> = new Map();
+// No stored settings: every category has the default of 3 (DEFAULT_DUPLICATE_THRESHOLD).
+const NO_SETTINGS: DuplicateThresholds = {
+  defaultThreshold: 3,
+  byCategory: new Map(),
+};
 
 const STREAMING = category('c1', 'Streaming');
 const MUZYKA = category('c2', 'Muzyka');
@@ -77,7 +83,7 @@ describe('costTotals', () => {
             monthly,
             yearly: amount,
             subscriptionCount: 1,
-            duplicateThreshold: 2,
+            duplicateThreshold: 3,
             duplicateWarning: DuplicateWarning.NONE,
           },
         ],
@@ -120,7 +126,7 @@ describe('costTotals', () => {
           monthly: '43.00',
           yearly: '516.00',
           subscriptionCount: 1,
-          duplicateThreshold: 2,
+          duplicateThreshold: 3,
           duplicateWarning: DuplicateWarning.NONE,
         },
         {
@@ -128,7 +134,7 @@ describe('costTotals', () => {
           monthly: '35.83',
           yearly: '429.99',
           subscriptionCount: 1,
-          duplicateThreshold: 2,
+          duplicateThreshold: 3,
           duplicateWarning: DuplicateWarning.NONE,
         },
         {
@@ -136,7 +142,7 @@ describe('costTotals', () => {
           monthly: '23.99',
           yearly: '287.88',
           subscriptionCount: 1,
-          duplicateThreshold: 2,
+          duplicateThreshold: 3,
           duplicateWarning: DuplicateWarning.NONE,
         },
       ],
@@ -160,8 +166,8 @@ describe('costTotals', () => {
           monthly: '2.02',
           yearly: '24.12',
           subscriptionCount: 2,
-          duplicateThreshold: 2,
-          duplicateWarning: DuplicateWarning.REACHED,
+          duplicateThreshold: 3,
+          duplicateWarning: DuplicateWarning.NONE,
         },
       ],
     });
@@ -209,10 +215,11 @@ describe('costTotals', () => {
     ]);
   });
 
-  it('takes the threshold from the settings and the default of 2 without one', () => {
+  it("takes the threshold from the settings and the user's default without one", () => {
+    // The user's default is 2 here, not DEFAULT_DUPLICATE_THRESHOLD.
     // Praca: 3 subscriptions with a stored threshold of 3 → reached.
     // Streaming: 1 subscription with a stored threshold of 0 → exceeded.
-    // Muzyka: 3 subscriptions without a setting, so the default 2 → exceeded.
+    // Muzyka: 3 subscriptions without a setting, so the user's default 2 → exceeded.
     const totals = costTotals(
       [
         row('30.00', BillingCycle.MONTHLY, PRACA),
@@ -223,10 +230,13 @@ describe('costTotals', () => {
         row('10.00', BillingCycle.MONTHLY, MUZYKA),
         row('10.00', BillingCycle.MONTHLY, MUZYKA),
       ],
-      new Map([
-        [PRACA.id, 3],
-        [STREAMING.id, 0],
-      ]),
+      {
+        defaultThreshold: 2,
+        byCategory: new Map([
+          [PRACA.id, 3],
+          [STREAMING.id, 0],
+        ]),
+      },
     );
 
     expect(
@@ -258,6 +268,33 @@ describe('costTotals', () => {
       },
     ]);
   });
+
+  it.each([
+    // no stored settings: the default 3, three subscriptions reach it
+    [3, DuplicateWarning.REACHED],
+    // a user's default of 4: three subscriptions stay below it
+    [4, DuplicateWarning.NONE],
+  ])(
+    'gives a category without a setting the default of %i',
+    (defaultThreshold, expected) => {
+      const totals = costTotals(
+        [
+          row('10.00', BillingCycle.MONTHLY, MUZYKA),
+          row('10.00', BillingCycle.MONTHLY, MUZYKA),
+          row('10.00', BillingCycle.MONTHLY, MUZYKA),
+        ],
+        { defaultThreshold, byCategory: new Map([[PRACA.id, 1]]) },
+      );
+
+      expect(totals.categories).toMatchObject([
+        {
+          category: MUZYKA,
+          duplicateThreshold: defaultThreshold,
+          duplicateWarning: expected,
+        },
+      ]);
+    },
+  );
 
   it('gives zero sums and no categories for no subscriptions', () => {
     expect(costTotals([], NO_SETTINGS)).toEqual({

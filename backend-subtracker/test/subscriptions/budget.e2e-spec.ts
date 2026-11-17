@@ -6,8 +6,10 @@ import {
 import { DEFAULT_CATEGORIES } from '../../src/subscriptions/default-categories.js';
 import { CategorySetting } from '../../src/subscriptions/entities/category-setting.entity.js';
 import { Subscription } from '../../src/subscriptions/entities/subscription.entity.js';
+import { BudgetSettings } from '../../src/subscriptions/entities/budget-settings.entity.js';
 import { SubscriptionLifecycleService } from '../../src/subscriptions/services/subscription-lifecycle.service.js';
 import type {
+  BudgetResponse,
   CategoryResponse,
   CostTotalsResponse,
   SubscriptionResponse,
@@ -33,6 +35,11 @@ const warnings = (totals: CostTotalsResponse) =>
       duplicateWarning,
     }),
   );
+
+// The threshold of one category on the budget page.
+const thresholdIn = (budget: BudgetResponse, categoryId: string) =>
+  budget.categories.find((row) => row.category.id === categoryId)
+    ?.duplicateThreshold;
 
 describe('Budget — duplicate thresholds (e2e)', () => {
   // Runs against the database from .env (locally the dev database, in CI the C.UTF-8 database of
@@ -60,8 +67,8 @@ describe('Budget — duplicate thresholds (e2e)', () => {
     (await postSubscription(cookie, subscriptionBody(overrides)).expect(201))
       .body as SubscriptionResponse;
 
-  it('gives every category of the account the default threshold of 2', async () => {
-    const { cookie } = await signIn();
+  it('gives a new account the default threshold of 3 for every category', async () => {
+    const { cookie, address } = await signIn();
     const own = (await postCategory(cookie, 'Praca').expect(201))
       .body as CategoryResponse;
 
@@ -69,13 +76,20 @@ describe('Budget — duplicate thresholds (e2e)', () => {
 
     // The order of GET /categories: the defaults, then the account's own.
     expect(budget).toEqual({
+      defaultDuplicateThreshold: 3,
       categories: (await getCategories(cookie)).map((category) => ({
         category,
-        duplicateThreshold: 2,
+        duplicateThreshold: 3,
       })),
     });
     expect(budget.categories).toHaveLength(DEFAULT_CATEGORIES.length + 1);
     expect(budget.categories.at(-1)?.category).toEqual(own);
+    // No settings row until the account saves a default.
+    expect(
+      await repository(BudgetSettings).countBy({
+        userId: await userIdOf(address),
+      }),
+    ).toBe(0);
   });
 
   it('saves the listed thresholds and keeps the others', async () => {
@@ -96,12 +110,10 @@ describe('Budget — duplicate thresholds (e2e)', () => {
 
     const budget = await getBudget(cookie);
     expect(saved).toEqual(budget);
-    const thresholds = new Map(
-      budget.categories.map((row) => [row.category.id, row.duplicateThreshold]),
-    );
-    expect(thresholds.get(STREAMING_ID)).toBe(0);
-    expect(thresholds.get(own.id)).toBe(99);
-    expect(thresholds.get(GRY_ID)).toBe(2);
+    expect(budget.defaultDuplicateThreshold).toBe(3);
+    expect(thresholdIn(budget, STREAMING_ID)).toBe(0);
+    expect(thresholdIn(budget, own.id)).toBe(99);
+    expect(thresholdIn(budget, GRY_ID)).toBe(3);
     expect(JSON.stringify(saved)).not.toContain('userId');
 
     // A second save changes a stored value and leaves the other stored one alone.
@@ -127,51 +139,130 @@ describe('Budget — duplicate thresholds (e2e)', () => {
     const { cookie } = await signIn();
     const own = (await postCategory(cookie, 'Praca').expect(201))
       .body as CategoryResponse;
-    // 2 × 30.00 in Streaming, 3 × 10.00 in Praca: Streaming first by its monthly cost.
-    for (const name of ['Netflix', 'HBO Max']) {
+    // 3 × 30.00 in Streaming, 4 × 10.00 in Praca: Streaming first by its monthly cost.
+    for (const name of ['Netflix', 'HBO Max', 'Disney+']) {
       await create(cookie, { name, categoryId: STREAMING_ID, amount: 30 });
     }
-    for (const name of ['Slack', 'Notion', 'Jira']) {
+    for (const name of ['Slack', 'Notion', 'Jira', 'Figma']) {
       await create(cookie, { name, categoryId: own.id, amount: 10 });
     }
 
-    // The default threshold of 2.
+    // The default threshold of 3.
     expect(warnings(await getTotals(cookie))).toEqual([
       {
         name: 'Streaming',
-        subscriptionCount: 2,
-        duplicateThreshold: 2,
+        subscriptionCount: 3,
+        duplicateThreshold: 3,
         duplicateWarning: 'reached',
       },
       {
         name: 'Praca',
-        subscriptionCount: 3,
-        duplicateThreshold: 2,
+        subscriptionCount: 4,
+        duplicateThreshold: 3,
         duplicateWarning: 'exceeded',
       },
     ]);
 
     await putBudget(cookie, {
       categories: [
-        { categoryId: STREAMING_ID, duplicateThreshold: 1 },
-        { categoryId: own.id, duplicateThreshold: 3 },
+        { categoryId: STREAMING_ID, duplicateThreshold: 2 },
+        { categoryId: own.id, duplicateThreshold: 4 },
       ],
     }).expect(200);
 
     expect(warnings(await getTotals(cookie))).toEqual([
       {
         name: 'Streaming',
-        subscriptionCount: 2,
-        duplicateThreshold: 1,
+        subscriptionCount: 3,
+        duplicateThreshold: 2,
         duplicateWarning: 'exceeded',
       },
       {
         name: 'Praca',
-        subscriptionCount: 3,
-        duplicateThreshold: 3,
+        subscriptionCount: 4,
+        duplicateThreshold: 4,
         duplicateWarning: 'reached',
       },
     ]);
+  });
+
+  it('changes the threshold of a never saved category with the default, not of a saved one', async () => {
+    const { cookie, address } = await signIn();
+    await putBudget(cookie, {
+      categories: [{ categoryId: STREAMING_ID, duplicateThreshold: 5 }],
+    }).expect(200);
+    // 2 × Gry, never saved: below the default 3.
+    for (const name of ['Steam', 'Xbox Game Pass']) {
+      await create(cookie, { name, categoryId: GRY_ID, amount: 20 });
+    }
+    expect(warnings(await getTotals(cookie))).toEqual([
+      {
+        name: 'Gry',
+        subscriptionCount: 2,
+        duplicateThreshold: 3,
+        duplicateWarning: 'none',
+      },
+    ]);
+
+    const saved = (
+      await putBudget(cookie, { defaultDuplicateThreshold: 2 }).expect(200)
+    ).body as BudgetResponse;
+
+    expect(saved).toEqual(await getBudget(cookie));
+    expect(saved.defaultDuplicateThreshold).toBe(2);
+    expect(thresholdIn(saved, GRY_ID)).toBe(2);
+    expect(thresholdIn(saved, STREAMING_ID)).toBe(5);
+    expect(warnings(await getTotals(cookie))).toEqual([
+      {
+        name: 'Gry',
+        subscriptionCount: 2,
+        duplicateThreshold: 2,
+        duplicateWarning: 'reached',
+      },
+    ]);
+    // Only the default was written; the stored category rows stay as they were.
+    const userId = await userIdOf(address);
+    expect(
+      (await repository(BudgetSettings).findOneByOrFail({ userId }))
+        .defaultDuplicateThreshold,
+    ).toBe(2);
+    expect(
+      (await repository(CategorySetting).findBy({ userId })).map(
+        ({ categoryId, duplicateThreshold }) => ({
+          categoryId,
+          duplicateThreshold,
+        }),
+      ),
+    ).toEqual([{ categoryId: STREAMING_ID, duplicateThreshold: 5 }]);
+  });
+
+  it('gives a new own category a copy of the current default that a later default leaves alone', async () => {
+    const { cookie, address } = await signIn();
+    await putBudget(cookie, { defaultDuplicateThreshold: 4 }).expect(200);
+
+    const own = (await postCategory(cookie, 'Praca').expect(201))
+      .body as CategoryResponse;
+    expect(thresholdIn(await getBudget(cookie), own.id)).toBe(4);
+    expect(
+      (
+        await repository(CategorySetting).findOneByOrFail({
+          userId: await userIdOf(address),
+          categoryId: own.id,
+        })
+      ).duplicateThreshold,
+    ).toBe(4);
+
+    // The default and a category threshold in one request.
+    await putBudget(cookie, {
+      defaultDuplicateThreshold: 7,
+      categories: [{ categoryId: STREAMING_ID, duplicateThreshold: 1 }],
+    }).expect(200);
+
+    const budget = await getBudget(cookie);
+    expect(budget.defaultDuplicateThreshold).toBe(7);
+    expect(thresholdIn(budget, own.id)).toBe(4);
+    expect(thresholdIn(budget, GRY_ID)).toBe(7);
+    expect(thresholdIn(budget, STREAMING_ID)).toBe(1);
   });
 
   // The job sees every account, so "today" is the real day in Warsaw (test plan §6.4).
@@ -179,6 +270,7 @@ describe('Budget — duplicate thresholds (e2e)', () => {
     const { cookie } = await signIn();
     const today = calendarDayIn(APP_TIME_ZONE, new Date());
     await create(cookie, { name: 'Netflix', categoryId: STREAMING_ID });
+    await create(cookie, { name: 'Disney+', categoryId: STREAMING_ID });
     const pending = await create(cookie, {
       name: 'HBO Max',
       categoryId: STREAMING_ID,
@@ -188,8 +280,8 @@ describe('Budget — duplicate thresholds (e2e)', () => {
     expect(warnings(await getTotals(cookie))).toEqual([
       {
         name: 'Streaming',
-        subscriptionCount: 2,
-        duplicateThreshold: 2,
+        subscriptionCount: 3,
+        duplicateThreshold: 3,
         duplicateWarning: 'reached',
       },
     ]);
@@ -203,8 +295,8 @@ describe('Budget — duplicate thresholds (e2e)', () => {
     expect(warnings(await getTotals(cookie))).toEqual([
       {
         name: 'Streaming',
-        subscriptionCount: 1,
-        duplicateThreshold: 2,
+        subscriptionCount: 2,
+        duplicateThreshold: 3,
         duplicateWarning: 'none',
       },
     ]);
@@ -223,12 +315,9 @@ describe('Budget — duplicate thresholds (e2e)', () => {
       categories: [{ categoryId: ownersCategory.id, duplicateThreshold: 0 }],
     }).expect(400);
 
-    const ownerBudget = await getBudget(owner.cookie);
-    expect(
-      ownerBudget.categories.find(
-        (row) => row.category.id === ownersCategory.id,
-      )?.duplicateThreshold,
-    ).toBe(5);
+    expect(thresholdIn(await getBudget(owner.cookie), ownersCategory.id)).toBe(
+      5,
+    );
     expect(
       (await getBudget(other.cookie)).categories.map((row) => row.category.id),
     ).not.toContain(ownersCategory.id);
@@ -239,48 +328,71 @@ describe('Budget — duplicate thresholds (e2e)', () => {
     ).toBe(0);
   });
 
+  it("keeps each account's default to itself", async () => {
+    const { owner, other } = await twoAccounts();
+
+    await putBudget(owner.cookie, { defaultDuplicateThreshold: 7 }).expect(200);
+
+    const otherBudget = await getBudget(other.cookie);
+    expect(otherBudget.defaultDuplicateThreshold).toBe(3);
+    expect(thresholdIn(otherBudget, GRY_ID)).toBe(3);
+    expect(
+      await repository(BudgetSettings).countBy({
+        userId: await userIdOf(other.address),
+      }),
+    ).toBe(0);
+
+    await putBudget(other.cookie, { defaultDuplicateThreshold: 1 }).expect(200);
+
+    const ownerBudget = await getBudget(owner.cookie);
+    expect(ownerBudget.defaultDuplicateThreshold).toBe(7);
+    expect(thresholdIn(ownerBudget, GRY_ID)).toBe(7);
+    expect((await getBudget(other.cookie)).defaultDuplicateThreshold).toBe(1);
+  });
+
   it('refuses the whole request when one category is unknown', async () => {
     const { cookie, address } = await signIn();
 
     await putBudget(cookie, {
+      defaultDuplicateThreshold: 5,
       categories: [
         { categoryId: STREAMING_ID, duplicateThreshold: 0 },
         { categoryId: UNKNOWN_ID, duplicateThreshold: 0 },
       ],
     }).expect(400);
 
-    expect(
-      await repository(CategorySetting).countBy({
-        userId: await userIdOf(address),
-      }),
-    ).toBe(0);
-    expect(
-      (await getBudget(cookie)).categories.find(
-        (row) => row.category.id === STREAMING_ID,
-      )?.duplicateThreshold,
-    ).toBe(2);
+    const userId = await userIdOf(address);
+    expect(await repository(CategorySetting).countBy({ userId })).toBe(0);
+    expect(await repository(BudgetSettings).countBy({ userId })).toBe(0);
+    const budget = await getBudget(cookie);
+    expect(budget.defaultDuplicateThreshold).toBe(3);
+    expect(thresholdIn(budget, STREAMING_ID)).toBe(3);
   });
 
   it.each([
     [
       'a threshold above 99',
-      [{ categoryId: STREAMING_ID, duplicateThreshold: 100 }],
+      { categories: [{ categoryId: STREAMING_ID, duplicateThreshold: 100 }] },
     ],
     [
       'a threshold below 0',
-      [{ categoryId: STREAMING_ID, duplicateThreshold: -1 }],
+      { categories: [{ categoryId: STREAMING_ID, duplicateThreshold: -1 }] },
     ],
-    ['no categories', []],
+    ['a default above 99', { defaultDuplicateThreshold: 100 }],
+    ['a default below 0', { defaultDuplicateThreshold: -1 }],
+    ['an empty body', {}],
     [
       'the same category twice',
-      [
-        { categoryId: STREAMING_ID, duplicateThreshold: 1 },
-        { categoryId: STREAMING_ID, duplicateThreshold: 3 },
-      ],
+      {
+        categories: [
+          { categoryId: STREAMING_ID, duplicateThreshold: 1 },
+          { categoryId: STREAMING_ID, duplicateThreshold: 3 },
+        ],
+      },
     ],
-  ])('answers 400 for %s', async (_case, categories) => {
+  ])('answers 400 for %s', async (_case, body) => {
     const { cookie } = await signIn();
 
-    await putBudget(cookie, { categories }).expect(400);
+    await putBudget(cookie, body).expect(400);
   });
 });

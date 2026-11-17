@@ -7,7 +7,14 @@ import { createE2eAccounts, SESSION_COOKIE } from '../support/accounts';
 // serves the same CSR shell, with or without a session. The prerender covers only static pages.
 const accounts = createE2eAccounts({ addressPrefix: 'e2e-browser-render-modes-' });
 
-const GUARDED_ROUTES = ['/subscriptions', '/sign-in', '/register', '/auth/verify'];
+const GUARDED_ROUTES = [
+  '/subscriptions',
+  '/dashboard',
+  '/budget',
+  '/sign-in',
+  '/register',
+  '/auth/verify',
+];
 
 // The oracle is the static pages of the test plan (§7), not app.routes.server.ts. A new static page
 // is a deliberate addition to this list; a guarded route showing up here was caught by '**'.

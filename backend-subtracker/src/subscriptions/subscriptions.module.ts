@@ -7,6 +7,7 @@ import { SubscriptionsController } from './controllers/subscriptions.controller.
 import { CategorySetting } from './entities/category-setting.entity.js';
 import { Category } from './entities/category.entity.js';
 import { Subscription } from './entities/subscription.entity.js';
+import { BudgetSettings } from './entities/budget-settings.entity.js';
 import { BudgetService } from './services/budget.service.js';
 import { CategoriesSeeder } from './services/categories-seeder.js';
 import { CategoriesService } from './services/categories.service.js';
@@ -18,7 +19,12 @@ import { TrialReminderScheduler } from './trial-reminder.scheduler.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Category, CategorySetting, Subscription]),
+    TypeOrmModule.forFeature([
+      Category,
+      CategorySetting,
+      Subscription,
+      BudgetSettings,
+    ]),
     MailModule,
   ],
   controllers: [

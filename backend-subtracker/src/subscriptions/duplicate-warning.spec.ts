@@ -16,11 +16,11 @@ describe('duplicateWarning', () => {
     [1, 0, DuplicateWarning.EXCEEDED],
     // threshold 1: the lowest count that can reach a threshold
     [1, 1, DuplicateWarning.REACHED],
-    // below the default threshold
+    // below a threshold of 2
     [1, 2, DuplicateWarning.NONE],
-    // exactly the default threshold
+    // exactly a threshold of 2
     [2, 2, DuplicateWarning.REACHED],
-    // one over the default threshold
+    // one over a threshold of 2
     [3, 2, DuplicateWarning.EXCEEDED],
     // exactly the highest threshold
     [99, 99, DuplicateWarning.REACHED],
@@ -33,8 +33,8 @@ describe('duplicateWarning', () => {
     },
   );
 
-  it('has a default of 2 within 0–99', () => {
-    expect(DEFAULT_DUPLICATE_THRESHOLD).toBe(2);
+  it('has a default of 3 within 0–99', () => {
+    expect(DEFAULT_DUPLICATE_THRESHOLD).toBe(3);
     expect(DUPLICATE_THRESHOLD_MIN).toBe(0);
     expect(DUPLICATE_THRESHOLD_MAX).toBe(99);
   });

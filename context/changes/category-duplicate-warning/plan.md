@@ -284,6 +284,44 @@ Dwie nowe strony w app-shellu, linki w obu nawigacjach, formularz progów z odś
 - Dashboard: wiersz `exceeded` ma znacznik stanu, przy pustych sumach pokazuje się stan pusty.
 - Shell: trzy linki w nawigacji.
 
+#### 6. Domyślny próg użytkownika (backend, dopisane w trakcie fazy 3, 2026-11-17)
+
+**File**: `backend-subtracker/src/subscriptions/entities/budget-settings.entity.ts` (encja `BudgetSettings`), `src/subscriptions/duplicate-warning.ts`, `services/budget.service.ts`, `services/subscriptions.service.ts`, `services/categories.service.ts`, `dtos/update-budget.dto.ts`, migracja `<ts>-BudgetSettings.ts` (wygenerowana)
+
+**Intent**: Każdy użytkownik ma własny domyślny próg (startowo 3), który podstawia się kategoriom bez własnej wartości. Decyzje użytkownika: tabela `budget_settings` w module `subscriptions` z kolumnami z typem (nie `jsonb`; S-08 dołoży tu limit całościowy, a preferencje konta spoza budżetu, np. motyw, trafią kiedyś do własnej tabeli w module `users`), semantyka „kopiowanie przy utworzeniu”.
+
+**Contract**:
+- Tabela `budget_settings`: PK i FK `user_id` → `user` z `ON DELETE CASCADE`, `default_duplicate_threshold smallint NOT NULL DEFAULT 3`, `updated_at timestamptz`. Brak wiersza = 3.
+- `DEFAULT_DUPLICATE_THRESHOLD = 3` (było 2); domyślna kolumny `category_setting.duplicate_threshold` też 3.
+- Próg kategorii = wiersz `category_setting`, a bez niego aktualny domyślny próg użytkownika (dotyczy kategorii domyślnych systemu i kategorii nigdy niezapisanych). Używa tego `/totals` i `GET /budget`.
+- Utworzenie własnej kategorii (`POST /categories`) zapisuje w tej samej transakcji wiersz `category_setting` z bieżącym domyślnym progiem użytkownika (kopia; późniejsza zmiana domyślnego go nie zmienia).
+- `GET /budget` → `{ defaultDuplicateThreshold: number; categories: … }`.
+- `PUT /budget`: body `{ defaultDuplicateThreshold?: int 0–99; categories?: {…}[] }` (0–200 elementów), co najmniej jedno z pól wymagane (inaczej 400). Upsert ustawień i wymienionych kategorii w jednej transakcji; walidacja kategorii jak dotąd (cała prośba 400, bez zapisu).
+- Migracja przez `npm run migration:generate -- BudgetSettings`, przegląd, `migration:run`.
+
+#### 7. Strona `/budget`: domyślny próg i zapis tylko zmian
+
+**File**: `frontend-subtracker/src/app/budget/budget.types.ts`, `budget.service.ts`, `pages/budget/budget.{ts,html,scss,spec.ts}`, `pages/dashboard/*` (jeśli pokazuje domyślne)
+
+**Contract**:
+- Nad listą kategorii pole „Domyślny próg” (te same walidatory 0–99) z opisem, że podstawia się nowym kategoriom.
+- „Zapisz” jest nieaktywny, dopóki formularz nie ma zmian względem ostatnio wczytanych wartości (powrót do starej wartości = brak zmian). Po zapisie formularz przyjmuje zapisane wartości jako nowy punkt odniesienia.
+- `PUT /budget` wysyła tylko zmienione pola: `defaultDuplicateThreshold` tylko gdy zmieniony, `categories` tylko zmienione kategorie.
+
+#### 8. Izolacja testów strony `/budget`
+
+**File**: `frontend-subtracker/src/app/pages/budget/budget.spec.ts`
+
+**Intent**: Błąd jednego testu nie może wywracać kolejnych (break-check z usuniętym walidatorem `max` wywracał 7 testów zamiast 1).
+
+**Contract**: Każdy test sam domyka swoje prośby (`HttpTestingController.verify()` w `afterEach` nie przenosi błędu dalej, TestBed czysty per test). Usunięcie walidatora `max` wywraca tylko test „100”.
+
+#### 9. Testy
+
+- Backend unit: `costTotals` bierze domyślny próg użytkownika przy braku wpisu; DTO: puste body → błąd, samo `defaultDuplicateThreshold` → poprawne, 100/-1 → błąd.
+- Backend e2e: nowy użytkownik dostaje 3; zmiana domyślnego zmienia próg kategorii nigdy niezapisanej, ale nie zapisanej; nowa własna kategoria dostaje kopię bieżącego domyślnego, a późniejsza zmiana domyślnego jej nie rusza; izolacja kont dla `budget_settings`; `EXPECTED_ROUTES` bez zmian.
+- Frontend: „Zapisz” nieaktywny bez zmian i po powrocie do starej wartości; PUT zawiera tylko zmienione pola (`request.body` równe kontraktowi); zmiana samego domyślnego wysyła tylko `defaultDuplicateThreshold`.
+
 ### Success Criteria:
 
 #### Automated Verification:
@@ -291,8 +329,13 @@ Dwie nowe strony w app-shellu, linki w obu nawigacjach, formularz progów z odś
 - Testy frontendu przechodzą w obu strefach: `npm run test:ci`
 - Build produkcyjny przechodzi: `npm run build`
 - Testy e2e przechodzą na buildzie e2e (w tym `render-modes` z nowymi trasami): `npm run build:e2e && npm run e2e`
+- Migracja `BudgetSettings` zastosowana na `subtracker-db`, a `npm run migration:generate -- Check` kończy się „No changes in database schema were found” (z `backend-subtracker/`)
+- Backend: `npm run lint`, `npm run build`, `npm test`, `npm run test:e2e`
 
 #### Manual Verification:
+
+- Przegląd migracji `BudgetSettings`: PK/FK `user_id` z `CASCADE`, domyślne 3
+- Na `/budget` „Zapisz” jest nieaktywny bez zmian; zmiana domyślnego progu na 4 i dodanie nowej kategorii (formularz subskrypcji) daje tej kategorii 4
 
 - Na `/budget` zmiana progu Streaming na 1 przy dwóch subskrypcjach zmienia flagę w kolumnie na czerwoną bez przeładowania strony
 - `/dashboard` na desktopie i telefonie pokazuje kategorie, progi i statusy, a linki w obu nawigacjach podświetlają aktywną stronę
@@ -410,27 +453,31 @@ Nowa tabela bez danych, więc bez backfillu. Na produkcji migracja wchodzi przez
 
 #### Automated
 
-- [x] 2.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci` (z `frontend-subtracker/`)
-- [x] 2.2 Build produkcyjny przechodzi (AOT, budżet stylów): `npm run build`
+- [x] 2.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci` (z `frontend-subtracker/`) — dc269f2
+- [x] 2.2 Build produkcyjny przechodzi (AOT, budżet stylów): `npm run build` — dc269f2
 
 #### Manual
 
-- [x] 2.3 Na desktopie i na telefonie (< 840 px) zwinięte „Kategorie” pokazują pomarańczową albo czerwoną ikonę, a po rozwinięciu wiersz ma ikonę, obrys 1px i opis
-- [x] 2.4 Kolory i obrys są czytelne na granatowym tle (ocena na żywo; w razie potrzeby korekta tokenów)
+- [x] 2.3 Na desktopie i na telefonie (< 840 px) zwinięte „Kategorie” pokazują pomarańczową albo czerwoną ikonę, a po rozwinięciu wiersz ma ikonę, obrys 1px i opis — dc269f2
+- [x] 2.4 Kolory i obrys są czytelne na granatowym tle (ocena na żywo; w razie potrzeby korekta tokenów) — dc269f2
 
 ### Phase 3: Frontend: strony `/budget` i `/dashboard`
 
 #### Automated
 
-- [ ] 3.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci`
-- [ ] 3.2 Build produkcyjny przechodzi: `npm run build`
-- [ ] 3.3 Testy e2e przechodzą na buildzie e2e (w tym `render-modes` z nowymi trasami): `npm run build:e2e && npm run e2e`
+- [x] 3.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci`
+- [x] 3.2 Build produkcyjny przechodzi: `npm run build`
+- [x] 3.3 Testy e2e przechodzą na buildzie e2e (w tym `render-modes` z nowymi trasami): `npm run build:e2e && npm run e2e`
+- [x] 3.7 Migracja `BudgetSettings` zastosowana na `subtracker-db`, a `npm run migration:generate -- Check` kończy się „No changes in database schema were found”
+- [x] 3.8 Backend: `npm run lint`, `npm run build`, `npm test`, `npm run test:e2e`
 
 #### Manual
 
-- [ ] 3.4 Na `/budget` zmiana progu Streaming na 1 przy dwóch subskrypcjach zmienia flagę w kolumnie na czerwoną bez przeładowania strony
-- [ ] 3.5 `/dashboard` na desktopie i telefonie pokazuje kategorie, progi i statusy, a linki w obu nawigacjach podświetlają aktywną stronę
-- [ ] 3.6 Bezpośrednie wejście na `/dashboard` i `/budget` bez sesji przekierowuje na `/sign-in`
+- [x] 3.4 Na `/budget` zmiana progu Streaming na 1 przy dwóch subskrypcjach zmienia flagę w kolumnie na czerwoną bez przeładowania strony
+- [x] 3.5 `/dashboard` na desktopie i telefonie pokazuje kategorie, progi i statusy, a linki w obu nawigacjach podświetlają aktywną stronę
+- [x] 3.6 Bezpośrednie wejście na `/dashboard` i `/budget` bez sesji przekierowuje na `/sign-in`
+- [x] 3.9 Przegląd migracji `BudgetSettings`: PK/FK `user_id` z `CASCADE`, domyślne 3
+- [x] 3.10 Na `/budget` „Zapisz” jest nieaktywny bez zmian; zmiana domyślnego progu na 4 i dodanie nowej kategorii (formularz subskrypcji) daje tej kategorii 4
 
 ### Phase 4: Dokumentacja i weryfikacja
 

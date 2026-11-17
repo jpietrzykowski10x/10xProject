@@ -78,7 +78,10 @@ export interface CategoryBudget {
   duplicateThreshold: number;
 }
 
-// GET and PUT /budget: every category of the user, defaults first, in the order of GET /categories.
+// GET and PUT /budget: the user's default threshold (DEFAULT_DUPLICATE_THRESHOLD until they save
+// one) and every category of the user, defaults first, in the order of GET /categories. A category
+// without a stored threshold shows the user's current default.
 export interface BudgetResponse {
+  defaultDuplicateThreshold: number;
   categories: CategoryBudget[];
 }
