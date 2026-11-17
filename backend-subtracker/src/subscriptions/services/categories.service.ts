@@ -4,10 +4,12 @@ import { IsNull, Repository } from 'typeorm';
 import { isUniqueViolation } from '../../shared/database/unique-violation.js';
 import { toNameKey } from '../../shared/text/name-key.js';
 import { DEFAULT_CATEGORIES } from '../default-categories.js';
+import { CategorySetting } from '../entities/category-setting.entity.js';
 import {
   Category,
   CATEGORY_OWNER_NAME_INDEX,
 } from '../entities/category.entity.js';
+import { defaultDuplicateThresholdOf } from '../entities/budget-settings.entity.js';
 import type { CategoryResponse } from '../subscription.types.js';
 
 const DEFAULT_ORDER = new Map<string, number>(
@@ -63,9 +65,25 @@ export class CategoriesService {
       throw new ConflictException();
     }
 
+    // The new category gets a copy of the user's current default threshold in the same
+    // transaction, so a later change of the default leaves it alone.
     try {
-      const category = await this.categories.save(
-        this.categories.create({ userId, name, nameKey }),
+      const category = await this.categories.manager.transaction(
+        async (manager) => {
+          const duplicateThreshold = await defaultDuplicateThresholdOf(
+            manager,
+            userId,
+          );
+          const saved = await manager.save(
+            manager.create(Category, { userId, name, nameKey }),
+          );
+          await manager.insert(CategorySetting, {
+            userId,
+            categoryId: saved.id,
+            duplicateThreshold,
+          });
+          return saved;
+        },
       );
       return toCategoryResponse(category);
     } catch (error) {
@@ -74,6 +92,25 @@ export class CategoriesService {
       }
       throw error;
     }
+  }
+
+  // Whether every id names a default category or one of the user's own, in one query. The ids must
+  // be distinct (the DTOs check it), so a count short of their number means one is unknown.
+  async allUsable(
+    userId: string,
+    categoryIds: readonly string[],
+  ): Promise<boolean> {
+    if (categoryIds.length === 0) {
+      return true;
+    }
+    const usable = await this.categories
+      .createQueryBuilder('category')
+      .where('category.id IN (:...categoryIds)', { categoryIds })
+      .andWhere('(category.userId IS NULL OR category.userId = :userId)', {
+        userId,
+      })
+      .getCount();
+    return usable === categoryIds.length;
   }
 
   // A default category or one of the user's own; anything else is unknown to this user.

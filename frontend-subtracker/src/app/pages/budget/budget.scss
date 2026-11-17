@@ -1,0 +1,104 @@
+// S-07: the default threshold, then one field per category; a grid on desktop, one column on the
+// phone.
+.budget {
+  max-width: 960px;
+}
+
+.budget__title {
+  margin: 0 0 8px;
+  font: var(--mat-sys-headline-small);
+  font-weight: 700;
+}
+
+.budget__intro {
+  margin: 0 0 24px;
+  color: var(--st-ink-soft);
+}
+
+// Loading state: a white panel where the form appears.
+.budget__panel {
+  margin: 0;
+  padding: 32px 24px;
+  border: 1px solid var(--st-line);
+  border-radius: 4px;
+  background: var(--mat-sys-surface);
+  color: var(--st-muted);
+  text-align: center;
+}
+
+.budget__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  p {
+    margin: 0;
+  }
+}
+
+.budget__form {
+  padding: 16px 24px 24px;
+  border: 1px solid var(--st-line);
+  border-radius: 4px;
+  background: var(--mat-sys-surface);
+}
+
+// The user's default threshold, above the categories; its hint may take two lines.
+.budget__default {
+  display: block;
+  max-width: 424px;
+  margin-bottom: 16px;
+}
+
+.budget__fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.budget__legend {
+  margin-bottom: 16px;
+  padding: 0;
+  font: var(--mat-sys-title-small);
+  font-weight: 600;
+}
+
+.budget__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  column-gap: 24px;
+}
+
+.budget__field {
+  width: 100%;
+}
+
+.budget__save {
+  margin-top: 8px;
+}
+
+@media (max-width: 839.98px) {
+  .budget__title {
+    font: var(--mat-sys-title-large);
+    font-weight: 600;
+  }
+
+  .budget__form {
+    padding: 16px;
+  }
+
+  .budget__default {
+    max-width: none;
+  }
+
+  .budget__list {
+    grid-template-columns: 1fr;
+  }
+
+  .budget__save {
+    width: 100%;
+  }
+}

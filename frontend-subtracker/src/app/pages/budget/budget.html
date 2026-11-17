@@ -1,0 +1,72 @@
+<app-shell>
+  <div class="budget">
+    <h1 class="budget__title">Budżet</h1>
+    <p class="budget__intro">
+      Ostrzeżemy Cię, gdy liczba aktywnych subskrypcji w kategorii osiągnie próg (pomarańczowe) albo
+      go przekroczy (czerwone).
+    </p>
+
+    <!-- The live region is always there, so a message put into it is announced. -->
+    <div role="status">
+      @if (statusMessage(); as message) {
+        <p class="st-notice st-notice--success">{{ message }}</p>
+      }
+    </div>
+
+    @if (saveError(); as error) {
+      <p class="st-notice st-notice--error" role="alert">{{ error }}</p>
+    }
+
+    @let current = state();
+    @if (current.kind === 'loading') {
+      <p class="budget__panel">Wczytywanie kategorii…</p>
+    } @else if (current.kind === 'error') {
+      <div class="st-notice st-notice--error budget__error" role="alert">
+        <p>Nie udało się wczytać kategorii. Serwis jest chwilowo niedostępny.</p>
+        <button mat-stroked-button type="button" (click)="load()">Spróbuj ponownie</button>
+      </div>
+    } @else {
+      <!-- mat-error shows after a field is left or the form is submitted, and Material links it to
+           the field through aria-describedby. -->
+      <form class="budget__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <mat-form-field class="budget__default" subscriptSizing="dynamic">
+          <mat-label>Domyślny próg</mat-label>
+          <input
+            matInput
+            inputmode="numeric"
+            autocomplete="off"
+            [formControl]="form.controls.defaultThreshold"
+          />
+          <mat-hint>Dostają go nowe kategorie i te, którym nie ustawiono własnego progu.</mat-hint>
+          <mat-error>Podaj liczbę całkowitą od {{ min }} do {{ max }}.</mat-error>
+        </mat-form-field>
+        <fieldset class="budget__fieldset">
+          <legend class="budget__legend">Próg aktywnych subskrypcji w kategorii</legend>
+          <div class="budget__list">
+            @for (item of current.categories; track item.category.id; let index = $index) {
+              <mat-form-field class="budget__field">
+                <mat-label>{{ item.category.name }}</mat-label>
+                <input
+                  matInput
+                  inputmode="numeric"
+                  autocomplete="off"
+                  [formControl]="form.controls.thresholds.at(index)"
+                />
+                <mat-error>Podaj liczbę całkowitą od {{ min }} do {{ max }}.</mat-error>
+              </mat-form-field>
+            }
+          </div>
+        </fieldset>
+        <!-- Off until the form differs from the last loaded or saved values. -->
+        <button
+          mat-flat-button
+          type="submit"
+          class="budget__save"
+          [disabled]="sending() || changes() === null"
+        >
+          Zapisz
+        </button>
+      </form>
+    }
+  </div>
+</app-shell>

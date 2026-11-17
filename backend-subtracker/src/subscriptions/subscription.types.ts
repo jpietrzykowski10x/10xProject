@@ -1,3 +1,5 @@
+import type { DuplicateWarning } from './duplicate-warning.js';
+
 // Codes of the closed lists, stored as varchar. Display names live in the frontend.
 export enum SubscriptionStatus {
   TRIAL = 'trial',
@@ -58,6 +60,9 @@ export interface CategoryCostTotal {
   monthly: string; // "35.83"
   yearly: string; // "429.99"
   subscriptionCount: number;
+  // The category's threshold of active subscriptions and how the count compares with it (S-07).
+  duplicateThreshold: number;
+  duplicateWarning: DuplicateWarning;
 }
 
 // GET /subscriptions/totals: the sums are the sums of the category values.
@@ -65,4 +70,18 @@ export interface CostTotalsResponse {
   monthly: string;
   yearly: string;
   categories: CategoryCostTotal[]; // monthly desc, then Polish name order
+}
+
+// One category on the budget page with its settings (S-07: the duplicate threshold).
+export interface CategoryBudget {
+  category: CategoryResponse;
+  duplicateThreshold: number;
+}
+
+// GET and PUT /budget: the user's default threshold (DEFAULT_DUPLICATE_THRESHOLD until they save
+// one) and every category of the user, defaults first, in the order of GET /categories. A category
+// without a stored threshold shows the user's current default.
+export interface BudgetResponse {
+  defaultDuplicateThreshold: number;
+  categories: CategoryBudget[];
 }

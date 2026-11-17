@@ -5,7 +5,16 @@ import {
   type SignedIn,
   UNKNOWN_ID,
 } from '../support/e2e-app.js';
-import { subscriptionBody, subscriptionRequests } from './subscriptions-e2e.js';
+import {
+  OTHER_CATEGORY_ID,
+  subscriptionBody,
+  subscriptionRequests,
+} from './subscriptions-e2e.js';
+
+// A valid PUT /budget body, so a 401 cannot come from validation.
+const budgetBody = {
+  categories: [{ categoryId: OTHER_CATEGORY_ID, duplicateThreshold: 2 }],
+};
 
 describe('Subscriptions — access (e2e)', () => {
   // Runs against the database from .env (locally the dev database, in CI the C.UTF-8 database of
@@ -21,6 +30,7 @@ describe('Subscriptions — access (e2e)', () => {
     resumeSubscription,
     postCategory,
     getCategories,
+    putBudget,
   } = subscriptionRequests(e2e);
 
   beforeAll(() => e2e.start());
@@ -40,6 +50,8 @@ describe('Subscriptions — access (e2e)', () => {
     await http().delete(`/subscriptions/${UNKNOWN_ID}`).expect(401);
     await http().post(`/subscriptions/${UNKNOWN_ID}/cancel`).expect(401);
     await http().post(`/subscriptions/${UNKNOWN_ID}/resume`).expect(401);
+    await http().get('/budget').expect(401);
+    await http().put('/budget').send(budgetBody).expect(401);
   });
 
   // The global guard is covered on /auth/me in test/auth/session.e2e-spec.ts; this keeps it on the
@@ -76,5 +88,7 @@ describe('Subscriptions — access (e2e)', () => {
     await deleteSubscription(cookie, UNKNOWN_ID).expect(401);
     await cancelSubscription(cookie, UNKNOWN_ID).expect(401);
     await resumeSubscription(cookie, UNKNOWN_ID).expect(401);
+    await http().get('/budget').set('Cookie', cookie).expect(401);
+    await putBudget(cookie, budgetBody).expect(401);
   });
 });

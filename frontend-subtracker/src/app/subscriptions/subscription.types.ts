@@ -9,6 +9,9 @@ export type BillingCycle = 'monthly' | 'yearly';
 export type PaymentMethod =
   'credit_card' | 'debit_card' | 'blik' | 'bank_transfer' | 'e_wallet' | 'other';
 
+// The duplicate warning of a category in the cost totals (S-07), from the least to the most severe.
+export type DuplicateWarning = 'none' | 'reached' | 'exceeded';
+
 export const SUBSCRIPTION_NAME_MAX_LENGTH = 100;
 export const CATEGORY_NAME_MAX_LENGTH = 50;
 export const AMOUNT_MAX = 99999.99;
@@ -56,11 +59,16 @@ export interface CreateCategoryRequest {
 // Only trial, active and cancelled_pending subscriptions count. `monthly` is the sum of the
 // per-subscription monthly amounts (a yearly one divided by 12 and rounded each); `yearly` is the
 // real yearly spend (monthly × 12 plus yearly unchanged).
+// S-07 (backend duplicate-warning.ts): `duplicateWarning` compares `subscriptionCount` with the
+// user's `duplicateThreshold` for the category: `exceeded` above it, `reached` at it (from one
+// subscription up), `none` otherwise.
 export interface CategoryCostTotal {
   category: Category;
   monthly: string;
   yearly: string;
   subscriptionCount: number;
+  duplicateThreshold: number;
+  duplicateWarning: DuplicateWarning;
 }
 
 // `categories` holds only categories with a counted subscription, in display order: monthly

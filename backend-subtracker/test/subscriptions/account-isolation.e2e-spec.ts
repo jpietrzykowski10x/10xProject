@@ -79,6 +79,8 @@ describe('Subscriptions — account isolation (e2e)', () => {
             monthly: '19.99',
             yearly: '239.88',
             subscriptionCount: 1,
+            duplicateThreshold: 3,
+            duplicateWarning: 'none',
           },
         ],
       });

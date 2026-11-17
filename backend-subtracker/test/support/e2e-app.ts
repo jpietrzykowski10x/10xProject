@@ -18,8 +18,10 @@ import { applyHttpSecurity } from '../../src/config/http-security.js';
 import { Mail } from '../../src/mail/entities/mail.entity.js';
 import { MAIL_TRANSPORT } from '../../src/mail/mail.transport.js';
 import type { MailMessage } from '../../src/mail/mail.types.js';
+import { CategorySetting } from '../../src/subscriptions/entities/category-setting.entity.js';
 import { Category } from '../../src/subscriptions/entities/category.entity.js';
 import { Subscription } from '../../src/subscriptions/entities/subscription.entity.js';
+import { BudgetSettings } from '../../src/subscriptions/entities/budget-settings.entity.js';
 import { TrialReminderScheduler } from '../../src/subscriptions/trial-reminder.scheduler.js';
 import { UserRole } from '../../src/users/entities/user-role.entity.js';
 import { User } from '../../src/users/entities/user.entity.js';
@@ -150,14 +152,17 @@ export function createE2eApp({
     }
   };
 
-  // Subscriptions and categories first: they hang off the users. Session, token and role rows
-  // block deleting a user (ON DELETE NO ACTION).
+  // Subscriptions, category settings, user settings and categories first: they hang off the users,
+  // and the first two block deleting a category. Session, token and role rows block deleting a user
+  // (ON DELETE NO ACTION).
   async function removeTestData(): Promise<void> {
     const users = await repository(User).findBy({
       email: Like(addressPattern),
     });
     const userIds = In(users.map((user) => user.id));
     await repository(Subscription).delete({ userId: userIds });
+    await repository(CategorySetting).delete({ userId: userIds });
+    await repository(BudgetSettings).delete({ userId: userIds });
     await repository(Category).delete({ userId: userIds });
     await repository(Session).delete({ userId: userIds });
     await repository(MagicLinkToken).delete({ userId: userIds });

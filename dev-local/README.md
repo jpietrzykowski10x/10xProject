@@ -30,6 +30,7 @@ Needs the local PostgreSQL (`database/create-local-databases.sql`). Scripts that
 | `inspect-category.mjs` | Read-only: category rows, the `name_key` column and the indexes in both local databases. | — |
 | `check-collation.mjs` | Read-only: is the ICU collation `pl-PL-x-icu` available, and how Polish names sort with and without it. | — |
 | `backfill-category-name-key.mjs` | One-off (S-02, already applied): adds and fills `category.name_key` in an existing dev database, because `synchronize` cannot add a NOT NULL column to a table with rows. | `subtracker-db-dev` |
+| `backfill-own-category-settings.mjs` | One-off (S-07, already applied 2026-11-17): gives every own category without a `category_setting` row the threshold 3, as the `BackfillOwnCategorySettings` migration does on `subtracker-db`. Idempotent. | `subtracker-db-dev` |
 | `widen-category-name-key.mjs` | One-off (S-02, already applied): widens `category.name_key` to `varchar(100)` in the dev database. | `subtracker-db-dev` |
 
 `[email]` is optional when `DEV_USER_EMAIL` is set in `backend-subtracker/.env` (git-ignored; see

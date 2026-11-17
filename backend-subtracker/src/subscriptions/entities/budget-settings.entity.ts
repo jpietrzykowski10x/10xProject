@@ -1,0 +1,53 @@
+import {
+  Column,
+  type EntityManager,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryColumn,
+  type Relation,
+  UpdateDateColumn,
+} from 'typeorm';
+import { User } from '../../users/entities/user.entity.js';
+import { DEFAULT_DUPLICATE_THRESHOLD } from '../duplicate-warning.js';
+
+// A user's budget settings, one row per account, a typed column per setting (S-07: the default
+// duplicate threshold; S-08 adds the overall limit). Account preferences that are not about the
+// budget (e.g. a theme) belong to the users module, not here. No row means the defaults, so
+// nothing is seeded per account.
+@Entity('budget_settings')
+export class BudgetSettings {
+  // The primary key, so it needs no index of its own.
+  @PrimaryColumn({ name: 'user_id', type: 'uuid' })
+  userId: string;
+
+  // Deleting an account deletes its settings. ManyToOne, not OneToOne: the primary key already
+  // keeps one row per user, and OneToOne would add a second unique constraint on the same column.
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user: Relation<User>;
+
+  // Given to a category without a stored threshold, and copied to a new own category.
+  @Column({
+    name: 'default_duplicate_threshold',
+    type: 'smallint',
+    default: DEFAULT_DUPLICATE_THRESHOLD,
+  })
+  defaultDuplicateThreshold: number;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  updatedAt: Date;
+}
+
+// The user's current default duplicate threshold: the stored one, else DEFAULT_DUPLICATE_THRESHOLD.
+// Takes a manager so it can read inside a transaction.
+export async function defaultDuplicateThresholdOf(
+  manager: EntityManager,
+  userId: string,
+): Promise<number> {
+  const settings = await manager.findOne(BudgetSettings, {
+    select: { userId: true, defaultDuplicateThreshold: true },
+    where: { userId },
+  });
+  return settings?.defaultDuplicateThreshold ?? DEFAULT_DUPLICATE_THRESHOLD;
+}

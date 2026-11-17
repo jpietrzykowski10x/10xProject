@@ -3,16 +3,18 @@
   <a class="shell__wordmark" routerLink="/subscriptions">SubTracker</a>
 
   <nav class="shell__nav" aria-label="Główna nawigacja">
-    <a
-      class="shell__nav-link"
-      routerLink="/subscriptions"
-      routerLinkActive="shell__nav-link--active"
-      ariaCurrentWhenActive="page"
-      >Subskrypcje</a
-    >
+    @for (link of links; track link.path) {
+      <a
+        class="shell__nav-link"
+        [routerLink]="link.path"
+        routerLinkActive="shell__nav-link--active"
+        ariaCurrentWhenActive="page"
+        >{{ link.label }}</a
+      >
+    }
   </nav>
 
-  <app-cost-totals variant="column" />
+  <app-cost-totals variant="column" class="shell__totals" />
 
   <div class="shell__account">
     <p class="shell__email">{{ user()?.email }}</p>
@@ -34,9 +36,16 @@
 </header>
 
 <mat-menu #menu="matMenu" xPosition="before">
-  <a mat-menu-item routerLink="/subscriptions" routerLinkActive ariaCurrentWhenActive="page"
-    >Subskrypcje</a
-  >
+  @for (link of links; track link.path) {
+    <a
+      mat-menu-item
+      class="shell__menu-link"
+      [routerLink]="link.path"
+      routerLinkActive="shell__menu-link--active"
+      ariaCurrentWhenActive="page"
+      >{{ link.label }}</a
+    >
+  }
   <p class="shell__menu-email">{{ user()?.email }}</p>
   <button mat-menu-item type="button" [disabled]="loggingOut()" (click)="logout()">Wyloguj</button>
 </mat-menu>

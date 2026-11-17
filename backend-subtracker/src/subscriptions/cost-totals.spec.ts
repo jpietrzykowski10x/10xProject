@@ -4,6 +4,10 @@ import {
   type CostTotalsRow,
 } from './cost-totals.js';
 import {
+  type DuplicateThresholds,
+  DuplicateWarning,
+} from './duplicate-warning.js';
+import {
   BillingCycle,
   type CategoryResponse,
   SubscriptionStatus,
@@ -14,6 +18,12 @@ const category = (id: string, name: string): CategoryResponse => ({
   name,
   isDefault: false,
 });
+
+// No stored settings: every category has the default of 3 (DEFAULT_DUPLICATE_THRESHOLD).
+const NO_SETTINGS: DuplicateThresholds = {
+  defaultThreshold: 3,
+  byCategory: new Map(),
+};
 
 const STREAMING = category('c1', 'Streaming');
 const MUZYKA = category('c2', 'Muzyka');
@@ -63,18 +73,29 @@ describe('costTotals', () => {
     // 18 gr / 12 = 1.5 → 2 gr (a half grosz goes up)
     ['0.18', '0.02'],
   ])('counts a yearly %j as %j a month', (amount, monthly) => {
-    expect(costTotals([row(amount, BillingCycle.YEARLY)])).toEqual({
-      monthly,
-      yearly: amount,
-      categories: [
-        { category: PRACA, monthly, yearly: amount, subscriptionCount: 1 },
-      ],
-    });
+    expect(costTotals([row(amount, BillingCycle.YEARLY)], NO_SETTINGS)).toEqual(
+      {
+        monthly,
+        yearly: amount,
+        categories: [
+          {
+            category: PRACA,
+            monthly,
+            yearly: amount,
+            subscriptionCount: 1,
+            duplicateThreshold: 3,
+            duplicateWarning: DuplicateWarning.NONE,
+          },
+        ],
+      },
+    );
   });
 
   it('counts a monthly amount unchanged a month and times 12 a year', () => {
     // 1299 gr × 12 = 15588 gr
-    expect(costTotals([row('12.99', BillingCycle.MONTHLY)])).toMatchObject({
+    expect(
+      costTotals([row('12.99', BillingCycle.MONTHLY)], NO_SETTINGS),
+    ).toMatchObject({
       monthly: '12.99',
       yearly: '155.88',
     });
@@ -82,14 +103,17 @@ describe('costTotals', () => {
 
   it('adds up the example from the mockup', () => {
     // The cancelled 50.00 a month (Streaming) is filtered out before; these are the counted rows.
-    const totals = costTotals([
-      // active: 4300 gr a month, 4300 × 12 = 51600 gr a year
-      row('43.00', BillingCycle.MONTHLY, STREAMING),
-      // trial: 2399 gr a month, 2399 × 12 = 28788 gr a year
-      row('23.99', BillingCycle.MONTHLY, MUZYKA),
-      // cancelled_pending: 42999 / 12 = 3583.25 → 3583 gr a month, 42999 gr a year
-      row('429.99', BillingCycle.YEARLY, PRACA),
-    ]);
+    const totals = costTotals(
+      [
+        // active: 4300 gr a month, 4300 × 12 = 51600 gr a year
+        row('43.00', BillingCycle.MONTHLY, STREAMING),
+        // trial: 2399 gr a month, 2399 × 12 = 28788 gr a year
+        row('23.99', BillingCycle.MONTHLY, MUZYKA),
+        // cancelled_pending: 42999 / 12 = 3583.25 → 3583 gr a month, 42999 gr a year
+        row('429.99', BillingCycle.YEARLY, PRACA),
+      ],
+      NO_SETTINGS,
+    );
 
     expect(totals).toEqual({
       // 4300 + 2399 + 3583 = 10282 gr
@@ -102,18 +126,24 @@ describe('costTotals', () => {
           monthly: '43.00',
           yearly: '516.00',
           subscriptionCount: 1,
+          duplicateThreshold: 3,
+          duplicateWarning: DuplicateWarning.NONE,
         },
         {
           category: PRACA,
           monthly: '35.83',
           yearly: '429.99',
           subscriptionCount: 1,
+          duplicateThreshold: 3,
+          duplicateWarning: DuplicateWarning.NONE,
         },
         {
           category: MUZYKA,
           monthly: '23.99',
           yearly: '287.88',
           subscriptionCount: 1,
+          duplicateThreshold: 3,
+          duplicateWarning: DuplicateWarning.NONE,
         },
       ],
     });
@@ -122,10 +152,10 @@ describe('costTotals', () => {
   it('rounds each subscription before adding them up', () => {
     // 1206 / 12 = 100.5 → 101 gr each; 101 + 101 = 202 gr (not 2412 / 12 = 201 gr)
     expect(
-      costTotals([
-        row('12.06', BillingCycle.YEARLY),
-        row('12.06', BillingCycle.YEARLY),
-      ]),
+      costTotals(
+        [row('12.06', BillingCycle.YEARLY), row('12.06', BillingCycle.YEARLY)],
+        NO_SETTINGS,
+      ),
     ).toEqual({
       monthly: '2.02',
       // 1206 + 1206 = 2412 gr
@@ -136,6 +166,8 @@ describe('costTotals', () => {
           monthly: '2.02',
           yearly: '24.12',
           subscriptionCount: 2,
+          duplicateThreshold: 3,
+          duplicateWarning: DuplicateWarning.NONE,
         },
       ],
     });
@@ -145,13 +177,16 @@ describe('costTotals', () => {
     const zdrowie = category('c4', 'Zdrowie');
     const lacznosc = category('c5', 'Łączność');
 
-    const totals = costTotals([
-      row('10.00', BillingCycle.MONTHLY, zdrowie),
-      row('10.00', BillingCycle.MONTHLY, lacznosc),
-      // 12000 / 12 = 1000 gr a month: the same tie, from a yearly amount
-      row('120.00', BillingCycle.YEARLY, PRACA),
-      row('10.01', BillingCycle.MONTHLY, STREAMING),
-    ]);
+    const totals = costTotals(
+      [
+        row('10.00', BillingCycle.MONTHLY, zdrowie),
+        row('10.00', BillingCycle.MONTHLY, lacznosc),
+        // 12000 / 12 = 1000 gr a month: the same tie, from a yearly amount
+        row('120.00', BillingCycle.YEARLY, PRACA),
+        row('10.01', BillingCycle.MONTHLY, STREAMING),
+      ],
+      NO_SETTINGS,
+    );
 
     // In Unicode code point order "Ł" (U+0141) would come after "Z".
     expect(totals.categories.map((total) => total.category.name)).toEqual([
@@ -166,10 +201,13 @@ describe('costTotals', () => {
     const first = category('a', 'Inne');
     const second = category('b', 'Inne');
 
-    const totals = costTotals([
-      row('5.00', BillingCycle.MONTHLY, second),
-      row('5.00', BillingCycle.MONTHLY, first),
-    ]);
+    const totals = costTotals(
+      [
+        row('5.00', BillingCycle.MONTHLY, second),
+        row('5.00', BillingCycle.MONTHLY, first),
+      ],
+      NO_SETTINGS,
+    );
 
     expect(totals.categories.map((total) => total.category.id)).toEqual([
       'a',
@@ -177,8 +215,89 @@ describe('costTotals', () => {
     ]);
   });
 
+  it("takes the threshold from the settings and the user's default without one", () => {
+    // The user's default is 2 here, not DEFAULT_DUPLICATE_THRESHOLD.
+    // Praca: 3 subscriptions with a stored threshold of 3 → reached.
+    // Streaming: 1 subscription with a stored threshold of 0 → exceeded.
+    // Muzyka: 3 subscriptions without a setting, so the user's default 2 → exceeded.
+    const totals = costTotals(
+      [
+        row('30.00', BillingCycle.MONTHLY, PRACA),
+        row('30.00', BillingCycle.MONTHLY, PRACA),
+        row('30.00', BillingCycle.MONTHLY, PRACA),
+        row('50.00', BillingCycle.MONTHLY, STREAMING),
+        row('10.00', BillingCycle.MONTHLY, MUZYKA),
+        row('10.00', BillingCycle.MONTHLY, MUZYKA),
+        row('10.00', BillingCycle.MONTHLY, MUZYKA),
+      ],
+      {
+        defaultThreshold: 2,
+        byCategory: new Map([
+          [PRACA.id, 3],
+          [STREAMING.id, 0],
+        ]),
+      },
+    );
+
+    expect(
+      totals.categories.map(
+        ({ category: { name }, duplicateThreshold, duplicateWarning }) => ({
+          name,
+          duplicateThreshold,
+          duplicateWarning,
+        }),
+      ),
+    ).toEqual([
+      // 3 × 3000 = 9000 gr
+      {
+        name: 'Praca',
+        duplicateThreshold: 3,
+        duplicateWarning: DuplicateWarning.REACHED,
+      },
+      // 5000 gr
+      {
+        name: 'Streaming',
+        duplicateThreshold: 0,
+        duplicateWarning: DuplicateWarning.EXCEEDED,
+      },
+      // 3 × 1000 = 3000 gr
+      {
+        name: 'Muzyka',
+        duplicateThreshold: 2,
+        duplicateWarning: DuplicateWarning.EXCEEDED,
+      },
+    ]);
+  });
+
+  it.each([
+    // no stored settings: the default 3, three subscriptions reach it
+    [3, DuplicateWarning.REACHED],
+    // a user's default of 4: three subscriptions stay below it
+    [4, DuplicateWarning.NONE],
+  ])(
+    'gives a category without a setting the default of %i',
+    (defaultThreshold, expected) => {
+      const totals = costTotals(
+        [
+          row('10.00', BillingCycle.MONTHLY, MUZYKA),
+          row('10.00', BillingCycle.MONTHLY, MUZYKA),
+          row('10.00', BillingCycle.MONTHLY, MUZYKA),
+        ],
+        { defaultThreshold, byCategory: new Map([[PRACA.id, 1]]) },
+      );
+
+      expect(totals.categories).toMatchObject([
+        {
+          category: MUZYKA,
+          duplicateThreshold: defaultThreshold,
+          duplicateWarning: expected,
+        },
+      ]);
+    },
+  );
+
   it('gives zero sums and no categories for no subscriptions', () => {
-    expect(costTotals([])).toEqual({
+    expect(costTotals([], NO_SETTINGS)).toEqual({
       monthly: '0.00',
       yearly: '0.00',
       categories: [],

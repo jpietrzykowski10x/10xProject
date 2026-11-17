@@ -21,18 +21,24 @@ const EXAMPLE: CostTotalsResponse = {
       monthly: '43.00',
       yearly: '516.00',
       subscriptionCount: 1,
+      duplicateThreshold: 3,
+      duplicateWarning: 'none',
     },
     {
       category: { id: 'category-praca', name: 'Praca', isDefault: true },
       monthly: '35.83',
       yearly: '429.99',
       subscriptionCount: 1,
+      duplicateThreshold: 3,
+      duplicateWarning: 'none',
     },
     {
       category: { id: 'category-muzyka', name: 'Muzyka', isDefault: true },
       monthly: '23.99',
       yearly: '287.88',
       subscriptionCount: 1,
+      duplicateThreshold: 3,
+      duplicateWarning: 'none',
     },
   ],
 };
@@ -120,6 +126,93 @@ describe('CostTotals', () => {
     expect(text(host.querySelector('.totals__monthly .st-amount'))).toBe('0,00 zł');
     expect(text(host.querySelector('.totals__yearly .st-amount'))).toBe('0,00 zł');
     expect(host.querySelector('details')).toBeNull();
+  });
+
+  // Risk #7 (S-07): the duplicate warning must show exactly when the API reports one. The oracle is
+  // the API contract (backend duplicate-warning.ts): reached at the threshold, exceeded above it.
+  describe('duplicate warnings', () => {
+    const [streaming, praca, muzyka] = EXAMPLE.categories;
+    // Both with a stored threshold of 2.
+    const REACHED = {
+      ...streaming,
+      subscriptionCount: 2,
+      duplicateThreshold: 2,
+      duplicateWarning: 'reached' as const,
+    };
+    const EXCEEDED = {
+      ...muzyka,
+      subscriptionCount: 3,
+      duplicateThreshold: 2,
+      duplicateWarning: 'exceeded' as const,
+    };
+
+    it('shows no icon and no outline when no category warns', async () => {
+      const { httpTesting, fixture, host } = await createTotals();
+      httpTesting.expectOne({ method: 'GET', url: TOTALS_URL }).flush(EXAMPLE);
+      await fixture.whenStable();
+
+      expect(host.querySelectorAll('app-duplicate-warning-icon')).toHaveLength(0);
+      expect(host.querySelectorAll('[data-warning]')).toHaveLength(0);
+      expect(host.querySelectorAll('.totals__category-warning')).toHaveLength(0);
+    });
+
+    it.each(['column', 'bar'] as const)(
+      'marks the summary and the row of a category at its threshold in the %s',
+      async (variant) => {
+        const { httpTesting, fixture, host } = await createTotals(variant);
+        httpTesting
+          .expectOne({ method: 'GET', url: TOTALS_URL })
+          .flush({ ...EXAMPLE, categories: [REACHED, praca] });
+        await fixture.whenStable();
+
+        const summary = host.querySelector('summary');
+        expect(summary?.getAttribute('data-warning')).toBe('reached');
+        const summaryIcon = summary?.querySelector('app-duplicate-warning-icon');
+        expect(summaryIcon?.getAttribute('data-warning')).toBe('reached');
+        expect(summaryIcon?.querySelector('svg')?.getAttribute('role')).toBe('img');
+        expect(summaryIcon?.querySelector('svg')?.getAttribute('aria-label')).toBeTruthy();
+
+        const rows = [...host.querySelectorAll('.totals__category')];
+        expect(rows.map((row) => row.getAttribute('data-warning'))).toEqual(['reached', null]);
+        expect(
+          rows.map((row) => row.querySelectorAll('app-duplicate-warning-icon').length),
+        ).toEqual([1, 0]);
+        expect(rows.map((row) => row.querySelectorAll('.totals__category-warning').length)).toEqual(
+          [1, 0],
+        );
+      },
+    );
+
+    it('marks the summary with the most severe warning of the categories', async () => {
+      const { httpTesting, fixture, host } = await createTotals();
+      httpTesting
+        .expectOne({ method: 'GET', url: TOTALS_URL })
+        .flush({ ...EXAMPLE, categories: [REACHED, praca, EXCEEDED] });
+      await fixture.whenStable();
+
+      const summary = host.querySelector('summary');
+      expect(summary?.getAttribute('data-warning')).toBe('exceeded');
+      expect(
+        summary?.querySelector('app-duplicate-warning-icon')?.getAttribute('data-warning'),
+      ).toBe('exceeded');
+      expect(
+        [...host.querySelectorAll('.totals__category')].map((row) =>
+          row.getAttribute('data-warning'),
+        ),
+      ).toEqual(['reached', null, 'exceeded']);
+    });
+
+    it('describes the warning of a row in words', async () => {
+      const { httpTesting, fixture, host } = await createTotals();
+      httpTesting
+        .expectOne({ method: 'GET', url: TOTALS_URL })
+        .flush({ ...EXAMPLE, categories: [REACHED, EXCEEDED] });
+      await fixture.whenStable();
+
+      expect([...host.querySelectorAll('.totals__category-warning')].map((dd) => text(dd))).toEqual(
+        ['Osiągnięto próg: 2 z 2', 'Przekroczono próg: 3 z 2'],
+      );
+    });
   });
 
   it('shows a muted message when the totals cannot be read', async () => {
