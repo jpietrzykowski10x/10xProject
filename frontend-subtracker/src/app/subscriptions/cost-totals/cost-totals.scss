@@ -1,3 +1,5 @@
+@use '../../../styles/budget-bar';
+
 // On the navy column and header: white text, labels and notes in --st-navy-soft. Lime stays
 // reserved for the budget bar (S-08).
 :host {
@@ -37,56 +39,14 @@
   font-size: 16px;
 }
 
-// S-08: the bar of the overall monthly limit, lime below 80% of it, then the alert colours. The
-// text under it says the share and the state in words, so the colour is never the only sign.
-.totals__budget {
-  --totals-budget: var(--st-lime);
-
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.totals__budget[data-alert='near'] {
-  --totals-budget: var(--st-alert-warning);
-}
-
-.totals__budget[data-alert='reached'],
-.totals__budget[data-alert='exceeded'] {
-  --totals-budget: var(--st-alert-danger);
-}
-
-.totals__budget-bar {
-  height: 6px;
-  overflow: hidden;
-  border-radius: 3px;
-  background: var(--st-navy-line);
-}
-
-.totals__budget-fill {
-  height: 100%;
-  border-radius: inherit;
-  background: var(--totals-budget);
-}
-
-.totals__budget-text {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 2px 8px;
-  font-size: 13px;
-}
-
-.totals__budget-usage {
-  color: var(--st-on-navy-soft);
-}
-
-.totals__budget-note {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--totals-budget);
-}
+// S-08: the bar of the overall monthly limit (styles/_budget-bar.scss), lime on the navy track.
+@include budget-bar.budget-bar(
+  $block: '.totals__budget',
+  $fill: var(--st-lime),
+  $track: var(--st-navy-line),
+  $height: 6px,
+  $usage-color: var(--st-on-navy-soft)
+);
 
 // The expanded categories scroll on their own, under the "Kategorie" heading, which stays: in the
 // desktop column the list takes only the height the shell leaves it (min-height: 0), in the phone

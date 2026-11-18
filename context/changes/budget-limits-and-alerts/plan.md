@@ -376,8 +376,8 @@ Nowe kolumny są nullable, więc migracja nie wymaga backfillu ani okna na danyc
 
 #### Automated
 
-- [x] 4.1 Formatowanie kodu bez zmian treści po prettierze: `npm run format` w `backend-subtracker/` nie zmienia treści plików
+- [x] 4.1 Formatowanie kodu bez zmian treści po prettierze: `npm run format` w `backend-subtracker/` nie zmienia treści plików — 0becc81
 
 #### Manual
 
-- [ ] 4.2 Dokumenty opisują reguły zgodnie z kodem (przegląd przy `/10x-impl-review`)
+- [x] 4.2 Dokumenty opisują reguły zgodnie z kodem (przegląd przy `/10x-impl-review`)

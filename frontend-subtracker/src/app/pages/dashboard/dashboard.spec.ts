@@ -121,7 +121,7 @@ describe('Dashboard', () => {
   });
 
   // The oracle is the API's limit alert of each row (S-08): exceeded gets the red icon and the
-  // words, a limit without an alert "W normie", no limit "—" in both limit columns.
+  // words, a limit without an alert "W normie", no limit leaves both limit columns empty.
   it('marks the category over its limit with the icon and the words in the limit columns', async () => {
     const { host } = await createPage(LIMITED);
 
@@ -140,16 +140,20 @@ describe('Dashboard', () => {
     expect(muzyka.querySelector('.dashboard__limit-status app-duplicate-warning-icon')).toBeNull();
 
     const zdrowie = rows[2];
-    expect(text(zdrowie.querySelector('.dashboard__limit-amount'))).toBe('—');
-    expect(text(zdrowie.querySelector('.dashboard__limit-status'))).toBe('—');
+    expect(text(zdrowie.querySelector('.dashboard__limit-amount'))).toBe('');
+    expect(zdrowie.querySelector('.dashboard__limit-status')).toBeNull();
   });
 
+  // Like the table's empty cells: a card without a limit has no limit line and no limit state.
   it('shows the limit and its state on a phone card only for a category with a limit', async () => {
     const { host } = await createPage(LIMITED);
 
     const cards = host.querySelectorAll('.dashboard__card');
     expect(text(cards[0].querySelector('.dashboard__limit-status'))).toBe('Przekroczono limit');
-    expect(text(cards[0])).toContain('Limit: 73,00 z 60,00 zł');
+    expect(text(cards[0].querySelector('.dashboard__limit-amount'))).toBe(
+      'Limit: 73,00 z 60,00 zł',
+    );
+    expect(cards[2].querySelector('.dashboard__limit-amount')).toBeNull();
     expect(cards[2].querySelector('.dashboard__limit-status')).toBeNull();
   });
 
@@ -180,6 +184,27 @@ describe('Dashboard', () => {
       'Nie masz jeszcze żadnych aktywnych subskrypcji.',
     );
     expect(host.querySelector('.dashboard__table')).toBeNull();
+  });
+
+  // The limit stays next to the empty state: a bar at 0 zł (no alert) or "Brak limitu".
+  it('shows the overall limit next to the empty state without counted subscriptions', async () => {
+    const { host } = await createPage({ ...NO_TOTALS, monthlyLimit: '120.00' });
+
+    expect(text(host.querySelector('.dashboard__panel'))).toContain(
+      'Nie masz jeszcze żadnych aktywnych subskrypcji.',
+    );
+    const bar = host.querySelector('.dashboard__limit [role="progressbar"]');
+    expect(bar?.getAttribute('aria-valuenow')).toBe('0');
+    expect(text(host.querySelector('.dashboard__budget-usage'))).toBe('0,00 z 120,00 zł (0%)');
+    expect(host.querySelector('.dashboard__budget-note')).toBeNull();
+    expect(text(host.querySelector('.dashboard__sums'))).not.toContain('Miesięcznie');
+  });
+
+  it('shows "Brak limitu" next to the empty state without a limit', async () => {
+    const { host } = await createPage(NO_TOTALS);
+
+    expect(text(host.querySelector('.dashboard__no-limit'))).toBe('Brak limitu. Ustaw limit');
+    expect(host.querySelector('.dashboard__panel')).not.toBeNull();
   });
 
   it('links to the budget page', async () => {

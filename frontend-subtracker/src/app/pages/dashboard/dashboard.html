@@ -14,26 +14,26 @@
         <p>Nie udało się wczytać podsumowania. Serwis jest chwilowo niedostępny.</p>
         <button mat-stroked-button type="button" (click)="retry()">Spróbuj ponownie</button>
       </div>
-    } @else if (current.totals.categories.length === 0) {
-      <p class="dashboard__panel">
-        Nie masz jeszcze żadnych aktywnych subskrypcji.
-        <a routerLink="/subscriptions">Dodaj pierwszą subskrypcję</a>
-      </p>
     } @else {
       @let totals = current.totals;
+      @let empty = totals.categories.length === 0;
+      <!-- Without counted subscriptions only the limit stays, next to the empty state (0 zł never
+           reaches it). -->
       <div class="dashboard__sums">
-        <div class="dashboard__sum">
-          <div class="dashboard__sum-label">Miesięcznie</div>
-          <div class="dashboard__sum-amount st-amount">
-            {{ totals.monthly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+        @if (!empty) {
+          <div class="dashboard__sum">
+            <div class="dashboard__sum-label">Miesięcznie</div>
+            <div class="dashboard__sum-amount st-amount">
+              {{ totals.monthly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+            </div>
           </div>
-        </div>
-        <div class="dashboard__sum">
-          <div class="dashboard__sum-label">Rocznie</div>
-          <div class="dashboard__sum-amount st-amount">
-            {{ totals.yearly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+          <div class="dashboard__sum">
+            <div class="dashboard__sum-label">Rocznie</div>
+            <div class="dashboard__sum-amount st-amount">
+              {{ totals.yearly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+            </div>
           </div>
-        </div>
+        }
         <!-- S-08: the overall monthly limit, its bar and text as in the cost totals column. -->
         <div class="dashboard__sum dashboard__limit">
           <div class="dashboard__sum-label">Kwotowy limit miesięczny</div>
@@ -71,123 +71,131 @@
         </div>
       </div>
 
-      <h2 class="dashboard__subtitle">Kategorie</h2>
+      @if (empty) {
+        <p class="dashboard__panel">
+          Nie masz jeszcze żadnych aktywnych subskrypcji.
+          <a routerLink="/subscriptions">Dodaj pierwszą subskrypcję</a>
+        </p>
+      } @else {
+        <h2 class="dashboard__subtitle">Kategorie</h2>
 
-      <!-- Desktop: one table row per category, in the API's order (monthly, descending). The frame
-           scrolls the rows that do not fit; focusable, so a keyboard can scroll it too (the table
-           itself has nothing to focus). -->
-      <div class="dashboard__frame" role="region" aria-label="Kategorie" tabindex="0">
-        <table class="dashboard__table">
-          <thead>
-            <tr>
-              <th scope="col">Kategoria</th>
-              <th scope="col" class="dashboard__number">Miesięcznie</th>
-              <th scope="col" class="dashboard__number">Rocznie</th>
-              <th scope="col" class="dashboard__number">Subskrypcje</th>
-              <th scope="col" class="dashboard__number">Próg</th>
-              <th scope="col">Próg — status</th>
-              <th scope="col" class="dashboard__number">Limit</th>
-              <th scope="col">Limit — status</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (item of totals.categories; track item.category.id) {
-              @let warning = item.duplicateWarning;
-              @let limitLevel = budgetAlertLevel(item.budgetAlert);
-              <tr
-                class="dashboard__row"
-                [attr.data-category]="item.category.id"
-                [attr.data-warning]="warning"
-              >
-                <th scope="row" class="dashboard__name">{{ item.category.name }}</th>
-                <td class="dashboard__number st-amount">
-                  {{ item.monthly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
-                </td>
-                <td class="dashboard__number st-amount">
-                  {{ item.yearly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
-                </td>
-                <td class="dashboard__number">{{ item.subscriptionCount }}</td>
-                <td class="dashboard__number">{{ item.duplicateThreshold }}</td>
-                <td>
-                  <span class="dashboard__status">
-                    <!-- Decorative: the words next to it say what happened. -->
-                    @if (warning !== 'none') {
-                      <app-duplicate-warning-icon [level]="warning" />
-                    }
-                    {{ statusNote(item) }}
-                  </span>
-                </td>
-                <td class="dashboard__number dashboard__limit-amount st-amount">
-                  @if (item.monthlyLimit !== null) {
-                    {{ item.monthlyLimit | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
-                  } @else {
-                    —
-                  }
-                </td>
-                <td>
-                  <span
-                    class="dashboard__limit-status"
-                    [attr.data-warning]="limitLevel === 'none' ? null : limitLevel"
-                    [attr.data-alert]="item.budgetAlert"
-                  >
-                    <!-- Decorative: the words next to it say what happened. -->
-                    @if (limitLevel !== 'none') {
-                      <app-duplicate-warning-icon [level]="limitLevel" />
-                    }
-                    {{ limitStatusNote(item) }}
-                  </span>
-                </td>
+        <!-- Desktop: one table row per category, in the API's order (monthly, descending). The frame
+             scrolls the rows that do not fit; focusable, so a keyboard can scroll it too (the table
+             itself has nothing to focus). -->
+        <div class="dashboard__frame" role="region" aria-label="Kategorie" tabindex="0">
+          <table class="dashboard__table">
+            <thead>
+              <tr>
+                <th scope="col">Kategoria</th>
+                <th scope="col" class="dashboard__number">Miesięcznie</th>
+                <th scope="col" class="dashboard__number">Rocznie</th>
+                <th scope="col" class="dashboard__number">Subskrypcje</th>
+                <th scope="col" class="dashboard__number">Próg</th>
+                <th scope="col">Próg — status</th>
+                <th scope="col" class="dashboard__number">Limit</th>
+                <th scope="col">Limit — status</th>
               </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Phone: the same categories as a list of cards, scrolled like the table's frame. -->
-      <ul class="dashboard__cards" aria-label="Kategorie" tabindex="0">
-        @for (item of totals.categories; track item.category.id) {
-          @let warning = item.duplicateWarning;
-          @let limitLevel = budgetAlertLevel(item.budgetAlert);
-          <li
-            class="dashboard__card"
-            [attr.data-category]="item.category.id"
-            [attr.data-warning]="warning"
-          >
-            <div class="dashboard__card-head">
-              <span class="dashboard__name">{{ item.category.name }}</span>
-              <span class="st-amount">
-                {{ item.monthly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
-              </span>
-            </div>
-            <!-- "516,00 zł rocznie · 1 subskrypcja · próg 2" -->
-            <div class="dashboard__note st-amount">
-              {{ item.yearly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }} rocznie ·
-              {{ subscriptionCountLabel(item.subscriptionCount) }} · próg
-              {{ item.duplicateThreshold }}
-            </div>
-            <div class="dashboard__status">
-              @if (warning !== 'none') {
-                <app-duplicate-warning-icon [level]="warning" />
+            </thead>
+            <tbody>
+              @for (item of totals.categories; track item.category.id) {
+                @let warning = item.duplicateWarning;
+                @let limitLevel = budgetAlertLevel(item.budgetAlert);
+                <tr
+                  class="dashboard__row"
+                  [attr.data-category]="item.category.id"
+                  [attr.data-warning]="warning"
+                >
+                  <th scope="row" class="dashboard__name">{{ item.category.name }}</th>
+                  <td class="dashboard__number st-amount">
+                    {{ item.monthly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+                  </td>
+                  <td class="dashboard__number st-amount">
+                    {{ item.yearly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+                  </td>
+                  <td class="dashboard__number">{{ item.subscriptionCount }}</td>
+                  <td class="dashboard__number">{{ item.duplicateThreshold }}</td>
+                  <td>
+                    <span class="dashboard__status">
+                      <!-- Decorative: the words next to it say what happened. -->
+                      @if (warning !== 'none') {
+                        <app-duplicate-warning-icon [level]="warning" />
+                      }
+                      {{ statusNote(item) }}
+                    </span>
+                  </td>
+                  <td class="dashboard__number dashboard__limit-amount st-amount">
+                    <!-- Empty without a limit. -->
+                    @if (item.monthlyLimit !== null) {
+                      {{ item.monthlyLimit | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+                    }
+                  </td>
+                  <td>
+                    @if (item.monthlyLimit !== null) {
+                      <span
+                        class="dashboard__limit-status"
+                        [attr.data-warning]="limitLevel === 'none' ? null : limitLevel"
+                        [attr.data-alert]="item.budgetAlert"
+                      >
+                        <!-- Decorative: the words next to it say what happened. -->
+                        @if (limitLevel !== 'none') {
+                          <app-duplicate-warning-icon [level]="limitLevel" />
+                        }
+                        {{ limitStatusNote(item) }}
+                      </span>
+                    }
+                  </td>
+                </tr>
               }
-              {{ statusNote(item) }}
-            </div>
-            <!-- S-08: "Limit: 90,00 z 80,00 zł" and its state; nothing without a limit. -->
-            @if (limitNote(item); as limit) {
-              <div class="dashboard__note st-amount">{{ limit }}</div>
-              <div
-                class="dashboard__limit-status"
-                [attr.data-warning]="limitLevel === 'none' ? null : limitLevel"
-                [attr.data-alert]="item.budgetAlert"
-              >
-                @if (limitLevel !== 'none') {
-                  <app-duplicate-warning-icon [level]="limitLevel" />
-                }
-                {{ limitStatusNote(item) }}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Phone: the same categories as a list of cards, scrolled like the table's frame. -->
+        <ul class="dashboard__cards" aria-label="Kategorie" tabindex="0">
+          @for (item of totals.categories; track item.category.id) {
+            @let warning = item.duplicateWarning;
+            @let limitLevel = budgetAlertLevel(item.budgetAlert);
+            <li
+              class="dashboard__card"
+              [attr.data-category]="item.category.id"
+              [attr.data-warning]="warning"
+            >
+              <div class="dashboard__card-head">
+                <span class="dashboard__name">{{ item.category.name }}</span>
+                <span class="st-amount">
+                  {{ item.monthly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+                </span>
               </div>
-            }
-          </li>
-        }
-      </ul>
+              <!-- "516,00 zł rocznie · 1 subskrypcja · próg 2" -->
+              <div class="dashboard__note st-amount">
+                {{ item.yearly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }} rocznie ·
+                {{ subscriptionCountLabel(item.subscriptionCount) }} · próg
+                {{ item.duplicateThreshold }}
+              </div>
+              <div class="dashboard__status">
+                @if (warning !== 'none') {
+                  <app-duplicate-warning-icon [level]="warning" />
+                }
+                {{ statusNote(item) }}
+              </div>
+              <!-- S-08: "Limit: 90,00 z 80,00 zł" and its state; nothing without a limit. -->
+              @if (limitNote(item); as limit) {
+                <div class="dashboard__note dashboard__limit-amount st-amount">{{ limit }}</div>
+                <div
+                  class="dashboard__limit-status"
+                  [attr.data-warning]="limitLevel === 'none' ? null : limitLevel"
+                  [attr.data-alert]="item.budgetAlert"
+                >
+                  @if (limitLevel !== 'none') {
+                    <app-duplicate-warning-icon [level]="limitLevel" />
+                  }
+                  {{ limitStatusNote(item) }}
+                </div>
+              }
+            </li>
+          }
+        </ul>
+      }
     }
   </div>
 </app-shell>

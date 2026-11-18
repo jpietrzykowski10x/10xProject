@@ -2,16 +2,16 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { type EntityManager, Repository } from 'typeorm';
 import type { UserBudgetSettings } from '../cost-totals.js';
-import {
-  DEFAULT_DUPLICATE_THRESHOLD,
-  thresholdOf,
-} from '../duplicate-warning.js';
+import { thresholdOf } from '../duplicate-warning.js';
 import type {
   CategoryBudgetDto,
   UpdateBudgetDto,
 } from '../dtos/update-budget.dto.js';
 import { CategorySetting } from '../entities/category-setting.entity.js';
-import { BudgetSettings } from '../entities/budget-settings.entity.js';
+import {
+  BudgetSettings,
+  defaultThresholdOf,
+} from '../entities/budget-settings.entity.js';
 import type { BudgetResponse } from '../subscription.types.js';
 import { CategoriesService } from './categories.service.js';
 
@@ -67,8 +67,7 @@ export class BudgetService {
       }),
     ]);
     return {
-      defaultThreshold:
-        settings?.defaultDuplicateThreshold ?? DEFAULT_DUPLICATE_THRESHOLD,
+      defaultThreshold: defaultThresholdOf(settings),
       byCategory: new Map(
         rows.map((row) => [row.categoryId, row.duplicateThreshold]),
       ),

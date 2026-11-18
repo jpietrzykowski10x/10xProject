@@ -49,6 +49,15 @@ export class BudgetSettings {
   updatedAt: Date;
 }
 
+// The default duplicate threshold of a settings row: the stored one, else DEFAULT_DUPLICATE_THRESHOLD
+// (no row means the defaults).
+export function defaultThresholdOf(
+  settings:
+    Pick<BudgetSettings, 'defaultDuplicateThreshold'> | null | undefined,
+): number {
+  return settings?.defaultDuplicateThreshold ?? DEFAULT_DUPLICATE_THRESHOLD;
+}
+
 // The user's current default duplicate threshold: the stored one, else DEFAULT_DUPLICATE_THRESHOLD.
 // Takes a manager so it can read inside a transaction.
 export async function defaultDuplicateThresholdOf(
@@ -59,5 +68,5 @@ export async function defaultDuplicateThresholdOf(
     select: { userId: true, defaultDuplicateThreshold: true },
     where: { userId },
   });
-  return settings?.defaultDuplicateThreshold ?? DEFAULT_DUPLICATE_THRESHOLD;
+  return defaultThresholdOf(settings);
 }

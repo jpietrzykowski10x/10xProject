@@ -18,8 +18,6 @@ import type { CategoryCostTotal } from '../../subscriptions/subscription.types';
 
 // The description of a category without a duplicate warning, or within its limit.
 const NO_WARNING_NOTE = 'W normie';
-// The limit status of a category without a limit.
-const NO_LIMIT_NOTE = '—';
 
 // S-07/S-08: the full cost summary of the account, with the duplicate warning and the monthly limit
 // of every category and the overall limit next to the sums. It shows the store the shell loads (no
@@ -52,11 +50,8 @@ export class Dashboard {
   }
 
   // S-08: "Przekroczono limit", "Wykorzystano limit", "Zbliżasz się do limitu", "W normie" within
-  // the limit, or "—" without one.
+  // the limit. Only called for a category with a limit.
   protected limitStatusNote(item: CategoryCostTotal): string {
-    if (item.monthlyLimit === null) {
-      return NO_LIMIT_NOTE;
-    }
     return budgetAlertNote(item.budgetAlert) ?? NO_WARNING_NOTE;
   }
 

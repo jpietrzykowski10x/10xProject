@@ -334,31 +334,44 @@ describe('Budget — duplicate thresholds (e2e)', () => {
     ]);
   });
 
-  it("refuses to save another account's category and keeps its threshold", async () => {
-    const { owner, other } = await twoAccounts();
-    const ownersCategory = (
-      await postCategory(owner.cookie, 'Praca').expect(201)
-    ).body as CategoryResponse;
-    await putBudget(owner.cookie, {
-      categories: [{ categoryId: ownersCategory.id, duplicateThreshold: 5 }],
-    }).expect(200);
+  // S-08: an item with only a limit goes through the same ownership check as a threshold.
+  it.each([
+    ['a threshold', { duplicateThreshold: 0 }],
+    ['only a limit', { monthlyLimit: 10 }],
+  ])(
+    "refuses to save %s for another account's category and keeps its settings",
+    async (_case, fields) => {
+      const { owner, other } = await twoAccounts();
+      const ownersCategory = (
+        await postCategory(owner.cookie, 'Praca').expect(201)
+      ).body as CategoryResponse;
+      await putBudget(owner.cookie, {
+        categories: [{ categoryId: ownersCategory.id, duplicateThreshold: 5 }],
+      }).expect(200);
 
-    await putBudget(other.cookie, {
-      categories: [{ categoryId: ownersCategory.id, duplicateThreshold: 0 }],
-    }).expect(400);
+      await putBudget(other.cookie, {
+        categories: [{ categoryId: ownersCategory.id, ...fields }],
+      }).expect(400);
 
-    expect(thresholdIn(await getBudget(owner.cookie), ownersCategory.id)).toBe(
-      5,
-    );
-    expect(
-      (await getBudget(other.cookie)).categories.map((row) => row.category.id),
-    ).not.toContain(ownersCategory.id);
-    expect(
-      await repository(CategorySetting).countBy({
-        userId: await userIdOf(other.address),
-      }),
-    ).toBe(0);
-  });
+      const ownerBudget = await getBudget(owner.cookie);
+      expect(thresholdIn(ownerBudget, ownersCategory.id)).toBe(5);
+      expect(
+        ownerBudget.categories.find(
+          (row) => row.category.id === ownersCategory.id,
+        )?.monthlyLimit,
+      ).toBeNull();
+      expect(
+        (await getBudget(other.cookie)).categories.map(
+          (row) => row.category.id,
+        ),
+      ).not.toContain(ownersCategory.id);
+      expect(
+        await repository(CategorySetting).countBy({
+          userId: await userIdOf(other.address),
+        }),
+      ).toBe(0);
+    },
+  );
 
   it("keeps each account's default to itself", async () => {
     const { owner, other } = await twoAccounts();

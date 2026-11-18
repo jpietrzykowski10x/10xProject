@@ -33,7 +33,7 @@ import {
 } from '../../budget/budget.types';
 import { AppShell } from '../../layout/app-shell/app-shell';
 import { FORM_FIELD_DEFAULTS } from '../../shared/form-field-defaults';
-import { toGrosze } from '../../shared/grosze';
+import { numberToGrosze, toAmountText, toGrosze } from '../../shared/grosze';
 import { CostTotalsStore } from '../../subscriptions/cost-totals.store';
 import { optionalAmountValidator, parseAmount } from '../../subscriptions/subscription-validators';
 
@@ -72,9 +72,6 @@ function typedLimit(typed: string | undefined): number | null | undefined {
   return parseAmount(value) ?? undefined;
 }
 
-// The whole grosze of an amount, so limits are compared and summed on integers.
-const amountGrosze = (amount: number): number => Math.round(amount * 100);
-
 // A limit field keeps its saved limit when it is empty for no limit or holds the same amount
 // ("80" for "80.00"); anything else is a change, an invalid one too.
 function isLimitChanged(typed: string | undefined, saved: string | null): boolean {
@@ -85,15 +82,14 @@ function isLimitChanged(typed: string | undefined, saved: string | null): boolea
   if (limit === null || saved === null) {
     return limit !== null || saved !== null;
   }
-  return amountGrosze(limit) !== toGrosze(saved);
+  return numberToGrosze(limit) !== toGrosze(saved);
 }
-
-// The saved limit as the field shows it, the Polish way ("80.00" → "80,00"); empty for no limit.
-const limitText = (limit: string | null): string => (limit === null ? '' : limit.replace('.', ','));
 
 // What PUT /budget sends for the form: only the changed fields, and `categories` only with the
 // changed categories, each naming only its changed fields. A changed limit goes out as its amount,
 // a cleared one as null. Null when nothing differs from the baseline.
+// Called only for a valid form (submit() returns on form.invalid): an invalid typed limit maps to
+// null here, which would remove the saved limit.
 function budgetChanges(
   baseline: BudgetResponse,
   value: BudgetFormValue,
@@ -136,15 +132,15 @@ function limitsSumHint(value: BudgetFormValue, locale: string): string | null {
   }
   const sum = value.limits.reduce((total, typed) => {
     const limit = typedLimit(typed);
-    return limit === null || limit === undefined ? total : total + amountGrosze(limit);
+    return limit === null || limit === undefined ? total : total + numberToGrosze(limit);
   }, 0);
-  if (sum <= amountGrosze(overall)) {
+  if (sum <= numberToGrosze(overall)) {
     return null;
   }
   const format = (grosze: number) => formatNumber(grosze / 100, locale, '1.2-2');
   return (
     `Suma limitów kategorii (${format(sum)} zł) przekracza limit całościowy ` +
-    `(${format(amountGrosze(overall))} zł).`
+    `(${format(numberToGrosze(overall))} zł).`
   );
 }
 
@@ -278,10 +274,10 @@ export class Budget implements OnInit {
     limits.clear();
     for (const item of response.categories) {
       thresholds.push(this.fb.control(String(item.duplicateThreshold), thresholdValidators));
-      limits.push(this.fb.control(limitText(item.monthlyLimit), optionalAmountValidator));
+      limits.push(this.fb.control(toAmountText(item.monthlyLimit), optionalAmountValidator));
     }
     this.form.controls.defaultThreshold.setValue(String(response.defaultDuplicateThreshold));
-    this.form.controls.monthlyLimit.setValue(limitText(response.monthlyLimit));
+    this.form.controls.monthlyLimit.setValue(toAmountText(response.monthlyLimit));
     this.form.markAsPristine();
     this.form.markAsUntouched();
     this.state.set({ kind: 'ready', categories: response.categories });

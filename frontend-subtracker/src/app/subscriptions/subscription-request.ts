@@ -1,4 +1,5 @@
 import { parseDateOnly, toDateOnly } from '../shared/date-only';
+import { toAmountText } from '../shared/grosze';
 import { parseAmount } from './subscription-validators';
 import type {
   BillingCycle,
@@ -60,7 +61,7 @@ export function toSubscriptionFormValue(subscription: Subscription): Subscriptio
   return {
     name: subscription.name,
     categoryId: subscription.category.id,
-    amount: subscription.amount.replace('.', ','),
+    amount: toAmountText(subscription.amount),
     billingCycle: subscription.billingCycle,
     paymentMethod: subscription.paymentMethod,
     status: subscription.status,

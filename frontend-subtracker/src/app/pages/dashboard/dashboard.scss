@@ -1,3 +1,5 @@
+@use '../../../styles/budget-bar';
+
 // S-07: the cost summary. Light background, so the warning icon keeps the light alert colours
 // (--st-alert-warning / --st-alert-danger); only the navy shell remaps them.
 // The page fills the shell's content area and the window never scrolls: the header and the sums
@@ -78,59 +80,20 @@
   font-weight: 700;
 }
 
-// S-08: the overall monthly limit, a bar as in the cost totals column, here with the light alert
-// colours: lime below 80% of the limit, then orange, then red at the limit and above. The text says
-// the share and the state in words, so the colour is never the only sign.
+// S-08: the overall monthly limit, the bar of the cost totals column (styles/_budget-bar.scss) with
+// the light alert colours. Below 80% of the limit lime, the same as on the navy column;
+// lime is too pale for text on white, so there is no note then and the usage stays ink.
+@include budget-bar.budget-bar(
+  $block: '.dashboard__budget',
+  $fill: var(--st-lime),
+  $track: var(--st-line),
+  $height: 8px,
+  $usage-color: var(--st-ink-soft),
+  $note-weight: 600
+);
+
 .dashboard__budget {
-  --dashboard-budget: var(--st-lime);
-
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
   margin-top: 8px;
-}
-
-.dashboard__budget[data-alert='near'] {
-  --dashboard-budget: var(--st-alert-warning);
-}
-
-.dashboard__budget[data-alert='reached'],
-.dashboard__budget[data-alert='exceeded'] {
-  --dashboard-budget: var(--st-alert-danger);
-}
-
-.dashboard__budget-bar {
-  height: 8px;
-  overflow: hidden;
-  border-radius: 4px;
-  background: var(--st-line);
-}
-
-.dashboard__budget-fill {
-  height: 100%;
-  border-radius: inherit;
-  background: var(--dashboard-budget);
-}
-
-.dashboard__budget-text {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 2px 8px;
-  font-size: 13px;
-}
-
-.dashboard__budget-usage {
-  color: var(--st-ink-soft);
-}
-
-// Lime is too pale for text on white, so below 80% there is no note and the usage stays ink.
-.dashboard__budget-note {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--dashboard-budget);
-  font-weight: 600;
 }
 
 .dashboard__no-limit {
