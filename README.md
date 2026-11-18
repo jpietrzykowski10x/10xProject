@@ -155,6 +155,29 @@ Logi większe niż 20 MB są czyszczone co niedzielę o 04:00 (crontab).
 
 `~/apps/subtracker/api/shared/.env` (chmod 600) to konfiguracja API: baza, CORS, ciasteczko sesji i SMTP. Szablon lokalnie: `backend-subtracker/.env.mydevil`, opis kluczy: `backend-subtracker/.env.example`. Aplikacja i migracje sprawdzają ją przy starcie, więc brakujący klucz zatrzymuje deploy na etapie migracji, a poprzednia wersja startuje ponownie.
 
+### Postęp roadmapy (`/roadmap-project`)
+
+Skill Claude Code w `.claude/skills/roadmap-project/` (nasz, w repo, nie z `10x` CLI). Polecenie `/roadmap-project` w sesji Claude Code:
+
+- liczy procent realizacji z `context/foundation/roadmap.md`: zrobione pozycje F/S, pokrycie wymagań must-have (FR z `Scope anchors`), etapy planu testów (§3 w `test-plan.md`) i postęp każdego streamu;
+- generuje stronę z paskami postępu, grafem zależności (z `Prerequisites`) i listą tego, co zostało, i publikuje ją jako prywatny Artifact na claude.ai;
+- przy kolejnym uruchomieniu odświeża stronę pod tym samym adresem (zapisanym w `state.json`).
+
+Warianty: `/roadmap-project next S-10` wskazuje pozycję oznaczaną jako następna, `/roadmap-project new` tworzy osobną stronę. Skill tylko czyta dokumenty; wygląd strony zmienia się w `scripts/build-roadmap-page.mjs`. Sam skrypt można też uruchomić bez Claude Code:
+
+```sh
+node .claude/skills/roadmap-project/scripts/build-roadmap-page.mjs --out roadmapa.html
+```
+
+#### Użycie w innym projekcie
+
+1. Skopiuj folder `.claude/skills/roadmap-project/` do `.claude/skills/roadmap-project/` drugiego repozytorium (kopia na projekt, nie do `~/.claude/skills/`: `state.json` trzyma adres strony jednego projektu).
+2. Wyczyść `state.json` do `{}`. Inaczej pierwsze uruchomienie nadpisze stronę SubTrackera. Opcjonalnie wpisz `"title"` (domyślnie „Roadmapa <project z frontmattera roadmapy>”).
+3. Projekt potrzebuje `context/foundation/roadmap.md` w formacie `/10x-roadmap`: bloki `### F-NN:` / `### S-NN:` z liniami `- **Status:**`, `- **Prerequisites:**`, `- **PRD refs:**`, `- **Outcome:**`, a dla pełnego obrazu także `## Milestone` z `Scope anchors`, tabelę `## Streams` i sekcję `## Done` z datami archiwum. Brakujące sekcje są pomijane. `test-plan.md` i `fyi/todo-next.txt` są opcjonalne.
+4. Kolory strony to paleta SubTrackera (zmienne w `:root` w skrypcie); zmień je, jeśli projekt ma własne.
+5. Jeśli repozytorium ignoruje `.claude/skills/`, dodaj wyjątek w `.gitignore` (np. `!/.claude/skills/roadmap-project/`) i zacommituj folder.
+6. Uruchom nową sesję Claude Code (skille są wczytywane przy starcie) i wpisz `/roadmap-project`.
+
 ### Dokumentacja projektu
 
 - `CLAUDE.md` — skrót architektury, poleceń i pułapek (także dla agentów AI).
@@ -316,6 +339,29 @@ Logs larger than 20 MB are emptied every Sunday at 04:00 (crontab).
 #### Configuration on the server
 
 `~/apps/subtracker/api/shared/.env` (chmod 600) holds the API configuration: database, CORS, session cookie and SMTP. Local template: `backend-subtracker/.env.mydevil`; keys are described in `backend-subtracker/.env.example`. The app and the migrations validate it at startup, so a missing key stops the deploy at the migration step and the previous version starts again.
+
+### Roadmap progress (`/roadmap-project`)
+
+A Claude Code skill in `.claude/skills/roadmap-project/` (ours, committed, not from the `10x` CLI). The `/roadmap-project` command in a Claude Code session:
+
+- computes progress from `context/foundation/roadmap.md`: finished F/S items, coverage of the must-have requirements (FRs from `Scope anchors`), test-plan stages (§3 of `test-plan.md`) and each stream;
+- generates a page with progress bars, the dependency graph (from `Prerequisites`) and what is left, and publishes it as a private Artifact on claude.ai;
+- on the next run refreshes the page at the same address (kept in `state.json`).
+
+Variants: `/roadmap-project next S-10` sets the item marked as next, `/roadmap-project new` creates a separate page. The skill only reads the documents; change the page's look in `scripts/build-roadmap-page.mjs`. The script also runs without Claude Code:
+
+```sh
+node .claude/skills/roadmap-project/scripts/build-roadmap-page.mjs --out roadmap.html
+```
+
+#### Using it in another project
+
+1. Copy the `.claude/skills/roadmap-project/` folder to `.claude/skills/roadmap-project/` in the other repository (one copy per project, not `~/.claude/skills/`: `state.json` holds one project's page address).
+2. Reset `state.json` to `{}`, or the first run will overwrite the SubTracker page. Optionally set `"title"` (default: "Roadmapa <project from the roadmap frontmatter>").
+3. The project needs `context/foundation/roadmap.md` in the `/10x-roadmap` format: `### F-NN:` / `### S-NN:` blocks with `- **Status:**`, `- **Prerequisites:**`, `- **PRD refs:**` and `- **Outcome:**` lines, and for the full picture also `## Milestone` with `Scope anchors`, a `## Streams` table and a `## Done` section with archive dates. Missing sections are skipped. `test-plan.md` and `fyi/todo-next.txt` are optional.
+4. The page uses the SubTracker palette (the `:root` variables in the script); change them if the project has its own.
+5. If the repository ignores `.claude/skills/`, add an exception to `.gitignore` (e.g. `!/.claude/skills/roadmap-project/`) and commit the folder.
+6. Start a new Claude Code session (skills load at startup) and type `/roadmap-project`.
 
 ### Project documentation
 
