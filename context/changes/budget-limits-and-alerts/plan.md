@@ -380,4 +380,4 @@ Nowe kolumny są nullable, więc migracja nie wymaga backfillu ani okna na danyc
 
 #### Manual
 
-- [x] 4.2 Dokumenty opisują reguły zgodnie z kodem (przegląd przy `/10x-impl-review`)
+- [x] 4.2 Dokumenty opisują reguły zgodnie z kodem (przegląd przy `/10x-impl-review`) — cec2c9d
