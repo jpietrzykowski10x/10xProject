@@ -227,6 +227,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Opiera się na sumach z S-04 — błąd tam daje fałszywe alerty; progi stałe 80/100% (konfigurowalne odłożone jako FR-017).
+- **Notes (2026-11-18):** alert ma trzy stany: pomarańczowy „zbliżasz się do limitu” (wydatki ≥ 80% i < 100%), czerwony „wykorzystano limit” (dokładnie 100%) i „przekroczono limit” (> 100%); wydatki 0 zł nigdy nie dają alertu. Limit jest miesięczny (porównywany z sumą miesięczną z S-04), opcjonalny (puste = brak) i może wynosić 0 zł (pierwszy wydatek go przekracza). Kategoria z limitem, ale bez aktywnych subskrypcji jest widoczna tylko na `/budget`, nie w kolumnie sum ani na `/dashboard`. Suma limitów kategorii może przekraczać limit całościowy: zapis nie jest blokowany, `/budget` pokazuje podpowiedź. Limity ustawia się na `/budget` razem z progami; kolumna sum pokazuje pasek wykorzystania limitu całościowego, `/dashboard` limit całościowy i kolumny limitu kategorii.
 - **Status:** in-progress
 
 ### S-09: Zarządzanie kontami przez administratora

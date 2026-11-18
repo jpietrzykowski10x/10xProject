@@ -362,21 +362,21 @@ Nowe kolumny są nullable, więc migracja nie wymaga backfillu ani okna na danyc
 
 #### Automated
 
-- [x] 3.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci`
-- [x] 3.2 Build produkcyjny przechodzi: `npm run build`
-- [x] 3.3 Testy e2e przechodzą na buildzie e2e: `npm run build:e2e && npm run e2e`
+- [x] 3.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci` — 89e89a5
+- [x] 3.2 Build produkcyjny przechodzi: `npm run build` — 89e89a5
+- [x] 3.3 Testy e2e przechodzą na buildzie e2e: `npm run build:e2e && npm run e2e` — 89e89a5
 
 #### Manual
 
-- [x] 3.4 Na `/budget` ustawienie limitu całościowego poniżej sumy miesięcznej zmienia pasek w kolumnie na czerwony bez przeładowania strony; wyczyszczenie limitu usuwa pasek
-- [x] 3.5 Limit kategorii ustawiony na `/budget` widać w rozwiniętym wierszu i na `/dashboard`; podpowiedź o sumie limitów pojawia się, gdy suma przekracza limit całościowy
-- [x] 3.6 `/dashboard` na desktopie i telefonie pokazuje limit całościowy z paskiem oraz kolumny limitu
+- [x] 3.4 Na `/budget` ustawienie limitu całościowego poniżej sumy miesięcznej zmienia pasek w kolumnie na czerwony bez przeładowania strony; wyczyszczenie limitu usuwa pasek — 89e89a5
+- [x] 3.5 Limit kategorii ustawiony na `/budget` widać w rozwiniętym wierszu i na `/dashboard`; podpowiedź o sumie limitów pojawia się, gdy suma przekracza limit całościowy — 89e89a5
+- [x] 3.6 `/dashboard` na desktopie i telefonie pokazuje limit całościowy z paskiem oraz kolumny limitu — 89e89a5
 
 ### Phase 4: Dokumentacja i weryfikacja
 
 #### Automated
 
-- [ ] 4.1 Formatowanie kodu bez zmian treści po prettierze: `npm run format` w `backend-subtracker/` nie zmienia treści plików
+- [x] 4.1 Formatowanie kodu bez zmian treści po prettierze: `npm run format` w `backend-subtracker/` nie zmienia treści plików
 
 #### Manual
 

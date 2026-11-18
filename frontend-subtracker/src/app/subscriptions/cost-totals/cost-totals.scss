@@ -90,28 +90,32 @@
 
 // The expanded categories scroll on their own, under the "Kategorie" heading, which stays: in the
 // desktop column the list takes only the height the shell leaves it (min-height: 0), in the phone
-// header it stops at a share of the screen. The padding (cancelled by the margins) keeps room inside
-// the scroll area for the outline of a warned row and the heading's focus outline.
+// header it stops at a share of the screen. The side padding (cancelled by the margins) keeps room
+// inside the scroll area for the outline of a warned row.
 .totals__categories {
   min-height: 0;
   margin: 12px -8px 0;
-  padding: 4px 8px 0;
+  padding: 0 8px;
   overflow-y: auto;
 }
 
+// The sticky heading covers the whole width of the scroll area, its side padding included, so the
+// rows scrolling under it never show around "Kategorie".
 .totals__summary {
   position: sticky;
   z-index: 1;
   top: 0;
-  padding: 4px 0;
+  margin-inline: -8px;
+  padding: 8px 8px 4px;
   background: var(--st-navy);
   font-weight: 600;
   cursor: pointer;
 
-  // The global focus outline is navy, which disappears on the navy column and header.
+  // The global focus outline is navy, which disappears on the navy column and header. Drawn inside
+  // the heading, so the scroll area does not clip it.
   &:focus-visible {
     outline: 2px solid #fff;
-    outline-offset: 2px;
+    outline-offset: -2px;
   }
 }
 
