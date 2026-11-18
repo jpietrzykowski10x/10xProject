@@ -2,7 +2,7 @@
   <div class="dashboard">
     <div class="dashboard__header">
       <h1 class="dashboard__title">Dashboard</h1>
-      <a class="dashboard__link" routerLink="/budget">Zmień progi</a>
+      <a mat-stroked-button routerLink="/budget">Zmień progi i limity</a>
     </div>
 
     @let current = state();
@@ -34,6 +34,41 @@
             {{ totals.yearly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
           </div>
         </div>
+        <!-- S-08: the overall monthly limit, its bar and text as in the cost totals column. -->
+        <div class="dashboard__sum dashboard__limit">
+          <div class="dashboard__sum-label">Kwotowy limit miesięczny</div>
+          @if (budget(); as budget) {
+            <div
+              class="dashboard__budget"
+              [attr.data-alert]="budget.alert === 'none' ? null : budget.alert"
+            >
+              <div
+                class="dashboard__budget-bar"
+                role="progressbar"
+                aria-label="Wykorzystanie limitu miesięcznego"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                [attr.aria-valuenow]="budget.fill"
+                [attr.aria-valuetext]="budget.usage"
+              >
+                <div class="dashboard__budget-fill" [style.width.%]="budget.fill"></div>
+              </div>
+              <div class="dashboard__budget-text">
+                <!-- "170,00 z 200,00 zł (85%)" -->
+                <span class="dashboard__budget-usage st-amount">{{ budget.usage }}</span>
+                <!-- The state in words next to a decorative icon, so colour is not the only sign. -->
+                @if (budget.level !== 'none') {
+                  <span class="dashboard__budget-note">
+                    <app-duplicate-warning-icon [level]="budget.level" />
+                    {{ budget.note }}
+                  </span>
+                }
+              </div>
+            </div>
+          } @else {
+            <p class="dashboard__no-limit">Brak limitu. <a routerLink="/budget">Ustaw limit</a></p>
+          }
+        </div>
       </div>
 
       <h2 class="dashboard__subtitle">Kategorie</h2>
@@ -50,12 +85,15 @@
               <th scope="col" class="dashboard__number">Rocznie</th>
               <th scope="col" class="dashboard__number">Subskrypcje</th>
               <th scope="col" class="dashboard__number">Próg</th>
-              <th scope="col">Status</th>
+              <th scope="col">Próg — status</th>
+              <th scope="col" class="dashboard__number">Limit</th>
+              <th scope="col">Limit — status</th>
             </tr>
           </thead>
           <tbody>
             @for (item of totals.categories; track item.category.id) {
               @let warning = item.duplicateWarning;
+              @let limitLevel = budgetAlertLevel(item.budgetAlert);
               <tr
                 class="dashboard__row"
                 [attr.data-category]="item.category.id"
@@ -79,6 +117,26 @@
                     {{ statusNote(item) }}
                   </span>
                 </td>
+                <td class="dashboard__number dashboard__limit-amount st-amount">
+                  @if (item.monthlyLimit !== null) {
+                    {{ item.monthlyLimit | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
+                  } @else {
+                    —
+                  }
+                </td>
+                <td>
+                  <span
+                    class="dashboard__limit-status"
+                    [attr.data-warning]="limitLevel === 'none' ? null : limitLevel"
+                    [attr.data-alert]="item.budgetAlert"
+                  >
+                    <!-- Decorative: the words next to it say what happened. -->
+                    @if (limitLevel !== 'none') {
+                      <app-duplicate-warning-icon [level]="limitLevel" />
+                    }
+                    {{ limitStatusNote(item) }}
+                  </span>
+                </td>
               </tr>
             }
           </tbody>
@@ -89,7 +147,12 @@
       <ul class="dashboard__cards" aria-label="Kategorie" tabindex="0">
         @for (item of totals.categories; track item.category.id) {
           @let warning = item.duplicateWarning;
-          <li class="dashboard__card" [attr.data-warning]="warning">
+          @let limitLevel = budgetAlertLevel(item.budgetAlert);
+          <li
+            class="dashboard__card"
+            [attr.data-category]="item.category.id"
+            [attr.data-warning]="warning"
+          >
             <div class="dashboard__card-head">
               <span class="dashboard__name">{{ item.category.name }}</span>
               <span class="st-amount">
@@ -108,6 +171,20 @@
               }
               {{ statusNote(item) }}
             </div>
+            <!-- S-08: "Limit: 90,00 z 80,00 zł" and its state; nothing without a limit. -->
+            @if (limitNote(item); as limit) {
+              <div class="dashboard__note st-amount">{{ limit }}</div>
+              <div
+                class="dashboard__limit-status"
+                [attr.data-warning]="limitLevel === 'none' ? null : limitLevel"
+                [attr.data-alert]="item.budgetAlert"
+              >
+                @if (limitLevel !== 'none') {
+                  <app-duplicate-warning-icon [level]="limitLevel" />
+                }
+                {{ limitStatusNote(item) }}
+              </div>
+            }
           </li>
         }
       </ul>

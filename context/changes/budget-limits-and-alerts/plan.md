@@ -350,27 +350,27 @@ Nowe kolumny są nullable, więc migracja nie wymaga backfillu ani okna na danyc
 
 #### Automated
 
-- [x] 2.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci` (z `frontend-subtracker/`)
-- [x] 2.2 Build produkcyjny przechodzi (AOT, budżet stylów): `npm run build`
+- [x] 2.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci` (z `frontend-subtracker/`) — e632db9
+- [x] 2.2 Build produkcyjny przechodzi (AOT, budżet stylów): `npm run build` — e632db9
 
 #### Manual
 
-- [x] 2.3 Na desktopie i telefonie pasek limitu pod sumą jest czytelny na granacie w trzech kolorach (poniżej 80%, 80–99%, ≥100%), a bez limitu go nie ma
-- [x] 2.4 Rozwinięty wiersz kategorii z limitem pokazuje „Limit: …” i alert; kategoria z oboma alertami ma jeden obrys i dwa opisy
+- [x] 2.3 Na desktopie i telefonie pasek limitu pod sumą jest czytelny na granacie w trzech kolorach (poniżej 80%, 80–99%, ≥100%), a bez limitu go nie ma — e632db9
+- [x] 2.4 Rozwinięty wiersz kategorii z limitem pokazuje „Limit: …” i alert; kategoria z oboma alertami ma jeden obrys i dwa opisy — e632db9
 
 ### Phase 3: Frontend: `/budget` i `/dashboard`
 
 #### Automated
 
-- [ ] 3.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci`
-- [ ] 3.2 Build produkcyjny przechodzi: `npm run build`
-- [ ] 3.3 Testy e2e przechodzą na buildzie e2e: `npm run build:e2e && npm run e2e`
+- [x] 3.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci`
+- [x] 3.2 Build produkcyjny przechodzi: `npm run build`
+- [x] 3.3 Testy e2e przechodzą na buildzie e2e: `npm run build:e2e && npm run e2e`
 
 #### Manual
 
-- [ ] 3.4 Na `/budget` ustawienie limitu całościowego poniżej sumy miesięcznej zmienia pasek w kolumnie na czerwony bez przeładowania strony; wyczyszczenie limitu usuwa pasek
-- [ ] 3.5 Limit kategorii ustawiony na `/budget` widać w rozwiniętym wierszu i na `/dashboard`; podpowiedź o sumie limitów pojawia się, gdy suma przekracza limit całościowy
-- [ ] 3.6 `/dashboard` na desktopie i telefonie pokazuje limit całościowy z paskiem oraz kolumny limitu
+- [x] 3.4 Na `/budget` ustawienie limitu całościowego poniżej sumy miesięcznej zmienia pasek w kolumnie na czerwony bez przeładowania strony; wyczyszczenie limitu usuwa pasek
+- [x] 3.5 Limit kategorii ustawiony na `/budget` widać w rozwiniętym wierszu i na `/dashboard`; podpowiedź o sumie limitów pojawia się, gdy suma przekracza limit całościowy
+- [x] 3.6 `/dashboard` na desktopie i telefonie pokazuje limit całościowy z paskiem oraz kolumny limitu
 
 ### Phase 4: Dokumentacja i weryfikacja
 

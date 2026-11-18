@@ -2,12 +2,19 @@
 import { formatNumber } from '@angular/common';
 import { daysFromToday } from '../shared/date-only';
 import { polishPlural } from '../shared/polish-plural';
-import { budgetUsagePercent, countBudgetAlerts } from './budget-alert';
+import {
+  type AlertLevel,
+  budgetAlertLevel,
+  budgetBarFill,
+  budgetUsagePercent,
+  countBudgetAlerts,
+} from './budget-alert';
 import { countDuplicateWarnings } from './duplicate-warning';
 import type {
   BillingCycle,
   BudgetAlert,
   CategoryCostTotal,
+  CostTotals,
   PaymentMethod,
   Subscription,
   SubscriptionStatus,
@@ -252,4 +259,32 @@ export function categoryAlertsSummary(categories: readonly CategoryCostTotal[]):
     (part): part is string => part !== null,
   );
   return parts.length > 0 ? parts.join(', ') : null;
+}
+
+// S-08: the overall monthly limit as the cost totals column and /dashboard show it next to the
+// monthly sum.
+export interface BudgetBar {
+  // How full the bar is, 0–100, capped at a full bar.
+  fill: number;
+  // "170,00 z 200,00 zł (85%)"
+  usage: string;
+  alert: BudgetAlert;
+  level: AlertLevel;
+  // "Zbliżasz się do limitu"; null without an alert.
+  note: string | null;
+}
+
+// The bar of the overall monthly limit; null without a limit (no bar, no text).
+export function budgetBar(totals: CostTotals, locale: string): BudgetBar | null {
+  const { monthly, monthlyLimit, budgetAlert } = totals;
+  if (monthlyLimit === null) {
+    return null;
+  }
+  return {
+    fill: budgetBarFill(monthly, monthlyLimit),
+    usage: budgetUsageText(monthly, monthlyLimit, locale),
+    alert: budgetAlert,
+    level: budgetAlertLevel(budgetAlert),
+    note: budgetAlertNote(budgetAlert),
+  };
 }

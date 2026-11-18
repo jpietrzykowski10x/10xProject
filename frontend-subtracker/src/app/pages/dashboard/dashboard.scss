@@ -24,11 +24,6 @@
   font-weight: 700;
 }
 
-.dashboard__link {
-  color: var(--mat-sys-primary);
-  font-weight: 600;
-}
-
 // Loading and empty states: a white panel where the summary appears.
 .dashboard__panel {
   margin: 0;
@@ -81,6 +76,71 @@
 .dashboard__sum-amount {
   font: var(--mat-sys-headline-small);
   font-weight: 700;
+}
+
+// S-08: the overall monthly limit, a bar as in the cost totals column, here with the light alert
+// colours: lime below 80% of the limit, then orange, then red at the limit and above. The text says
+// the share and the state in words, so the colour is never the only sign.
+.dashboard__budget {
+  --dashboard-budget: var(--st-lime);
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.dashboard__budget[data-alert='near'] {
+  --dashboard-budget: var(--st-alert-warning);
+}
+
+.dashboard__budget[data-alert='reached'],
+.dashboard__budget[data-alert='exceeded'] {
+  --dashboard-budget: var(--st-alert-danger);
+}
+
+.dashboard__budget-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--st-line);
+}
+
+.dashboard__budget-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--dashboard-budget);
+}
+
+.dashboard__budget-text {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 8px;
+  font-size: 13px;
+}
+
+.dashboard__budget-usage {
+  color: var(--st-ink-soft);
+}
+
+// Lime is too pale for text on white, so below 80% there is no note and the usage stays ink.
+.dashboard__budget-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--dashboard-budget);
+  font-weight: 600;
+}
+
+.dashboard__no-limit {
+  margin: 8px 0 0;
+  color: var(--st-muted);
+
+  a {
+    color: var(--mat-sys-primary);
+    font-weight: 600;
+  }
 }
 
 .dashboard__subtitle {
@@ -147,10 +207,22 @@
 }
 
 // The icon and the words; colour is never the only information.
-.dashboard__status {
+.dashboard__status,
+.dashboard__limit-status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+// S-08: the limit status takes the colour of its own alert (near orange, at or above it red).
+.dashboard__limit-status[data-warning='reached'] {
+  color: var(--st-alert-warning);
+  font-weight: 600;
+}
+
+.dashboard__limit-status[data-warning='exceeded'] {
+  color: var(--st-alert-danger);
+  font-weight: 600;
 }
 
 .dashboard__row[data-warning='reached'] .dashboard__status,

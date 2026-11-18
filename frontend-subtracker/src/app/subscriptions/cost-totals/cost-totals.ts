@@ -3,33 +3,21 @@ import { Component, LOCALE_ID, computed, inject, input } from '@angular/core';
 import {
   type AlertLevel,
   budgetAlertLevel,
-  budgetBarFill,
   categoryAlertLevel,
   mostSevereAlertLevel,
 } from '../budget-alert';
 import { CostTotalsStore } from '../cost-totals.store';
 import { DuplicateWarningIcon } from '../duplicate-warning-icon/duplicate-warning-icon';
 import {
+  type BudgetBar,
   budgetAlertNote,
-  budgetUsageText,
+  budgetBar,
   categoryAlertsSummary,
   categoryLimitNote,
   duplicateWarningNote,
   subscriptionCountLabel,
 } from '../subscription-labels';
-import type { BudgetAlert, CategoryCostTotal } from '../subscription.types';
-
-// The overall monthly limit as the column shows it under the monthly sum (S-08).
-interface BudgetBar {
-  // 0–100, capped at a full bar.
-  fill: number;
-  // "170,00 z 200,00 zł (85%)"
-  usage: string;
-  alert: BudgetAlert;
-  level: AlertLevel;
-  // "Zbliżasz się do limitu"; null without an alert.
-  note: string | null;
-}
+import type { CategoryCostTotal } from '../subscription.types';
 
 // F2: the cost totals of the signed-in account, used twice by the app shell: in the navy desktop
 // column (`column`) and as the second row of the navy phone header (`bar`). The variant changes
@@ -54,20 +42,11 @@ export class CostTotals {
   protected readonly budgetAlertLevel = budgetAlertLevel;
   protected readonly categoryAlertLevel = categoryAlertLevel;
 
-  // S-08: the bar of the overall monthly limit; null without a limit (no bar, no text).
+  // S-08: the bar of the overall monthly limit under the monthly sum; null without a limit (no bar,
+  // no text).
   protected readonly budget = computed<BudgetBar | null>(() => {
     const current = this.state();
-    if (current.kind !== 'ready' || current.totals.monthlyLimit === null) {
-      return null;
-    }
-    const { monthly, monthlyLimit, budgetAlert } = current.totals;
-    return {
-      fill: budgetBarFill(monthly, monthlyLimit),
-      usage: budgetUsageText(monthly, monthlyLimit, this.locale),
-      alert: budgetAlert,
-      level: budgetAlertLevel(budgetAlert),
-      note: budgetAlertNote(budgetAlert),
-    };
+    return current.kind === 'ready' ? budgetBar(current.totals, this.locale) : null;
   });
 
   // S-07/S-08: the most severe state of the categories, duplicates and limits together, shown on the
