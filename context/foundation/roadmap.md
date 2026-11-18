@@ -3,7 +3,7 @@ project: SubTracker
 version: 1
 status: draft
 created: 2026-10-16
-updated: 2026-11-17
+updated: 2026-11-18
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -51,7 +51,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-05 | subscription-lifecycle            | subskrypcja sama przechodzi trial → active i cancelled_pending → cancelled        | S-02          | FR-013                        | done |
 | S-06 | trial-end-reminder                | użytkownik dostaje e-mail 7 dni przed końcem okresu próbnego                      | S-05          | FR-014                        | done |
 | S-07 | category-duplicate-warning        | użytkownik widzi ostrzeżenie, gdy kategoria przekroczy jego próg subskrypcji      | S-04          | FR-009, FR-005                | done |
-| S-08 | budget-limits-and-alerts          | użytkownik ustawia limity budżetu i widzi alert przy 80% / 100%                   | S-04          | FR-010, FR-011, FR-005        | in-progress |
+| S-08 | budget-limits-and-alerts          | użytkownik ustawia limity budżetu i widzi alert przy 80% / 100%                   | S-04          | FR-010, FR-011, FR-005        | done        |
 | S-09 | admin-account-management          | administrator odblokowuje konto lub resetuje dostęp i wgląda w dane użytkownika   | S-02          | FR-002                        | proposed |
 | S-10 | account-deletion                  | użytkownik sam usuwa swoje konto razem ze wszystkimi danymi                       | S-02          | NFR (usunięcie danych w 30 dni) | proposed |
 
@@ -228,7 +228,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:** —
 - **Risk:** Opiera się na sumach z S-04 — błąd tam daje fałszywe alerty; progi stałe 80/100% (konfigurowalne odłożone jako FR-017).
 - **Notes (2026-11-18):** alert ma trzy stany: pomarańczowy „zbliżasz się do limitu” (wydatki ≥ 80% i < 100%), czerwony „wykorzystano limit” (dokładnie 100%) i „przekroczono limit” (> 100%); wydatki 0 zł nigdy nie dają alertu. Limit jest miesięczny (porównywany z sumą miesięczną z S-04), opcjonalny (puste = brak) i może wynosić 0 zł (pierwszy wydatek go przekracza). Kategoria z limitem, ale bez aktywnych subskrypcji jest widoczna tylko na `/budget`, nie w kolumnie sum ani na `/dashboard`. Suma limitów kategorii może przekraczać limit całościowy: zapis nie jest blokowany, `/budget` pokazuje podpowiedź. Limity ustawia się na `/budget` razem z progami; kolumna sum pokazuje pasek wykorzystania limitu całościowego, `/dashboard` limit całościowy i kolumny limitu kategorii.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-09: Zarządzanie kontami przez administratora
 
@@ -313,3 +313,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-05: użytkownik anuluje subskrypcję (trafia do cancelled_pending), a system sam przenosi subskrypcje trial → active po dacie końca triala i cancelled_pending → cancelled po dacie następnego rozliczenia.** — Archived 2026-11-16 → `context/archive/2026-11-15-subscription-lifecycle/`. Lesson: —.
 - **S-06: użytkownik z subskrypcją w trialu dostaje e-mail 7 dni przed końcem okresu próbnego — dokładnie raz.** — Archived 2026-11-16 → `context/archive/2026-11-16-trial-end-reminder/`. Lesson: —.
 - **S-07: użytkownik ustawia próg aktywnych subskrypcji per kategoria (domyślnie 2) i po dodaniu lub edycji subskrypcji widzi na dashboardzie flagę przy kategorii, która go przekracza.** — Archived 2026-11-17 → `context/archive/2026-11-17-category-duplicate-warning/`. Lesson: —.
+- **S-08: użytkownik ustawia miesięczny limit całościowy i limity per kategoria, a dashboard pokazuje alert przy 80% i 100% limitu, przeliczany po dodaniu lub edycji subskrypcji.** — Archived 2026-11-18 → `context/archive/2026-11-17-budget-limits-and-alerts/`. Lesson: —.
