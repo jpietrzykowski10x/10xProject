@@ -1,5 +1,5 @@
 import { FormControl } from '@angular/forms';
-import { amountValidator, parseAmount } from './subscription-validators';
+import { amountValidator, optionalAmountValidator, parseAmount } from './subscription-validators';
 
 // The oracle is the API contract (backend create-subscription DTO): the amount is a number with at
 // most two decimals, from 0 to 99 999,99. Typed the Polish way: a comma or a dot as the decimal
@@ -48,6 +48,22 @@ describe('amountValidator', () => {
 
   it.each(REJECTED)('flags %j', (value) => {
     expect(amountValidator(new FormControl(value, { nonNullable: true }))).toEqual({
+      amount: true,
+    });
+  });
+});
+
+describe('optionalAmountValidator', () => {
+  it.each(['', '   '])('accepts the empty %j (no limit)', (value) => {
+    expect(optionalAmountValidator(new FormControl(value, { nonNullable: true }))).toBeNull();
+  });
+
+  it.each(ACCEPTED)('accepts %j', (value) => {
+    expect(optionalAmountValidator(new FormControl(value, { nonNullable: true }))).toBeNull();
+  });
+
+  it.each(REJECTED.filter((value) => value !== ''))('flags %j', (value) => {
+    expect(optionalAmountValidator(new FormControl(value, { nonNullable: true }))).toEqual({
       amount: true,
     });
   });

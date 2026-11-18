@@ -7,8 +7,20 @@ import type { CostTotals } from './subscription.types';
 
 const TOTALS_URL = `${environment.apiUrl}/subscriptions/totals`;
 
-const BEFORE: CostTotals = { monthly: '43.00', yearly: '516.00', categories: [] };
-const AFTER: CostTotals = { monthly: '0.00', yearly: '0.00', categories: [] };
+const BEFORE: CostTotals = {
+  monthly: '43.00',
+  yearly: '516.00',
+  monthlyLimit: null,
+  budgetAlert: 'none',
+  categories: [],
+};
+const AFTER: CostTotals = {
+  monthly: '0.00',
+  yearly: '0.00',
+  monthlyLimit: null,
+  budgetAlert: 'none',
+  categories: [],
+};
 
 function setUp() {
   TestBed.configureTestingModule({

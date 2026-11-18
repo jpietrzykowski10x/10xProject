@@ -36,6 +36,8 @@ const NETFLIX: Subscription = {
 const NETFLIX_TOTALS: CostTotals = {
   monthly: '43.00',
   yearly: '516.00',
+  monthlyLimit: null,
+  budgetAlert: 'none',
   categories: [
     {
       category: NETFLIX.category,
@@ -44,10 +46,18 @@ const NETFLIX_TOTALS: CostTotals = {
       subscriptionCount: 1,
       duplicateThreshold: 3,
       duplicateWarning: 'none',
+      monthlyLimit: null,
+      budgetAlert: 'none',
     },
   ],
 };
-const NO_TOTALS: CostTotals = { monthly: '0.00', yearly: '0.00', categories: [] };
+const NO_TOTALS: CostTotals = {
+  monthly: '0.00',
+  yearly: '0.00',
+  monthlyLimit: null,
+  budgetAlert: 'none',
+  categories: [],
+};
 
 function createPage() {
   TestBed.configureTestingModule({

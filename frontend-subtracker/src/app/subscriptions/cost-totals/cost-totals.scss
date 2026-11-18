@@ -1,10 +1,13 @@
+@use '../../../styles/budget-bar';
+
 // On the navy column and header: white text, labels and notes in --st-navy-soft. Lime stays
 // reserved for the budget bar (S-08).
 :host {
   display: flex;
   flex-direction: column;
   color: #fff;
-  // S-07: the alert colours of the duplicate warning icon, remapped to the pair readable on navy.
+  // S-07/S-08: the alert colours of the warning icon, the budget bar and the descriptions, remapped
+  // to the pair readable on navy.
   --st-alert-warning: var(--st-alert-warning-on-navy);
   --st-alert-danger: var(--st-alert-danger-on-navy);
 }
@@ -36,30 +39,43 @@
   font-size: 16px;
 }
 
+// S-08: the bar of the overall monthly limit (styles/_budget-bar.scss), lime on the navy track.
+@include budget-bar.budget-bar(
+  $block: '.totals__budget',
+  $fill: var(--st-lime),
+  $track: var(--st-navy-line),
+  $height: 6px,
+  $usage-color: var(--st-on-navy-soft)
+);
+
 // The expanded categories scroll on their own, under the "Kategorie" heading, which stays: in the
 // desktop column the list takes only the height the shell leaves it (min-height: 0), in the phone
-// header it stops at a share of the screen. The padding (cancelled by the margins) keeps room inside
-// the scroll area for the outline of a warned row and the heading's focus outline.
+// header it stops at a share of the screen. The side padding (cancelled by the margins) keeps room
+// inside the scroll area for the outline of a warned row.
 .totals__categories {
   min-height: 0;
   margin: 12px -8px 0;
-  padding: 4px 8px 0;
+  padding: 0 8px;
   overflow-y: auto;
 }
 
+// The sticky heading covers the whole width of the scroll area, its side padding included, so the
+// rows scrolling under it never show around "Kategorie".
 .totals__summary {
   position: sticky;
   z-index: 1;
   top: 0;
-  padding: 4px 0;
+  margin-inline: -8px;
+  padding: 8px 8px 4px;
   background: var(--st-navy);
   font-weight: 600;
   cursor: pointer;
 
-  // The global focus outline is navy, which disappears on the navy column and header.
+  // The global focus outline is navy, which disappears on the navy column and header. Drawn inside
+  // the heading, so the scroll area does not clip it.
   &:focus-visible {
     outline: 2px solid #fff;
-    outline-offset: 2px;
+    outline-offset: -2px;
   }
 }
 
@@ -105,8 +121,8 @@
   margin-left: 6px;
 }
 
-// S-07: a category with a duplicate warning gets a 1px outline and a description in the colour of
-// its state. The negative margin keeps its text aligned with the rows around it.
+// S-07/S-08: a category with a duplicate warning or a limit alert gets one 1px outline in the colour
+// of its most severe state, and a description of each. The negative margin keeps its text aligned with the rows around it.
 .totals__category[data-warning] {
   --totals-warning: var(--st-alert-warning);
 
@@ -128,21 +144,42 @@
   --totals-warning: var(--st-alert-danger);
 }
 
+// S-08: a limit line under the note of a category with a limit.
+.totals__category-limit {
+  grid-column: 1 / -1;
+  color: var(--st-on-navy-soft);
+  font-size: 13px;
+}
+
+// Each description (duplicates, limit) takes the colour of its own state; the outline takes the
+// most severe of them.
 .totals__category-warning {
   grid-column: 1 / -1;
-  color: var(--totals-warning);
+  color: var(--st-alert-warning);
   font-size: 13px;
+}
+
+.totals__category-warning[data-warning='exceeded'] {
+  color: var(--st-alert-danger);
 }
 
 // Phone header: the two sums side by side in one row, smaller. The monthly sum goes on the right
 // and the yearly on the left, like the monthly amount and the "rocznie" note of a category row
 // below them. Only the visual order changes: the monthly sum stays first in the DOM.
 :host(.totals--bar) {
+  // The budget bar (S-08) goes last on a line of its own, under both sums, at full width.
   .totals__sums {
     flex-direction: row-reverse;
+    flex-wrap: wrap;
     align-items: flex-end;
     justify-content: space-between;
-    gap: 16px;
+    gap: 6px 16px;
+  }
+
+  .totals__budget {
+    flex-basis: 100%;
+    order: 1;
+    gap: 4px;
   }
 
   .totals__monthly {

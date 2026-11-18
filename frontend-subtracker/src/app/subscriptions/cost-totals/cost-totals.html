@@ -12,6 +12,33 @@
         {{ totals.monthly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}
       </div>
     </div>
+    <!-- S-08: the overall monthly limit under the monthly sum; nothing without a limit. -->
+    @if (budget(); as budget) {
+      <div class="totals__budget" [attr.data-alert]="budget.alert === 'none' ? null : budget.alert">
+        <div
+          class="totals__budget-bar"
+          role="progressbar"
+          aria-label="Wykorzystanie limitu miesięcznego"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          [attr.aria-valuenow]="budget.fill"
+          [attr.aria-valuetext]="budget.usage"
+        >
+          <div class="totals__budget-fill" [style.width.%]="budget.fill"></div>
+        </div>
+        <div class="totals__budget-text">
+          <!-- "170,00 z 200,00 zł (85%)" -->
+          <span class="totals__budget-usage st-amount">{{ budget.usage }}</span>
+          <!-- The state in words next to a decorative icon, so colour is not the only sign. -->
+          @if (budget.level !== 'none') {
+            <span class="totals__budget-note">
+              <app-duplicate-warning-icon class="totals__budget-icon" [level]="budget.level" />
+              {{ budget.note }}
+            </span>
+          }
+        </div>
+      </div>
+    }
     <div class="totals__yearly">
       <div class="totals__label">Rocznie</div>
       <div class="st-amount">{{ totals.yearly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }}</div>
@@ -22,7 +49,8 @@
   @if (totals.categories.length > 0) {
     @let worst = worstWarning();
     <details class="totals__categories">
-      <!-- S-07: the most severe duplicate warning stays visible while the list is collapsed. -->
+      <!-- The most severe state of the categories (duplicates and limits) stays visible while the
+           list is collapsed. -->
       <summary class="totals__summary" [attr.data-warning]="worst === 'none' ? null : worst">
         Kategorie
         @if (worst !== 'none') {
@@ -35,13 +63,14 @@
       </summary>
       <dl class="totals__list">
         @for (item of totals.categories; track item.category.id) {
-          @let warning = item.duplicateWarning;
-          <div class="totals__category" [attr.data-warning]="warning === 'none' ? null : warning">
+          <!-- One outline and one icon in the colour of the row's most severe state. -->
+          @let level = categoryAlertLevel(item);
+          <div class="totals__category" [attr.data-warning]="level === 'none' ? null : level">
             <dt class="totals__category-name">
               {{ item.category.name }}
-              <!-- Decorative: the description below says it in words. -->
-              @if (warning !== 'none') {
-                <app-duplicate-warning-icon class="totals__category-icon" [level]="warning" />
+              <!-- Decorative: the descriptions below say it in words. -->
+              @if (level !== 'none') {
+                <app-duplicate-warning-icon class="totals__category-icon" [level]="level" />
               }
             </dt>
             <dd class="totals__category-monthly st-amount">
@@ -52,9 +81,25 @@
               {{ item.yearly | currency: 'PLN' : 'symbol-narrow' : '1.2-2' }} rocznie ·
               {{ subscriptionCountLabel(item.subscriptionCount) }}
             </dd>
-            <!-- "Przekroczono próg: 3 z 2" -->
+            <!-- "Limit: 90,00 z 80,00 zł" -->
+            @if (limitNote(item); as limit) {
+              <dd class="totals__category-limit st-amount">{{ limit }}</dd>
+            }
+            <!-- "Przekroczono próg: 3 z 2", in the colour of the duplicate warning. -->
             @if (duplicateWarningNote(item); as note) {
-              <dd class="totals__category-warning">{{ note }}</dd>
+              <dd class="totals__category-warning" [attr.data-warning]="item.duplicateWarning">
+                {{ note }}
+              </dd>
+            }
+            <!-- "Przekroczono limit", in the colour of the limit alert. -->
+            @if (budgetAlertNote(item.budgetAlert); as note) {
+              <dd
+                class="totals__category-warning"
+                [attr.data-warning]="budgetAlertLevel(item.budgetAlert)"
+                [attr.data-alert]="item.budgetAlert"
+              >
+                {{ note }}
+              </dd>
             }
           </div>
         }

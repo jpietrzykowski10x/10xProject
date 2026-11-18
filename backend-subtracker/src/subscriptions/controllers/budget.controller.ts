@@ -5,7 +5,8 @@ import { UpdateBudgetDto } from '../dtos/update-budget.dto.js';
 import { BudgetService } from '../services/budget.service.js';
 import type { BudgetResponse } from '../subscription.types.js';
 
-// The settings of the budget page: the duplicate threshold per category (S-07).
+// The settings of the budget page: the default and per-category duplicate thresholds (S-07) and
+// the monthly limits (S-08), overall and per category.
 @Controller('budget')
 export class BudgetController {
   constructor(private readonly budget: BudgetService) {}

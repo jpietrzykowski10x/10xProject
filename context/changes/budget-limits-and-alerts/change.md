@@ -1,9 +1,9 @@
 ---
 change_id: budget-limits-and-alerts
 title: Limity budżetu i alerty 80% / 100% (S-08)
-status: planned
+status: impl_reviewed
 created: 2026-11-17
-updated: 2026-11-17
+updated: 2026-11-18
 archived_at: null
 ---
 

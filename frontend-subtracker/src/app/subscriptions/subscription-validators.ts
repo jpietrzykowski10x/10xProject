@@ -12,3 +12,9 @@ export function parseAmount(value: string): number | null {
 export function amountValidator(control: AbstractControl<string>): ValidationErrors | null {
   return parseAmount(control.value) === null ? { amount: true } : null;
 }
+
+// An amount that may be left empty (S-08: a monthly limit, where empty means no limit); anything
+// typed must be an amount the API takes.
+export function optionalAmountValidator(control: AbstractControl<string>): ValidationErrors | null {
+  return control.value.trim() === '' ? null : amountValidator(control);
+}

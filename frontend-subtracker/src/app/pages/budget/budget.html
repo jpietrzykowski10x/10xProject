@@ -3,7 +3,8 @@
     <h1 class="budget__title">Budżet</h1>
     <p class="budget__intro">
       Ostrzeżemy Cię, gdy liczba aktywnych subskrypcji w kategorii osiągnie próg (pomarańczowe) albo
-      go przekroczy (czerwone).
+      go przekroczy (czerwone), a także gdy miesięczne wydatki dojdą do 80% limitu (pomarańczowe)
+      albo do 100% (czerwone). Puste pole limitu oznacza brak limitu.
     </p>
 
     <!-- The live region is always there, so a message put into it is announced. -->
@@ -29,31 +30,80 @@
       <!-- mat-error shows after a field is left or the form is submitted, and Material links it to
            the field through aria-describedby. -->
       <form class="budget__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <mat-form-field class="budget__default" subscriptSizing="dynamic">
-          <mat-label>Domyślny próg</mat-label>
-          <input
-            matInput
-            inputmode="numeric"
-            autocomplete="off"
-            [formControl]="form.controls.defaultThreshold"
-          />
-          <mat-hint>Dostają go nowe kategorie i te, którym nie ustawiono własnego progu.</mat-hint>
-          <mat-error>Podaj liczbę całkowitą od {{ min }} do {{ max }}.</mat-error>
-        </mat-form-field>
+        <div class="budget__defaults">
+          <mat-form-field class="budget__default" subscriptSizing="dynamic">
+            <mat-label>Domyślny próg ilościowy dla kategorii</mat-label>
+            <input
+              matInput
+              inputmode="numeric"
+              autocomplete="off"
+              [formControl]="form.controls.defaultThreshold"
+            />
+            <mat-hint
+              >Dostają go nowe kategorie i te, którym nie ustawiono własnego progu.</mat-hint
+            >
+            <mat-error>Podaj liczbę całkowitą od {{ min }} do {{ max }}.</mat-error>
+          </mat-form-field>
+          <!-- S-08: compared with the monthly sum of the cost totals. -->
+          <mat-form-field class="budget__default" subscriptSizing="dynamic">
+            <mat-label>Miesięczny limit całościowy (zł)</mat-label>
+            <input
+              matInput
+              inputmode="decimal"
+              autocomplete="off"
+              [formControl]="form.controls.monthlyLimit"
+            />
+            <mat-hint>Puste pole: brak limitu.</mat-hint>
+            <mat-error>Podaj kwotę od 0 do 99 999,99 zł albo zostaw pole puste.</mat-error>
+          </mat-form-field>
+        </div>
+
+        <!-- S-08: a hint, not an error; the save is not blocked. Always there, so the hint is
+             announced when it appears. -->
+        <div aria-live="polite">
+          @if (limitsHint(); as hint) {
+            <p class="budget__hint">{{ hint }}</p>
+          }
+        </div>
+
         <fieldset class="budget__fieldset">
-          <legend class="budget__legend">Próg aktywnych subskrypcji w kategorii</legend>
+          <legend class="budget__legend">
+            Próg aktywnych subskrypcji i limit miesięczny kategorii
+          </legend>
           <div class="budget__list">
             @for (item of current.categories; track item.category.id; let index = $index) {
-              <mat-form-field class="budget__field">
-                <mat-label>{{ item.category.name }}</mat-label>
-                <input
-                  matInput
-                  inputmode="numeric"
-                  autocomplete="off"
-                  [formControl]="form.controls.thresholds.at(index)"
-                />
-                <mat-error>Podaj liczbę całkowitą od {{ min }} do {{ max }}.</mat-error>
-              </mat-form-field>
+              <!-- The category name labels the group, so "Próg" and "Limit miesięczny" are read
+                   with it. -->
+              <div
+                class="budget__category"
+                role="group"
+                [attr.aria-labelledby]="'budget-category-' + index"
+                [attr.data-category]="item.category.id"
+              >
+                <span class="budget__category-name" [id]="'budget-category-' + index">
+                  {{ item.category.name }}
+                </span>
+                <mat-form-field class="budget__field">
+                  <mat-label>Próg</mat-label>
+                  <input
+                    matInput
+                    inputmode="numeric"
+                    autocomplete="off"
+                    [formControl]="form.controls.thresholds.at(index)"
+                  />
+                  <mat-error>Podaj liczbę całkowitą od {{ min }} do {{ max }}.</mat-error>
+                </mat-form-field>
+                <mat-form-field class="budget__field">
+                  <mat-label>Limit miesięczny (zł)</mat-label>
+                  <input
+                    matInput
+                    inputmode="decimal"
+                    autocomplete="off"
+                    [formControl]="form.controls.limits.at(index)"
+                  />
+                  <mat-error>Podaj kwotę od 0 do 99 999,99 zł albo zostaw pole puste.</mat-error>
+                </mat-form-field>
+              </div>
             }
           </div>
         </fieldset>

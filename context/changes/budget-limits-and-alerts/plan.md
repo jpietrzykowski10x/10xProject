@@ -335,49 +335,49 @@ Nowe kolumny są nullable, więc migracja nie wymaga backfillu ani okna na danyc
 
 #### Automated
 
-- [ ] 1.1 Migracja wygenerowana i zastosowana na `subtracker-db`: `npm run migration:run`, a `npm run migration:generate -- Check` kończy się „No changes in database schema were found” (z `backend-subtracker/`)
-- [ ] 1.2 Lint backendu przechodzi: `npm run lint`
-- [ ] 1.3 Build backendu przechodzi: `npm run build`
-- [ ] 1.4 Testy unit backendu przechodzą: `npm test`
-- [ ] 1.5 Testy e2e API przechodzą: `npm run test:e2e`
+- [x] 1.1 Migracja wygenerowana i zastosowana na `subtracker-db`: `npm run migration:run`, a `npm run migration:generate -- Check` kończy się „No changes in database schema were found” (z `backend-subtracker/`) — 198e870
+- [x] 1.2 Lint backendu przechodzi: `npm run lint` — 198e870
+- [x] 1.3 Build backendu przechodzi: `npm run build` — 198e870
+- [x] 1.4 Testy unit backendu przechodzą: `npm test` — 198e870
+- [x] 1.5 Testy e2e API przechodzą: `npm run test:e2e` — 198e870
 
 #### Manual
 
-- [ ] 1.6 Przegląd migracji: dwie kolumny `numeric(10,2) NULL`, `duplicate_threshold` nullable, bez zmian kluczy i indeksów
-- [ ] 1.7 `GET /budget` i `GET /subscriptions/totals` na `subtracker-db-dev` po `PUT /budget` z limitem zwracają nowe pola z oczekiwanymi wartościami
+- [x] 1.6 Przegląd migracji: dwie kolumny `numeric(10,2) NULL`, `duplicate_threshold` nullable, bez zmian kluczy i indeksów — 198e870
+- [x] 1.7 `GET /budget` i `GET /subscriptions/totals` na `subtracker-db-dev` po `PUT /budget` z limitem zwracają nowe pola z oczekiwanymi wartościami — 198e870
 
 ### Phase 2: Frontend: limit w kolumnie sum
 
 #### Automated
 
-- [ ] 2.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci` (z `frontend-subtracker/`)
-- [ ] 2.2 Build produkcyjny przechodzi (AOT, budżet stylów): `npm run build`
+- [x] 2.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci` (z `frontend-subtracker/`) — e632db9
+- [x] 2.2 Build produkcyjny przechodzi (AOT, budżet stylów): `npm run build` — e632db9
 
 #### Manual
 
-- [ ] 2.3 Na desktopie i telefonie pasek limitu pod sumą jest czytelny na granacie w trzech kolorach (poniżej 80%, 80–99%, ≥100%), a bez limitu go nie ma
-- [ ] 2.4 Rozwinięty wiersz kategorii z limitem pokazuje „Limit: …” i alert; kategoria z oboma alertami ma jeden obrys i dwa opisy
+- [x] 2.3 Na desktopie i telefonie pasek limitu pod sumą jest czytelny na granacie w trzech kolorach (poniżej 80%, 80–99%, ≥100%), a bez limitu go nie ma — e632db9
+- [x] 2.4 Rozwinięty wiersz kategorii z limitem pokazuje „Limit: …” i alert; kategoria z oboma alertami ma jeden obrys i dwa opisy — e632db9
 
 ### Phase 3: Frontend: `/budget` i `/dashboard`
 
 #### Automated
 
-- [ ] 3.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci`
-- [ ] 3.2 Build produkcyjny przechodzi: `npm run build`
-- [ ] 3.3 Testy e2e przechodzą na buildzie e2e: `npm run build:e2e && npm run e2e`
+- [x] 3.1 Testy frontendu przechodzą w obu strefach: `npm run test:ci` — 89e89a5
+- [x] 3.2 Build produkcyjny przechodzi: `npm run build` — 89e89a5
+- [x] 3.3 Testy e2e przechodzą na buildzie e2e: `npm run build:e2e && npm run e2e` — 89e89a5
 
 #### Manual
 
-- [ ] 3.4 Na `/budget` ustawienie limitu całościowego poniżej sumy miesięcznej zmienia pasek w kolumnie na czerwony bez przeładowania strony; wyczyszczenie limitu usuwa pasek
-- [ ] 3.5 Limit kategorii ustawiony na `/budget` widać w rozwiniętym wierszu i na `/dashboard`; podpowiedź o sumie limitów pojawia się, gdy suma przekracza limit całościowy
-- [ ] 3.6 `/dashboard` na desktopie i telefonie pokazuje limit całościowy z paskiem oraz kolumny limitu
+- [x] 3.4 Na `/budget` ustawienie limitu całościowego poniżej sumy miesięcznej zmienia pasek w kolumnie na czerwony bez przeładowania strony; wyczyszczenie limitu usuwa pasek — 89e89a5
+- [x] 3.5 Limit kategorii ustawiony na `/budget` widać w rozwiniętym wierszu i na `/dashboard`; podpowiedź o sumie limitów pojawia się, gdy suma przekracza limit całościowy — 89e89a5
+- [x] 3.6 `/dashboard` na desktopie i telefonie pokazuje limit całościowy z paskiem oraz kolumny limitu — 89e89a5
 
 ### Phase 4: Dokumentacja i weryfikacja
 
 #### Automated
 
-- [ ] 4.1 Formatowanie kodu bez zmian treści po prettierze: `npm run format` w `backend-subtracker/` nie zmienia treści plików
+- [x] 4.1 Formatowanie kodu bez zmian treści po prettierze: `npm run format` w `backend-subtracker/` nie zmienia treści plików — 0becc81
 
 #### Manual
 
-- [ ] 4.2 Dokumenty opisują reguły zgodnie z kodem (przegląd przy `/10x-impl-review`)
+- [x] 4.2 Dokumenty opisują reguły zgodnie z kodem (przegląd przy `/10x-impl-review`) — cec2c9d

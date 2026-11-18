@@ -5,13 +5,14 @@ export const DEFAULT_DUPLICATE_THRESHOLD = 3;
 export const DUPLICATE_THRESHOLD_MIN = 0;
 export const DUPLICATE_THRESHOLD_MAX = 99;
 
-// A user's thresholds: their default, and the categories with a stored threshold of their own.
+// A user's thresholds: their default, and the categories with a settings row. A row's threshold is
+// null when the row was saved only for a limit (S-08), so the category follows the default.
 export interface DuplicateThresholds {
   defaultThreshold: number;
-  byCategory: ReadonlyMap<string, number>;
+  byCategory: ReadonlyMap<string, number | null>;
 }
 
-// The category's stored threshold, else the user's current default.
+// The category's stored threshold, else the user's current default (no row, or a null threshold).
 export function thresholdOf(
   thresholds: DuplicateThresholds,
   categoryId: string,

@@ -9,7 +9,6 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity.js';
-import { DEFAULT_DUPLICATE_THRESHOLD } from '../duplicate-warning.js';
 import { Category } from './category.entity.js';
 
 // A user's settings for one category, default or their own (S-07: the duplicate threshold; S-08
@@ -35,12 +34,21 @@ export class CategorySetting {
   @JoinColumn({ name: 'category_id' })
   category: Relation<Category>;
 
+  // Null follows the user's current default threshold, like a missing row (S-08: a row saved for
+  // a limit alone must not freeze the threshold). A new own category and the S-07 backfill still
+  // write a value, so own categories keep a copy of the default.
+  @Column({ name: 'duplicate_threshold', type: 'smallint', nullable: true })
+  duplicateThreshold: number | null;
+
+  // The category's monthly limit (S-08) in PLN, compared with its monthly sum; null means no limit.
   @Column({
-    name: 'duplicate_threshold',
-    type: 'smallint',
-    default: DEFAULT_DUPLICATE_THRESHOLD,
+    name: 'monthly_limit',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
   })
-  duplicateThreshold: number;
+  monthlyLimit: string | null;
 
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;

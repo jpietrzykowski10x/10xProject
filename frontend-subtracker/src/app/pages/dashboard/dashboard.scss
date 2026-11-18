@@ -1,3 +1,5 @@
+@use '../../../styles/budget-bar';
+
 // S-07: the cost summary. Light background, so the warning icon keeps the light alert colours
 // (--st-alert-warning / --st-alert-danger); only the navy shell remaps them.
 // The page fills the shell's content area and the window never scrolls: the header and the sums
@@ -22,11 +24,6 @@
   margin: 0;
   font: var(--mat-sys-headline-small);
   font-weight: 700;
-}
-
-.dashboard__link {
-  color: var(--mat-sys-primary);
-  font-weight: 600;
 }
 
 // Loading and empty states: a white panel where the summary appears.
@@ -81,6 +78,32 @@
 .dashboard__sum-amount {
   font: var(--mat-sys-headline-small);
   font-weight: 700;
+}
+
+// S-08: the overall monthly limit, the bar of the cost totals column (styles/_budget-bar.scss) with
+// the light alert colours. Below 80% of the limit lime, the same as on the navy column;
+// lime is too pale for text on white, so there is no note then and the usage stays ink.
+@include budget-bar.budget-bar(
+  $block: '.dashboard__budget',
+  $fill: var(--st-lime),
+  $track: var(--st-line),
+  $height: 8px,
+  $usage-color: var(--st-ink-soft),
+  $note-weight: 600
+);
+
+.dashboard__budget {
+  margin-top: 8px;
+}
+
+.dashboard__no-limit {
+  margin: 8px 0 0;
+  color: var(--st-muted);
+
+  a {
+    color: var(--mat-sys-primary);
+    font-weight: 600;
+  }
 }
 
 .dashboard__subtitle {
@@ -147,10 +170,22 @@
 }
 
 // The icon and the words; colour is never the only information.
-.dashboard__status {
+.dashboard__status,
+.dashboard__limit-status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+// S-08: the limit status takes the colour of its own alert (near orange, at or above it red).
+.dashboard__limit-status[data-warning='reached'] {
+  color: var(--st-alert-warning);
+  font-weight: 600;
+}
+
+.dashboard__limit-status[data-warning='exceeded'] {
+  color: var(--st-alert-danger);
+  font-weight: 600;
 }
 
 .dashboard__row[data-warning='reached'] .dashboard__status,

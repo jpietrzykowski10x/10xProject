@@ -1,5 +1,5 @@
-// S-07: the default threshold, then one field per category; a grid on desktop, one column on the
-// phone.
+// S-07/S-08: the default threshold and the overall limit, then one row per category with its
+// threshold and limit; the categories in rows on desktop, everything in one column on the phone.
 .budget {
   max-width: 960px;
 }
@@ -45,11 +45,31 @@
   background: var(--mat-sys-surface);
 }
 
-// The user's default threshold, above the categories; its hint may take two lines.
-.budget__default {
-  display: block;
-  max-width: 424px;
+// The user's default threshold and overall limit side by side, above the categories; their hints
+// may take two lines.
+.budget__defaults {
+  display: flex;
+  flex-wrap: wrap;
+  // Not stretched: a field next to a longer hint keeps its own height.
+  align-items: flex-start;
+  gap: 8px 24px;
   margin-bottom: 16px;
+}
+
+.budget__default {
+  flex: 0 1 320px;
+  min-width: 0;
+}
+
+// S-08: the sum of the category limits above the overall limit; a hint, so the warning tint, not
+// the error colours.
+.budget__hint {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  background: var(--st-warning-bg);
+  color: var(--st-warning-text);
+  font: var(--mat-sys-body-medium);
 }
 
 .budget__fieldset {
@@ -66,10 +86,24 @@
   font-weight: 600;
 }
 
-.budget__list {
+// One row per category: its name, then the threshold and the limit. The name sits at the height of
+// the fields' text (an outline field is 56px high).
+.budget__category {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: minmax(0, 1fr) 140px 200px;
+  align-items: start;
   column-gap: 24px;
+
+  & + & {
+    border-top: 1px solid var(--st-line-soft);
+    padding-top: 12px;
+  }
+}
+
+.budget__category-name {
+  padding-top: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .budget__field {
@@ -91,11 +125,17 @@
   }
 
   .budget__default {
-    max-width: none;
+    flex-basis: 100%;
   }
 
-  .budget__list {
+  // One column: the name above its two fields.
+  .budget__category {
     grid-template-columns: 1fr;
+  }
+
+  .budget__category-name {
+    padding-top: 0;
+    padding-bottom: 8px;
   }
 
   .budget__save {

@@ -1,0 +1,57 @@
+// S-08: the bar of a monthly limit, shared by the cost totals column (navy) and /dashboard (light).
+// The block gets the fill colour of its state: $fill below 80% of the limit, then orange, then red
+// at the limit and above (the alert tokens, which the navy column remaps). The text under the bar
+// says the share and the state in words, so the colour is never the only sign.
+// $block is the BEM block of the markup (".totals__budget", ".dashboard__budget"), with the
+// elements -bar, -fill, -text, -usage and -note.
+@mixin budget-bar($block, $fill, $track, $height, $usage-color, $note-weight: null) {
+  #{$block} {
+    --budget-bar-fill: #{$fill};
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  #{$block}[data-alert='near'] {
+    --budget-bar-fill: var(--st-alert-warning);
+  }
+
+  #{$block}[data-alert='reached'],
+  #{$block}[data-alert='exceeded'] {
+    --budget-bar-fill: var(--st-alert-danger);
+  }
+
+  #{$block}-bar {
+    height: $height;
+    overflow: hidden;
+    border-radius: $height * 0.5;
+    background: $track;
+  }
+
+  #{$block}-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--budget-bar-fill);
+  }
+
+  #{$block}-text {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 2px 8px;
+    font-size: 13px;
+  }
+
+  #{$block}-usage {
+    color: $usage-color;
+  }
+
+  #{$block}-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--budget-bar-fill);
+    font-weight: $note-weight;
+  }
+}

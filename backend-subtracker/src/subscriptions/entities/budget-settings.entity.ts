@@ -12,7 +12,7 @@ import { User } from '../../users/entities/user.entity.js';
 import { DEFAULT_DUPLICATE_THRESHOLD } from '../duplicate-warning.js';
 
 // A user's budget settings, one row per account, a typed column per setting (S-07: the default
-// duplicate threshold; S-08 adds the overall limit). Account preferences that are not about the
+// duplicate threshold; S-08: the overall monthly limit). Account preferences that are not about the
 // budget (e.g. a theme) belong to the users module, not here. No row means the defaults, so
 // nothing is seeded per account.
 @Entity('budget_settings')
@@ -35,8 +35,27 @@ export class BudgetSettings {
   })
   defaultDuplicateThreshold: number;
 
+  // The overall monthly limit (S-08) in PLN, compared with the monthly total; null means no limit.
+  @Column({
+    name: 'monthly_limit',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
+  monthlyLimit: string | null;
+
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
+}
+
+// The default duplicate threshold of a settings row: the stored one, else DEFAULT_DUPLICATE_THRESHOLD
+// (no row means the defaults).
+export function defaultThresholdOf(
+  settings:
+    Pick<BudgetSettings, 'defaultDuplicateThreshold'> | null | undefined,
+): number {
+  return settings?.defaultDuplicateThreshold ?? DEFAULT_DUPLICATE_THRESHOLD;
 }
 
 // The user's current default duplicate threshold: the stored one, else DEFAULT_DUPLICATE_THRESHOLD.
@@ -49,5 +68,5 @@ export async function defaultDuplicateThresholdOf(
     select: { userId: true, defaultDuplicateThreshold: true },
     where: { userId },
   });
-  return settings?.defaultDuplicateThreshold ?? DEFAULT_DUPLICATE_THRESHOLD;
+  return defaultThresholdOf(settings);
 }

@@ -82,6 +82,8 @@ describe('Subscriptions — cost totals (e2e)', () => {
     expect(await getTotals(cookie)).toEqual({
       monthly: '102.82',
       yearly: '1233.87',
+      monthlyLimit: null,
+      budgetAlert: 'none',
       categories: [
         {
           category: STREAMING,
@@ -90,6 +92,8 @@ describe('Subscriptions — cost totals (e2e)', () => {
           subscriptionCount: 1,
           duplicateThreshold: 3,
           duplicateWarning: 'none',
+          monthlyLimit: null,
+          budgetAlert: 'none',
         },
         {
           category: praca,
@@ -98,6 +102,8 @@ describe('Subscriptions — cost totals (e2e)', () => {
           subscriptionCount: 1,
           duplicateThreshold: 3,
           duplicateWarning: 'none',
+          monthlyLimit: null,
+          budgetAlert: 'none',
         },
         {
           category: muzyka,
@@ -106,6 +112,8 @@ describe('Subscriptions — cost totals (e2e)', () => {
           subscriptionCount: 1,
           duplicateThreshold: 3,
           duplicateWarning: 'none',
+          monthlyLimit: null,
+          budgetAlert: 'none',
         },
       ],
     });
@@ -127,6 +135,8 @@ describe('Subscriptions — cost totals (e2e)', () => {
     expect(await getTotals(cookie)).toEqual({
       monthly: '66.99',
       yearly: '803.88',
+      monthlyLimit: null,
+      budgetAlert: 'none',
       categories: [
         {
           category: STREAMING,
@@ -135,6 +145,8 @@ describe('Subscriptions — cost totals (e2e)', () => {
           subscriptionCount: 1,
           duplicateThreshold: 3,
           duplicateWarning: 'none',
+          monthlyLimit: null,
+          budgetAlert: 'none',
         },
         {
           category: muzyka,
@@ -143,6 +155,8 @@ describe('Subscriptions — cost totals (e2e)', () => {
           subscriptionCount: 1,
           duplicateThreshold: 3,
           duplicateWarning: 'none',
+          monthlyLimit: null,
+          budgetAlert: 'none',
         },
       ],
     });

@@ -12,6 +12,11 @@ export type PaymentMethod =
 // The duplicate warning of a category in the cost totals (S-07), from the least to the most severe.
 export type DuplicateWarning = 'none' | 'reached' | 'exceeded';
 
+// S-08 (backend budget-alert.ts): how a monthly sum compares with its monthly limit. `none` without
+// a limit, with nothing spent or below 80% of it; `near` from 80% up to just below the limit;
+// `reached` at exactly the limit; `exceeded` above it (with a limit of 0, from the first grosz).
+export type BudgetAlert = 'none' | 'near' | 'reached' | 'exceeded';
+
 export const SUBSCRIPTION_NAME_MAX_LENGTH = 100;
 export const CATEGORY_NAME_MAX_LENGTH = 50;
 export const AMOUNT_MAX = 99999.99;
@@ -69,6 +74,9 @@ export interface CategoryCostTotal {
   subscriptionCount: number;
   duplicateThreshold: number;
   duplicateWarning: DuplicateWarning;
+  // S-08: the category's monthly limit (null: none) and how its `monthly` compares with it.
+  monthlyLimit: string | null;
+  budgetAlert: BudgetAlert;
 }
 
 // `categories` holds only categories with a counted subscription, in display order: monthly
@@ -76,5 +84,8 @@ export interface CategoryCostTotal {
 export interface CostTotals {
   monthly: string;
   yearly: string;
+  // S-08: the overall monthly limit (null: none) and how `monthly` compares with it.
+  monthlyLimit: string | null;
+  budgetAlert: BudgetAlert;
   categories: CategoryCostTotal[];
 }
