@@ -1,3 +1,4 @@
+import { Location } from '@angular/common';
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router, RouterOutlet } from '@angular/router';
@@ -61,6 +62,16 @@ describe('Home', () => {
     const host = await navigateHome({ accountDeleted: true });
 
     expect(notices(host)).toEqual([DELETED_NOTICE]);
+  });
+
+  // The router restores the history entry's state on a reload, so a flag left there would show the
+  // notice again (found in the owner's manual check of S-10).
+  it('removes the flag from the history entry once the notice is shown', async () => {
+    await navigateHome({ accountDeleted: true });
+
+    const state = TestBed.inject(Location).getState() as Record<string, unknown>;
+    expect(state).not.toHaveProperty('accountDeleted');
+    expect(state).toHaveProperty('navigationId');
   });
 
   it.each([[undefined], [{}], [{ accountDeleted: 'true' }]])(

@@ -22,7 +22,7 @@ Zalogowany użytkownik sam usuwa swoje konto na nowej stronie `/account`. Potwie
 - `MailService.sendToUser` nie wysyła maila na adres, którego nie ma w `user`, nie zapisuje dla niego wiersza audytu i zwraca `false`. Jeśli konto zniknęło w trakcie wysyłki (po sprawdzeniu, przed zapisem audytu), wiersz audytu dostaje znacznik zamiast adresu.
 - Na serwerze nie ma dumpu bazy (deploy i `pre-restore`) starszego niż 180 dni: przycina je `prune-backups.sh`, wołany z `deploy.sh`, `restore-db.sh` i codziennie z crontaba.
 - W `backups/` zawsze jest dump młodszy niż 30 dni. Gdy go nie ma (np. miesiąc bez deployu), skrypt najpierw robi profilaktyczny świeży dump, a dopiero potem usuwa stare. Gdy dump się nie uda, nie usuwa niczego. Przycinanie nigdy więc nie zostawi `backups/` bez kopii, a dane do odtworzenia po awarii nie są starsze niż miesiąc (plus dzienna kopia MyDevil).
-- Na froncie link „Konto” przy adresie e-mail w obu nawigacjach prowadzi do `/account`. Tam przycisk „Usuń konto” otwiera dialog, który pozwala usunąć konto dopiero po wpisaniu własnego adresu. Po usunięciu użytkownik ląduje na `/` z komunikatem.
+- Na froncie adres e-mail w obu nawigacjach jest linkiem do `/account` (decyzja właściciela po fazie 2: bez osobnego linku „Konto”). Tam przycisk „Usuń konto” otwiera dialog, który pozwala usunąć konto dopiero po wpisaniu własnego adresu. Po usunięciu użytkownik ląduje na `/` z komunikatem.
 
 ### Key Discoveries:
 
@@ -57,7 +57,7 @@ Backend najpierw, bo front i e2e przeglądarki zależą od trasy. Migracja zamie
 
 **Nigdy bez kopii** — `prune-backups.sh` najpierw sprawdza, czy jest dump młodszy niż `FRESH_DUMP_DAYS=30`. Jeśli nie ma, robi świeży `pg_dump` (profilaktyczny dump co miesiąc), a kasuje dopiero po jego sukcesie. Próg 30 < 180 sprawia, że po przycięciu zawsze zostaje co najmniej jedna kopia. Nieudany dump oznacza: nic nie usunięto, kod wyjścia 1. Ścieżka z crontaba bierze blokadę `.ops.lock` (wspólną z `deploy.sh`, `rollback.sh` i `restore-db.sh`), więc nie dubluje się z deployem ani przywracaniem. Gdy blokada jest zajęta, kończy się bez zmian, bo trwający deploy albo przywrócenie przytnie kopie samo.
 
-**State sequencing (front)** — Po 204: `AuthService` zeruje użytkownika, potem `totals.clear()`, potem nawigacja na `/` ze stanem `{ accountDeleted: true }`. Na `/` w przeglądarce `guestGuard` odpytuje `/auth/session`, dostaje `null` i przepuszcza. Komunikat bierze się ze stanu nawigacji, więc odświeżenie strony go usuwa (zamierzone).
+**State sequencing (front)** — Po 204: `AuthService` zeruje użytkownika, potem `totals.clear()`, potem nawigacja na `/` ze stanem `{ accountDeleted: true }`. Na `/` w przeglądarce `guestGuard` odpytuje `/auth/session`, dostaje `null` i przepuszcza. Komunikat bierze się ze stanu nawigacji. Router zapisuje ten stan we wpisie historii i odtwarza go po odświeżeniu, więc `Home` po pokazaniu komunikatu usuwa flagę z wpisu (`afterNextRender`, `Location.replaceState`); odświeżenie strony usuwa komunikat (zamierzone, znalezione w ręcznym sprawdzeniu 2.6).
 
 ## Phase 1: Backend: usuwanie konta
 
@@ -179,11 +179,11 @@ Strona konta z dialogiem usunięcia, link w nawigacjach, komunikat na stronie st
 
 **Contract**: ścieżka `account` (lekcja: trasy po angielsku).
 
-#### 5. Link „Konto” w nawigacjach
+#### 5. Adres e-mail jako link do `/account`
 
 **File**: `frontend-subtracker/src/app/layout/app-shell/app-shell.html`, `app-shell.scss`, `app-shell.spec.ts`
 
-**Intent**: W `.shell__account` (desktop) i w `mat-menu` (telefon) przy adresie e-mail pojawia się link „Konto” do `/account` z `routerLinkActive` i `ariaCurrentWhenActive="page"`. `NAV_LINKS` zostaje bez zmian.
+**Intent**: W `.shell__account` (desktop) i w `mat-menu` (telefon) sam adres e-mail jest linkiem do `/account` (bez osobnego linku „Konto”, decyzja właściciela po fazie 2) z `routerLinkActive` i `ariaCurrentWhenActive="page"`. `NAV_LINKS` zostaje bez zmian.
 
 **Contract**: oba linki na `/account`. Style z tokenów `--st-*` istniejących w `_theme.scss`.
 
@@ -199,7 +199,7 @@ Strona konta z dialogiem usunięcia, link w nawigacjach, komunikat na stronie st
 
 **File**: `delete-account-dialog.spec.ts`, `account.spec.ts`, `app-shell.spec.ts`, `home.spec.ts`, `auth/auth.service` (spec, jeśli istnieje wzór; inaczej w spec dialogu przez `HttpTestingController`)
 
-**Intent**: Przycisk jest nieaktywny przy pustym i obcym adresie, a aktywny przy właściwym (także z wielkimi literami i spacjami). Żądanie idzie z adresem z pola. Działa blokada w trakcie i 3 warianty błędu. Strona po sukcesie czyści sumy i nawiguje ze stanem. Shell ma link „Konto” w obu nawigacjach. Home pokazuje komunikat tylko ze stanem.
+**Intent**: Przycisk jest nieaktywny przy pustym i obcym adresie, a aktywny przy właściwym (także z wielkimi literami i spacjami). Żądanie idzie z adresem z pola. Działa blokada w trakcie i 3 warianty błędu. Strona po sukcesie czyści sumy i nawiguje ze stanem. Shell linkuje `/account` z adresu w obu nawigacjach. Home pokazuje komunikat tylko ze stanem.
 
 **Contract**: wg `test-plan.md` §6.1–6.2.
 
@@ -213,7 +213,7 @@ Strona konta z dialogiem usunięcia, link w nawigacjach, komunikat na stronie st
 
 #### Manual Verification:
 
-- Na desktopie i w widoku telefonu (< 840px) link „Konto” jest widoczny przy adresie, a `/account` wygląda spójnie z `/budget`
+- Na desktopie i w widoku telefonu (< 840px) adres e-mail jest linkiem do `/account`, a `/account` wygląda spójnie z `/budget`
 - Dialog: fokus startuje na „Anuluj”, Esc zamyka, przycisk „Usuń konto” włącza się dopiero po wpisaniu własnego adresu
 - Po usunięciu jest strona startowa z komunikatem, odświeżenie usuwa komunikat, a wejście na `/subscriptions` przekierowuje na `/sign-in`
 
@@ -233,7 +233,7 @@ Test Playwright całego przepływu na prawdziwym API, przycinanie kopii bazy po 
 
 **File**: `frontend-subtracker/e2e/browser/account-deletion.e2e-spec.ts` (nowy)
 
-**Intent**: Pełny przepływ: konto z subskrypcją (`createE2eAccounts`, `newAccount()`, ciasteczko przez `sessionFor()`), wejście przez link „Konto”, dialog `getByRole('alertdialog', { name })`, nieaktywny przycisk przy obcym adresie, wpisanie właściwego, usunięcie, komunikat na `/`, a potem `/subscriptions` → `/sign-in`. Sprzątanie danych testu działa też wtedy, gdy konto już nie istnieje.
+**Intent**: Pełny przepływ: konto z subskrypcją (`createE2eAccounts`, `newAccount()`, ciasteczko przez `sessionFor()`), wejście przez link z adresem e-mail, dialog `getByRole('alertdialog', { name })`, nieaktywny przycisk przy obcym adresie, wpisanie właściwego, usunięcie, komunikat na `/`, a potem `/subscriptions` → `/sign-in`. Sprzątanie danych testu działa też wtedy, gdy konto już nie istnieje.
 
 **Contract**: wg `test-plan.md` §6.5, projekt `chromium`.
 
@@ -307,12 +307,12 @@ Sekcja kończy się listą tego, co pełna polityka prywatności ma o tym powied
 
 - API e2e: usunięcie czyści 7 tabel, anonimizuje wiersze `mail` konta (liczba bez zmian, zero wierszy z adresem), nie rusza kategorii domyślnych ani cudzych danych i maili. Stare ciasteczko i druga sesja → 401. Zły adres → 400 bez zmian. CSRF. Ponowna rejestracja tworzy puste konto. `request-link` dla usuniętego adresu nie wysyła maila.
 - Trasy: `EXPECTED_ROUTES`, `GUARDED_ROUTES`.
-- Przeglądarka: pełny przepływ od linku „Konto” do przekierowania na `/sign-in`.
+- Przeglądarka: pełny przepływ od linku z adresem e-mail do przekierowania na `/sign-in`.
 
 ### Manual Testing Steps:
 
 1. Zalogować się lokalnie, dodać subskrypcję i limit na `/budget`.
-2. Wejść w „Konto” (desktop i telefon), otworzyć dialog, wpisać obcy adres (przycisk nieaktywny), potem własny.
+2. Kliknąć adres e-mail (desktop i telefon), otworzyć dialog, wpisać obcy adres (przycisk nieaktywny), potem własny.
 3. Usunąć konto, sprawdzić komunikat na `/` i brak danych w `subtracker-db-dev` (wiersze `mail` zostają ze znacznikiem `zanonimizowano@anonymized.invalid`).
 4. Zarejestrować się tym samym adresem i sprawdzić, że konto jest puste.
 
@@ -362,7 +362,7 @@ Migracja `AccountDeletionSchema` zmienia definicje 3 kluczy obcych i zakłada in
 
 #### Manual
 
-- [ ] 2.4 Link „Konto” na desktopie i telefonie, `/account` spójne z `/budget`
+- [ ] 2.4 Adres e-mail jako link do `/account` na desktopie i telefonie, `/account` spójne z `/budget`
 - [ ] 2.5 Dialog: fokus na „Anuluj”, Esc zamyka, przycisk aktywny dopiero po wpisaniu własnego adresu
 - [ ] 2.6 Po usunięciu komunikat na `/`, odświeżenie go usuwa, `/subscriptions` przekierowuje na `/sign-in`
 

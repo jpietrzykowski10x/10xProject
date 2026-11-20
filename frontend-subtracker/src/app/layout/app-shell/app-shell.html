@@ -17,13 +17,14 @@
   <app-cost-totals variant="column" class="shell__totals" />
 
   <div class="shell__account">
-    <p class="shell__email">{{ user()?.email }}</p>
     <a
-      class="shell__account-link"
+      class="shell__email"
       routerLink="/account"
-      routerLinkActive="shell__account-link--active"
+      routerLinkActive="shell__email--active"
       ariaCurrentWhenActive="page"
-      >Konto</a
+      title="Konto"
+      [attr.aria-label]="user()?.email + ', konto'"
+      >{{ user()?.email }}</a
     >
     <button type="button" class="shell__logout" [disabled]="loggingOut()" (click)="logout()">
       Wyloguj
@@ -53,14 +54,14 @@
       >{{ link.label }}</a
     >
   }
-  <p class="shell__menu-email">{{ user()?.email }}</p>
   <a
     mat-menu-item
-    class="shell__menu-link"
+    class="shell__menu-link shell__menu-email"
     routerLink="/account"
     routerLinkActive="shell__menu-link--active"
     ariaCurrentWhenActive="page"
-    >Konto</a
+    [attr.aria-label]="user()?.email + ', konto'"
+    >{{ user()?.email }}</a
   >
   <button mat-menu-item type="button" [disabled]="loggingOut()" (click)="logout()">Wyloguj</button>
 </mat-menu>

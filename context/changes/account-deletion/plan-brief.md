@@ -13,7 +13,7 @@ Dane domenowe (subskrypcje, własne kategorie, ustawienia kategorii i budżetu) 
 
 ## Desired End State
 
-Na `/account` (link „Konto” przy adresie w obu nawigacjach) użytkownik otwiera dialog, wpisuje swój adres i usuwa konto. API usuwa je w jednej transakcji, anonimizuje jego wiersze w archiwum `mail` i czyści ciasteczko, a front pokazuje na `/` komunikat „Konto zostało usunięte”. Stare ciasteczko daje 401, ten sam adres może założyć nowe, puste konto, a na adres bez konta nie wychodzi już żaden mail. Kopie bazy na serwerze żyją najwyżej 180 dni.
+Na `/account` (adres e-mail w obu nawigacjach jest linkiem) użytkownik otwiera dialog, wpisuje swój adres i usuwa konto. API usuwa je w jednej transakcji, anonimizuje jego wiersze w archiwum `mail` i czyści ciasteczko, a front pokazuje na `/` komunikat „Konto zostało usunięte”. Stare ciasteczko daje 401, ten sam adres może założyć nowe, puste konto, a na adres bez konta nie wychodzi już żaden mail. Kopie bazy na serwerze żyją najwyżej 180 dni.
 
 ## Key Decisions Made
 

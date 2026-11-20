@@ -61,20 +61,22 @@
   margin-top: auto;
 }
 
+// S-10: the address is the link to the account page; underlined on hover and, in green, while it
+// is the current page (aria-current="page" says it to a screen reader).
 .shell__email {
-  margin: 0;
   color: var(--st-navy-soft);
-  overflow-wrap: anywhere;
-}
-
-// S-10: the account page, beside the address it belongs to; underlined while it is the current page
-// (aria-current="page" says it to a screen reader).
-.shell__account-link {
-  color: #fff;
   text-decoration: none;
+  overflow-wrap: anywhere;
+
+  &:hover,
+  &:focus-visible {
+    color: #fff;
+    text-decoration: underline;
+  }
 }
 
-.shell__account-link--active {
+.shell__email--active {
+  color: #fff;
   text-decoration: underline;
   text-decoration-color: var(--st-green);
   text-decoration-thickness: 3px;
@@ -146,11 +148,8 @@
   font-weight: 600;
 }
 
+// The address, a link to the account page like the items above it.
 .shell__menu-email {
-  margin: 0;
-  padding: 8px 12px;
-  color: var(--st-muted);
-  font-size: 14px;
   overflow-wrap: anywhere;
 }
 
