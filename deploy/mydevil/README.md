@@ -13,7 +13,8 @@ Server-side scripts for deploying SubTracker to MyDevil. They live in `~/apps/su
   logs/               forever.log, out.log, err.log
 
 ~/apps/subtracker/backups/   (drwx------) api database dumps before each deploy,
-                             <YYYYmmdd-HHMMSS>_<sha7>.dump (-rw-------), 10 newest kept
+                             <YYYYmmdd-HHMMSS>_<sha7>.dump (-rw-------), 10 newest kept,
+                             none older than 180 days (see Backups and deleted accounts)
 ```
 
 `shared/.env` of the api also holds the database, CORS, session cookie and mail settings (template: `backend-subtracker/.env.example`, local copy `backend-subtracker/.env.mydevil`):
@@ -62,7 +63,8 @@ Domains are MyDevil proxy domains, and TLS terminates on MyDevil:
 |---|---|
 | `ci-gate.sh` | Forced command for the CI key. It accepts only `deploy <frontend\|api> <sha>`. |
 | `deploy.sh <app> <sha>` | Unpacks the tarball from stdin into `public_nodejs_new`, runs `npm24 ci --omit=dev`, swaps it in with `mv`, and runs a health check (`/health` for the api, `/` for the frontend). For the api it first stops the live version, backs up the database and runs migrations (see [Database](#database)). If the health check fails, it restores the previous version automatically. |
-| `restore-db.sh <file.dump>` | Restores the api database from a backup: first dumps the current state to `backups/<time>_pre-restore.dump` (10 kept), then drops and recreates the `public` schema and restores the dump, in one transaction. Does not stop or start the api. |
+| `restore-db.sh <file.dump>` | Restores the api database from a backup: first dumps the current state to `backups/<time>_pre-restore.dump` (10 kept), then drops and recreates the `public` schema and restores the dump, in one transaction. After a successful restore it runs `prune-backups.sh`. Does not stop or start the api. |
+| `prune-backups.sh [file-to-keep]` | Deletes api dumps older than 180 days from `backups/`, but first takes a fresh `<time>_scheduled.dump` when no dump is younger than 30 days. Run daily from crontab and by `deploy.sh` (api) and `restore-db.sh`. See [Backups and deleted accounts](#backups-and-deleted-accounts). |
 | `stop-app.sh <app>` | Stops the app: `forever stop` capped at 30 s, then the forever monitor and the app are killed by their path. `forever stop` can hang for good while the app is crash-looping. Every other script stops apps through it. |
 | `start-app.sh <app>` | Restarts the app under `forever` on `/usr/local/bin/node24`, using the env from `.env`. Entry: `app.mjs` (frontend) / `app.js` (api), since MyDevil starts only these names. |
 | `rollback.sh <app> [--yes]` | Makes the newest entry in `releases/` live again. For the api it also restores the database from the backup taken before the rolled-back release (asks for `TAK`). The frontend rolls back code only. Ends with a health check. |
@@ -102,6 +104,25 @@ Never run `migration:revert` in production: `down()` methods are unreliable. Goi
 
 **Scheduled jobs.** The api runs its jobs (subscription lifecycle: trials ending, cancellations completing, billing dates moving forward; cleanup of sign-in tokens and sessions older than 7 days) once at every start, before it takes requests, and then daily at 00:05 Europe/Warsaw. None of this needs a manual step: whatever was missed while the api was stopped (a deploy across midnight, a restart by MyDevil, a reboot) is caught up by the next start, and a second run on the same day changes nothing. After a rollback or a manual restore from a dump, the database is back to its state from before the deploy, and the next start of a version that has the jobs repeats the transitions by itself. A release from before the jobs existed does not run them, so after rolling back to it dates stay as restored until a newer version starts. A failed run is only logged (`logs/err.log`) and does not fail the start or the health check.
 
+## Backups and deleted accounts
+
+A user can delete their account in the app (`/account`). The deletion is immediate and final in the live database: the account and all its data are gone. Copies of the database still hold that data until they are deleted, so their age is limited.
+
+- **Dumps live at most 180 days.** `backups/` holds the dumps taken before each api deploy (`<time>_<sha7>.dump`, 10 newest kept), before each restore (`<time>_pre-restore.dump`, 10 newest kept) and the scheduled ones (`<time>_scheduled.dump`, rotated together with the deploy dumps). On top of the count, `prune-backups.sh` deletes every dump older than 180 days. It runs daily from crontab (see [One-time setup](#one-time-setup)), after every api deploy and after every successful restore (which passes the restored dump so it is never deleted).
+- **There is always a copy no older than a month.** Before deleting anything, `prune-backups.sh` checks for a dump younger than 30 days. If there is none (e.g. a month without a deploy), it first takes a fresh `<time>_scheduled.dump` and deletes only after that succeeded. Pruning never leaves `backups/` empty.
+- **A failed dump deletes nothing.** The script exits 1 and the cron log `~/apps/subtracker/api/logs/prune-backups.log` says `database backup FAILED; nothing deleted` (after a deploy or restore the message is in their output instead; the deploy or restore itself still counts as successful). Fix the cause (usually the database settings in `shared/.env`) and run `~/apps/subtracker/bin/prune-backups.sh` by hand. If a deploy, rollback or restore is running, the cron run does nothing and exits 0; that operation prunes by itself.
+- **Rollback of an old release may be refused.** `rollback.sh api` needs the dump listed in the release's `.deploy-info`. Once it is older than 180 days it is gone, and the rollback stops with `backup ... not found; nothing changed`. To recover after a failure, restore the newest dump with `restore-db.sh` (see [Database](#database)).
+- **MyDevil's own daily backup** of the account has a retention we do not control. It is outside this rule.
+- **A restore or rollback brings back deleted accounts.** Every account deleted after the dump was taken is in the restored database again. After a restore, delete those accounts again (the operator has to know which ones, e.g. from the users' requests).
+- **The mail archive is anonymised.** Deleting an account keeps its rows in the `mail` table (type, status, dates) but replaces the address with `zanonimizowano@anonymized.invalid` and clears the error message. Mail goes only to addresses that still have an account.
+
+What the full privacy policy has to say about this (it is written separately, before the public launch):
+
+- deleting the account removes the data from the live database at once;
+- database backups keep the data for up to 180 days, then they are deleted; MyDevil's own backup has its own retention;
+- after restoring a backup, deletions made since then are repeated;
+- the record of sent mail stays without the address.
+
 ## Granting the admin role
 
 The `ADMIN` role is granted on the server, once the user has registered. `npm run admin:grant` is for local use only: `prepare-mydevil.mjs` flattens `dist/` into the package root, so the script lives at `cli/admin-grant.js`. Run it from the live release with its env exported, the same way `deploy.sh` runs the migrations:
@@ -120,7 +141,7 @@ The scripts are **not** deployed by GitHub Actions: the workflows only ship app 
 1. Locally, from the repo root (PowerShell or Git Bash). List the files explicitly, because PowerShell doesn't expand `*.sh` for `scp`:
 
    ```
-   scp deploy/mydevil/ci-gate.sh deploy/mydevil/deploy.sh deploy/mydevil/restore-db.sh deploy/mydevil/stop-app.sh deploy/mydevil/start-app.sh deploy/mydevil/rollback.sh deploy/mydevil/start-all.sh <login>@s<N>.mydevil.net:~/apps/subtracker/bin/
+   scp deploy/mydevil/ci-gate.sh deploy/mydevil/deploy.sh deploy/mydevil/restore-db.sh deploy/mydevil/stop-app.sh deploy/mydevil/start-app.sh deploy/mydevil/rollback.sh deploy/mydevil/start-all.sh deploy/mydevil/prune-backups.sh <login>@s<N>.mydevil.net:~/apps/subtracker/bin/
    ```
 
    You can upload a single changed file the same way, for example only `deploy/mydevil/start-app.sh`.
@@ -144,7 +165,7 @@ The scripts are **not** deployed by GitHub Actions: the workflows only ship app 
    forever list
    ```
 
-   Changes to `deploy.sh` and `ci-gate.sh` take effect with the next deploy. Changes to `stop-app.sh`, `restore-db.sh`, `rollback.sh` and `start-all.sh` take effect the next time they run.
+   Changes to `deploy.sh` and `ci-gate.sh` take effect with the next deploy. Changes to `stop-app.sh`, `restore-db.sh`, `rollback.sh`, `start-all.sh` and `prune-backups.sh` take effect the next time they run.
 
 ## One-time setup
 
@@ -159,7 +180,10 @@ crontab:
 ```
 @reboot /usr/home/<login>/apps/subtracker/bin/start-all.sh
 0 4 * * 0 find /usr/home/<login>/apps/subtracker/*/logs -name '*.log' -size +20M -exec truncate -s 0 {} \;
+30 4 * * * /usr/home/<login>/apps/subtracker/bin/prune-backups.sh >> /usr/home/<login>/apps/subtracker/api/logs/prune-backups.log 2>&1
 ```
+
+The last line deletes database dumps older than 180 days every day, also without deploys (see [Backups and deleted accounts](#backups-and-deleted-accounts)). Run it once by hand after adding it; it should end with `done: <n> dump(s) deleted`.
 
 The scripts expect `forever` on `PATH`. They look in `/usr/local/bin` and `~/.npm-global/bin`. If yours lives elsewhere, adjust the `PATH` line at the top of each script.
 
