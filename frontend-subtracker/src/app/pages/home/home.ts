@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MatButton } from '@angular/material/button';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 // The preview's next-payment dates are today plus a fixed number of days, so the sample never
 // shows past dates. The server renders them on the server's date; in the browser the page renders
@@ -22,6 +22,12 @@ function formatDaysFromToday(days: number): string {
   styleUrl: './home.scss',
 })
 export class Home {
+  // S-10: the account page navigates here with { accountDeleted: true } after the deletion. Read
+  // once, while the navigation that creates the page is still current; on the server and on a plain
+  // visit (a reload too) there is no such state, so no notice.
+  protected readonly accountDeleted =
+    inject(Router).currentNavigation()?.extras.state?.['accountDeleted'] === true;
+
   protected readonly nextPayments = {
     netflix: formatDaysFromToday(NEXT_PAYMENT_IN_DAYS.netflix),
     spotify: formatDaysFromToday(NEXT_PAYMENT_IN_DAYS.spotify),

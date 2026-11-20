@@ -67,6 +67,20 @@
   overflow-wrap: anywhere;
 }
 
+// S-10: the account page, beside the address it belongs to; underlined while it is the current page
+// (aria-current="page" says it to a screen reader).
+.shell__account-link {
+  color: #fff;
+  text-decoration: none;
+}
+
+.shell__account-link--active {
+  text-decoration: underline;
+  text-decoration-color: var(--st-green);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 4px;
+}
+
 .shell__logout {
   padding: 0;
   border: 0;

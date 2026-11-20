@@ -1,0 +1,53 @@
+// S-10: the account's address and a white panel with the deletion, like the /budget form. The page
+// has no long list, so it scrolls in the shell's content area like /budget.
+.account {
+  max-width: 960px;
+}
+
+.account__title {
+  margin: 0 0 8px;
+  font: var(--mat-sys-headline-small);
+  font-weight: 700;
+}
+
+.account__intro {
+  margin: 0 0 24px;
+  color: var(--st-ink-soft);
+}
+
+.account__email {
+  overflow-wrap: anywhere;
+}
+
+.account__section {
+  padding: 16px 24px 24px;
+  border: 1px solid var(--st-line);
+  border-radius: 4px;
+  background: var(--mat-sys-surface);
+}
+
+.account__section-title {
+  margin: 0 0 8px;
+  font: var(--mat-sys-title-small);
+  font-weight: 600;
+}
+
+.account__text {
+  margin: 0 0 16px;
+  color: var(--st-ink-soft);
+}
+
+@media (max-width: 839.98px) {
+  .account__title {
+    font: var(--mat-sys-title-large);
+    font-weight: 600;
+  }
+
+  .account__section {
+    padding: 16px;
+  }
+
+  .account__delete {
+    width: 100%;
+  }
+}

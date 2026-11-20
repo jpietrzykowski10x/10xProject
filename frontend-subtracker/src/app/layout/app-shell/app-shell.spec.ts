@@ -1,6 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { TestBed } from '@angular/core/testing';
+import { MatMenuHarness } from '@angular/material/menu/testing';
 import { provideRouter } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import type { CostTotals } from '../../subscriptions/subscription.types';
@@ -48,15 +50,13 @@ describe('AppShell', () => {
     const httpTesting = TestBed.inject(HttpTestingController);
     const fixture = TestBed.createComponent(AppShell);
     await fixture.whenStable();
-    httpTesting
-      .expectOne({ method: 'GET', url: TOTALS_URL })
-      .flush({
-        monthly: '0.00',
-        yearly: '0.00',
-        monthlyLimit: null,
-        budgetAlert: 'none',
-        categories: [],
-      } satisfies CostTotals);
+    httpTesting.expectOne({ method: 'GET', url: TOTALS_URL }).flush({
+      monthly: '0.00',
+      yearly: '0.00',
+      monthlyLimit: null,
+      budgetAlert: 'none',
+      categories: [],
+    } satisfies CostTotals);
     await fixture.whenStable();
 
     const links = Array.from(
@@ -69,5 +69,39 @@ describe('AppShell', () => {
       ['Subskrypcje', '/subscriptions'],
       ['Budżet', '/budget'],
     ]);
+  });
+
+  // The oracle is the plan of S-10: "Konto" beside the address in the desktop column and in the
+  // phone menu (opened, since the menu renders its items only then), outside the main navigation.
+  it('links the account page beside the address in both navigations', async () => {
+    TestBed.configureTestingModule({
+      imports: [AppShell],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+    });
+    const httpTesting = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(AppShell);
+    const loader = TestbedHarnessEnvironment.loader(fixture);
+    await fixture.whenStable();
+    httpTesting.expectOne({ method: 'GET', url: TOTALS_URL }).flush({
+      monthly: '0.00',
+      yearly: '0.00',
+      monthlyLimit: null,
+      budgetAlert: 'none',
+      categories: [],
+    } satisfies CostTotals);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+
+    const columnLink = host.querySelector<HTMLAnchorElement>('.shell__account a');
+    expect([columnLink?.textContent?.trim(), columnLink?.getAttribute('href')]).toEqual([
+      'Konto',
+      '/account',
+    ]);
+
+    const menu = await loader.getHarness(MatMenuHarness);
+    await menu.open();
+    const items = await menu.getItems({ text: 'Konto' });
+    expect(items).toHaveLength(1);
+    expect(await (await items[0].host()).getAttribute('href')).toBe('/account');
   });
 });

@@ -1,0 +1,41 @@
+<h2 mat-dialog-title>Usunąć konto?</h2>
+<!-- A form, so Enter in the field confirms like "Usuń konto" (confirm() checks the address). -->
+<form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
+  <mat-dialog-content>
+    <!-- The dialog's description (ariaDescribedBy in openDeleteAccountDialog). -->
+    <p id="delete-account-description" class="dialog__text">
+      Konto zostanie usunięte od razu, razem z subskrypcjami, własnymi kategoriami, limitami i
+      ustawieniami. Tych danych nie da się odzyskać, a usunięcia nie da się cofnąć.
+    </p>
+    <mat-form-field class="dialog__field">
+      <mat-label>Wpisz swój adres e-mail, aby potwierdzić</mat-label>
+      <input
+        matInput
+        type="email"
+        autocomplete="off"
+        spellcheck="false"
+        [readonly]="sending()"
+        formControlName="email"
+      />
+    </mat-form-field>
+    @if (error(); as message) {
+      <p class="st-notice st-notice--error dialog__error" role="alert">{{ message }}</p>
+    }
+  </mat-dialog-content>
+  <!-- "Usuń konto" is off until the typed address is the account's own. While the request is in
+       flight both buttons are disabled; "Usuń konto" keeps the focus (disabledInteractive). -->
+  <mat-dialog-actions align="end" class="dialog__actions">
+    <button
+      mat-stroked-button
+      type="button"
+      class="dialog__cancel"
+      [disabled]="sending()"
+      (click)="cancel()"
+    >
+      Anuluj
+    </button>
+    <button mat-flat-button type="submit" disabledInteractive [disabled]="sending() || !matches()">
+      Usuń konto
+    </button>
+  </mat-dialog-actions>
+</form>

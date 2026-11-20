@@ -11,6 +11,7 @@ const GUARDED_ROUTES = [
   '/subscriptions',
   '/dashboard',
   '/budget',
+  '/account',
   '/sign-in',
   '/register',
   '/auth/verify',
