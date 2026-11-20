@@ -356,9 +356,9 @@ Migracja `AccountDeletionSchema` zmienia definicje 3 kluczy obcych i zakłada in
 
 #### Automated
 
-- [ ] 2.1 Testy jednostkowe frontu przechodzą w obu strefach czasowych: `npm run test:ci`
-- [ ] 2.2 Build produkcyjny przechodzi: `npm run build`
-- [ ] 2.3 Test trybów renderowania z `/account` w `GUARDED_ROUTES` przechodzi
+- [x] 2.1 Testy jednostkowe frontu przechodzą w obu strefach czasowych: `npm run test:ci` — 1d7f9fe
+- [x] 2.2 Build produkcyjny przechodzi: `npm run build` — 1d7f9fe
+- [x] 2.3 Test trybów renderowania z `/account` w `GUARDED_ROUTES` przechodzi — 1d7f9fe
 
 #### Manual
 
