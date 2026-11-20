@@ -185,7 +185,8 @@ describe('Subscriptions — list (e2e)', () => {
     await postSubscription(cookie, subscriptionBody()).expect(201);
     const userId = await userIdOf(address);
 
-    // Session, token and role rows still block the delete (ON DELETE NO ACTION).
+    // Since S-10 session, token and role rows cascade with the user too; removing them first
+    // keeps this test about the subscription and category cascade alone.
     await repository(Session).delete({ userId });
     await repository(MagicLinkToken).delete({ userId });
     await repository(UserRole).delete({ userId });

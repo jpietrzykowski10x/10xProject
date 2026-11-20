@@ -349,7 +349,7 @@ Migracja `AccountDeletionSchema` zmienia definicje 3 kluczy obcych i zakłada in
 
 #### Manual
 
-- [ ] 1.6 Przegląd wygenerowanej migracji: tylko 3 klucze obce i indeks `mail.recipient`, `down()` je cofa
+- [x] 1.6 Przegląd wygenerowanej migracji: tylko 3 klucze obce i indeks `mail.recipient`, `down()` je cofa — ręcznie (właściciel)
 - [ ] 1.7 `curl` na lokalne API: zły adres 400, dobry 204, konto znika z `subtracker-db-dev`, a jego wiersze `mail` mają znacznik
 
 ### Phase 2: Frontend: strona `/account` i dialog
