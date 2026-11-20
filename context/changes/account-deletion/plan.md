@@ -370,9 +370,9 @@ Migracja `AccountDeletionSchema` zmienia definicje 3 kluczy obcych i zakłada in
 
 #### Automated
 
-- [ ] 3.1 E2E przeglądarki przechodzi, w tym `account-deletion.e2e-spec.ts`
-- [ ] 3.2 Pełne testy backendu nadal przechodzą
-- [ ] 3.3 Skrypty serwera (`deploy.sh`, `restore-db.sh`, `prune-backups.sh`) przechodzą kontrolę składni `sh -n`
+- [x] 3.1 E2E przeglądarki przechodzi, w tym `account-deletion.e2e-spec.ts` — a1c11da
+- [x] 3.2 Pełne testy backendu nadal przechodzą — a1c11da
+- [x] 3.3 Skrypty serwera (`deploy.sh`, `restore-db.sh`, `prune-backups.sh`) przechodzą kontrolę składni `sh -n` — a1c11da
 
 #### Manual
 
