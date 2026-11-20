@@ -362,9 +362,9 @@ Migracja `AccountDeletionSchema` zmienia definicje 3 kluczy obcych i zakłada in
 
 #### Manual
 
-- [ ] 2.4 Adres e-mail jako link do `/account` na desktopie i telefonie, `/account` spójne z `/budget`
-- [ ] 2.5 Dialog: fokus na „Anuluj”, Esc zamyka, przycisk aktywny dopiero po wpisaniu własnego adresu
-- [ ] 2.6 Po usunięciu komunikat na `/`, odświeżenie go usuwa, `/subscriptions` przekierowuje na `/sign-in`
+- [x] 2.4 Adres e-mail jako link do `/account` na desktopie i telefonie, `/account` spójne z `/budget` — ręcznie (właściciel)
+- [x] 2.5 Dialog: fokus na „Anuluj”, Esc zamyka, przycisk aktywny dopiero po wpisaniu własnego adresu — ręcznie (właściciel)
+- [x] 2.6 Po usunięciu komunikat na `/`, odświeżenie go usuwa, `/subscriptions` przekierowuje na `/sign-in` — ręcznie (właściciel)
 
 ### Phase 3: E2E przeglądarki i dokumentacja
 
