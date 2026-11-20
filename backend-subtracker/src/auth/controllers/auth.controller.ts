@@ -13,9 +13,11 @@ import type { Request, Response } from 'express';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator.js';
 import { Public } from '../../shared/decorators/public.decorator.js';
 import type { AuthUser } from '../../shared/types/auth-user.js';
+import { DeleteAccountDto } from '../dtos/delete-account.dto.js';
 import { RegisterDto } from '../dtos/register.dto.js';
 import { RequestLinkDto } from '../dtos/request-link.dto.js';
 import { VerifyDto } from '../dtos/verify.dto.js';
+import { AccountDeletionService } from '../services/account-deletion.service.js';
 import { AuthService } from '../services/auth.service.js';
 import { SessionService } from '../services/session.service.js';
 
@@ -24,6 +26,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly sessions: SessionService,
+    private readonly accountDeletion: AccountDeletionService,
   ) {}
 
   // Answers the same whether or not the address has an account.
@@ -87,6 +90,19 @@ export class AuthController {
     if (token !== undefined) {
       await this.sessions.revoke(token);
     }
+    this.sessions.clearCookie(response);
+  }
+
+  // Deletes the signed-in account at once; the body repeats its address as a confirmation. The
+  // account's sessions go with it, so only the cookie is left to clear.
+  @Post('delete-account')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteAccount(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: DeleteAccountDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    await this.accountDeletion.delete(user.id, dto.email);
     this.sessions.clearCookie(response);
   }
 }
