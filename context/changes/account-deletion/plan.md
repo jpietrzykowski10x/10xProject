@@ -341,11 +341,11 @@ Migracja `AccountDeletionSchema` zmienia definicje 3 kluczy obcych i zakłada in
 
 #### Automated
 
-- [x] 1.1 Migracja `AccountDeletionSchema` przechodzi na `subtracker-db`, a ponowne `migration:generate` nie znajduje zmian
-- [x] 1.2 Lint backendu przechodzi: `npm run lint`
-- [x] 1.3 Build backendu przechodzi: `npm run build`
-- [x] 1.4 Testy jednostkowe przechodzą: `npm test`
-- [x] 1.5 Testy e2e API przechodzą, w tym `account-deletion.e2e-spec.ts` i `routes.e2e-spec.ts`: `npm run test:e2e`
+- [x] 1.1 Migracja `AccountDeletionSchema` przechodzi na `subtracker-db`, a ponowne `migration:generate` nie znajduje zmian — 6116dfd
+- [x] 1.2 Lint backendu przechodzi: `npm run lint` — 6116dfd
+- [x] 1.3 Build backendu przechodzi: `npm run build` — 6116dfd
+- [x] 1.4 Testy jednostkowe przechodzą: `npm test` — 6116dfd
+- [x] 1.5 Testy e2e API przechodzą, w tym `account-deletion.e2e-spec.ts` i `routes.e2e-spec.ts`: `npm run test:e2e` — 6116dfd
 
 #### Manual
 
