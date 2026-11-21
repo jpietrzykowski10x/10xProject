@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -36,6 +37,8 @@ type AccessChange = (manager: EntityManager, user: User) => Promise<void>;
 // not awaited: sendToUser never rejects, and SMTP time does not hold up the caller.
 @Injectable()
 export class AccountAccessService {
+  private readonly logger = new Logger(AccountAccessService.name);
+
   private readonly supportEmail: string;
   private readonly signInLink: string;
 
@@ -168,6 +171,12 @@ export class AccountAccessService {
     address: string,
     content: MailContent,
   ): void {
-    void this.mail.sendToUser(type, address, content);
+    // sendToUser never rejects today; the catch keeps a future error from becoming an unhandled
+    // rejection. Only the message is logged, never the address.
+    this.mail.sendToUser(type, address, content).catch((error: unknown) => {
+      this.logger.error(
+        `Mail sending failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    });
   }
 }

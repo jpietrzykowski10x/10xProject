@@ -21,10 +21,16 @@ export interface AdminActionDialogData {
   user: Pick<AdminUserSummary, 'id' | 'email'>;
 }
 
-// 'done': the API made the change. 'forbidden' (403), 'missing' (404) and 'conflict' (409): the
-// API refused it because the account changed meanwhile; the page reads it again and says why.
-// "Anuluj" and Escape close the dialog without a result.
-export type AdminActionResult = 'done' | 'forbidden' | 'missing' | 'conflict';
+// done: the API made the change and answered with the account's new summary, which the page
+// shows without reading the account again (that read would log another VIEW in the audit).
+// 'forbidden' (403), 'missing' (404) and 'conflict' (409): the API refused it; the page says why
+// and, for 404 and 409, reads the account again. "Anuluj" and Escape close without a result.
+export interface AdminActionDone {
+  kind: 'done';
+  user: AdminUserSummary;
+}
+
+export type AdminActionResult = AdminActionDone | 'forbidden' | 'missing' | 'conflict';
 
 interface ActionTexts {
   title: string;
@@ -117,7 +123,7 @@ export class AdminActionDialog {
     this.request()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => this.dialogRef.close('done'),
+        next: (user) => this.dialogRef.close({ kind: 'done', user }),
         error: (error: HttpErrorResponse) => {
           const result = ERROR_RESULTS[error.status];
           if (result !== undefined) {

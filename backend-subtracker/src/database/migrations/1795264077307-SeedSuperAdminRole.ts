@@ -13,6 +13,10 @@ export class SeedSuperAdminRole1795264077307 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    // user_role references role with ON DELETE NO ACTION: a granted role would block the delete.
+    await queryRunner.query(
+      `DELETE FROM "user_role" WHERE "role_id" = 'ab11313f-1fa6-49eb-9770-227cf6a29d02'`,
+    );
     await queryRunner.query(
       `DELETE FROM "role" WHERE "id" = 'ab11313f-1fa6-49eb-9770-227cf6a29d02'`,
     );

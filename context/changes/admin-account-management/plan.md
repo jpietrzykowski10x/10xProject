@@ -569,7 +569,7 @@ Wzorce, README deployu, CLAUDE.md, PRD i sprawdzenie na produkcji.
 
 #### Automated
 
-- [x] 5.1 Testy backendu i frontendu nadal zielone po zmianach dokumentacji
+- [x] 5.1 Testy backendu i frontendu nadal zielone po zmianach dokumentacji — b9328ff
 
 #### Manual
 

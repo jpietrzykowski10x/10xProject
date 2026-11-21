@@ -2,6 +2,7 @@ import { UnauthorizedException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import { type DataSource, IsNull } from 'typeorm';
 import { type EnvConfig, validateEnv } from '../../config/env.js';
+import { Mail } from '../../mail/entities/mail.entity.js';
 import { type MailContent, MailType } from '../../mail/mail.types.js';
 import type { MailService } from '../../mail/services/mail.service.js';
 import { RoleCode } from '../../shared/types/role-code.js';
@@ -112,9 +113,12 @@ function setup({
     getRepository: (entity: unknown) => repositories.get(entity),
     createQueryBuilder: () => query,
   };
+  // The mail audit, read outside the transaction: was the mail about the block sent recently?
+  const mails = { exists: vi.fn(() => Promise.resolve(false)) };
   const dataSource = {
     transaction: <T>(work: (entityManager: typeof manager) => Promise<T>) =>
       work(manager),
+    getRepository: (entity: unknown) => (entity === Mail ? mails : undefined),
   } as unknown as DataSource;
 
   const sendToUser = vi.fn<
@@ -129,6 +133,7 @@ function setup({
   );
   return {
     service,
+    mails,
     calls,
     users,
     userRoles,
@@ -174,6 +179,20 @@ describe('AuthService', () => {
       expect(type).toBe(MailType.ACCOUNT_BLOCKED);
       expect(to).toBe(ADDRESS);
       expect(content.text).toContain(SUPPORT_EMAIL);
+    });
+
+    it('refuses a blocked account without a new mail when one went out within the hour', async () => {
+      const { service, mails, sendToUser } = setup({
+        found: userWith({ isActive: false }),
+      });
+      mails.exists.mockResolvedValueOnce(true);
+
+      const refusal = await service
+        .requestLink(ADDRESS)
+        .catch((error: unknown) => error);
+
+      expect(refusal).toBeInstanceOf(AccountBlockedException);
+      expect(sendToUser).not.toHaveBeenCalled();
     });
 
     it('refuses a blocked account before the mail about the block has gone out', async () => {

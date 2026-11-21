@@ -10,3 +10,7 @@ export const PRIVACY_POLICY_VERSION = '0-placeholder';
 // How long expired tokens and expired or revoked sessions stay before the cleanup job deletes
 // them, in milliseconds.
 export const CLEANUP_RETENTION = 7 * 24 * 60 * 60 * 1000;
+
+// A blocked account asking for a link gets the mail about the block again at most this often, in
+// milliseconds: the 403 already says so on the page, and repeated requests must not flood the inbox.
+export const BLOCKED_MAIL_RESEND_INTERVAL = 60 * 60 * 1000;

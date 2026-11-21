@@ -118,6 +118,32 @@ describe('Auth — blocking, unblocking and signing out everywhere (e2e)', () =>
     });
   });
 
+  describe('mail about the block', () => {
+    it('goes out again on a link request at most once an hour', async () => {
+      const address = newAddress();
+      await signIn(address);
+      await access().block(await userIdOf(address));
+      // The registration link and the mail of the block itself.
+      await mailTypesOf(address, 2);
+
+      await postRequestLink(address).expect(403);
+      await postRequestLink(address).expect(403);
+      // An hour later the next request sends it again.
+      await repository(Mail).update(
+        { recipient: address, type: MailType.ACCOUNT_BLOCKED },
+        { createdAt: new Date(Date.now() - 61 * 60 * 1000) },
+      );
+      await postRequestLink(address).expect(403);
+
+      expect(await mailTypesOf(address, 3)).toEqual([
+        MailType.ACCOUNT_BLOCKED,
+        MailType.ACCOUNT_BLOCKED,
+        MailType.MAGIC_LINK,
+      ]);
+      expect(await mailsTo(address, 3)).toHaveLength(3);
+    });
+  });
+
   describe('unblock', () => {
     it('lets the owner sign in again with a new link, while a link from before the block stays dead', async () => {
       const address = newAddress();
@@ -126,17 +152,16 @@ describe('Auth — blocking, unblocking and signing out everywhere (e2e)', () =>
       const linkBeforeBlock = await tokenFromMail(address, 2);
       const userId = await userIdOf(address);
       await access().block(userId);
+      // Link, link, the block; once its audit row is there, request-link does not mail it again.
+      await mailTypesOf(address, 3);
       await postRequestLink(address).expect(403);
-      // Link, link, the block, the block again from request-link.
-      await mailsTo(address, 4);
 
       const user = await access().unblock(userId);
 
       expect(user).toMatchObject({ id: userId, isActive: true });
-      const mails = await mailsTo(address, 5);
-      expect(mails[4].text).toContain(`${e2e.env.FRONTEND_URL}/sign-in`);
-      expect(await mailTypesOf(address, 5)).toEqual([
-        MailType.ACCOUNT_BLOCKED,
+      const mails = await mailsTo(address, 4);
+      expect(mails[3].text).toContain(`${e2e.env.FRONTEND_URL}/sign-in`);
+      expect(await mailTypesOf(address, 4)).toEqual([
         MailType.ACCOUNT_BLOCKED,
         MailType.ACCOUNT_UNBLOCKED,
         MailType.MAGIC_LINK,
@@ -145,7 +170,7 @@ describe('Auth — blocking, unblocking and signing out everywhere (e2e)', () =>
       await postVerify(linkBeforeBlock).expect(401);
       await postRequestLink(address).expect(202);
       const cookie = cookiePairOf(
-        await postVerify(await tokenFromMail(address, 6)).expect(200),
+        await postVerify(await tokenFromMail(address, 5)).expect(200),
       );
       await getMe(cookie).expect(200);
     });

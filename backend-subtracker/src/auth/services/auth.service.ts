@@ -1,9 +1,10 @@
 import { randomBytes } from 'node:crypto';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DataSource, type EntityManager, IsNull, Raw } from 'typeorm';
+import { DataSource, type EntityManager, IsNull, MoreThan, Raw } from 'typeorm';
 import { type EnvConfig, envFromConfig } from '../../config/env.js';
-import { MailType } from '../../mail/mail.types.js';
+import { Mail } from '../../mail/entities/mail.entity.js';
+import { MailStatus, MailType } from '../../mail/mail.types.js';
 import { MailService } from '../../mail/services/mail.service.js';
 import type { AuthUser } from '../../shared/types/auth-user.js';
 import { RoleCode } from '../../shared/types/role-code.js';
@@ -12,7 +13,11 @@ import { UserRole } from '../../users/entities/user-role.entity.js';
 import { User } from '../../users/entities/user.entity.js';
 import { normalizeEmail } from '../../users/normalize-email.js';
 import { AccountBlockedException } from '../account-blocked.exception.js';
-import { MAGIC_LINK_TTL, PRIVACY_POLICY_VERSION } from '../auth.constants.js';
+import {
+  BLOCKED_MAIL_RESEND_INTERVAL,
+  MAGIC_LINK_TTL,
+  PRIVACY_POLICY_VERSION,
+} from '../auth.constants.js';
 import { MagicLinkToken } from '../entities/magic-link-token.entity.js';
 import { accountBlockedMail, magicLinkMail } from '../mail-templates.js';
 import { hashToken, SessionService, toAuthUser } from './session.service.js';
@@ -46,6 +51,7 @@ export interface SignIn {
 // seen by each of them.
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly frontendUrl: string;
   private readonly supportEmail: string;
 
@@ -88,7 +94,8 @@ export class AuthService {
     this.sendLink(link);
   }
 
-  // A blocked account gets the mail about the block again, in case the first one went missing.
+  // A blocked account gets the mail about the block again, in case the first one went missing, but
+  // at most once per BLOCKED_MAIL_RESEND_INTERVAL.
   async requestLink(email: string): Promise<void> {
     const address = normalizeEmail(email);
     const outcome = await this.dataSource.transaction(
@@ -104,7 +111,9 @@ export class AuthService {
       },
     );
     if (outcome.kind === 'blocked') {
-      this.sendBlockedMail(outcome.address);
+      if (!(await this.blockedMailSentRecently(outcome.address))) {
+        this.sendBlockedMail(outcome.address);
+      }
       throw new AccountBlockedException(this.supportEmail);
     }
     this.sendLink(outcome.kind === 'issued' ? outcome.link : null);
@@ -247,23 +256,52 @@ export class AuthService {
     if (link === null) {
       return;
     }
-    void this.mail.sendToUser(
-      MailType.MAGIC_LINK,
-      link.address,
-      magicLinkMail({
-        // In the fragment, so the token reaches neither proxy logs nor the Referer header.
-        link: `${this.frontendUrl}/auth/verify#token=${link.token}`,
-        needsConsentConfirmation: link.needsConsentConfirmation,
-      }),
+    this.fireAndForget(
+      this.mail.sendToUser(
+        MailType.MAGIC_LINK,
+        link.address,
+        magicLinkMail({
+          // In the fragment, so the token reaches neither proxy logs nor the Referer header.
+          link: `${this.frontendUrl}/auth/verify#token=${link.token}`,
+          needsConsentConfirmation: link.needsConsentConfirmation,
+        }),
+      ),
     );
   }
 
   // Not awaited, like the link.
   private sendBlockedMail(address: string): void {
-    void this.mail.sendToUser(
-      MailType.ACCOUNT_BLOCKED,
-      address,
-      accountBlockedMail({ contact: this.supportEmail }),
+    this.fireAndForget(
+      this.mail.sendToUser(
+        MailType.ACCOUNT_BLOCKED,
+        address,
+        accountBlockedMail({ contact: this.supportEmail }),
+      ),
     );
+  }
+
+  // Sent means accepted by the transport (MailStatus.SENT), the same for the mail of the block
+  // itself. Two requests racing within the same moment may both send; that is accepted.
+  private blockedMailSentRecently(address: string): Promise<boolean> {
+    return this.dataSource.getRepository(Mail).exists({
+      where: {
+        type: MailType.ACCOUNT_BLOCKED,
+        recipient: address,
+        status: MailStatus.SENT,
+        createdAt: MoreThan(
+          new Date(Date.now() - BLOCKED_MAIL_RESEND_INTERVAL),
+        ),
+      },
+    });
+  }
+
+  // sendToUser never rejects today; the catch keeps a future error from becoming an unhandled
+  // rejection. Only the message is logged, never the address.
+  private fireAndForget(sending: Promise<boolean>): void {
+    sending.catch((error: unknown) => {
+      this.logger.error(
+        `Mail sending failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    });
   }
 }

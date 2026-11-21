@@ -1,7 +1,7 @@
 ---
 change_id: admin-account-management
 title: Admin account management
-status: implementing
+status: impl_reviewed
 created: 2026-11-21
 updated: 2026-11-21
 archived_at: null

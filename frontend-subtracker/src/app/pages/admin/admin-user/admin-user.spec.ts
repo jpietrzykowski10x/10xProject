@@ -161,7 +161,6 @@ describe('AdminUser', () => {
       .expectOne({ method: 'POST', url: `${USER_URL}/block` })
       .flush({ ...detail().user, isActive: false });
     await harness.fixture.whenStable();
-    await answer(detail({ isActive: false }));
 
     expect(host().querySelector('.admin-user__back')?.getAttribute('href')).toBe(
       '/admin/users?q=anna&status=active',
@@ -180,7 +179,7 @@ describe('AdminUser', () => {
     expect(alerts[0].textContent).toContain(message);
   });
 
-  it('blocks after the confirmation and reads the account again', async () => {
+  it('blocks after the confirmation and shows the new state without reading the account again', async () => {
     await createPage();
     await answer(detail());
 
@@ -194,7 +193,10 @@ describe('AdminUser', () => {
     expect(request.request.body).toBeNull();
     request.flush({ ...detail().user, isActive: false });
     await harness.fixture.whenStable();
-    await answer(detail({ isActive: false }));
+    // The dialog closes after its animation; then the page shows the answer.
+    await harness.fixture.whenStable();
+    // No second GET: reading the account again would log another VIEW in the audit.
+    httpTesting.expectNone({ method: 'GET', url: USER_URL });
 
     expect(host().querySelector('[role="status"]')?.textContent).toContain('zablokowane');
     expect(await buttonTexts()).toEqual(['Odblokuj']);

@@ -8,6 +8,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import type { Subscription as RxSubscription } from 'rxjs';
 import {
   type AdminAction,
+  type AdminActionDone,
   type AdminActionResult,
   openAdminActionDialog,
 } from '../../../admin/admin-action-dialog/admin-action-dialog';
@@ -31,7 +32,7 @@ const DONE_MESSAGES: Record<AdminAction, string> = {
   'reset-sessions': 'Konto zostało wylogowane na wszystkich urządzeniach.',
 };
 
-const REFUSED_MESSAGES: Record<Exclude<AdminActionResult, 'done'>, string> = {
+const REFUSED_MESSAGES: Record<Exclude<AdminActionResult, AdminActionDone>, string> = {
   forbidden: 'Brak uprawnień do zarządzania tym kontem.',
   missing: 'Nie ma takiego konta.',
   conflict: 'Stan konta zmienił się w międzyczasie. Odświeżyliśmy widok.',
@@ -81,12 +82,26 @@ export class AdminUser implements OnInit {
         if (result === undefined) {
           return;
         }
-        if (result === 'done') {
+        if (typeof result === 'object') {
+          // The change does not touch subscriptions, totals or the budget: only the profile is
+          // updated, from the answer, so the action leaves no extra VIEW in the audit.
+          const done = result.user;
+          this.state.update((current) =>
+            current.kind === 'ready'
+              ? {
+                  kind: 'ready',
+                  detail: { ...current.detail, user: { ...current.detail.user, ...done } },
+                }
+              : current,
+          );
           this.statusMessage.set(DONE_MESSAGES[action]);
-        } else {
-          this.actionError.set(REFUSED_MESSAGES[result]);
+          return;
         }
-        this.load();
+        this.actionError.set(REFUSED_MESSAGES[result]);
+        // 403 changes nothing; after 404 or 409 the account changed meanwhile, so read it again.
+        if (result !== 'forbidden') {
+          this.load();
+        }
       });
   }
 

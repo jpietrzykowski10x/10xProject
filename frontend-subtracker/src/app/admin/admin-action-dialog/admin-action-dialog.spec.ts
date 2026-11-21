@@ -48,15 +48,16 @@ afterEach(() => {
 // 200 is done; 403, 404 and 409 are refusals the page explains; anything else keeps the dialog
 // open with a message.
 describe('AdminActionDialog', () => {
-  it('names the account and closes with "done" after the block', async () => {
+  it('names the account and closes with the new summary after the block', async () => {
     const { fixture, dialog, confirm, results, httpTesting } = await openBlock();
     expect(await dialog.getText()).toContain('anna@example.com');
 
     await confirm.click();
-    httpTesting.expectOne({ method: 'POST', url: BLOCK_URL }).flush({});
+    const summary = { id: 'u1', email: 'anna@example.com', isActive: false };
+    httpTesting.expectOne({ method: 'POST', url: BLOCK_URL }).flush(summary);
     await fixture.whenStable();
 
-    expect(results).toEqual(['done']);
+    expect(results).toEqual([{ kind: 'done', user: summary }]);
   });
 
   it.each([
