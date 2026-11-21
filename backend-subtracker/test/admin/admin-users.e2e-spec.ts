@@ -197,9 +197,10 @@ describe('Admin — accounts (e2e)', () => {
       bodies.push(reset.text);
       expect(reset.body).toMatchObject({ id: user.id, canManage: true });
       bodies.push(
+        // The superadmin's own address, so its row is surely among the results.
         (
           await searchUsers(owner.cookie, {
-            q: ADDRESS_PREFIX,
+            q: owner.address,
           }).expect(200)
         ).text,
       );
@@ -261,24 +262,25 @@ describe('Admin — accounts (e2e)', () => {
       const blocked = await account();
       await postAction(admin.cookie, blocked.id, 'block').expect(200);
 
-      const filtered = (
-        await searchUsers(admin.cookie, {
-          q: ADDRESS_PREFIX,
-          status: 'blocked',
-        }).expect(200)
-      ).body as AdminUserSummary[];
-      expect(filtered.map((result) => result.id)).toEqual([blocked.id]);
-
-      const activeOnly = (
-        await searchUsers(admin.cookie, {
-          q: ADDRESS_PREFIX,
-          status: 'active',
-        }).expect(200)
-      ).body as AdminUserSummary[];
-      const activeIds = activeOnly.map((result) => result.id);
-      expect(activeIds).toContain(active.id);
-      expect(activeIds).not.toContain(blocked.id);
-      expect(activeOnly.every((result) => result.isActive)).toBe(true);
+      // Each search uses the full address of one account: the file's prefix matches more than the
+      // 20 results by now, so an account of this test could fall outside them.
+      const idsFor = async (query: Record<string, string>) =>
+        (
+          (await searchUsers(admin.cookie, query).expect(200))
+            .body as AdminUserSummary[]
+        ).map((result) => result.id);
+      expect(await idsFor({ q: blocked.address, status: 'blocked' })).toEqual([
+        blocked.id,
+      ]);
+      expect(await idsFor({ q: active.address, status: 'blocked' })).toEqual(
+        [],
+      );
+      expect(await idsFor({ q: active.address, status: 'active' })).toEqual([
+        active.id,
+      ]);
+      expect(await idsFor({ q: blocked.address, status: 'active' })).toEqual(
+        [],
+      );
 
       const blockedQueries: Record<string, string>[] = [
         { status: 'blocked' },
@@ -291,16 +293,14 @@ describe('Admin — accounts (e2e)', () => {
       }
 
       // `status=all` (also the default) does not filter.
-      const unfilteredQueries: Record<string, string>[] = [
-        { q: ADDRESS_PREFIX, status: 'all' },
-        { q: ADDRESS_PREFIX },
-      ];
-      for (const query of unfilteredQueries) {
-        const unfiltered = (await searchUsers(admin.cookie, query).expect(200))
-          .body as AdminUserSummary[];
-        expect(unfiltered.map((result) => result.id)).toEqual(
-          expect.arrayContaining([active.id, blocked.id]),
-        );
+      const statusFilters: Record<string, string>[] = [{ status: 'all' }, {}];
+      for (const status of statusFilters) {
+        expect(await idsFor({ q: active.address, ...status })).toEqual([
+          active.id,
+        ]);
+        expect(await idsFor({ q: blocked.address, ...status })).toEqual([
+          blocked.id,
+        ]);
       }
       await mailTypesOf(blocked.address, 2);
     });
