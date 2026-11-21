@@ -382,7 +382,7 @@ Migracja `AccountDeletionSchema` zmienia definicje 3 kluczy obcych i zakłada in
 
 #### Manual
 
-- [ ] 3.4 Sekcja w `deploy/mydevil/README.md` zrozumiała dla operatora bez czytania planu
+- [x] 3.4 Sekcja w `deploy/mydevil/README.md` zrozumiała dla operatora bez czytania planu — ręcznie (właściciel, 2026-11-21)
 - [x] 3.5 Po deployu: usunięcie testowego konta działa, ponowna rejestracja daje puste konto — ręcznie (właściciel, 2026-11-21, po deployu 49c180f): konto usunięte, ponowna rejestracja daje puste konto
 - [x] 3.6 Na serwerze: trzy skrypty wgrane, wpis crontab dodany, pierwsze ręczne uruchomienie bez błędu — ręcznie (właściciel, 2026-11-21): chmod 700, sumy sha256 zgodne, crontab dodany, ręczne uruchomienie: `done: 0 dump(s) deleted`
 - [x] 3.7 Lokalna próba `prune-backups.sh`: same stare kopie → najpierw świeży dump, potem kasowanie; najnowszy 40-dniowy → profilaktyczny dump; nieudany dump → nic nie znika; jest młodszy niż 30 dni → znikają tylko starsze niż 180 — `sh dev-local/prune-backups-trial.sh`: 7 przypadków, 30/30 PASS (2026-11-21)
