@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { type FindOptionsWhere, Repository } from 'typeorm';
 import { type EnvConfig, envFromConfig } from '../../config/env.js';
 import { User } from '../../users/entities/user.entity.js';
 import {
@@ -11,6 +11,7 @@ import {
 import { escapeHtml } from '../escape-html.js';
 import { MAIL_TRANSPORT, type MailTransport } from '../mail.transport.js';
 import {
+  ACCOUNT_ACCESS_MAIL_TYPES,
   ANONYMIZED_RECIPIENT,
   type MailChannel,
   type MailContent,
@@ -73,9 +74,11 @@ export class MailService {
     to: string,
     content: MailContent,
   ): Promise<boolean> {
-    if (!(await this.accountExists(to))) {
+    if (!(await this.mayReceive(type, to))) {
       // Nothing to audit or alert about, and no address in the log, as everywhere here.
-      this.logger.warn(`Skipped ${type} mail: no account has this address`);
+      this.logger.warn(
+        `Skipped ${type} mail: no account with this address may receive it`,
+      );
       return false;
     }
     const { sent, needsAlert, rowId } = await this.deliver(
@@ -140,10 +143,20 @@ export class MailService {
     return { sent: true, needsAlert: false, rowId };
   }
 
+  // A blocked account gets only the mail about the access to it; the rest waits until it is
+  // unblocked (the jobs catch up) or is lost, like a sign-in link it could not use anyway.
+  private mayReceive(type: UserMailType, address: string): Promise<boolean> {
+    return this.accountExists(
+      ACCOUNT_ACCESS_MAIL_TYPES.includes(type)
+        ? { email: address }
+        : { email: address, isActive: true },
+    );
+  }
+
   // A failed lookup counts as a missing account: no mail before sending, no address in the audit.
-  private async accountExists(address: string): Promise<boolean> {
+  private async accountExists(where: FindOptionsWhere<User>): Promise<boolean> {
     try {
-      return await this.users.exists({ where: { email: address } });
+      return await this.users.exists({ where });
     } catch (error) {
       this.logger.error(
         `Checking the account of a mail recipient failed: ${errorMessageOf(error)}`,
@@ -178,7 +191,8 @@ export class MailService {
     status: MailStatus,
     errorMessage: string | null,
   ): Promise<string | null> {
-    const accountGone = channel === 'user' && !(await this.accountExists(to));
+    const accountGone =
+      channel === 'user' && !(await this.accountExists({ email: to }));
     try {
       const row = await this.mails.save(
         this.mails.create({

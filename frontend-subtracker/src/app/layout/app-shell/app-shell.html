@@ -3,7 +3,7 @@
   <a class="shell__wordmark" routerLink="/subscriptions">SubTracker</a>
 
   <nav class="shell__nav" aria-label="Główna nawigacja">
-    @for (link of links; track link.path) {
+    @for (link of links(); track link.path) {
       <a
         class="shell__nav-link"
         [routerLink]="link.path"
@@ -14,7 +14,9 @@
     }
   </nav>
 
-  <app-cost-totals variant="column" class="shell__totals" />
+  @if (showTotals()) {
+    <app-cost-totals variant="column" class="shell__totals" />
+  }
 
   <div class="shell__account">
     <a
@@ -40,11 +42,13 @@
     </svg>
   </button>
   <!-- The second row, under the wordmark and the menu button. -->
-  <app-cost-totals variant="bar" class="shell__bar-totals" />
+  @if (showTotals()) {
+    <app-cost-totals variant="bar" class="shell__bar-totals" />
+  }
 </header>
 
 <mat-menu #menu="matMenu" xPosition="before">
-  @for (link of links; track link.path) {
+  @for (link of links(); track link.path) {
     <a
       mat-menu-item
       class="shell__menu-link"

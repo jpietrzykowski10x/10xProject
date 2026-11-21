@@ -2,6 +2,9 @@ export enum MailType {
   MAGIC_LINK = 'MAGIC_LINK',
   TRIAL_REMINDER = 'TRIAL_REMINDER',
   OPERATOR_ALERT = 'OPERATOR_ALERT',
+  ACCOUNT_BLOCKED = 'ACCOUNT_BLOCKED',
+  ACCOUNT_UNBLOCKED = 'ACCOUNT_UNBLOCKED',
+  SESSIONS_RESET = 'SESSIONS_RESET',
 }
 
 // Replaces the address of a deleted account in the mail archive: a valid address in the reserved
@@ -15,6 +18,13 @@ export enum MailStatus {
 
 // Mail addressed to users; operator alerts go only through notifyOperator.
 export type UserMailType = Exclude<MailType, MailType.OPERATOR_ALERT>;
+
+// Mail about the access to the account itself: the only user mail a blocked account still gets.
+export const ACCOUNT_ACCESS_MAIL_TYPES: readonly UserMailType[] = [
+  MailType.ACCOUNT_BLOCKED,
+  MailType.ACCOUNT_UNBLOCKED,
+  MailType.SESSIONS_RESET,
+];
 
 export interface MailContent {
   subject: string;

@@ -1,0 +1,135 @@
+<app-shell [showTotals]="false">
+  <div class="admin-user">
+    <!-- The list's query (q, status) came along in the address; it leads back to the same list. -->
+    <a
+      mat-stroked-button
+      class="admin-user__back"
+      routerLink="/admin/users"
+      queryParamsHandling="preserve"
+      >Wróć do wyszukiwania</a
+    >
+
+    <!-- The live region is always there, so a message put into it is announced. -->
+    <div role="status">
+      @if (statusMessage(); as message) {
+        <p class="st-notice st-notice--success">{{ message }}</p>
+      }
+    </div>
+    @if (actionError(); as error) {
+      <p class="st-notice st-notice--error" role="alert">{{ error }}</p>
+    }
+
+    @let current = state();
+    @if (current.kind === 'loading') {
+      <h1 class="admin-user__title">Konto</h1>
+      <p class="admin-user__panel">Wczytywanie konta…</p>
+    } @else if (current.kind === 'forbidden') {
+      <h1 class="admin-user__title">Konto</h1>
+      <p class="st-notice st-notice--error" role="alert">Brak uprawnień.</p>
+    } @else if (current.kind === 'missing') {
+      <h1 class="admin-user__title">Konto</h1>
+      <p class="st-notice st-notice--error" role="alert">Nie ma takiego konta.</p>
+    } @else if (current.kind === 'error') {
+      <h1 class="admin-user__title">Konto</h1>
+      <div class="st-notice st-notice--error" role="alert">
+        <p>Nie udało się wczytać konta. Serwis jest chwilowo niedostępny.</p>
+        <button mat-stroked-button type="button" (click)="load()">Spróbuj ponownie</button>
+      </div>
+    } @else {
+      @let detail = current.detail;
+      @let user = detail.user;
+      <h1 class="admin-user__title">{{ user.email }}</h1>
+
+      <section class="admin-user__section" aria-labelledby="admin-user-profile-title">
+        <h2 id="admin-user-profile-title" class="admin-user__section-title">Profil</h2>
+        <dl class="admin-user__profile">
+          <dt>Adres e-mail</dt>
+          <dd>{{ user.email }}</dd>
+          <dt>Status</dt>
+          <dd>
+            <span class="admin-user__status" [class.admin-user__status--blocked]="!user.isActive">{{
+              statusLabel(user.isActive)
+            }}</span>
+          </dd>
+          <dt>Rola</dt>
+          <dd>{{ roleLabels[user.role] }}</dd>
+          <dt>Założone</dt>
+          <dd>{{ user.createdAt | date: 'dd.MM.yyyy, HH:mm' }}</dd>
+          <dt>Adres potwierdzony</dt>
+          <dd>
+            {{
+              user.emailVerifiedAt === null
+                ? 'Nie'
+                : (user.emailVerifiedAt | date: 'dd.MM.yyyy, HH:mm')
+            }}
+          </dd>
+        </dl>
+
+        @if (user.canManage) {
+          <div class="admin-user__actions">
+            @if (user.isActive) {
+              <button mat-flat-button type="button" (click)="act('block', detail)">Zablokuj</button>
+              <button mat-stroked-button type="button" (click)="act('reset-sessions', detail)">
+                Wyloguj wszędzie
+              </button>
+            } @else {
+              <button mat-flat-button type="button" (click)="act('unblock', detail)">
+                Odblokuj
+              </button>
+            }
+          </div>
+        }
+      </section>
+
+      <section class="admin-user__totals" aria-label="Sumy kosztów konta">
+        <app-cost-totals variant="bar" [totals]="detail.totals" />
+      </section>
+
+      <h2 class="admin-user__subscriptions-title">Subskrypcje</h2>
+      @if (detail.subscriptions.length === 0) {
+        <p class="admin-user__panel admin-user__table">To konto nie ma żadnych subskrypcji.</p>
+      } @else {
+        <app-subscription-table
+          class="admin-user__table"
+          [subscriptions]="detail.subscriptions"
+          [readOnly]="true"
+        />
+      }
+
+      <section class="admin-user__section" aria-labelledby="admin-user-budget-title">
+        <h2 id="admin-user-budget-title" class="admin-user__section-title">Budżet</h2>
+        <ul class="admin-user__limits">
+          <li>
+            <span>Miesięczny limit całościowy</span>
+            <span class="st-amount">
+              {{
+                detail.budget.monthlyLimit === null
+                  ? 'brak'
+                  : (limit(detail.budget.monthlyLimit)
+                    | currency: 'PLN' : 'symbol-narrow' : '1.2-2')
+              }}
+            </span>
+          </li>
+          <li>
+            <span>Domyślny próg ilościowy</span>
+            <span>{{ detail.budget.defaultDuplicateThreshold }}</span>
+          </li>
+          @for (item of detail.budget.categories; track item.category.id) {
+            <li>
+              <span>{{ item.category.name }}</span>
+              <span class="admin-user__limit-note st-amount">
+                Limit:
+                {{
+                  item.monthlyLimit === null
+                    ? 'brak'
+                    : (limit(item.monthlyLimit) | currency: 'PLN' : 'symbol-narrow' : '1.2-2')
+                }}
+                · próg: {{ item.duplicateThreshold }}
+              </span>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  </div>
+</app-shell>

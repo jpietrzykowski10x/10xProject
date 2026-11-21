@@ -202,3 +202,52 @@ describe('SubscriptionTable', () => {
     expect(await buttonsNamed(fixture, 'Anuluj subskrypcję Spotify')).toHaveLength(0);
   });
 });
+
+// The oracle is the plan of S-09: an administrator's view of another account is read-only, so no
+// row action is offered, neither on the desktop nor in the phone's expanded row.
+describe('SubscriptionTable read-only', () => {
+  const ACTIONS = ['Edytuj', 'Usuń', 'Anuluj subskrypcję', 'Przywróć'];
+  const PENDING: Subscription = { ...SPOTIFY, status: 'cancelled_pending' };
+
+  async function actionCount(fixture: ComponentFixture<SubscriptionTable>): Promise<number> {
+    let count = 0;
+    for (const action of ACTIONS) {
+      for (const name of [NETFLIX.name, PENDING.name]) {
+        count += (await buttonsNamed(fixture, `${action} ${name}`)).length;
+      }
+    }
+    return count;
+  }
+
+  it('offers no action on the desktop', async () => {
+    const fixture = await createTable(false, [NETFLIX, PENDING]);
+    // Anchor: the same rows offer actions while the table is not read-only.
+    expect(await actionCount(fixture)).toBe(6);
+
+    fixture.componentRef.setInput('readOnly', true);
+    await fixture.whenStable();
+
+    expect(await actionCount(fixture)).toBe(0);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Netflix');
+  });
+
+  it('offers no action in the expanded row on the phone', async () => {
+    const fixture = await createTable(true, [NETFLIX, PENDING]);
+    fixture.componentRef.setInput('readOnly', true);
+    await fixture.whenStable();
+
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>(
+        `button[aria-controls="subscription-details-${NETFLIX.id}"]`,
+      )
+      ?.click();
+    await fixture.whenStable();
+
+    expect(
+      (fixture.nativeElement as HTMLElement)
+        .querySelector(`button[aria-controls="subscription-details-${NETFLIX.id}"]`)
+        ?.getAttribute('aria-expanded'),
+    ).toBe('true');
+    expect(await actionCount(fixture)).toBe(0);
+  });
+});

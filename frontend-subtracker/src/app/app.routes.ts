@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, guestGuard } from './auth/auth.guard';
+import { adminGuard, authGuard, guestGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
   {
@@ -46,6 +46,16 @@ export const routes: Routes = [
     path: 'account',
     canActivate: [authGuard],
     loadComponent: () => import('./pages/account/account').then((m) => m.Account),
+  },
+  {
+    path: 'admin/users',
+    canActivate: [adminGuard],
+    loadComponent: () => import('./pages/admin/admin-users/admin-users').then((m) => m.AdminUsers),
+  },
+  {
+    path: 'admin/users/:id',
+    canActivate: [adminGuard],
+    loadComponent: () => import('./pages/admin/admin-user/admin-user').then((m) => m.AdminUser),
   },
   {
     // authGuard shows this page with skipLocationChange, so the address bar keeps the guarded URL.

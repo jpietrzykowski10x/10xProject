@@ -1,4 +1,6 @@
 import { In } from 'typeorm';
+import { AdminAction } from '../../src/admin/admin-audit.types.js';
+import { AdminAudit } from '../../src/admin/entities/admin-audit.entity.js';
 import { MagicLinkToken } from '../../src/auth/entities/magic-link-token.entity.js';
 import { Session } from '../../src/auth/entities/session.entity.js';
 import { Mail } from '../../src/mail/entities/mail.entity.js';
@@ -44,12 +46,17 @@ describe('Auth — account deletion (e2e)', () => {
   // Rows anonymized by a deletion no longer carry the file's address, so neither close() nor the
   // cleanup by prefix finds them: the account's mails leave `sent` and its rows go by id at the end.
   const anonymizedMailIds: string[] = [];
+  // Audit rows of a deleted account outlive it and no longer match the file's addresses either.
+  const keptAuditIds: string[] = [];
 
   beforeAll(() => e2e.start());
 
   afterAll(async () => {
     if (anonymizedMailIds.length > 0) {
       await repository(Mail).delete({ id: In(anonymizedMailIds) });
+    }
+    if (keptAuditIds.length > 0) {
+      await repository(AdminAudit).delete({ id: In(keptAuditIds) });
     }
     await e2e.close();
   });
@@ -84,6 +91,18 @@ describe('Auth — account deletion (e2e)', () => {
     forgetDeleted(address, mailIds);
     return { response, mailIds };
   }
+
+  // The stored fields of audit rows in a fixed order, to compare before and after.
+  const auditView = (rows: AdminAudit[]) =>
+    rows
+      .map(({ id, actorId, targetId, action, createdAt }) => ({
+        id,
+        actorId,
+        targetId,
+        action,
+        createdAt,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id));
 
   async function rowsOfUser(userId: string): Promise<Record<string, number>> {
     return {
@@ -143,6 +162,21 @@ describe('Auth — account deletion (e2e)', () => {
       }),
     );
 
+    // Audit rows with the account as target and as actor (admin actions arrive with S-09's routes).
+    const audit = await repository(AdminAudit).save([
+      repository(AdminAudit).create({
+        actorId: other.userId,
+        targetId: userId,
+        action: AdminAction.VIEW,
+      }),
+      repository(AdminAudit).create({
+        actorId: userId,
+        targetId: other.userId,
+        action: AdminAction.BLOCK,
+      }),
+    ]);
+    keptAuditIds.push(...audit.map((row) => row.id));
+
     const before = await rowsOfUser(userId);
     for (const [table, count] of Object.entries(before)) {
       expect(count, table).toBeGreaterThan(0);
@@ -178,6 +212,13 @@ describe('Auth — account deletion (e2e)', () => {
     expect(archived.find((row) => row.id === failed.id)?.status).toBe(
       MailStatus.FAILED,
     );
+
+    // The admin audit keeps the account's rows as they were: ids only, no address.
+    const keptAudit = await repository(AdminAudit).findBy({
+      id: In(keptAuditIds),
+    });
+    expect(auditView(keptAudit)).toEqual(auditView(audit));
+    expect(JSON.stringify(keptAudit)).not.toContain(address);
 
     // The default categories and the other account stay as they were.
     expect(

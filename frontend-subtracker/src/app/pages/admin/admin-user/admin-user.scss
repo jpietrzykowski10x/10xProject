@@ -1,0 +1,143 @@
+// S-09: one account, read-only. The page has several sections, so it scrolls in the shell's
+// content area like /budget; the subscription table keeps its own scroll frame with a fixed height.
+.admin-user {
+  max-width: 1200px;
+}
+
+.admin-user__back {
+  align-self: flex-start;
+  margin-bottom: 12px;
+}
+
+.admin-user__title {
+  margin: 0 0 16px;
+  font: var(--mat-sys-headline-small);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.admin-user__panel {
+  margin: 0;
+  padding: 32px 24px;
+  border: 1px solid var(--st-line);
+  border-radius: 4px;
+  background: var(--mat-sys-surface);
+  color: var(--st-muted);
+  text-align: center;
+}
+
+.admin-user__section {
+  margin-bottom: 24px;
+  padding: 16px 24px 24px;
+  border: 1px solid var(--st-line);
+  border-radius: 4px;
+  background: var(--mat-sys-surface);
+}
+
+.admin-user__section-title {
+  margin: 0 0 12px;
+  font: var(--mat-sys-title-small);
+  font-weight: 600;
+}
+
+.admin-user__profile {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 24px;
+  margin: 0;
+
+  dt {
+    color: var(--st-muted);
+  }
+
+  dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.admin-user__status {
+  color: var(--st-status-active);
+  font-weight: 600;
+}
+
+.admin-user__status--blocked {
+  color: var(--st-error-text);
+}
+
+.admin-user__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+// CostTotals is drawn for the navy column; here it gets a navy panel of its own.
+.admin-user__totals {
+  margin-bottom: 24px;
+  padding: 16px 24px;
+  border-radius: 4px;
+  background: var(--st-navy);
+}
+
+.admin-user__table {
+  display: flex;
+  flex-direction: column;
+  max-height: 60vh;
+  max-height: 60dvh;
+  margin-bottom: 24px;
+}
+
+.admin-user__subscriptions-title {
+  margin: 0 0 12px;
+  font: var(--mat-sys-title-small);
+  font-weight: 600;
+}
+
+.admin-user__limits {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 16px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--st-line-soft);
+  }
+
+  li:last-child {
+    border-bottom: 0;
+  }
+}
+
+.admin-user__limit-note {
+  color: var(--st-ink-soft);
+}
+
+@media (max-width: 839.98px) {
+  .admin-user__title {
+    font: var(--mat-sys-title-large);
+    font-weight: 600;
+  }
+
+  .admin-user__section,
+  .admin-user__totals {
+    padding: 16px;
+  }
+
+  .admin-user__profile {
+    grid-template-columns: 1fr;
+    gap: 2px;
+
+    dd {
+      margin-bottom: 8px;
+    }
+  }
+
+  .admin-user__actions button {
+    width: 100%;
+  }
+}

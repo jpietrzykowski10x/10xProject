@@ -50,12 +50,13 @@ SMTP_PASSWORD=...
 SMTP_FROM_EMAIL=...
 SMTP_FROM_NAME=SubTracker
 NOTIFICATION_ADMINISTRATOR_MAIL=...
+SUPPORT_EMAIL=...                     # kontakt pokazywany zablokowanemu kontu (komunikat i mail)
 LOG_ERROR_STACKS=true                 # opcjonalne, domyślnie true; false ukrywa stosy wywołań w logu błędów
 ```
 
 Aplikacja i migracje sprawdzają te ustawienia przy starcie, więc brakujący albo niespójny klucz zatrzymuje deploy na etapie migracji, a poprzednia wersja startuje ponownie. W `MODE=PROD`:
 
-- `FRONTEND_URL`, `SESSION_COOKIE_DOMAIN`, `SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL` i `NOTIFICATION_ADMINISTRATOR_MAIL` są wymagane.
+- `FRONTEND_URL`, `SESSION_COOKIE_DOMAIN`, `SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `NOTIFICATION_ADMINISTRATOR_MAIL` i `SUPPORT_EMAIL` są wymagane. `SUPPORT_EMAIL` (od S-09) dopisz do `shared/.env` **przed** pierwszym deployem, który go wymaga: sprawdza go także CLI migracji w `deploy.sh`, więc bez niego deploy cofnie się na etapie migracji.
 - `CORS_ORIGINS` musi zawierać `FRONTEND_URL`.
 - `SESSION_COOKIE_DOMAIN` musi obejmować hosta z `FRONTEND_URL`.
 - `NOTIFICATION_SMTP_*` zostaw puste, chyba że powiadomienia operatora mają iść osobnym kontem; puste oznacza wysyłkę przez `SMTP_*`. Ustawiony `NOTIFICATION_SMTP_HOST` wymaga też `NOTIFICATION_SMTP_USERNAME`, `NOTIFICATION_SMTP_PASSWORD` i `NOTIFICATION_SMTP_FROM_EMAIL`.
@@ -143,6 +144,8 @@ sh -c 'set -a; . ./.env; set +a; exec /usr/local/bin/node24 cli/admin-grant.js "
 ```
 
 Dwukrotne nadanie roli nie szkodzi. Nieznany adres wypisuje błąd i kończy się kodem 1.
+
+Tak samo działają pozostałe skrypty ról: `cli/admin-revoke.js` (odbiera `ADMIN`), `cli/superadmin-grant.js` i `cli/superadmin-revoke.js`. Zamień nazwę pliku w komendzie wyżej. Superadmin może być jeden: gdy rolę ma już inne konto, `superadmin-grant.js` kończy się kodem 1 i trzeba najpierw uruchomić `superadmin-revoke.js` dla poprzedniego. Odebranie roli działa od następnego żądania konta, bez wylogowania.
 
 ### Aktualizacja skryptów na serwerze
 
@@ -247,12 +250,13 @@ SMTP_PASSWORD=...
 SMTP_FROM_EMAIL=...
 SMTP_FROM_NAME=SubTracker
 NOTIFICATION_ADMINISTRATOR_MAIL=...
+SUPPORT_EMAIL=...                     # contact shown to a blocked account (message and mail)
 LOG_ERROR_STACKS=true                 # optional, default true; false hides stack traces in error logs
 ```
 
 The app and the migrations validate these settings at startup, so a missing or inconsistent key stops the deploy at the migration step and the previous version starts again. In `MODE=PROD`:
 
-- `FRONTEND_URL`, `SESSION_COOKIE_DOMAIN`, `SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL` and `NOTIFICATION_ADMINISTRATOR_MAIL` are required.
+- `FRONTEND_URL`, `SESSION_COOKIE_DOMAIN`, `SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `NOTIFICATION_ADMINISTRATOR_MAIL` and `SUPPORT_EMAIL` are required. Add `SUPPORT_EMAIL` (since S-09) to `shared/.env` **before** the first deploy that needs it: the migration CLI in `deploy.sh` checks it too, so without it the deploy rolls back at the migration step.
 - `CORS_ORIGINS` must include `FRONTEND_URL`.
 - `SESSION_COOKIE_DOMAIN` must cover the `FRONTEND_URL` host.
 - Leave `NOTIFICATION_SMTP_*` unset unless operator notifications need a separate transporter; unset, they go through `SMTP_*`. A set `NOTIFICATION_SMTP_HOST` requires `NOTIFICATION_SMTP_USERNAME`, `NOTIFICATION_SMTP_PASSWORD` and `NOTIFICATION_SMTP_FROM_EMAIL` too.
@@ -340,6 +344,8 @@ sh -c 'set -a; . ./.env; set +a; exec /usr/local/bin/node24 cli/admin-grant.js "
 ```
 
 Granting the role twice is harmless. An unknown address prints an error and exits with code 1.
+
+The other role scripts work the same way: `cli/admin-revoke.js` (removes `ADMIN`), `cli/superadmin-grant.js` and `cli/superadmin-revoke.js`. Swap the file name in the command above. There is one superadmin at most: while another account holds the role, `superadmin-grant.js` exits 1, so run `superadmin-revoke.js` for the previous one first. A revoke takes effect from the account's next request, without signing it out.
 
 ### Updating the scripts on the server
 

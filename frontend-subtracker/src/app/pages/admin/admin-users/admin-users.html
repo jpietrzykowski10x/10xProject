@@ -1,0 +1,92 @@
+<app-shell [showTotals]="false">
+  <div class="admin-users">
+    <h1 class="admin-users__title">Administracja</h1>
+
+    <form class="admin-users__form" [formGroup]="form" (ngSubmit)="submit()">
+      <mat-form-field class="admin-users__query" subscriptSizing="dynamic">
+        <mat-label>Adres e-mail lub jego fragment</mat-label>
+        <input matInput type="search" autocomplete="off" formControlName="q" />
+        <mat-hint>Co najmniej {{ minLength }} znaki.</mat-hint>
+      </mat-form-field>
+      <mat-form-field class="admin-users__status" subscriptSizing="dynamic">
+        <mat-label>Status</mat-label>
+        <mat-select formControlName="status">
+          @for (option of statusOptions; track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <button mat-flat-button type="submit">Szukaj</button>
+    </form>
+
+    @let current = state();
+    @if (current.kind === 'idle') {
+      <p class="admin-users__panel">
+        Wpisz co najmniej {{ minLength }} znaki adresu albo wybierz status „Zablokowany”.
+      </p>
+    } @else if (current.kind === 'too-short') {
+      <p class="st-notice st-notice--error" role="alert">
+        Wpisz co najmniej {{ minLength }} znaki adresu.
+      </p>
+    } @else if (current.kind === 'loading') {
+      <p class="admin-users__panel">Wyszukiwanie…</p>
+    } @else if (current.kind === 'forbidden') {
+      <p class="st-notice st-notice--error" role="alert">Brak uprawnień.</p>
+    } @else if (current.kind === 'error') {
+      <p class="st-notice st-notice--error" role="alert">
+        Nie udało się wyszukać kont. Serwis jest chwilowo niedostępny.
+      </p>
+    } @else if (current.users.length === 0) {
+      <p class="admin-users__panel">Nie znaleziono żadnego konta.</p>
+    } @else {
+      <!-- The results scroll in their own region, under sticky column names on the desktop. -->
+      <div class="admin-users__results" role="region" aria-label="Wyniki wyszukiwania" tabindex="0">
+        <table class="results">
+          <thead>
+            <tr>
+              <th scope="col">Adres e-mail</th>
+              <th scope="col">Status</th>
+              <th scope="col">Rola</th>
+              <th scope="col">Założone</th>
+              <th scope="col" class="results__chevron">
+                <span class="results__visually-hidden">Szczegóły</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (user of current.users; track user.id) {
+              <tr>
+                <!-- The link covers the whole row (::after), so a click anywhere opens the account, while
+                     keyboards and screen readers meet one ordinary link named by the address. -->
+                <td class="results__email">
+                  <a
+                    class="results__link"
+                    [routerLink]="['/admin/users', user.id]"
+                    [queryParams]="listQuery()"
+                    >{{ user.email }}</a
+                  >
+                </td>
+                <td class="results__status-cell">
+                  <span class="results__status" [class.results__status--blocked]="!user.isActive">{{
+                    statusLabel(user.isActive)
+                  }}</span>
+                </td>
+                <td class="results__role">{{ roleLabels[user.role] }}</td>
+                <td class="st-amount results__date">{{ user.createdAt | date: 'dd.MM.yyyy' }}</td>
+                <td class="results__chevron" aria-hidden="true">
+                  <span class="results__details">Szczegóły</span>
+                  <svg viewBox="0 0 24 24" width="20" height="20" focusable="false">
+                    <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" />
+                  </svg>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (current.users.length >= limit) {
+        <p class="admin-users__note">Pokazujemy pierwsze {{ limit }} kont. Zawęź wyszukiwanie.</p>
+      }
+    }
+  </div>
+</app-shell>

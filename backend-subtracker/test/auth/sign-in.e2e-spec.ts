@@ -5,7 +5,7 @@ import { Mail } from '../../src/mail/entities/mail.entity.js';
 import { MailStatus } from '../../src/mail/mail.types.js';
 import type { AuthUser } from '../../src/shared/types/auth-user.js';
 import { RoleCode } from '../../src/shared/types/role-code.js';
-import { grantAdmin } from '../../src/users/grant-admin.js';
+import { grantAdmin } from '../../src/users/role-grants.js';
 import { UserRole } from '../../src/users/entities/user-role.entity.js';
 import { User } from '../../src/users/entities/user.entity.js';
 import { createE2eApp, setCookieOf, tokenIn } from '../support/e2e-app.js';

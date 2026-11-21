@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AdminModule } from './admin/admin.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AuthModule } from './auth/auth.module.js';
@@ -33,6 +34,7 @@ import { UsersModule } from './users/users.module.js';
     UsersModule,
     AuthModule,
     SubscriptionsModule,
+    AdminModule,
   ],
   controllers: [AppController, HealthController],
   providers: [

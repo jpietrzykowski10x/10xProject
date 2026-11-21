@@ -1,0 +1,23 @@
+<h2 mat-dialog-title>{{ texts.title }}</h2>
+<mat-dialog-content>
+  <!-- The dialog's description (ariaDescribedBy in openAdminActionDialog). -->
+  <p [id]="descriptionId" class="dialog__text">{{ description }}</p>
+  @if (failed()) {
+    <p class="st-notice st-notice--error dialog__error" role="alert">
+      Nie udało się wykonać akcji. Spróbuj ponownie.
+    </p>
+  }
+</mat-dialog-content>
+<!-- "Anuluj" comes first, so it gets the focus when the dialog opens. -->
+<mat-dialog-actions align="end" class="dialog__actions">
+  <button mat-stroked-button type="button" [disabled]="sending()" (click)="cancel()">Anuluj</button>
+  <button
+    mat-flat-button
+    type="button"
+    disabledInteractive
+    [disabled]="sending()"
+    (click)="confirm()"
+  >
+    {{ texts.confirm }}
+  </button>
+</mat-dialog-actions>

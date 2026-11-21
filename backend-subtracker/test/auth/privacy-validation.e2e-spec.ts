@@ -1,4 +1,8 @@
 import type { Response } from 'supertest';
+import { IsNull } from 'typeorm';
+import { MagicLinkToken } from '../../src/auth/entities/magic-link-token.entity.js';
+import { Mail } from '../../src/mail/entities/mail.entity.js';
+import { MailType } from '../../src/mail/mail.types.js';
 import { RoleCode } from '../../src/shared/types/role-code.js';
 import {
   EMAIL_MAX_LENGTH,
@@ -52,21 +56,59 @@ describe('Auth flow — privacy and validation (e2e)', () => {
       await mailsTo(address, 2);
     });
 
-    it('answers an inactive account like an active one, and mails nothing', async () => {
+    // The one exception to the neutral answer (S-09): the owner of a blocked account must learn why
+    // signing in fails and whom to ask. Active and unknown addresses still look the same.
+    it('answers a blocked account with 403 and the contact, and mails it only about the block', async () => {
       const active = newAddress();
       await postRegister(active).expect(202);
-      const inactive = newAddress();
-      await postRegister(inactive).expect(202);
-      await mailsTo(inactive);
-      await repository(User).update({ email: inactive }, { isActive: false });
+      const blocked = newAddress();
+      await postRegister(blocked).expect(202);
+      await mailsTo(blocked);
+      await repository(User).update({ email: blocked }, { isActive: false });
+      const before = await repository(User).findOneByOrFail({
+        email: blocked,
+      });
 
-      const forActive = await postRequestLink(active);
-      const forInactive = await postRequestLink(inactive);
-      const registerInactive = await postRegister(inactive);
+      const linkForActive = await postRequestLink(active);
+      const linkForUnknown = await postRequestLink(newAddress());
+      const registerTaken = await postRegister(active);
+      const registerFree = await postRegister(newAddress());
+      const registerBlocked = await postRegister(blocked);
+      const linkForBlocked = await postRequestLink(blocked);
 
-      expect(neutralShape(forInactive)).toEqual(neutralShape(forActive));
-      expect(neutralShape(registerInactive)).toEqual(neutralShape(forActive));
-      await mailsTo(inactive, 1);
+      expect(neutralShape(linkForUnknown)).toEqual(neutralShape(linkForActive));
+      expect(neutralShape(registerTaken)).toEqual(neutralShape(registerFree));
+      expect(neutralShape(registerFree)).toEqual(neutralShape(linkForActive));
+      expect(linkForActive.status).toBe(202);
+      for (const refusal of [registerBlocked, linkForBlocked]) {
+        expect(refusal.status).toBe(403);
+        expect(refusal.body).toEqual({
+          statusCode: 403,
+          code: 'account_blocked',
+          contact: e2e.env.SUPPORT_EMAIL,
+          message: 'Account blocked',
+        });
+        expect(refusal.headers['set-cookie']).toBeUndefined();
+      }
+
+      // The registration link and one mail about the block, from request-link only.
+      const [, blockMail] = await mailsTo(blocked, 2);
+      expect(blockMail.text).toContain(e2e.env.SUPPORT_EMAIL);
+      await vi.waitFor(async () => {
+        const types = (await repository(Mail).findBy({ recipient: blocked }))
+          .map((mail) => mail.type)
+          .sort();
+        expect(types).toEqual([MailType.ACCOUNT_BLOCKED, MailType.MAGIC_LINK]);
+      });
+      // Registering again neither refreshed the consents nor replaced the unused link.
+      const after = await repository(User).findOneByOrFail({ email: blocked });
+      expect(after.consentsAcceptedAt).toEqual(before.consentsAcceptedAt);
+      expect(
+        await repository(MagicLinkToken).countBy({
+          userId: after.id,
+          usedAt: IsNull(),
+        }),
+      ).toBe(1);
     });
   });
 

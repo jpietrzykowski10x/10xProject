@@ -8,6 +8,7 @@ import { AuthController } from './controllers/auth.controller.js';
 import { MagicLinkToken } from './entities/magic-link-token.entity.js';
 import { Session } from './entities/session.entity.js';
 import { SessionAuthGuard } from './guards/session-auth.guard.js';
+import { AccountAccessService } from './services/account-access.service.js';
 import { AccountDeletionService } from './services/account-deletion.service.js';
 import { AuthCleanupService } from './services/auth-cleanup.service.js';
 import { AuthService } from './services/auth.service.js';
@@ -19,6 +20,7 @@ import { SessionService } from './services/session.service.js';
   providers: [
     SessionService,
     AuthService,
+    AccountAccessService,
     AccountDeletionService,
     AuthCleanupService,
     AuthCleanupScheduler,
@@ -26,5 +28,7 @@ import { SessionService } from './services/session.service.js';
     { provide: APP_GUARD, useClass: SessionAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
+  // For the admin routes, which add their audit row to each change.
+  exports: [AccountAccessService],
 })
 export class AuthModule {}

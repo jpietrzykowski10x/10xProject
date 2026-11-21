@@ -1,4 +1,5 @@
 import type { ConfigService } from '@nestjs/config';
+import { isEmail } from 'class-validator';
 import { assertExactOrigin, parseCorsOrigins } from './cors.js';
 
 export type AppMode = 'DEV' | 'PROD';
@@ -32,6 +33,7 @@ export interface EnvConfig {
   NOTIFICATION_SMTP_USERNAME: string | undefined;
   NOTIFICATION_SMTP_PASSWORD: string | undefined;
   NOTIFICATION_SMTP_FROM_EMAIL: string | undefined;
+  SUPPORT_EMAIL: string;
   LOG_ERROR_STACKS: boolean;
 }
 
@@ -96,6 +98,19 @@ function readFrontendUrl(raw: RawEnv, mode: AppMode): string {
   const origin = value.replace(/\/+$/, '');
   assertExactOrigin(origin, mode === 'PROD', 'FRONTEND_URL');
   return origin;
+}
+
+// Shown to a blocked account on the sign-in pages and in the mail about the block, so production
+// needs a real address. Locally a placeholder in the e2e domain will do.
+function readSupportEmail(raw: RawEnv, mode: AppMode): string {
+  const value =
+    mode === 'PROD'
+      ? requireString(raw, 'SUPPORT_EMAIL')
+      : (readString(raw, 'SUPPORT_EMAIL') ?? 'admin@subtracker.test');
+  if (!isEmail(value)) {
+    throw new Error(`SUPPORT_EMAIL must be an e-mail address, got "${value}"`);
+  }
+  return value;
 }
 
 // A mistake here would pass every other check and only show on production: the browser drops the
@@ -210,6 +225,7 @@ export function validateEnv(raw: RawEnv): EnvConfig {
     NOTIFICATION_SMTP_FROM_EMAIL: readNotificationField(
       'NOTIFICATION_SMTP_FROM_EMAIL',
     ),
+    SUPPORT_EMAIL: readSupportEmail(raw, mode),
     LOG_ERROR_STACKS: readBoolean(raw, 'LOG_ERROR_STACKS', true),
   };
 }
@@ -260,6 +276,7 @@ export function envFromConfig(
     NOTIFICATION_SMTP_USERNAME: getOptional('NOTIFICATION_SMTP_USERNAME'),
     NOTIFICATION_SMTP_PASSWORD: getOptional('NOTIFICATION_SMTP_PASSWORD'),
     NOTIFICATION_SMTP_FROM_EMAIL: getOptional('NOTIFICATION_SMTP_FROM_EMAIL'),
+    SUPPORT_EMAIL: get('SUPPORT_EMAIL'),
     LOG_ERROR_STACKS: get('LOG_ERROR_STACKS'),
   };
 }

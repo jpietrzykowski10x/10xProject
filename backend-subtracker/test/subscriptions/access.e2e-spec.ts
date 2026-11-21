@@ -16,6 +16,9 @@ const budgetBody = {
   categories: [{ categoryId: OTHER_CATEGORY_ID, duplicateThreshold: 2 }],
 };
 
+// The action routes of the admin panel, /admin/users/:id/<action>.
+const ADMIN_ACTIONS = ['block', 'unblock', 'reset-sessions'];
+
 describe('Subscriptions — access (e2e)', () => {
   // Runs against the database from .env (locally the dev database, in CI the C.UTF-8 database of
   // the backend-e2e job) with a fake mail transport. Every row these tests create hangs off a
@@ -52,6 +55,11 @@ describe('Subscriptions — access (e2e)', () => {
     await http().post(`/subscriptions/${UNKNOWN_ID}/resume`).expect(401);
     await http().get('/budget').expect(401);
     await http().put('/budget').send(budgetBody).expect(401);
+    await http().get('/admin/users').query({ q: 'e2e' }).expect(401);
+    await http().get(`/admin/users/${UNKNOWN_ID}`).expect(401);
+    for (const action of ADMIN_ACTIONS) {
+      await http().post(`/admin/users/${UNKNOWN_ID}/${action}`).expect(401);
+    }
   });
 
   // The global guard is covered on /auth/me in test/auth/session.e2e-spec.ts; this keeps it on the
@@ -90,5 +98,21 @@ describe('Subscriptions — access (e2e)', () => {
     await resumeSubscription(cookie, UNKNOWN_ID).expect(401);
     await http().get('/budget').set('Cookie', cookie).expect(401);
     await putBudget(cookie, budgetBody).expect(401);
+    // A plain user's session: an ended one answers 401 before the role check (403) is reached.
+    await http()
+      .get('/admin/users')
+      .query({ q: 'e2e' })
+      .set('Cookie', cookie)
+      .expect(401);
+    await http()
+      .get(`/admin/users/${UNKNOWN_ID}`)
+      .set('Cookie', cookie)
+      .expect(401);
+    for (const action of ADMIN_ACTIONS) {
+      await http()
+        .post(`/admin/users/${UNKNOWN_ID}/${action}`)
+        .set('Cookie', cookie)
+        .expect(401);
+    }
   });
 });

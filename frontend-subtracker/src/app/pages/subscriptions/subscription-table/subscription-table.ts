@@ -22,6 +22,8 @@ import {
 import type { Subscription } from '../../../subscriptions/subscription.types';
 
 const DESKTOP_COLUMNS = ['name', 'payment', 'status', 'date', 'amount', 'actions'];
+// S-09: an administrator's view of another account has no row actions.
+const READ_ONLY_DESKTOP_COLUMNS = DESKTOP_COLUMNS.filter((column) => column !== 'actions');
 const PHONE_COLUMNS = ['summary'];
 
 // One table for both layouts. Desktop (F2-Lista): five columns and the row actions, with a header
@@ -47,6 +49,8 @@ const PHONE_COLUMNS = ['summary'];
 })
 export class SubscriptionTable {
   readonly subscriptions = input.required<Subscription[]>();
+  // Hides every row action, on the desktop and in the phone's detail row.
+  readonly readOnly = input(false);
   // The subscription whose "Przywróć" is in flight. One resume at a time: every "Przywróć" stays
   // disabled until the answer, so no click is silently ignored.
   readonly resumingId = input<string | null>(null);
@@ -66,8 +70,13 @@ export class SubscriptionTable {
     this.breakpoints.observe(PHONE_MEDIA_QUERY).pipe(map((state) => state.matches)),
     { initialValue: this.breakpoints.isMatched(PHONE_MEDIA_QUERY) },
   );
-  protected readonly columns = computed(() => (this.isPhone() ? PHONE_COLUMNS : DESKTOP_COLUMNS));
-  protected readonly headerColumns = computed(() => (this.isPhone() ? [] : DESKTOP_COLUMNS));
+  private readonly desktopColumns = computed(() =>
+    this.readOnly() ? READ_ONLY_DESKTOP_COLUMNS : DESKTOP_COLUMNS,
+  );
+  protected readonly columns = computed(() =>
+    this.isPhone() ? PHONE_COLUMNS : this.desktopColumns(),
+  );
+  protected readonly headerColumns = computed(() => (this.isPhone() ? [] : this.desktopColumns()));
   protected readonly expandedId = signal<string | null>(null);
 
   // "za N dni" counts from the day the list was opened.

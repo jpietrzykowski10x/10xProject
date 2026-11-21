@@ -216,7 +216,7 @@
           }
         </dl>
         <!-- Only in an open detail row, so the desktop has one button of each per row. -->
-        @if (isPhone() && expandedId() === subscription.id) {
+        @if (isPhone() && expandedId() === subscription.id && !readOnly()) {
           <div class="details__actions">
             <!-- The lifecycle action takes a line of its own above "Edytuj" and "Usuń". -->
             @if (cancellable(subscription)) {

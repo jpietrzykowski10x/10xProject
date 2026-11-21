@@ -3,9 +3,10 @@ import { Component, inject, signal } from '@angular/core';
 import { MatButton } from '@angular/material/button';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { PublicLayout } from '../../layout/public-layout/public-layout';
+import { accountBlockedContact } from '../../auth/account-blocked';
 import { AuthService } from '../../auth/auth.service';
 
-type VerifyState = 'ready' | 'sending' | 'invalid' | 'unavailable';
+type VerifyState = 'ready' | 'sending' | 'invalid' | 'blocked' | 'unavailable';
 
 @Component({
   selector: 'app-verify-link',
@@ -19,6 +20,8 @@ export class VerifyLink {
     'token',
   );
 
+  // The contact address of a 403 account_blocked answer; '' when the API sent none.
+  protected readonly blockedContact = signal('');
   protected readonly state = signal<VerifyState>(this.token ? 'ready' : 'invalid');
 
   // Runs only on the click: mail scanners open the link, and that must not consume the token.
@@ -32,8 +35,15 @@ export class VerifyLink {
       // replaceUrl takes the used token out of the address bar and the history.
       next: () => void this.router.navigate(['/subscriptions'], { replaceUrl: true }),
       // 400 comes from validation of a malformed token, so to the user it is a bad link as well.
-      error: (error: HttpErrorResponse) =>
-        this.state.set(error.status === 400 || error.status === 401 ? 'invalid' : 'unavailable'),
+      error: (error: HttpErrorResponse) => {
+        const contact = accountBlockedContact(error);
+        if (contact !== null) {
+          this.blockedContact.set(contact);
+          this.state.set('blocked');
+          return;
+        }
+        this.state.set(error.status === 400 || error.status === 401 ? 'invalid' : 'unavailable');
+      },
     });
   }
 }

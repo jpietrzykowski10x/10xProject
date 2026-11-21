@@ -5,6 +5,7 @@ import { Repository, type WhereExpressionBuilder } from 'typeorm';
 import { type EnvConfig, envFromConfig } from '../../config/env.js';
 import { MailType } from '../../mail/mail.types.js';
 import { MailService } from '../../mail/services/mail.service.js';
+import { OWNER_IS_ACTIVE } from '../active-owner.js';
 import { Subscription } from '../entities/subscription.entity.js';
 import { BillingCycle, SubscriptionStatus } from '../subscription.types.js';
 import {
@@ -55,9 +56,7 @@ function whereDue<T extends WhereExpressionBuilder>(
     .andWhere(
       '"subscription"."trial_reminder_sent_for" IS DISTINCT FROM "subscription"."trial_end_date"',
     )
-    .andWhere(
-      'EXISTS (SELECT 1 FROM "user" "owner" WHERE "owner"."id" = "subscription"."user_id" AND "owner"."is_active" = true)',
-    );
+    .andWhere(OWNER_IS_ACTIVE);
   return query;
 }
 

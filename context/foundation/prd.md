@@ -120,7 +120,10 @@ Logowanie oparte o magic link (e-mail) jako rozwiązanie MVP — bez przechowywa
 
 Role:
 - **User** — widzi wyłącznie własne dane; informacje o subskrypcjach i finansach nie są publiczne ani widoczne dla innych userów.
-- **Admin** — pełny wgląd w dane użytkowników (włącznie z subskrypcjami i kwotami), na potrzeby zarządzania kontami (odblokowanie, reset dostępu, gdy zawiodą standardowe opcje odzyskiwania). Świadomie przyjęte na MVP ze względu na czas wdrożenia; zawężenie widoczności admina do danych operacyjnych (bez wglądu w finanse) rozważane jako możliwe ograniczenie w v2, po fazie testów. Rolę admina nadaje ręcznie operator systemu poza aplikacją — nie ma samorejestracji jako administrator.
+- **Admin** — pełny wgląd w dane użytkowników (włącznie z subskrypcjami i kwotami), na potrzeby zarządzania kontami (odblokowanie, reset dostępu, gdy zawiodą standardowe opcje odzyskiwania). Świadomie przyjęte na MVP ze względu na czas wdrożenia; zawężenie widoczności admina do danych operacyjnych (bez wglądu w finanse) rozważane jako możliwe ograniczenie w v2, po fazie testów. Rolę admina nadaje ręcznie operator systemu poza aplikacją — nie ma samorejestracji jako administrator. Admin tylko przegląda dane (bez edycji), blokuje i odblokowuje konta zwykłych użytkowników oraz wylogowuje je ze wszystkich urządzeń („reset dostępu”); każda taka akcja i każde otwarcie danych konta trafia do audytu. Nikt nie zarządza własnym kontem.
+- **Superadmin** (S-09) — jedna osoba, nadawana i odbierana przez operatora tak jak Admin. Ma uprawnienia admina i dodatkowo może blokować, odblokowywać i wylogowywać adminów; superadminem nie zarządza nikt. API nie pokazuje innym, kto jest superadminem.
+
+Zablokowane konto nie może się zalogować, a jego sesje i linki logowania przestają działać. Przy próbie logowania właściciel widzi komunikat, że konto jest zablokowane, z adresem kontaktowym, i dostaje mail o blokadzie. To świadomy wyjątek od zasady jednakowej odpowiedzi dla każdego adresu: ujawnia się tylko to, że adres jest zablokowany, a adres aktywny i nieznany dostają tę samą odpowiedź. Odblokowanie na MVP: kontakt z administratorem. Joby i maile pomijają zablokowane konta (poza mailami o samej blokadzie, odblokowaniu i resecie).
 
 ## Non-Goals
 

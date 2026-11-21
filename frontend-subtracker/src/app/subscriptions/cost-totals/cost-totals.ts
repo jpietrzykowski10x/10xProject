@@ -6,7 +6,7 @@ import {
   categoryAlertLevel,
   mostSevereAlertLevel,
 } from '../budget-alert';
-import { CostTotalsStore } from '../cost-totals.store';
+import { type CostTotalsState, CostTotalsStore } from '../cost-totals.store';
 import { DuplicateWarningIcon } from '../duplicate-warning-icon/duplicate-warning-icon';
 import {
   type BudgetBar,
@@ -17,7 +17,7 @@ import {
   duplicateWarningNote,
   subscriptionCountLabel,
 } from '../subscription-labels';
-import type { CategoryCostTotal } from '../subscription.types';
+import type { CategoryCostTotal, CostTotals as CostTotalsData } from '../subscription.types';
 
 // F2: the cost totals of the signed-in account, used twice by the app shell: in the navy desktop
 // column (`column`) and as the second row of the navy phone header (`bar`). The variant changes
@@ -32,10 +32,17 @@ import type { CategoryCostTotal } from '../subscription.types';
 })
 export class CostTotals {
   readonly variant = input.required<'column' | 'bar'>();
+  // S-09: totals given by the page (an administrator viewing another account) win over the store of
+  // the signed-in account.
+  readonly totals = input<CostTotalsData | null>(null);
 
   private readonly locale = inject(LOCALE_ID);
 
-  protected readonly state = inject(CostTotalsStore).state;
+  private readonly store = inject(CostTotalsStore).state;
+  protected readonly state = computed<CostTotalsState>(() => {
+    const given = this.totals();
+    return given === null ? this.store() : { kind: 'ready', totals: given };
+  });
   protected readonly subscriptionCountLabel = subscriptionCountLabel;
   protected readonly duplicateWarningNote = duplicateWarningNote;
   protected readonly budgetAlertNote = budgetAlertNote;

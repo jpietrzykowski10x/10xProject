@@ -18,7 +18,7 @@ import {
 } from '@angular/router';
 import { isObservable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { authGuard, guestGuard } from './auth.guard';
+import { adminGuard, authGuard, guestGuard } from './auth.guard';
 
 // The oracle is the access rule for the two kinds of pages, not the guard code:
 // - guestGuard (start page, sign-in, register) never blocks a visitor: only a confirmed signed-in
@@ -33,7 +33,7 @@ import { authGuard, guestGuard } from './auth.guard';
 // Only the HTTP boundary is replaced; AuthService and Router are the real ones.
 
 const SESSION_URL = `${environment.apiUrl}/auth/session`;
-const SIGNED_IN = { user: { id: 'u1', email: 'anna@example.com', roles: ['user'] } };
+const SIGNED_IN = { user: { id: 'u1', email: 'anna@example.com', roles: ['USER'] } };
 const SIGNED_OUT = { user: null };
 
 type Platform = 'server' | 'browser';
@@ -41,6 +41,7 @@ type Platform = 'server' | 'browser';
 const GUARDS: [string, CanActivateFn][] = [
   ['guestGuard', guestGuard],
   ['authGuard', authGuard],
+  ['adminGuard', adminGuard],
 ];
 
 // What the guard decided: undefined while the Observable has not emitted yet.
@@ -294,3 +295,61 @@ describe.each<Platform>(['server', 'browser'])(
     });
   },
 );
+
+// The oracle is the access rule of S-09: the admin pages behave like authGuard pages, and among
+// signed-in users only the ADMIN and SUPER_ADMIN roles (codes as GET /auth/session sends them) get
+// in; anyone else goes to the list.
+describe('adminGuard', () => {
+  function signedInAs(roles: string[]) {
+    return { user: { id: 'u1', email: 'anna@example.com', roles } };
+  }
+
+  it('sends the visitor to /sign-in on the server without a session cookie', () => {
+    setup('server', null);
+
+    expectUrlTree(run(adminGuard), '/sign-in');
+  });
+
+  describe.each<Platform>(['server', 'browser'])('in the %s', (platform) => {
+    const cookieHeader = platform === 'server' ? 'subtracker_session=token-123' : undefined;
+
+    it.each([[['ADMIN']], [['SUPER_ADMIN']], [['USER', 'ADMIN']]])(
+      'lets in a user with the roles %j',
+      (roles) => {
+        setup(platform, cookieHeader);
+        const decision = run(adminGuard);
+
+        expectSessionRequest().flush(signedInAs(roles));
+
+        expectAllowed(decision);
+      },
+    );
+
+    it.each([[['USER']], [[]]])('sends a user with the roles %j to /subscriptions', (roles) => {
+      setup(platform, cookieHeader);
+      const decision = run(adminGuard);
+
+      expectSessionRequest().flush(signedInAs(roles));
+
+      expectUrlTree(decision, '/subscriptions');
+    });
+
+    it('sends a visitor with an expired session to /sign-in', () => {
+      setup(platform, cookieHeader);
+      const decision = run(adminGuard);
+
+      expectSessionRequest().flush(SIGNED_OUT);
+
+      expectUrlTree(decision, '/sign-in');
+    });
+
+    it('shows /unavailable without changing the address after an HTTP error', () => {
+      setup(platform, cookieHeader);
+      const decision = run(adminGuard);
+
+      failWithServerError(expectSessionRequest());
+
+      expectUnavailable(decision);
+    });
+  });
+});

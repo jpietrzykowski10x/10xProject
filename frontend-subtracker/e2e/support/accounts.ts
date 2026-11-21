@@ -48,14 +48,19 @@ export interface E2eAccount {
   email: string;
 }
 
+export interface NewAccountOptions {
+  // Role codes granted besides USER, written to user_role (e.g. ['ADMIN'] for the admin pages).
+  roles?: string[];
+}
+
 export interface SessionOptions {
   // A session whose expiry is an hour gone: the API treats its cookie as signed out.
   expired?: boolean;
 }
 
 export interface E2eAccounts {
-  // A new active account with consents and the USER role.
-  newAccount: () => Promise<E2eAccount>;
+  // A new active account with consents, the USER role and any extra roles.
+  newAccount: (options?: NewAccountOptions) => Promise<E2eAccount>;
   // A new session for the account; returns the raw token (the database keeps only its sha256).
   sessionFor: (account: E2eAccount, options?: SessionOptions) => Promise<string>;
   // Removes every row hanging off this file's addresses; call in afterAll (and beforeAll for
@@ -120,7 +125,7 @@ export function createE2eAccounts({ addressPrefix }: E2eAccountsOptions): E2eAcc
     return connected;
   }
 
-  async function newAccount(): Promise<E2eAccount> {
+  async function newAccount({ roles = [] }: NewAccountOptions = {}): Promise<E2eAccount> {
     const client = await db();
     const email = `${addressPrefix}${Date.now()}-${++addressCounter}${ADDRESS_DOMAIN}`;
     const user = await client.query<{ id: string }>(
@@ -129,13 +134,15 @@ export function createE2eAccounts({ addressPrefix }: E2eAccountsOptions): E2eAcc
       [email, (policyVersion ??= privacyPolicyVersion())],
     );
     const id = user.rows[0].id;
-    const role = await client.query(
-      `INSERT INTO user_role (user_id, role_id)
-       SELECT $1, id FROM role WHERE code = $2`,
-      [id, USER_ROLE_CODE],
-    );
-    if (role.rowCount !== 1) {
-      throw new Error(`No role with code ${USER_ROLE_CODE} in the database`);
+    for (const code of [USER_ROLE_CODE, ...roles]) {
+      const role = await client.query(
+        `INSERT INTO user_role (user_id, role_id)
+         SELECT $1, id FROM role WHERE code = $2`,
+        [id, code],
+      );
+      if (role.rowCount !== 1) {
+        throw new Error(`No role with code ${code} in the database`);
+      }
     }
     return { id, email };
   }
@@ -153,8 +160,10 @@ export function createE2eAccounts({ addressPrefix }: E2eAccountsOptions): E2eAcc
     return token;
   }
 
-  // Subscriptions and categories first: they hang off the users. Session, token and role rows
-  // block deleting a user (ON DELETE NO ACTION). Same order as e2e-app.ts.
+  // Every table with a user_id goes with the user (ON DELETE CASCADE); the rows are still removed
+  // explicitly, subscriptions before the categories they point to (ON DELETE NO ACTION).
+  // admin_audit has no foreign key: its rows with one of these accounts as actor or target go by
+  // id. Same order as e2e-app.ts.
   async function removeTestData(): Promise<void> {
     const client = await db();
     const users = await client.query<{ id: string }>('SELECT id FROM "user" WHERE email LIKE $1', [
@@ -167,6 +176,10 @@ export function createE2eAccounts({ addressPrefix }: E2eAccountsOptions): E2eAcc
     for (const table of ['subscription', 'category', 'session', 'magic_link_token', 'user_role']) {
       await client.query(`DELETE FROM ${table} WHERE user_id = ANY($1::uuid[])`, [ids]);
     }
+    await client.query(
+      'DELETE FROM admin_audit WHERE actor_id = ANY($1::uuid[]) OR target_id = ANY($1::uuid[])',
+      [ids],
+    );
     await client.query('DELETE FROM "user" WHERE id = ANY($1::uuid[])', [ids]);
   }
 

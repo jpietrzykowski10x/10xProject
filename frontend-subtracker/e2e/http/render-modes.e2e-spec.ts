@@ -12,6 +12,9 @@ const GUARDED_ROUTES = [
   '/dashboard',
   '/budget',
   '/account',
+  '/admin/users',
+  // Any id: the guard runs in the browser, so the server never looks it up.
+  '/admin/users/00000000-0000-4000-8000-000000000000',
   '/sign-in',
   '/register',
   '/auth/verify',

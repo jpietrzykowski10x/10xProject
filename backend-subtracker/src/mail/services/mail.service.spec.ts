@@ -6,11 +6,13 @@ import type { User } from '../../users/entities/user.entity.js';
 import type { Mail } from '../entities/mail.entity.js';
 import type { MailTransport } from '../mail.transport.js';
 import {
+  ACCOUNT_ACCESS_MAIL_TYPES,
   ANONYMIZED_RECIPIENT,
   type MailContent,
   type MailMessage,
   MailStatus,
   MailType,
+  type UserMailType,
 } from '../mail.types.js';
 import { MailService, OPERATOR_ALERT_INTERVAL_MS } from './mail.service.js';
 
@@ -42,6 +44,10 @@ function configFor(operatorMail: string | null) {
   } as unknown as ConfigService<EnvConfig, true>;
 }
 
+interface ExistsOptions {
+  where: { email?: unknown; isActive?: unknown };
+}
+
 function setup(operatorMail: string | null = OPERATOR) {
   const rows: Partial<Mail>[] = [];
   const mails = {
@@ -55,9 +61,11 @@ function setup(operatorMail: string | null = OPERATOR) {
     Promise.resolve(),
   );
   const transport: MailTransport = { send };
-  // Every user address has an account unless a test says otherwise.
+  // Every user address has an active account unless a test says otherwise.
   const users = {
-    exists: vi.fn<() => Promise<boolean>>(() => Promise.resolve(true)),
+    exists: vi.fn<(options: ExistsOptions) => Promise<boolean>>(() =>
+      Promise.resolve(true),
+    ),
   };
   const service = new MailService(
     mails as unknown as Repository<Mail>,
@@ -269,12 +277,57 @@ describe('MailService', () => {
     });
 
     describe('only to an address that still has an account', () => {
-      it('checks the account by the address it mails', async () => {
+      it('checks an active account by the address it mails', async () => {
         const { service, users } = setup();
 
         await service.sendToUser(MailType.MAGIC_LINK, USER, content);
 
-        expect(users.exists).toHaveBeenCalledWith({ where: { email: USER } });
+        expect(users.exists).toHaveBeenNthCalledWith(1, {
+          where: { email: USER, isActive: true },
+        });
+        // The second check, before the audit row, only asks whether the account still exists.
+        expect(users.exists).toHaveBeenNthCalledWith(2, {
+          where: { email: USER },
+        });
+      });
+
+      describe('to a blocked account', () => {
+        // A database with one blocked account at USER.
+        const blockedAccount = ({ where }: ExistsOptions) =>
+          Promise.resolve(where.email === USER && where.isActive === undefined);
+
+        it.each<UserMailType>([MailType.MAGIC_LINK, MailType.TRIAL_REMINDER])(
+          'skips %s mail like mail to a missing account',
+          async (type) => {
+            const { service, users, send, mails } = setup();
+            users.exists.mockImplementation(blockedAccount);
+
+            await expect(service.sendToUser(type, USER, content)).resolves.toBe(
+              false,
+            );
+
+            expect(send).not.toHaveBeenCalled();
+            expect(mails.save).not.toHaveBeenCalled();
+            expect(JSON.stringify(logWarn.mock.calls)).not.toContain(USER);
+          },
+        );
+
+        it.each<UserMailType>([...ACCOUNT_ACCESS_MAIL_TYPES])(
+          'sends and audits %s mail',
+          async (type) => {
+            const { service, users, send, rows } = setup();
+            users.exists.mockImplementation(blockedAccount);
+
+            await expect(service.sendToUser(type, USER, content)).resolves.toBe(
+              true,
+            );
+
+            expect(send).toHaveBeenCalledOnce();
+            expect(rows).toEqual([
+              expect.objectContaining({ type, recipient: USER }),
+            ]);
+          },
+        );
       });
 
       it('neither sends, audits nor alerts without an account, and resolves to false', async () => {

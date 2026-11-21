@@ -10,6 +10,7 @@ import {
   type ObjectLiteral,
   type Repository,
 } from 'typeorm';
+import { AdminAudit } from '../../src/admin/entities/admin-audit.entity.js';
 import { AppModule } from '../../src/app.module.js';
 import { MagicLinkToken } from '../../src/auth/entities/magic-link-token.entity.js';
 import { Session } from '../../src/auth/entities/session.entity.js';
@@ -152,9 +153,11 @@ export function createE2eApp({
     }
   };
 
-  // Subscriptions, category settings, user settings and categories first: they hang off the users,
-  // and the first two block deleting a category. Session, token and role rows block deleting a user
-  // (ON DELETE NO ACTION).
+  // Every table with a user_id goes with the user (ON DELETE CASCADE, auth tables since S-10); the
+  // rows are still removed explicitly, subscriptions and category settings before the categories
+  // they point to (ON DELETE NO ACTION). admin_audit has no foreign key: its rows with one of these
+  // accounts as actor or target go by id. Rows of an account a test already deleted no longer match
+  // the address, so such a test removes them itself.
   async function removeTestData(): Promise<void> {
     const users = await repository(User).findBy({
       email: Like(addressPattern),
@@ -167,6 +170,8 @@ export function createE2eApp({
     await repository(Session).delete({ userId: userIds });
     await repository(MagicLinkToken).delete({ userId: userIds });
     await repository(UserRole).delete({ userId: userIds });
+    await repository(AdminAudit).delete({ actorId: userIds });
+    await repository(AdminAudit).delete({ targetId: userIds });
     await repository(User).delete({ id: userIds });
     await repository(Mail).delete({ recipient: Like(addressPattern) });
   }
