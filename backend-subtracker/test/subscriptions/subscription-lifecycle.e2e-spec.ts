@@ -13,6 +13,7 @@ import {
   BillingCycle,
   type SubscriptionResponse,
 } from '../../src/subscriptions/subscription.types.js';
+import { User } from '../../src/users/entities/user.entity.js';
 import { createE2eApp } from '../support/e2e-app.js';
 import { subscriptionBody, subscriptionRequests } from './subscriptions-e2e.js';
 
@@ -30,7 +31,7 @@ describe('Subscriptions — lifecycle job (e2e)', () => {
   // dates are relative to it (a far "today" would move the rows of manual testing too), and the
   // assertions look only at the rows of this file's accounts.
   const e2e = createE2eApp({ addressPrefix: 'e2e-subscriptions-lifecycle-' });
-  const { repository, signIn } = e2e;
+  const { repository, signIn, userIdOf } = e2e;
   const { postSubscription, getTotals } = subscriptionRequests(e2e);
 
   const today = calendarDayIn(APP_TIME_ZONE, new Date());
@@ -43,6 +44,8 @@ describe('Subscriptions — lifecycle job (e2e)', () => {
   let cancellationDue: SubscriptionResponse;
   let cancellationToday: SubscriptionResponse;
   let yearlyOverdue: SubscriptionResponse;
+  let blockedUserId: string;
+  let blockedTrialEnded: SubscriptionResponse;
   let firstRun: LifecycleRunResult;
 
   const create = async (
@@ -80,6 +83,17 @@ describe('Subscriptions — lifecycle job (e2e)', () => {
       billingCycle: 'yearly',
       nextBillingDate: yearAgo,
     });
+
+    // A blocked account's overdue trial, left alone until the account is unblocked.
+    const blocked = await signIn();
+    blockedUserId = await userIdOf(blocked.address);
+    blockedTrialEnded = await create(blocked.cookie, {
+      name: 'Blocked trial ended',
+      status: 'trial',
+      trialEndDate: yesterday,
+      nextBillingDate: yesterday,
+    });
+    await repository(User).update({ id: blockedUserId }, { isActive: false });
 
     // The pending cancellations on an account of their own, so its totals hold only them.
     totalsCookie = (await signIn()).cookie;
@@ -166,5 +180,23 @@ describe('Subscriptions — lifecycle job (e2e)', () => {
     await advance();
 
     expect(await Promise.all(subscriptions.map(stored))).toEqual(afterFirst);
+  });
+
+  // Runs after the second run above, so two runs have passed the blocked account by.
+  it('leaves a blocked account as it is and catches up once it is unblocked', async () => {
+    const whileBlocked = await stored(blockedTrialEnded);
+    expect(whileBlocked.status).toBe('trial');
+    expect(whileBlocked.trialEndDate).toBe(yesterday);
+    expect(whileBlocked.nextBillingDate).toBe(yesterday);
+
+    await repository(User).update({ id: blockedUserId }, { isActive: true });
+    await advance();
+
+    const row = await stored(blockedTrialEnded);
+    expect(row.status).toBe('active');
+    expect(row.trialEndDate).toBeNull();
+    expect(row.nextBillingDate).toBe(
+      rolledBillingDate(yesterday, BillingCycle.MONTHLY, today),
+    );
   });
 });

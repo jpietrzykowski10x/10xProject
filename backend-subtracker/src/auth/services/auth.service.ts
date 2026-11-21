@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DataSource, type EntityManager, IsNull } from 'typeorm';
+import { DataSource, type EntityManager, IsNull, Raw } from 'typeorm';
 import { type EnvConfig, envFromConfig } from '../../config/env.js';
 import { MailType } from '../../mail/mail.types.js';
 import { MailService } from '../../mail/services/mail.service.js';
@@ -11,9 +11,10 @@ import { Role } from '../../users/entities/role.entity.js';
 import { UserRole } from '../../users/entities/user-role.entity.js';
 import { User } from '../../users/entities/user.entity.js';
 import { normalizeEmail } from '../../users/normalize-email.js';
+import { AccountBlockedException } from '../account-blocked.exception.js';
 import { MAGIC_LINK_TTL, PRIVACY_POLICY_VERSION } from '../auth.constants.js';
 import { MagicLinkToken } from '../entities/magic-link-token.entity.js';
-import { magicLinkMail } from '../mail-templates.js';
+import { accountBlockedMail, magicLinkMail } from '../mail-templates.js';
 import { hashToken, SessionService, toAuthUser } from './session.service.js';
 
 const MAGIC_LINK_TOKEN_BYTES = 32;
@@ -24,16 +25,29 @@ interface IssuedLink {
   needsConsentConfirmation: boolean;
 }
 
+// What a link request found under the row lock of the address.
+type LinkRequestOutcome =
+  | { kind: 'issued'; link: IssuedLink }
+  | { kind: 'blocked'; address: string }
+  | { kind: 'none' };
+
 export interface SignIn {
   user: AuthUser;
   sessionToken: string;
 }
 
 // Callers answer the same way whether or not an address has an account, so register and
-// requestLink return nothing and mail goes out only after the transaction has committed.
+// requestLink return nothing and mail goes out only after the transaction has committed. The one
+// exception is a blocked account: an administrator's decision its owner has to learn about, so it
+// gets a 403 with the contact address (AccountBlockedException).
+//
+// Lock order: the user row first, then its tokens and sessions. Issuing a link, verifying one and
+// AccountAccessService all keep it, so they cannot deadlock, and a block that commits first is
+// seen by each of them.
 @Injectable()
 export class AuthService {
   private readonly frontendUrl: string;
+  private readonly supportEmail: string;
 
   constructor(
     private readonly dataSource: DataSource,
@@ -41,16 +55,22 @@ export class AuthService {
     private readonly sessions: SessionService,
     config: ConfigService<EnvConfig, true>,
   ) {
-    this.frontendUrl = envFromConfig(config).FRONTEND_URL;
+    const env = envFromConfig(config);
+    this.frontendUrl = env.FRONTEND_URL;
+    this.supportEmail = env.SUPPORT_EMAIL;
   }
 
   async register(email: string): Promise<void> {
     const address = normalizeEmail(email);
     const link = await this.dataSource.transaction(async (manager) => {
       await this.createUserIfAbsent(manager, address);
-      const user = await this.lockActiveUser(manager, address);
+      const user = await this.lockUser(manager, address);
       if (user === null) {
         return null;
+      }
+      // Before the consents below: a blocked account keeps the ones it has.
+      if (!user.isActive) {
+        throw new AccountBlockedException(this.supportEmail);
       }
       // Whoever filled in the form may not own the mailbox, so until the address is confirmed the
       // latest consents count. A confirmed account keeps those its owner gave.
@@ -68,47 +88,80 @@ export class AuthService {
     this.sendLink(link);
   }
 
+  // A blocked account gets the mail about the block again, in case the first one went missing.
   async requestLink(email: string): Promise<void> {
     const address = normalizeEmail(email);
-    const link = await this.dataSource.transaction(async (manager) => {
-      const user = await this.lockActiveUser(manager, address);
-      return user === null ? null : this.issueLink(manager, user);
-    });
-    this.sendLink(link);
+    const outcome = await this.dataSource.transaction(
+      async (manager): Promise<LinkRequestOutcome> => {
+        const user = await this.lockUser(manager, address);
+        if (user === null) {
+          return { kind: 'none' };
+        }
+        if (!user.isActive) {
+          return { kind: 'blocked', address: user.email };
+        }
+        return { kind: 'issued', link: await this.issueLink(manager, user) };
+      },
+    );
+    if (outcome.kind === 'blocked') {
+      this.sendBlockedMail(outcome.address);
+      throw new AccountBlockedException(this.supportEmail);
+    }
+    this.sendLink(outcome.kind === 'issued' ? outcome.link : null);
   }
 
-  // Throwing rolls the transaction back, so a refused token creates nothing. Every failure is the
-  // same 401.
+  // Throwing rolls the transaction back, so a refused token creates nothing. Every failure but a
+  // blocked account is the same 401; the token of a blocked account stays unused.
   verify(token: string, userAgent: string | null): Promise<SignIn> {
     return this.dataSource.transaction(async (manager) => {
+      const tokenHash = hashToken(token);
+      // Only to learn whose row to lock; the UPDATE below decides whether the token is used up.
+      const unused = await manager.getRepository(MagicLinkToken).findOne({
+        select: { userId: true },
+        where: {
+          tokenHash,
+          usedAt: IsNull(),
+          expiresAt: Raw((column) => `${column} > now()`),
+        },
+      });
+      if (unused === null) {
+        throw new UnauthorizedException();
+      }
+
+      // A query of its own, without relations, so the lock covers only the user row.
+      const users = manager.getRepository(User);
+      const locked = await users.findOne({
+        where: { id: unused.userId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (locked === null) {
+        throw new UnauthorizedException();
+      }
+      if (!locked.isActive) {
+        throw new AccountBlockedException(this.supportEmail);
+      }
+
       const consumed = await manager
         .createQueryBuilder()
         .update(MagicLinkToken)
         .set({ usedAt: () => 'now()' })
         .where(
-          'token_hash = :tokenHash AND used_at IS NULL AND expires_at > now()',
-          { tokenHash: hashToken(token) },
+          'token_hash = :tokenHash AND user_id = :userId AND used_at IS NULL AND expires_at > now()',
+          { tokenHash, userId: locked.id },
         )
-        .returning('user_id')
         .execute();
-      const [row] = consumed.raw as { user_id: string }[];
-      if (row === undefined) {
-        throw new UnauthorizedException();
-      }
-
-      const users = manager.getRepository(User);
-      const user = await users.findOne({
-        where: { id: row.user_id },
-        relations: { userRoles: { role: true } },
-      });
-      if (user === null || !user.isActive) {
+      if (consumed.affected !== 1) {
         throw new UnauthorizedException();
       }
 
       await users.update(
-        { id: user.id, emailVerifiedAt: IsNull() },
+        { id: locked.id, emailVerifiedAt: IsNull() },
         { emailVerifiedAt: new Date() },
       );
+      const user = await users.findOneOrFail({
+        where: { id: locked.id },
+        relations: { userRoles: { role: true } },
+      });
       const sessionToken = await this.sessions.create(
         user.id,
         userAgent,
@@ -153,19 +206,20 @@ export class AuthService {
       .insert({ userId: row.id, roleId: role.id });
   }
 
-  // The row lock serializes token issuing per user, so exactly one unused token survives.
-  private async lockActiveUser(
+  // The row lock serializes token issuing per user, so exactly one unused token survives, and
+  // makes the request wait for a block in progress. null means no account; whether the account is
+  // blocked is the caller's decision.
+  private lockUser(
     manager: EntityManager,
     address: string,
   ): Promise<User | null> {
-    const user = await manager.getRepository(User).findOne({
+    return manager.getRepository(User).findOne({
       where: { email: address },
       lock: { mode: 'pessimistic_write' },
     });
-    return user?.isActive ? user : null;
   }
 
-  // Expects the user's row to be locked by lockActiveUser. Only the newest link works.
+  // Expects the user's row to be locked by lockUser. Only the newest link works.
   private async issueLink(
     manager: EntityManager,
     user: User,
@@ -201,6 +255,15 @@ export class AuthService {
         link: `${this.frontendUrl}/auth/verify#token=${link.token}`,
         needsConsentConfirmation: link.needsConsentConfirmation,
       }),
+    );
+  }
+
+  // Not awaited, like the link.
+  private sendBlockedMail(address: string): void {
+    void this.mail.sendToUser(
+      MailType.ACCOUNT_BLOCKED,
+      address,
+      accountBlockedMail({ contact: this.supportEmail }),
     );
   }
 }

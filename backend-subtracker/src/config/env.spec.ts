@@ -23,6 +23,7 @@ const prodEnv = {
   SMTP_PASSWORD: 'smtp-secret',
   SMTP_FROM_EMAIL: 'noreply@example.com',
   NOTIFICATION_ADMINISTRATOR_MAIL: 'operator@example.com',
+  SUPPORT_EMAIL: 'support@example.com',
 };
 
 describe('validateEnv', () => {
@@ -110,21 +111,16 @@ describe('validateEnv', () => {
     expect(env.NOTIFICATION_SMTP_HOST).toBeUndefined();
   });
 
-  it.each([
-    ['.example.test'],
-    ['example.test'],
-    ['app.example.test'],
-  ])('accepts cookie domain %s, which covers the frontend', (domain) => {
-    expect(() =>
-      validateEnv({ ...prodEnv, SESSION_COOKIE_DOMAIN: domain }),
-    ).not.toThrow();
-  });
+  it.each([['.example.test'], ['example.test'], ['app.example.test']])(
+    'accepts cookie domain %s, which covers the frontend',
+    (domain) => {
+      expect(() =>
+        validateEnv({ ...prodEnv, SESSION_COOKIE_DOMAIN: domain }),
+      ).not.toThrow();
+    },
+  );
 
-  it.each([
-    ['.example.com'],
-    ['.pietrzykowski.pl'],
-    ['.other.example.test'],
-  ])(
+  it.each([['.example.com'], ['.pietrzykowski.pl'], ['.other.example.test']])(
     'rejects cookie domain %s, which does not cover the frontend in PROD',
     (domain) => {
       expect(() =>
@@ -165,11 +161,32 @@ describe('validateEnv', () => {
     'SMTP_PASSWORD',
     'SMTP_FROM_EMAIL',
     'NOTIFICATION_ADMINISTRATOR_MAIL',
+    'SUPPORT_EMAIL',
   ])('requires %s in PROD', (key) => {
     expect(() => validateEnv({ ...prodEnv, [key]: '' })).toThrow(
       new RegExp(`Missing required environment variable ${key}`),
     );
   });
+
+  it('defaults SUPPORT_EMAIL in DEV and keeps a configured one', () => {
+    expect(validateEnv(devEnv).SUPPORT_EMAIL).toBe('admin@subtracker.test');
+    expect(
+      validateEnv({ ...devEnv, SUPPORT_EMAIL: ' pomoc@example.com ' })
+        .SUPPORT_EMAIL,
+    ).toBe('pomoc@example.com');
+    expect(validateEnv(prodEnv).SUPPORT_EMAIL).toBe('support@example.com');
+  });
+
+  it.each(['pomoc', 'pomoc@', 'a b@example.com'])(
+    'rejects SUPPORT_EMAIL "%s", which is not an address',
+    (value) => {
+      for (const env of [devEnv, prodEnv]) {
+        expect(() => validateEnv({ ...env, SUPPORT_EMAIL: value })).toThrow(
+          /SUPPORT_EMAIL must be an e-mail address/,
+        );
+      }
+    },
+  );
 
   it('ignores SESSION_COOKIE_DOMAIN in DEV', () => {
     const env = validateEnv({

@@ -29,7 +29,8 @@ export class AuthController {
     private readonly accountDeletion: AccountDeletionService,
   ) {}
 
-  // Answers the same whether or not the address has an account.
+  // Answers the same whether or not the address has an account; only a blocked account gets a 403
+  // with the contact address (AccountBlockedException).
   @Public()
   @Post('register')
   @HttpCode(HttpStatus.ACCEPTED)
@@ -37,7 +38,8 @@ export class AuthController {
     return this.auth.register(dto.email);
   }
 
-  // Answers the same whether or not the address has an account.
+  // Answers the same whether or not the address has an account; only a blocked account gets a 403
+  // with the contact address, and a mail about the block.
   @Public()
   @Post('request-link')
   @HttpCode(HttpStatus.ACCEPTED)
@@ -45,7 +47,8 @@ export class AuthController {
     return this.auth.requestLink(dto.email);
   }
 
-  // The only route that consumes a token: mail scanners open the link with GET.
+  // The only route that consumes a token: mail scanners open the link with GET. A blocked account
+  // gets the same 403 as above, and its token stays unused.
   @Public()
   @Post('verify')
   @HttpCode(HttpStatus.OK)

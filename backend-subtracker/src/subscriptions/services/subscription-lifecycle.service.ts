@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { OWNER_IS_ACTIVE } from '../active-owner.js';
 import { Subscription } from '../entities/subscription.entity.js';
 import { rolledBillingDate } from '../subscription-lifecycle.js';
 import { SubscriptionStatus } from '../subscription.types.js';
@@ -15,7 +16,8 @@ export interface LifecycleRunResult {
 // The lifecycle job over every account (rules in subscription-lifecycle.ts). Each transition is a
 // conditional UPDATE on the status and the date, so a second run on the same day changes nothing,
 // a missed day is caught up by the next run, and a user's action between the read and the write
-// is never overwritten.
+// is never overwritten. Subscriptions of blocked accounts wait (OWNER_IS_ACTIVE) and are caught up
+// by the first run after the unblock.
 @Injectable()
 export class SubscriptionLifecycleService {
   constructor(
@@ -31,6 +33,7 @@ export class SubscriptionLifecycleService {
       .set({ status: SubscriptionStatus.ACTIVE, trialEndDate: null })
       .where('status = :trial', { trial: SubscriptionStatus.TRIAL })
       .andWhere('trial_end_date < CAST(:today AS date)', { today })
+      .andWhere(OWNER_IS_ACTIVE)
       .execute();
 
     const cancellations = await this.subscriptions
@@ -41,6 +44,7 @@ export class SubscriptionLifecycleService {
         pending: SubscriptionStatus.CANCELLED_PENDING,
       })
       .andWhere('next_billing_date < CAST(:today AS date)', { today })
+      .andWhere(OWNER_IS_ACTIVE)
       .execute();
 
     return {
@@ -66,6 +70,7 @@ export class SubscriptionLifecycleService {
       .andWhere('subscription.next_billing_date < CAST(:today AS date)', {
         today,
       })
+      .andWhere(OWNER_IS_ACTIVE)
       .getMany();
 
     let rolled = 0;

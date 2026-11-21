@@ -100,17 +100,30 @@ describe('Auth flow — token rules (e2e)', () => {
       await postVerify(token).expect(200);
     });
 
-    it('refuses the token of an inactive user and creates no session', async () => {
+    // A block through AccountAccessService deletes unused links; this one was left behind on
+    // purpose, as by a block that committed while the link was on its way.
+    it('refuses the token of a blocked account with 403, creates no session and leaves the token unused', async () => {
       const address = newAddress();
       await postRegister(address).expect(202);
       const token = await tokenFromMail(address);
       await repository(User).update({ email: address }, { isActive: false });
 
-      const response = await postVerify(token).expect(401);
+      const response = await postVerify(token).expect(403);
 
+      expect(response.body).toEqual({
+        statusCode: 403,
+        code: 'account_blocked',
+        contact: e2e.env.SUPPORT_EMAIL,
+        message: 'Account blocked',
+      });
       expect(response.headers['set-cookie']).toBeUndefined();
       const user = await findUser(address);
+      expect(user.emailVerifiedAt).toBeNull();
       expect(await repository(Session).countBy({ userId: user.id })).toBe(0);
+      const stored = await repository(MagicLinkToken).findOneByOrFail({
+        tokenHash: hashToken(token),
+      });
+      expect(stored.usedAt).toBeNull();
     });
   });
 });

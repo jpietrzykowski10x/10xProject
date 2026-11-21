@@ -522,25 +522,25 @@ Wzorce, README deployu, CLAUDE.md, PRD i sprawdzenie na produkcji.
 
 #### Automated
 
-- [x] 1.1 Migracje wygenerowane i zastosowane na `subtracker-db`; ponowne `migration:generate` nie znajduje zmian
-- [x] 1.2 Lint i build backendu
-- [x] 1.3 Testy jednostkowe backendu
-- [x] 1.4 Testy e2e backendu, w tym testy ról i test usuwania konta
+- [x] 1.1 Migracje wygenerowane i zastosowane na `subtracker-db`; ponowne `migration:generate` nie znajduje zmian — 5824708
+- [x] 1.2 Lint i build backendu — 5824708
+- [x] 1.3 Testy jednostkowe backendu — 5824708
+- [x] 1.4 Testy e2e backendu, w tym testy ról i test usuwania konta — 5824708
 
 #### Manual
 
-- [x] 1.5 Skrypt `superadmin:grant` odmawia drugiego superadmina, a po `superadmin:revoke` nadaje rolę innemu kontu
+- [x] 1.5 Skrypt `superadmin:grant` odmawia drugiego superadmina, a po `superadmin:revoke` nadaje rolę innemu kontu — 5824708
 
 ### Phase 2: Blokada i reset w backendzie
 
 #### Automated
 
-- [ ] 2.1 Lint, build i testy jednostkowe backendu
-- [ ] 2.2 Testy e2e backendu z blokadą, resetem, `verify` i jobem
+- [x] 2.1 Lint, build i testy jednostkowe backendu
+- [x] 2.2 Testy e2e backendu z blokadą, resetem, `verify` i jobem
 
 #### Manual
 
-- [ ] 2.3 Lokalnie `request-link` dla zablokowanego konta daje 403 z kontaktem i mail o blokadzie, nieznany adres dalej 202
+- [x] 2.3 Lokalnie `request-link` dla zablokowanego konta daje 403 z kontaktem i mail o blokadzie, nieznany adres dalej 202
 
 ### Phase 3: API `/admin`
 

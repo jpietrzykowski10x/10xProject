@@ -26,6 +26,7 @@ const prodEnv = validateEnv({
   SMTP_PASSWORD: 'smtp-secret',
   SMTP_FROM_EMAIL: 'noreply@example.com',
   NOTIFICATION_ADMINISTRATOR_MAIL: 'operator@example.com',
+  SUPPORT_EMAIL: 'support@example.com',
 });
 
 describe('buildDatabaseOptions', () => {

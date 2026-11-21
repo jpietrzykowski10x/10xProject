@@ -8,12 +8,14 @@ import { RoleCode } from '../../shared/types/role-code.js';
 import { Role } from '../../users/entities/role.entity.js';
 import { UserRole } from '../../users/entities/user-role.entity.js';
 import { User } from '../../users/entities/user.entity.js';
+import { AccountBlockedException } from '../account-blocked.exception.js';
 import { PRIVACY_POLICY_VERSION } from '../auth.constants.js';
 import { MagicLinkToken } from '../entities/magic-link-token.entity.js';
 import { AuthService } from './auth.service.js';
 import { hashToken, type SessionService } from './session.service.js';
 
 const FRONTEND_URL = 'https://app.example.com';
+const SUPPORT_EMAIL = 'pomoc@example.com';
 const ADDRESS = 'jan@example.com';
 const USER_ROLE_ID = 'role-user';
 
@@ -27,6 +29,7 @@ function configStub() {
     POSTGRES_DATABASE_DEV: 'subtracker-db-dev',
     CORS_ORIGINS: 'http://localhost:4200',
     FRONTEND_URL,
+    SUPPORT_EMAIL,
   });
   return {
     get: (key: keyof EnvConfig) => env[key],
@@ -49,14 +52,24 @@ function userWith(overrides: Partial<User> = {}): User {
 interface SetupOptions {
   // What the locking lookup finds.
   found?: User | null;
-  // Rows returned by the query builder: the insert of a user, or the consumption of a token.
+  // Rows returned by the query builder's insert of a user.
   returned?: Record<string, string>[];
+  // The owner of the unused token verify looks up, or null when there is none.
+  tokenOwner?: string | null;
+  // Rows the query builder's update reports, i.e. whether verify used the token up.
+  affected?: number;
 }
 
-function setup({ found = null, returned = [] }: SetupOptions = {}) {
+function setup({
+  found = null,
+  returned = [],
+  tokenOwner = null,
+  affected = 1,
+}: SetupOptions = {}) {
   const calls: string[] = [];
   const users = {
-    findOne: vi.fn(() => Promise.resolve(found)),
+    findOne: vi.fn((_options: object) => Promise.resolve(found)),
+    findOneOrFail: vi.fn(() => Promise.resolve(found)),
     update: vi.fn(() => Promise.resolve()),
   };
   const roles = {
@@ -64,6 +77,9 @@ function setup({ found = null, returned = [] }: SetupOptions = {}) {
   };
   const userRoles = { insert: vi.fn(() => Promise.resolve()) };
   const tokens = {
+    findOne: vi.fn((_options: object) =>
+      Promise.resolve(tokenOwner === null ? null : { userId: tokenOwner }),
+    ),
     delete: vi.fn(() => {
       calls.push('delete');
       return Promise.resolve();
@@ -90,7 +106,7 @@ function setup({ found = null, returned = [] }: SetupOptions = {}) {
     set: () => query,
     where: vi.fn((_condition: string, _params: object) => query),
     returning: () => query,
-    execute: () => Promise.resolve({ raw: returned }),
+    execute: vi.fn(() => Promise.resolve({ raw: returned, affected })),
   };
   const manager = {
     getRepository: (entity: unknown) => repositories.get(entity),
@@ -135,15 +151,40 @@ describe('AuthService', () => {
       expect(sendToUser).not.toHaveBeenCalled();
     });
 
-    it('sends nothing for an inactive user', async () => {
+    it('refuses a blocked account with the contact address and mails it about the block', async () => {
       const { service, tokens, sendToUser } = setup({
         found: userWith({ isActive: false }),
       });
 
-      await expect(service.requestLink(ADDRESS)).resolves.toBeUndefined();
+      const refusal = await service
+        .requestLink(ADDRESS)
+        .catch((error: unknown) => error);
 
+      expect(refusal).toBeInstanceOf(AccountBlockedException);
+      expect((refusal as AccountBlockedException).getResponse()).toEqual({
+        statusCode: 403,
+        code: 'account_blocked',
+        contact: SUPPORT_EMAIL,
+        message: 'Account blocked',
+      });
+      expect(tokens.delete).not.toHaveBeenCalled();
       expect(tokens.insert).not.toHaveBeenCalled();
-      expect(sendToUser).not.toHaveBeenCalled();
+      expect(sendToUser).toHaveBeenCalledOnce();
+      const [type, to, content] = sendToUser.mock.calls[0];
+      expect(type).toBe(MailType.ACCOUNT_BLOCKED);
+      expect(to).toBe(ADDRESS);
+      expect(content.text).toContain(SUPPORT_EMAIL);
+    });
+
+    it('refuses a blocked account before the mail about the block has gone out', async () => {
+      const { service, sendToUser } = setup({
+        found: userWith({ isActive: false }),
+      });
+      sendToUser.mockReturnValueOnce(new Promise(() => undefined));
+
+      await expect(service.requestLink(ADDRESS)).rejects.toBeInstanceOf(
+        AccountBlockedException,
+      );
     });
 
     it('normalizes the address before looking it up, under a row lock', async () => {
@@ -270,13 +311,15 @@ describe('AuthService', () => {
       expect(sendToUser).toHaveBeenCalledOnce();
     });
 
-    it('neither changes an inactive account nor mails it', async () => {
+    it('refuses a blocked account without changing its consents or mailing it', async () => {
       const { service, users, tokens, sendToUser } = setup({
         found: userWith({ isActive: false }),
         returned: [],
       });
 
-      await expect(service.register(ADDRESS)).resolves.toBeUndefined();
+      await expect(service.register(ADDRESS)).rejects.toBeInstanceOf(
+        AccountBlockedException,
+      );
 
       expect(users.update).not.toHaveBeenCalled();
       expect(tokens.insert).not.toHaveBeenCalled();
@@ -285,23 +328,71 @@ describe('AuthService', () => {
   });
 
   describe('verify', () => {
-    it('answers 401 when no token row was consumed', async () => {
-      const { service, query, create } = setup({ returned: [] });
+    it('answers 401 when no unused token has this hash', async () => {
+      const { service, tokens, users, create } = setup({ tokenOwner: null });
 
       await expect(service.verify('token', null)).rejects.toBeInstanceOf(
         UnauthorizedException,
       );
 
-      expect(query.where).toHaveBeenCalledWith(expect.any(String), {
-        tokenHash: hashToken('token'),
-      });
+      expect(tokens.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tokenHash: hashToken('token'),
+          }) as object,
+        }),
+      );
+      expect(users.findOne).not.toHaveBeenCalled();
       expect(create).not.toHaveBeenCalled();
     });
 
-    it('answers 401 for an inactive user', async () => {
-      const { service, create } = setup({
+    it('locks the owner row before using the token up', async () => {
+      const { service, users, query } = setup({
+        found: userWith(),
+        tokenOwner: 'user-1',
+      });
+      const order: string[] = [];
+      users.findOne.mockImplementationOnce(() => {
+        order.push('lock user');
+        return Promise.resolve(userWith());
+      });
+      query.execute.mockImplementationOnce(() => {
+        order.push('use token');
+        return Promise.resolve({ raw: [], affected: 1 });
+      });
+
+      await service.verify('token', null);
+
+      expect(users.findOne).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(order).toEqual(['lock user', 'use token']);
+      expect(query.where).toHaveBeenCalledWith(expect.any(String), {
+        tokenHash: hashToken('token'),
+        userId: 'user-1',
+      });
+    });
+
+    it('answers 403 for a blocked account and leaves its token unused', async () => {
+      const { service, query, create } = setup({
         found: userWith({ isActive: false }),
-        returned: [{ user_id: 'user-1' }],
+        tokenOwner: 'user-1',
+      });
+
+      await expect(service.verify('token', null)).rejects.toBeInstanceOf(
+        AccountBlockedException,
+      );
+
+      expect(query.execute).not.toHaveBeenCalled();
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it('answers 401 when a parallel request used the token up first', async () => {
+      const { service, create } = setup({
+        found: userWith(),
+        tokenOwner: 'user-1',
+        affected: 0,
       });
 
       await expect(service.verify('token', null)).rejects.toBeInstanceOf(
@@ -314,7 +405,7 @@ describe('AuthService', () => {
     it('confirms the address and creates the session in the same transaction', async () => {
       const { service, users, create, manager } = setup({
         found: userWith(),
-        returned: [{ user_id: 'user-1' }],
+        tokenOwner: 'user-1',
       });
 
       await expect(service.verify('token', 'agent')).resolves.toEqual({
