@@ -33,6 +33,8 @@ Needs the local PostgreSQL (`database/create-local-databases.sql`). Scripts that
 | `backfill-own-category-settings.mjs` | One-off (S-07, already applied 2026-11-17): gives every own category without a `category_setting` row the threshold 3, as the `BackfillOwnCategorySettings` migration does on `subtracker-db`. Idempotent. | `subtracker-db-dev` |
 | `widen-category-name-key.mjs` | One-off (S-02, already applied): widens `category.name_key` to `varchar(100)` in the dev database. | `subtracker-db-dev` |
 
+| `prune-backups-trial.sh` | Shell, not Node: run `sh dev-local/prune-backups-trial.sh` from Git Bash in the repo root. Trial of `deploy/mydevil/prune-backups.sh` (S-10) in 7 cases with PASS/FAIL checks: fresh dump before deleting, preventive dump, failed dump deletes nothing, kept argument, busy lock. Re-run after every change to that script. Needs `pg_dump` (`PG_BIN` to override) and `MODE=DEV` in `.env`. | `dev-local/.prune-trial/` (git-ignored, removed at the end); reads `subtracker-db` with `pg_dump` |
+
 `[email]` is optional when `DEV_USER_EMAIL` is set in `backend-subtracker/.env` (git-ignored; see
 `.env.example`).
 
