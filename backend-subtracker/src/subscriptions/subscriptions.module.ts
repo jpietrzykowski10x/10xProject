@@ -42,5 +42,7 @@ import { TrialReminderScheduler } from './trial-reminder.scheduler.js';
     TrialReminderService,
     TrialReminderScheduler,
   ],
+  // For the admin module, which shows an account's data through the same queries.
+  exports: [SubscriptionsService, BudgetService],
 })
 export class SubscriptionsModule {}

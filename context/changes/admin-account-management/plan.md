@@ -535,23 +535,23 @@ Wzorce, README deployu, CLAUDE.md, PRD i sprawdzenie na produkcji.
 
 #### Automated
 
-- [x] 2.1 Lint, build i testy jednostkowe backendu
-- [x] 2.2 Testy e2e backendu z blokadą, resetem, `verify` i jobem
+- [x] 2.1 Lint, build i testy jednostkowe backendu — cf12e22
+- [x] 2.2 Testy e2e backendu z blokadą, resetem, `verify` i jobem — cf12e22
 
 #### Manual
 
-- [x] 2.3 Lokalnie `request-link` dla zablokowanego konta daje 403 z kontaktem i mail o blokadzie, nieznany adres dalej 202
+- [x] 2.3 Lokalnie `request-link` dla zablokowanego konta daje 403 z kontaktem i mail o blokadzie, nieznany adres dalej 202 — cf12e22
 
 ### Phase 3: API `/admin`
 
 #### Automated
 
-- [ ] 3.1 Lint, build i testy jednostkowe backendu
-- [ ] 3.2 Testy e2e backendu z listą tras i macierzą rang
+- [x] 3.1 Lint, build i testy jednostkowe backendu
+- [x] 3.2 Testy e2e backendu z listą tras i macierzą rang
 
 #### Manual
 
-- [ ] 3.3 Lokalnie curl admina: wyszukanie, podgląd i blokada działają, w `admin_audit` są wpisy `VIEW` i `BLOCK`
+- [x] 3.3 Lokalnie curl admina: wyszukanie, podgląd i blokada działają, w `admin_audit` są wpisy `VIEW` i `BLOCK`
 
 ### Phase 4: Frontend
 
