@@ -557,19 +557,19 @@ Wzorce, README deployu, CLAUDE.md, PRD i sprawdzenie na produkcji.
 
 #### Automated
 
-- [x] 4.1 Testy frontendu w obu strefach czasowych (`npm run test:ci`)
-- [x] 4.2 Build produkcyjny frontendu
-- [x] 4.3 Browser i HTTP e2e na buildzie e2e
+- [x] 4.1 Testy frontendu w obu strefach czasowych (`npm run test:ci`) — 2c372db
+- [x] 4.2 Build produkcyjny frontendu — 2c372db
+- [x] 4.3 Browser i HTTP e2e na buildzie e2e — 2c372db
 
 #### Manual
 
-- [x] 4.4 Desktop i telefon: panel admina, blokada z potwierdzeniem, komunikat dla zablokowanego, superadmin bez akcji dla admina
+- [x] 4.4 Desktop i telefon: panel admina, blokada z potwierdzeniem, komunikat dla zablokowanego, superadmin bez akcji dla admina — 2c372db
 
 ### Phase 5: Dokumentacja i produkcja
 
 #### Automated
 
-- [ ] 5.1 Testy backendu i frontendu nadal zielone po zmianach dokumentacji
+- [x] 5.1 Testy backendu i frontendu nadal zielone po zmianach dokumentacji
 
 #### Manual
 
