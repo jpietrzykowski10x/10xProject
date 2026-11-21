@@ -355,8 +355,8 @@ Migracja `AccountDeletionSchema` zmienia definicje 3 kluczy obcych i zakłada in
 
 #### Manual
 
-- [x] 1.6 Przegląd wygenerowanej migracji: tylko 3 klucze obce i indeks `mail.recipient`, `down()` je cofa — ręcznie (właściciel)
-- [x] 1.7 `curl` na lokalne API: zły adres 400, dobry 204, konto znika z `subtracker-db-dev`, a jego wiersze `mail` mają znacznik — ręcznie (właściciel); request-link na usunięte konto: 202, bez maila
+- [x] 1.6 Przegląd wygenerowanej migracji: tylko 3 klucze obce i indeks `mail.recipient`, `down()` je cofa — ręcznie (właściciel) — 6116dfd
+- [x] 1.7 `curl` na lokalne API: zły adres 400, dobry 204, konto znika z `subtracker-db-dev`, a jego wiersze `mail` mają znacznik — ręcznie (właściciel); request-link na usunięte konto: 202, bez maila — 6116dfd
 
 ### Phase 2: Frontend: strona `/account` i dialog
 
@@ -368,9 +368,9 @@ Migracja `AccountDeletionSchema` zmienia definicje 3 kluczy obcych i zakłada in
 
 #### Manual
 
-- [x] 2.4 Adres e-mail jako link do `/account` na desktopie i telefonie, `/account` spójne z `/budget` — ręcznie (właściciel)
-- [x] 2.5 Dialog: fokus na „Anuluj”, Esc zamyka, przycisk aktywny dopiero po wpisaniu własnego adresu — ręcznie (właściciel)
-- [x] 2.6 Po usunięciu komunikat na `/`, odświeżenie go usuwa, `/subscriptions` przekierowuje na `/sign-in` — ręcznie (właściciel)
+- [x] 2.4 Adres e-mail jako link do `/account` na desktopie i telefonie, `/account` spójne z `/budget` — ręcznie (właściciel) — 40e14a7
+- [x] 2.5 Dialog: fokus na „Anuluj”, Esc zamyka, przycisk aktywny dopiero po wpisaniu własnego adresu — ręcznie (właściciel) — 40e14a7
+- [x] 2.6 Po usunięciu komunikat na `/`, odświeżenie go usuwa, `/subscriptions` przekierowuje na `/sign-in` — ręcznie (właściciel) — 40e14a7
 
 ### Phase 3: E2E przeglądarki i dokumentacja
 
@@ -382,7 +382,7 @@ Migracja `AccountDeletionSchema` zmienia definicje 3 kluczy obcych i zakłada in
 
 #### Manual
 
-- [x] 3.4 Sekcja w `deploy/mydevil/README.md` zrozumiała dla operatora bez czytania planu — ręcznie (właściciel, 2026-11-21)
-- [x] 3.5 Po deployu: usunięcie testowego konta działa, ponowna rejestracja daje puste konto — ręcznie (właściciel, 2026-11-21, po deployu 49c180f): konto usunięte, ponowna rejestracja daje puste konto
-- [x] 3.6 Na serwerze: trzy skrypty wgrane, wpis crontab dodany, pierwsze ręczne uruchomienie bez błędu — ręcznie (właściciel, 2026-11-21): chmod 700, sumy sha256 zgodne, crontab dodany, ręczne uruchomienie: `done: 0 dump(s) deleted`
-- [x] 3.7 Lokalna próba `prune-backups.sh`: same stare kopie → najpierw świeży dump, potem kasowanie; najnowszy 40-dniowy → profilaktyczny dump; nieudany dump → nic nie znika; jest młodszy niż 30 dni → znikają tylko starsze niż 180 — `sh dev-local/prune-backups-trial.sh`: 7 przypadków, 30/30 PASS (2026-11-21)
+- [x] 3.4 Sekcja w `deploy/mydevil/README.md` zrozumiała dla operatora bez czytania planu — ręcznie (właściciel, 2026-11-21) — 7ede133
+- [x] 3.5 Po deployu: usunięcie testowego konta działa, ponowna rejestracja daje puste konto — ręcznie (właściciel, 2026-11-21, po deployu 49c180f): konto usunięte, ponowna rejestracja daje puste konto — 49c180f
+- [x] 3.6 Na serwerze: trzy skrypty wgrane, wpis crontab dodany, pierwsze ręczne uruchomienie bez błędu — ręcznie (właściciel, 2026-11-21): chmod 700, sumy sha256 zgodne, crontab dodany, ręczne uruchomienie: `done: 0 dump(s) deleted` — 46a43b6
+- [x] 3.7 Lokalna próba `prune-backups.sh`: same stare kopie → najpierw świeży dump, potem kasowanie; najnowszy 40-dniowy → profilaktyczny dump; nieudany dump → nic nie znika; jest młodszy niż 30 dni → znikają tylko starsze niż 180 — `sh dev-local/prune-backups-trial.sh`: 7 przypadków, 30/30 PASS (2026-11-21) — a944f6b
