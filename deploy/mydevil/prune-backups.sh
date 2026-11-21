@@ -81,10 +81,12 @@ if [ -z "$RECENT" ]; then
   FRESH=""
 fi
 
-# Names are written by these scripts (timestamp_sha, timestamp_pre-restore,
-# timestamp_scheduled): no spaces or wildcards, so word splitting is safe.
+# One path per line. Read through a here-document, not a pipe, so the loop runs
+# in this shell and keeps the counter.
+OLD_DUMPS=$(find "$BACKUPS" -maxdepth 1 -type f -name '*.dump' -mtime +"$BACKUP_MAX_AGE_DAYS")
 removed=0
-for old in $(find "$BACKUPS" -maxdepth 1 -type f -name '*.dump' -mtime +"$BACKUP_MAX_AGE_DAYS"); do
+while IFS= read -r old; do
+  [ -n "$old" ] || continue
   if [ -n "$KEEP_FILE" ] && { [ "$old" = "$KEEP_FILE" ] || [ "$old" -ef "$KEEP_FILE" ]; }; then
     log "keeping $old (given as the file to keep)"
     continue
@@ -92,5 +94,7 @@ for old in $(find "$BACKUPS" -maxdepth 1 -type f -name '*.dump' -mtime +"$BACKUP
   rm -f "$old"
   log "deleted $old (older than $BACKUP_MAX_AGE_DAYS days)"
   removed=$((removed + 1))
-done
+done <<EOF
+$OLD_DUMPS
+EOF
 log "done: $removed dump(s) deleted"

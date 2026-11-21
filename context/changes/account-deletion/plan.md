@@ -253,7 +253,7 @@ Test Playwright całego przepływu na prawdziwym API, przycinanie kopii bazy po 
 - `deploy.sh` (tylko `APP=api`, po obecnej rotacji po liczbie) i `restore-db.sh` (po udanym przywróceniu, z argumentem `$DUMP`) wołają go z `SUBTRACKER_LOCKED=1`. Jego błąd tylko loguje i nie cofa udanego deployu ani przywrócenia.
 - `_scheduled.dump` nie pasuje do wzorca `_pre-restore`, więc wpada do rotacji dumpów deployu (najnowsze 10). `rollback.sh` czyta dump z `.deploy-info`, więc go nie dotyczy.
 - Skrypty wgrywa się ręcznie przez `scp` (CLAUDE.md).
-- Wykonanie (odstępstwo, przegląd fazy 3 F1): krok 3 to pętla po wyniku `find … -mtime +180` z `rm -f` i logiem każdego usuniętego pliku zamiast `-delete`; zachowywany plik porównywany przez `=` i `-ef`. Błąd utworzenia blokady inny niż „zajęta” kończy skrypt kodem 1.
+- Wykonanie (odstępstwo, przegląd fazy 3 F1): krok 3 to pętla `while read` po wyniku `find … -mtime +180` (here-document, nie potok; `for` po `find` odrzuca shellcheck SC2044 w CI) z `rm -f` i logiem każdego usuniętego pliku zamiast `-delete`; zachowywany plik porównywany przez `=` i `-ef`. Błąd utworzenia blokady inny niż „zajęta” kończy skrypt kodem 1.
 
 #### 3. Codzienne przycinanie w crontabie i opis w README
 
