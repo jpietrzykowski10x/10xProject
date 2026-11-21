@@ -253,6 +253,7 @@ Test Playwright całego przepływu na prawdziwym API, przycinanie kopii bazy po 
 - `deploy.sh` (tylko `APP=api`, po obecnej rotacji po liczbie) i `restore-db.sh` (po udanym przywróceniu, z argumentem `$DUMP`) wołają go z `SUBTRACKER_LOCKED=1`. Jego błąd tylko loguje i nie cofa udanego deployu ani przywrócenia.
 - `_scheduled.dump` nie pasuje do wzorca `_pre-restore`, więc wpada do rotacji dumpów deployu (najnowsze 10). `rollback.sh` czyta dump z `.deploy-info`, więc go nie dotyczy.
 - Skrypty wgrywa się ręcznie przez `scp` (CLAUDE.md).
+- Wykonanie (odstępstwo, przegląd fazy 3 F1): krok 3 to pętla po wyniku `find … -mtime +180` z `rm -f` i logiem każdego usuniętego pliku zamiast `-delete`; zachowywany plik porównywany przez `=` i `-ef`. Błąd utworzenia blokady inny niż „zajęta” kończy skrypt kodem 1.
 
 #### 3. Codzienne przycinanie w crontabie i opis w README
 
@@ -292,6 +293,11 @@ Sekcja kończy się listą tego, co pełna polityka prywatności ma o tym powied
 - Po deployu na produkcję: usunięcie testowego konta działa, a ponowna rejestracja tym adresem daje puste konto
 - Na serwerze: `deploy.sh`, `restore-db.sh` i `prune-backups.sh` wgrane przez `scp`, wpis crontab dodany, a pierwsze uruchomienie ręczne kończy się bez błędu
 - Lokalna próba `prune-backups.sh` (`SUBTRACKER_BACKUPS` na katalogu testowym, `SUBTRACKER_ENV_FILE` na lokalną bazę dev) w czterech przypadkach. Same pliki starsze niż 180 dni (postarzone `touch -t`): powstaje `_scheduled.dump`, a dopiero potem znikają stare. Najnowszy dump ma 40 dni: powstaje `_scheduled.dump`, a nic nie znika. Nieudany `pg_dump` (złe hasło): żaden plik nie znika. Jest dump młodszy niż 30 dni: brak nowego dumpu, znikają tylko pliki starsze niż 180 dni
+
+### Addendum (2026-11-21, przegląd fazy 3 F2)
+
+- 3.7 wykonane stałym skryptem `dev-local/prune-backups-trial.sh` (7 przypadków, sprawdzenia PASS/FAIL, do ponownego uruchamiania po zmianie `prune-backups.sh`). Prawdziwy dump w próbie czyta bazę referencyjną `subtracker-db` (`POSTGRES_DATABASE` z `.env`, tylko odczyt), a nie bazę dev.
+- Poza S-10, na prośbę właściciela (commit 7ede133): nasze README dwujęzyczne (PL/EN) i spięte z głównym; domena produkcyjna w dokumentacji i testach zastąpiona tokenami (`<frontend-domain>`, `<api-domain>`, `<parent-domain>`, `example.test`).
 
 ---
 

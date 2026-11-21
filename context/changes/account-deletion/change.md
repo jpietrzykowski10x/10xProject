@@ -3,7 +3,7 @@ change_id: account-deletion
 title: Account deletion
 status: impl_reviewed
 created: 2026-11-20
-updated: 2026-11-20
+updated: 2026-11-21
 archived_at: null
 ---
 
