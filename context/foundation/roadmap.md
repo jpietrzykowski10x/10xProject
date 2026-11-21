@@ -52,7 +52,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-06 | trial-end-reminder                | użytkownik dostaje e-mail 7 dni przed końcem okresu próbnego                      | S-05          | FR-014                        | done |
 | S-07 | category-duplicate-warning        | użytkownik widzi ostrzeżenie, gdy kategoria przekroczy jego próg subskrypcji      | S-04          | FR-009, FR-005                | done |
 | S-08 | budget-limits-and-alerts          | użytkownik ustawia limity budżetu i widzi alert przy 80% / 100%                   | S-04          | FR-010, FR-011, FR-005        | done        |
-| S-09 | admin-account-management          | administrator odblokowuje konto lub resetuje dostęp i wgląda w dane użytkownika   | S-02          | FR-002                        | in-progress |
+| S-09 | admin-account-management          | administrator odblokowuje konto lub resetuje dostęp i wgląda w dane użytkownika   | S-02          | FR-002                        | done |
 | S-10 | account-deletion                  | użytkownik sam usuwa swoje konto razem ze wszystkimi danymi                       | S-02          | NFR (usunięcie danych w 30 dni) | done        |
 
 ## Streams
@@ -251,7 +251,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - Admin nie może zablokować samego siebie. Nowa rola superadmina (jedna osoba, nadawana tylko skryptem albo w bazie, niewidoczna w API) może wszystko, łącznie z blokadą innego admina. Zwykli admini zarządzają tylko użytkownikami.
   - Zablokowane konta są pomijane przez joby i maile. Merytoryczne wyjątki, np. mail o zablokowaniu, wychodzą normalnie.
 - **Risk:** Niezależna gałąź — może iść równolegle z resztą; ryzyko w tym, że wyjątek od izolacji kont (pełny wgląd admina) przecieknie do zwykłych użytkowników.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-10: Usunięcie konta
 
@@ -326,3 +326,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-07: użytkownik ustawia próg aktywnych subskrypcji per kategoria (domyślnie 2) i po dodaniu lub edycji subskrypcji widzi na dashboardzie flagę przy kategorii, która go przekracza.** — Archived 2026-11-17 → `context/archive/2026-11-17-category-duplicate-warning/`. Lesson: —.
 - **S-08: użytkownik ustawia miesięczny limit całościowy i limity per kategoria, a dashboard pokazuje alert przy 80% i 100% limitu, przeliczany po dodaniu lub edycji subskrypcji.** — Archived 2026-11-18 → `context/archive/2026-11-17-budget-limits-and-alerts/`. Lesson: —.
 - **S-10: użytkownik usuwa swoje konto z poziomu aplikacji. Przed usunięciem widzi potwierdzenie z informacją, że dane (subskrypcje, własne kategorie) przepadną bezpowrotnie. Po usunięciu jest wylogowany, a jego sesje, tokeny logowania i dane domenowe znikają.** — Archived 2026-11-21 → `context/archive/2026-11-20-account-deletion/`. Lesson: —.
+- **S-09: administrator (rola nadana ręcznie poza aplikacją) blokuje i odblokowuje konto lub resetuje dostęp użytkownika i ma wgląd w jego dane, w tym subskrypcje i kwoty.** — Archived 2026-11-21 → `context/archive/2026-11-21-admin-account-management/`. Lesson: widok listy w trzech szerokościach; przyciski i pola z tokenów motywu.
