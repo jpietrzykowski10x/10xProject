@@ -134,18 +134,26 @@ Co musi o tym powiedzieć pełna polityka prywatności (pisana osobno, przed pub
 - po przywróceniu kopii usunięcia zrobione od tamtej chwili są powtarzane;
 - rejestr wysłanych maili zostaje bez adresu.
 
-### Nadawanie roli administratora
+### Nadawanie i odbieranie ról (ADMIN, SUPER_ADMIN)
 
-Rolę `ADMIN` nadaje się na serwerze, gdy użytkownik już się zarejestrował. `npm run admin:grant` jest tylko do użytku lokalnego: `prepare-mydevil.mjs` spłaszcza `dist/` do katalogu głównego paczki, więc skrypt leży w `cli/admin-grant.js`. Uruchamiasz go z działającego wydania z wyeksportowanym env, tak jak `deploy.sh` uruchamia migracje:
+Role nadaje i odbiera się wyłącznie skryptem na serwerze (API do zarządzania rolami nie ma), gdy konto już istnieje, czyli po rejestracji użytkownika. `npm run admin:grant` i pozostałe skrypty `npm run` są tylko do użytku lokalnego: `prepare-mydevil.mjs` spłaszcza `dist/` do katalogu głównego paczki, więc skrypty leżą w `cli/`. Plików `.js` nie uruchamia się bezpośrednio (`cli/superadmin-grant.js <mail>` kończy się `Permission denied`): uruchamia je `node24` z działającego wydania z wyeksportowanym env, tak jak `deploy.sh` uruchamia migracje.
+
+| Cel | Skrypt |
+| --- | --- |
+| nadać `ADMIN` (zarządza zwykłymi użytkownikami) | `cli/admin-grant.js` |
+| odebrać `ADMIN` | `cli/admin-revoke.js` |
+| nadać `SUPER_ADMIN` (jeden, zarządza też adminami) | `cli/superadmin-grant.js` |
+| odebrać `SUPER_ADMIN` | `cli/superadmin-revoke.js` |
 
 ```
 cd ~/apps/subtracker/api/public_nodejs
 sh -c 'set -a; . ./.env; set +a; exec /usr/local/bin/node24 cli/admin-grant.js "$1"' sh <mail>
+sh -c 'set -a; . ./.env; set +a; exec /usr/local/bin/node24 cli/admin-revoke.js "$1"' sh <mail>
+sh -c 'set -a; . ./.env; set +a; exec /usr/local/bin/node24 cli/superadmin-grant.js "$1"' sh <mail>
+sh -c 'set -a; . ./.env; set +a; exec /usr/local/bin/node24 cli/superadmin-revoke.js "$1"' sh <mail>
 ```
 
-Dwukrotne nadanie roli nie szkodzi. Nieznany adres wypisuje błąd i kończy się kodem 1.
-
-Tak samo działają pozostałe skrypty ról: `cli/admin-revoke.js` (odbiera `ADMIN`), `cli/superadmin-grant.js` i `cli/superadmin-revoke.js`. Zamień nazwę pliku w komendzie wyżej. Superadmin może być jeden: gdy rolę ma już inne konto, `superadmin-grant.js` kończy się kodem 1 i trzeba najpierw uruchomić `superadmin-revoke.js` dla poprzedniego. Odebranie roli działa od następnego żądania konta, bez wylogowania.
+Sukces wypisuje jedną linię z rolą, czynnością i adresem. Ponowne nadanie albo odebranie roli nie szkodzi. Nieznany adres wypisuje błąd i kończy się kodem 1. Superadmin może być jeden: gdy rolę ma już inne konto, `superadmin-grant.js` kończy się kodem 1 z komunikatem „Superadmin już istnieje”, więc najpierw uruchom `superadmin-revoke.js` dla poprzedniego. Zmiana roli działa od następnego żądania konta, bez wylogowania (w przeglądarce wystarczy odświeżyć stronę).
 
 ### Aktualizacja skryptów na serwerze
 
@@ -334,18 +342,26 @@ What the full privacy policy has to say about this (it is written separately, be
 - after restoring a backup, deletions made since then are repeated;
 - the record of sent mail stays without the address.
 
-### Granting the admin role
+### Granting and revoking roles (ADMIN, SUPER_ADMIN)
 
-The `ADMIN` role is granted on the server, once the user has registered. `npm run admin:grant` is for local use only: `prepare-mydevil.mjs` flattens `dist/` into the package root, so the script lives at `cli/admin-grant.js`. Run it from the live release with its env exported, the same way `deploy.sh` runs the migrations:
+Roles are granted and revoked only by a script on the server (there is no role API), once the account exists, i.e. after the user has registered. `npm run admin:grant` and the other `npm run` role scripts are for local use only: `prepare-mydevil.mjs` flattens `dist/` into the package root, so the scripts live in `cli/`. The `.js` files are not run directly (`cli/superadmin-grant.js <mail>` ends with `Permission denied`): `node24` runs them from the live release with its env exported, the same way `deploy.sh` runs the migrations.
+
+| Goal | Script |
+| --- | --- |
+| grant `ADMIN` (manages ordinary users) | `cli/admin-grant.js` |
+| revoke `ADMIN` | `cli/admin-revoke.js` |
+| grant `SUPER_ADMIN` (one, also manages admins) | `cli/superadmin-grant.js` |
+| revoke `SUPER_ADMIN` | `cli/superadmin-revoke.js` |
 
 ```
 cd ~/apps/subtracker/api/public_nodejs
 sh -c 'set -a; . ./.env; set +a; exec /usr/local/bin/node24 cli/admin-grant.js "$1"' sh <mail>
+sh -c 'set -a; . ./.env; set +a; exec /usr/local/bin/node24 cli/admin-revoke.js "$1"' sh <mail>
+sh -c 'set -a; . ./.env; set +a; exec /usr/local/bin/node24 cli/superadmin-grant.js "$1"' sh <mail>
+sh -c 'set -a; . ./.env; set +a; exec /usr/local/bin/node24 cli/superadmin-revoke.js "$1"' sh <mail>
 ```
 
-Granting the role twice is harmless. An unknown address prints an error and exits with code 1.
-
-The other role scripts work the same way: `cli/admin-revoke.js` (removes `ADMIN`), `cli/superadmin-grant.js` and `cli/superadmin-revoke.js`. Swap the file name in the command above. There is one superadmin at most: while another account holds the role, `superadmin-grant.js` exits 1, so run `superadmin-revoke.js` for the previous one first. A revoke takes effect from the account's next request, without signing it out.
+Success prints one line with the role, the action and the address. Granting or revoking twice is harmless. An unknown address prints an error and exits with code 1. There is one superadmin at most: while another account holds the role, `superadmin-grant.js` exits 1 with "Superadmin już istnieje", so run `superadmin-revoke.js` for the previous one first. A role change takes effect from the account's next request, without signing it out (a page refresh is enough in the browser).
 
 ### Updating the scripts on the server
 
