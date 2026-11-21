@@ -573,5 +573,5 @@ Wzorce, README deployu, CLAUDE.md, PRD i sprawdzenie na produkcji.
 
 #### Manual
 
-- [x] 5.2 `SUPPORT_EMAIL` w `.env` serwera przed deployem, a po deployu `superadmin-grant` nadaje rolę właścicielowi
-- [x] 5.3 Na produkcji: wyszukanie, podgląd, blokada z mailem i komunikatem, odblokowanie, „wyloguj wszędzie”, wpisy audytu
+- [x] 5.2 `SUPPORT_EMAIL` w `.env` serwera przed deployem, a po deployu `superadmin-grant` nadaje rolę właścicielowi — fb42d03
+- [x] 5.3 Na produkcji: wyszukanie, podgląd, blokada z mailem i komunikatem, odblokowanie, „wyloguj wszędzie”, wpisy audytu — fb42d03
