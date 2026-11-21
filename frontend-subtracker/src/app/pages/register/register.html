@@ -48,6 +48,18 @@
           Sprawdź adres e-mail: wygląda na niepoprawny.
         </p>
       }
+      @if (state() === 'blocked') {
+        <p class="st-notice st-notice--error" role="alert">
+          Konto zostało zablokowane.
+          @if (blockedContact()) {
+            Skontaktuj się z administratorem:
+            <a [href]="'mailto:' + blockedContact()">{{ blockedContact() }}</a
+            >.
+          } @else {
+            Skontaktuj się z administratorem.
+          }
+        </p>
+      }
       @if (state() === 'unavailable') {
         <p class="st-notice st-notice--error" role="alert">
           Serwis jest chwilowo niedostępny. Spróbuj ponownie za chwilę.

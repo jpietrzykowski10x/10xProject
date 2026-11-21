@@ -40,6 +40,15 @@ export const serverRoutes: ServerRoute[] = [
     path: 'account',
     renderMode: RenderMode.Client,
   },
+  // S-09: admin pages read other accounts; :id must never reach the prerender either.
+  {
+    path: 'admin/users',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'admin/users/:id',
+    renderMode: RenderMode.Client,
+  },
   {
     path: '**',
     renderMode: RenderMode.Prerender,

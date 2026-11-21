@@ -48,14 +48,19 @@ export interface E2eAccount {
   email: string;
 }
 
+export interface NewAccountOptions {
+  // Role codes granted besides USER, written to user_role (e.g. ['ADMIN'] for the admin pages).
+  roles?: string[];
+}
+
 export interface SessionOptions {
   // A session whose expiry is an hour gone: the API treats its cookie as signed out.
   expired?: boolean;
 }
 
 export interface E2eAccounts {
-  // A new active account with consents and the USER role.
-  newAccount: () => Promise<E2eAccount>;
+  // A new active account with consents, the USER role and any extra roles.
+  newAccount: (options?: NewAccountOptions) => Promise<E2eAccount>;
   // A new session for the account; returns the raw token (the database keeps only its sha256).
   sessionFor: (account: E2eAccount, options?: SessionOptions) => Promise<string>;
   // Removes every row hanging off this file's addresses; call in afterAll (and beforeAll for
@@ -120,7 +125,7 @@ export function createE2eAccounts({ addressPrefix }: E2eAccountsOptions): E2eAcc
     return connected;
   }
 
-  async function newAccount(): Promise<E2eAccount> {
+  async function newAccount({ roles = [] }: NewAccountOptions = {}): Promise<E2eAccount> {
     const client = await db();
     const email = `${addressPrefix}${Date.now()}-${++addressCounter}${ADDRESS_DOMAIN}`;
     const user = await client.query<{ id: string }>(
@@ -129,13 +134,15 @@ export function createE2eAccounts({ addressPrefix }: E2eAccountsOptions): E2eAcc
       [email, (policyVersion ??= privacyPolicyVersion())],
     );
     const id = user.rows[0].id;
-    const role = await client.query(
-      `INSERT INTO user_role (user_id, role_id)
-       SELECT $1, id FROM role WHERE code = $2`,
-      [id, USER_ROLE_CODE],
-    );
-    if (role.rowCount !== 1) {
-      throw new Error(`No role with code ${USER_ROLE_CODE} in the database`);
+    for (const code of [USER_ROLE_CODE, ...roles]) {
+      const role = await client.query(
+        `INSERT INTO user_role (user_id, role_id)
+         SELECT $1, id FROM role WHERE code = $2`,
+        [id, code],
+      );
+      if (role.rowCount !== 1) {
+        throw new Error(`No role with code ${code} in the database`);
+      }
     }
     return { id, email };
   }

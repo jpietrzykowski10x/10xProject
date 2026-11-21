@@ -148,3 +148,30 @@ describe('Register required statements', () => {
     expect(links).toEqual(['', '']);
   });
 });
+
+// The oracle is the API contract of a blocked account (backend AccountBlockedResponse, S-09): a
+// registration with the address of a blocked account answers 403 with `code: 'account_blocked'`
+// and the contact address; the form shows the block with a mailto link, not "unavailable".
+describe('Register blocked account', () => {
+  it('shows the block with the contact address', async () => {
+    const contact = 'pomoc@example.com';
+    await createRegister();
+    await typeEmail(EMAIL);
+    await check(ADULT);
+    await check(PRIVACY_POLICY);
+    await save();
+
+    httpTesting
+      .expectOne({ method: 'POST', url: REGISTER_URL })
+      .flush(
+        { statusCode: 403, code: 'account_blocked', contact, message: 'Account blocked' },
+        { status: 403, statusText: 'Forbidden' },
+      );
+    await fixture.whenStable();
+
+    expect(alertCount()).toBe(1);
+    const alert = host().querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain('zablokowane');
+    expect(alert?.querySelector('a')?.getAttribute('href')).toBe(`mailto:${contact}`);
+  });
+});

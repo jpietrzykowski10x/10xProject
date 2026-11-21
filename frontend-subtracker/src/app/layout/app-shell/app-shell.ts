@@ -1,15 +1,24 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, input, OnInit, signal } from '@angular/core';
 import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
+import { isAdmin } from '../../auth/roles';
 import { CostTotals } from '../../subscriptions/cost-totals/cost-totals';
 import { CostTotalsStore } from '../../subscriptions/cost-totals.store';
 
-const NAV_LINKS: readonly { path: string; label: string }[] = [
+interface NavLink {
+  path: string;
+  label: string;
+}
+
+const NAV_LINKS: readonly NavLink[] = [
   { path: '/dashboard', label: 'Dashboard' },
   { path: '/subscriptions', label: 'Subskrypcje' },
   { path: '/budget', label: 'Budżet' },
 ];
+
+// S-09: only for administrators and the superadministrator.
+const ADMIN_LINK: NavLink = { path: '/admin/users', label: 'Administracja' };
 
 @Component({
   selector: 'app-shell',
@@ -22,14 +31,23 @@ export class AppShell implements OnInit {
   private readonly router = inject(Router);
   private readonly totals = inject(CostTotalsStore);
 
-  // The pages of the signed-in app, in the order of both navigations (desktop column, phone menu).
-  protected readonly links = NAV_LINKS;
+  // S-09: false on the admin pages, which show another account's totals themselves; the shell then
+  // neither loads nor shows the signed-in account's totals.
+  readonly showTotals = input(true);
+
   protected readonly user = this.auth.currentUser;
+  // The pages of the signed-in app, in the order of both navigations (desktop column, phone menu).
+  protected readonly links = computed(() =>
+    isAdmin(this.user()) ? [...NAV_LINKS, ADMIN_LINK] : NAV_LINKS,
+  );
   protected readonly loggingOut = signal(false);
   protected readonly logoutFailed = signal(false);
 
   // The store outlives the shell; load() first drops the totals it may still hold.
   ngOnInit(): void {
+    if (!this.showTotals()) {
+      return;
+    }
     this.totals.load();
   }
 

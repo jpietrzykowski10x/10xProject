@@ -1,0 +1,259 @@
+// S-09: the search above, the results below in their own scroll region (the shell never scrolls
+// the window), like the subscription list.
+.admin-users {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  max-width: 960px;
+}
+
+.admin-users__title {
+  margin: 0 0 16px;
+  font: var(--mat-sys-headline-small);
+  font-weight: 700;
+}
+
+// One line from 840px up: the address field narrows instead of pushing the button to a second
+// line; below 840px everything stacks at full width.
+.admin-users__form {
+  display: flex;
+  // To the top of the fields, not the middle of the block: the hint under the address field
+  // makes it taller than the others.
+  align-items: flex-start;
+  gap: 12px 24px;
+  margin-bottom: 24px;
+}
+
+.admin-users__query {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.admin-users__status {
+  flex: 0 0 200px;
+}
+
+.admin-users__form > button {
+  flex: none;
+}
+
+// Centred on the field: 48px at the theme density -2 (_theme.scss), so (48 - 40) / 2.
+.admin-users__form > button {
+  margin-top: 4px;
+}
+
+.admin-users__panel {
+  margin: 0;
+  padding: 32px 24px;
+  border: 1px solid var(--st-line);
+  border-radius: 4px;
+  background: var(--mat-sys-surface);
+  color: var(--st-muted);
+  text-align: center;
+}
+
+.admin-users__results {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--st-line);
+  border-radius: 4px;
+  background: var(--mat-sys-surface);
+}
+
+.admin-users__note {
+  margin: 12px 0 0;
+  color: var(--st-muted);
+}
+
+.results {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--st-line-soft);
+    text-align: left;
+  }
+
+  th {
+    position: sticky;
+    top: 0;
+    background: var(--mat-sys-surface);
+    color: var(--st-muted);
+    font: var(--mat-sys-label-large);
+  }
+
+  tbody tr {
+    position: relative;
+  }
+
+  tbody tr:hover {
+    background: var(--st-line-soft);
+  }
+
+  tbody tr:has(.results__link:focus-visible) {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: -2px;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+}
+
+.results__email {
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.results__link {
+  color: inherit;
+  text-decoration: none;
+
+  // Stretched over the row (position: relative on the tr).
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+.results__visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+// The end of the row: a "Szczegóły" button from 950px up, an arrow below. Both only show where the
+// row link leads (aria-hidden); the link itself is the address.
+.results__chevron {
+  padding-left: 0;
+  color: var(--st-muted);
+  text-align: right;
+  white-space: nowrap;
+
+  svg {
+    display: none;
+    margin-left: auto;
+  }
+}
+
+.results__details {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  // The tokens of mat-stroked-button, so it matches the other buttons (4px shape, _theme.scss).
+  border: 1px solid var(--mat-button-outlined-outline-color, var(--mat-sys-outline));
+  border-radius: var(--mat-button-outlined-container-shape, 4px);
+  color: var(--mat-button-outlined-label-text-color, var(--mat-sys-primary));
+  font: var(--mat-sys-label-large);
+}
+
+@media (max-width: 949.98px) {
+  .results__chevron {
+    width: 32px;
+
+    svg {
+      display: block;
+    }
+  }
+
+  .results__details {
+    display: none;
+  }
+}
+
+.results__status {
+  color: var(--st-status-active);
+  font-weight: 600;
+}
+
+.results__status--blocked {
+  color: var(--st-error-text);
+}
+
+// Phone: every account as a block of lines, without the column names.
+@media (max-width: 839.98px) {
+  .admin-users__title {
+    font: var(--mat-sys-title-large);
+    font-weight: 600;
+  }
+
+  .admin-users__form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-users__query,
+  .admin-users__status {
+    flex: none;
+  }
+
+  .admin-users__form > button {
+    width: 100%;
+    margin-top: 0;
+  }
+
+  // Three lines per account (the address; status · role; the date) and the arrow on the right;
+  // the whole block opens the account, like on the desktop.
+  .results {
+    thead {
+      display: none;
+    }
+
+    tr {
+      display: grid;
+      grid-template-areas:
+        'email email chevron'
+        'status role chevron'
+        'date date chevron';
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 4px 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--st-line-soft);
+    }
+
+    td {
+      padding: 0;
+      border-bottom: 0;
+    }
+
+    .results__email {
+      grid-area: email;
+    }
+
+    .results__status-cell {
+      grid-area: status;
+    }
+
+    .results__role {
+      grid-area: role;
+      color: var(--st-muted);
+
+      &::before {
+        content: '· ';
+      }
+    }
+
+    .results__date {
+      grid-area: date;
+      color: var(--st-muted);
+    }
+
+    .results__chevron {
+      grid-area: chevron;
+      width: auto;
+    }
+  }
+}

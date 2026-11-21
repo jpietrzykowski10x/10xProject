@@ -9,6 +9,17 @@
       Ten link jest nieprawidłowy, wygasł albo został już użyty.
     </p>
     <p><a routerLink="/sign-in">Poproś o nowy link</a></p>
+  } @else if (state() === 'blocked') {
+    <p class="st-notice st-notice--error" role="alert">
+      Konto zostało zablokowane.
+      @if (blockedContact()) {
+        Skontaktuj się z administratorem:
+        <a [href]="'mailto:' + blockedContact()">{{ blockedContact() }}</a
+        >.
+      } @else {
+        Skontaktuj się z administratorem.
+      }
+    </p>
   } @else {
     <p>Kliknij przycisk, aby się zalogować.</p>
 

@@ -546,24 +546,24 @@ Wzorce, README deployu, CLAUDE.md, PRD i sprawdzenie na produkcji.
 
 #### Automated
 
-- [x] 3.1 Lint, build i testy jednostkowe backendu
-- [x] 3.2 Testy e2e backendu z listą tras i macierzą rang
+- [x] 3.1 Lint, build i testy jednostkowe backendu — 277e5b1
+- [x] 3.2 Testy e2e backendu z listą tras i macierzą rang — 277e5b1
 
 #### Manual
 
-- [x] 3.3 Lokalnie curl admina: wyszukanie, podgląd i blokada działają, w `admin_audit` są wpisy `VIEW` i `BLOCK`
+- [x] 3.3 Lokalnie curl admina: wyszukanie, podgląd i blokada działają, w `admin_audit` są wpisy `VIEW` i `BLOCK` — 277e5b1
 
 ### Phase 4: Frontend
 
 #### Automated
 
-- [ ] 4.1 Testy frontendu w obu strefach czasowych (`npm run test:ci`)
-- [ ] 4.2 Build produkcyjny frontendu
-- [ ] 4.3 Browser i HTTP e2e na buildzie e2e
+- [x] 4.1 Testy frontendu w obu strefach czasowych (`npm run test:ci`)
+- [x] 4.2 Build produkcyjny frontendu
+- [x] 4.3 Browser i HTTP e2e na buildzie e2e
 
 #### Manual
 
-- [ ] 4.4 Desktop i telefon: panel admina, blokada z potwierdzeniem, komunikat dla zablokowanego, superadmin bez akcji dla admina
+- [x] 4.4 Desktop i telefon: panel admina, blokada z potwierdzeniem, komunikat dla zablokowanego, superadmin bez akcji dla admina
 
 ### Phase 5: Dokumentacja i produkcja
 

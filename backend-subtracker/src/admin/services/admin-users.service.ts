@@ -25,6 +25,7 @@ import { AdminAction } from '../admin-audit.types.js';
 import { canManage, visibleRole } from '../admin-rank.js';
 import {
   ADMIN_SEARCH_LIMIT,
+  AdminStatusFilter,
   type AdminUserDetail,
   type AdminUserSummary,
 } from '../admin-user.types.js';
@@ -89,11 +90,11 @@ export class AdminUsersService {
   ) {}
 
   // Accounts whose address contains the fragment literally (`%`, `_` and `\` match only
-  // themselves), optionally only the blocked ones, in Polish order, at most ADMIN_SEARCH_LIMIT.
+  // themselves), optionally only the active or blocked ones, in Polish order, at most ADMIN_SEARCH_LIMIT.
   // The roles come from a second query, so the limit counts accounts, not joined rows.
   async search(
     actor: AuthUser,
-    { q, blocked }: SearchUsersDto,
+    { q, status }: SearchUsersDto,
   ): Promise<AdminUserSummary[]> {
     const query = this.users.createQueryBuilder(SEARCH_ALIAS);
     if (q !== undefined && q !== '') {
@@ -102,8 +103,10 @@ export class AdminUsersService {
         { pattern: containsPattern(q) },
       );
     }
-    if (blocked === true) {
-      query.andWhere(`${SEARCH_ALIAS}.isActive = false`);
+    if (status !== AdminStatusFilter.ALL) {
+      query.andWhere(`${SEARCH_ALIAS}.isActive = :isActive`, {
+        isActive: status === AdminStatusFilter.ACTIVE,
+      });
     }
     const users = await query
       .orderBy(`${SEARCH_ALIAS}.email COLLATE "${POLISH_COLLATION}"`, 'ASC')

@@ -7,10 +7,11 @@ import { MatInput } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 import { FORM_FIELD_DEFAULTS } from '../../shared/form-field-defaults';
 import { PublicLayout } from '../../layout/public-layout/public-layout';
+import { accountBlockedContact } from '../../auth/account-blocked';
 import { AuthService } from '../../auth/auth.service';
 import { emailValidators } from '../../auth/email-validators';
 
-type SignInState = 'idle' | 'sending' | 'sent' | 'invalid' | 'unavailable';
+type SignInState = 'idle' | 'sending' | 'sent' | 'invalid' | 'blocked' | 'unavailable';
 
 @Component({
   selector: 'app-sign-in',
@@ -33,6 +34,8 @@ export class SignIn {
   protected readonly form = inject(NonNullableFormBuilder).group({
     email: ['', emailValidators],
   });
+  // The contact address of a 403 account_blocked answer; '' when the API sent none.
+  protected readonly blockedContact = signal('');
   protected readonly state = signal<SignInState>('idle');
 
   protected submit(): void {
@@ -43,8 +46,15 @@ export class SignIn {
     this.state.set('sending');
     this.auth.requestLink(this.form.getRawValue().email).subscribe({
       next: () => this.state.set('sent'),
-      error: (error: HttpErrorResponse) =>
-        this.state.set(error.status === 400 ? 'invalid' : 'unavailable'),
+      error: (error: HttpErrorResponse) => {
+        const contact = accountBlockedContact(error);
+        if (contact !== null) {
+          this.blockedContact.set(contact);
+          this.state.set('blocked');
+          return;
+        }
+        this.state.set(error.status === 400 ? 'invalid' : 'unavailable');
+      },
     });
   }
 }

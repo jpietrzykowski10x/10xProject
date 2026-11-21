@@ -112,3 +112,80 @@ describe('AppShell', () => {
     expect(await (await items[0].host()).getAttribute('href')).toBe('/account');
   });
 });
+
+// The oracle is the access rule of S-09: "Administracja" (/admin/users) is in both navigations
+// only for the ADMIN and SUPER_ADMIN roles. Anchor: the three pages everyone has are there.
+describe('AppShell admin link', () => {
+  afterEach(() => {
+    TestBed.inject(HttpTestingController).verify();
+  });
+
+  async function renderAs(roles: string[]) {
+    TestBed.configureTestingModule({
+      imports: [AppShell],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+    });
+    const httpTesting = TestBed.inject(HttpTestingController);
+    TestBed.inject(AuthService).session().subscribe();
+    httpTesting
+      .expectOne(`${environment.apiUrl}/auth/session`)
+      .flush({ user: { id: 'u1', email: EMAIL, roles } });
+    const fixture = TestBed.createComponent(AppShell);
+    const loader = TestbedHarnessEnvironment.loader(fixture);
+    await fixture.whenStable();
+    httpTesting.expectOne({ method: 'GET', url: TOTALS_URL }).flush({
+      monthly: '0.00',
+      yearly: '0.00',
+      monthlyLimit: null,
+      budgetAlert: 'none',
+      categories: [],
+    } satisfies CostTotals);
+    await fixture.whenStable();
+    const columnLinks = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLAnchorElement>(
+        'nav[aria-label="Główna nawigacja"] a',
+      ),
+    ).map((link) => link.getAttribute('href'));
+    const menu = await loader.getHarness(MatMenuHarness);
+    await menu.open();
+    const menuItems = await menu.getItems({ text: 'Administracja' });
+    return { columnLinks, menuItems };
+  }
+
+  it.each([[['USER']], [[]]])('hides the link from a user with the roles %j', async (roles) => {
+    const { columnLinks, menuItems } = await renderAs(roles);
+
+    expect(columnLinks).toEqual(['/dashboard', '/subscriptions', '/budget']);
+    expect(menuItems).toHaveLength(0);
+  });
+
+  it.each([[['ADMIN']], [['SUPER_ADMIN']]])(
+    'shows the link to a user with the roles %j',
+    async (roles) => {
+      const { columnLinks, menuItems } = await renderAs(roles);
+
+      expect(columnLinks).toEqual(['/dashboard', '/subscriptions', '/budget', '/admin/users']);
+      expect(menuItems).toHaveLength(1);
+      expect(await (await menuItems[0].host()).getAttribute('href')).toBe('/admin/users');
+    },
+  );
+});
+
+// The oracle is the plan of S-09: the admin pages show another account, so the shell neither loads
+// nor shows the administrator's own totals there. verify() proves no totals request was sent.
+describe('AppShell without totals', () => {
+  it('sends no totals request and shows no totals', async () => {
+    TestBed.configureTestingModule({
+      imports: [AppShell],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+    });
+    const fixture = TestBed.createComponent(AppShell);
+    fixture.componentRef.setInput('showTotals', false);
+    await fixture.whenStable();
+
+    TestBed.inject(HttpTestingController).verify();
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('app-cost-totals')).toHaveLength(
+      0,
+    );
+  });
+});

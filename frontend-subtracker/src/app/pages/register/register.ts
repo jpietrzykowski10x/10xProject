@@ -8,10 +8,11 @@ import { MatInput } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 import { FORM_FIELD_DEFAULTS } from '../../shared/form-field-defaults';
 import { PublicLayout } from '../../layout/public-layout/public-layout';
+import { accountBlockedContact } from '../../auth/account-blocked';
 import { AuthService } from '../../auth/auth.service';
 import { emailValidators } from '../../auth/email-validators';
 
-type RegisterState = 'idle' | 'sending' | 'sent' | 'invalid' | 'unavailable';
+type RegisterState = 'idle' | 'sending' | 'sent' | 'invalid' | 'blocked' | 'unavailable';
 
 @Component({
   selector: 'app-register',
@@ -37,6 +38,8 @@ export class Register {
     confirmedAdult: [false, Validators.requiredTrue],
     acceptedPrivacyPolicy: [false, Validators.requiredTrue],
   });
+  // The contact address of a 403 account_blocked answer; '' when the API sent none.
+  protected readonly blockedContact = signal('');
   protected readonly state = signal<RegisterState>('idle');
   protected readonly submitted = signal(false);
 
@@ -49,8 +52,15 @@ export class Register {
     this.state.set('sending');
     this.auth.register(this.form.getRawValue()).subscribe({
       next: () => this.state.set('sent'),
-      error: (error: HttpErrorResponse) =>
-        this.state.set(error.status === 400 ? 'invalid' : 'unavailable'),
+      error: (error: HttpErrorResponse) => {
+        const contact = accountBlockedContact(error);
+        if (contact !== null) {
+          this.blockedContact.set(contact);
+          this.state.set('blocked');
+          return;
+        }
+        this.state.set(error.status === 400 ? 'invalid' : 'unavailable');
+      },
     });
   }
 }

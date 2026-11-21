@@ -429,3 +429,29 @@ describe('CostTotals', () => {
     expect(text(host.querySelector('.totals__monthly .st-amount'))).toBe('0,00 zł');
   });
 });
+
+// The oracle is the plan of S-09: totals given by the page (an administrator viewing another
+// account) win over the store of the signed-in account, which keeps its own totals.
+describe('CostTotals with given totals', () => {
+  afterEach(() => {
+    TestBed.inject(HttpTestingController).verify();
+  });
+
+  it('shows the given totals instead of the store', async () => {
+    const { httpTesting, fixture, host } = await createTotals();
+    httpTesting.expectOne({ method: 'GET', url: TOTALS_URL }).flush(EMPTY);
+    fixture.componentRef.setInput('totals', EXAMPLE);
+    await fixture.whenStable();
+
+    expect(text(host.querySelector('.totals__monthly .st-amount'))).toBe('102,82 zł');
+  });
+
+  it('shows the given totals while the store is still loading', async () => {
+    const { httpTesting, fixture, host } = await createTotals();
+    fixture.componentRef.setInput('totals', EXAMPLE);
+    await fixture.whenStable();
+
+    expect(text(host.querySelector('.totals__monthly .st-amount'))).toBe('102,82 zł');
+    httpTesting.expectOne({ method: 'GET', url: TOTALS_URL }).flush(EMPTY);
+  });
+});

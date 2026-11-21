@@ -11,6 +11,13 @@ export const ADMIN_SEARCH_LIMIT = 20;
 // The shortest fragment of an address a search accepts (unless it lists the blocked accounts).
 export const ADMIN_SEARCH_MIN_LENGTH = 3;
 
+// Which accounts a search lists: all of them, only the active or only the blocked ones.
+export enum AdminStatusFilter {
+  ALL = 'all',
+  ACTIVE = 'active',
+  BLOCKED = 'blocked',
+}
+
 // An account as an administrator sees it. `canManage` is worked out for the administrator asking.
 export interface AdminUserSummary {
   id: string;

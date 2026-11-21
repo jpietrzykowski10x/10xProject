@@ -244,7 +244,10 @@ describe('Admin — accounts (e2e)', () => {
       ['no fragment', {}],
       ['an empty fragment', { q: '' }],
       ['a fragment longer than an address', { q: 'a'.repeat(255) }],
-      ['a blocked filter that is not a boolean', { q: 'abc', blocked: 'yes' }],
+      ['an unknown status', { q: 'abc', status: 'yes' }],
+      ['no fragment with status=all', { status: 'all' }],
+      ['no fragment with status=active', { status: 'active' }],
+      ['the removed blocked filter', { q: 'abc', blocked: 'true' }],
       ['an unknown parameter', { q: 'abc', role: 'admin' }],
     ])('answers 400 to %s', async (_case, query: Record<string, string>) => {
       const admin = await account([RoleCode.ADMIN]);
@@ -252,7 +255,7 @@ describe('Admin — accounts (e2e)', () => {
       await searchUsers(admin.cookie, query).expect(400);
     });
 
-    it('lists blocked accounts, with or without a fragment', async () => {
+    it('filters by status, lists blocked accounts with or without a fragment', async () => {
       const admin = await account([RoleCode.ADMIN]);
       const active = await account();
       const blocked = await account();
@@ -261,14 +264,25 @@ describe('Admin — accounts (e2e)', () => {
       const filtered = (
         await searchUsers(admin.cookie, {
           q: ADDRESS_PREFIX,
-          blocked: 'true',
+          status: 'blocked',
         }).expect(200)
       ).body as AdminUserSummary[];
       expect(filtered.map((result) => result.id)).toEqual([blocked.id]);
 
+      const activeOnly = (
+        await searchUsers(admin.cookie, {
+          q: ADDRESS_PREFIX,
+          status: 'active',
+        }).expect(200)
+      ).body as AdminUserSummary[];
+      const activeIds = activeOnly.map((result) => result.id);
+      expect(activeIds).toContain(active.id);
+      expect(activeIds).not.toContain(blocked.id);
+      expect(activeOnly.every((result) => result.isActive)).toBe(true);
+
       const blockedQueries: Record<string, string>[] = [
-        { blocked: 'true' },
-        { blocked: 'true', q: '' },
+        { status: 'blocked' },
+        { status: 'blocked', q: '' },
       ];
       for (const query of blockedQueries) {
         const all = (await searchUsers(admin.cookie, query).expect(200))
@@ -276,16 +290,18 @@ describe('Admin — accounts (e2e)', () => {
         expect(all.every((result) => !result.isActive)).toBe(true);
       }
 
-      // `blocked=false` does not filter.
-      const unfiltered = (
-        await searchUsers(admin.cookie, {
-          q: ADDRESS_PREFIX,
-          blocked: 'false',
-        }).expect(200)
-      ).body as AdminUserSummary[];
-      expect(unfiltered.map((result) => result.id)).toEqual(
-        expect.arrayContaining([active.id, blocked.id]),
-      );
+      // `status=all` (also the default) does not filter.
+      const unfilteredQueries: Record<string, string>[] = [
+        { q: ADDRESS_PREFIX, status: 'all' },
+        { q: ADDRESS_PREFIX },
+      ];
+      for (const query of unfilteredQueries) {
+        const unfiltered = (await searchUsers(admin.cookie, query).expect(200))
+          .body as AdminUserSummary[];
+        expect(unfiltered.map((result) => result.id)).toEqual(
+          expect.arrayContaining([active.id, blocked.id]),
+        );
+      }
       await mailTypesOf(blocked.address, 2);
     });
 
