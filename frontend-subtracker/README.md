@@ -1,59 +1,77 @@
-# FrontendSubtracker
+# frontend-subtracker
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.0.
+[Polski](#polski) · [English](#english)
 
-## Development server
+Back to the main README / powrót do głównego README: [`../README.md`](../README.md)
 
-To start a local development server, run:
+---
 
-```bash
-ng serve
-```
+## Polski
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+Frontend SubTrackera: Angular 22 (komponenty standalone), SSR przez `@angular/ssr`, Angular Material 22, style SCSS. Pierwsze uruchomienie, wymagania (Node 24) i współpraca z API: [główne README](../README.md#pierwsze-uruchomienie-lokalnie).
 
-## Code scaffolding
+### Polecenia
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Wszystkie z tego katalogu (`cd frontend-subtracker`):
 
-```bash
-ng generate component component-name
-```
+| Polecenie | Co robi |
+|---|---|
+| `npm start` | serwer deweloperski `ng serve` na http://localhost:4200 |
+| `npm run build` | build produkcyjny do `dist/frontend-subtracker/` (bundle przeglądarki i serwera) |
+| `npm run serve:ssr:frontend-subtracker` | uruchamia zbudowany serwer SSR (port `PORT`, domyślnie 4000) |
+| `npm test` | testy jednostkowe i komponentów (Vitest przez `@angular/build:unit-test`, `src/**/*.spec.ts`) |
+| `npm run test:ci` | cały zestaw raz na strefę czasową (Warszawa, Nowy Jork), jak w CI |
+| `npm run build:e2e` | build w konfiguracji `e2e` (optymalizacja produkcyjna, API lokalne na :3000) do `dist/frontend-subtracker-e2e/` |
+| `npm run e2e` | Playwright (`e2e/**/*.e2e-spec.ts`, projekty `http` i `chromium`) na buildzie e2e (:4000) i prawdziwym API; po zmianie kodu najpierw znowu `build:e2e` |
+| `npm run typecheck:e2e` | kontrola typów testów e2e |
+| `npm run prepare-mydevil` | paczka do deployu na MyDevil (używa jej CI) |
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+### Układ
 
-```bash
-ng generate --help
-```
+- `src/app/` — `app.routes.ts` (trasy), `app.routes.server.ts` (tryb renderowania każdej trasy), katalogi funkcji: `auth/`, `subscriptions/`, `budget/`, `pages/`, wspólne `layout/` (układ publiczny i app-shell) oraz `shared/`.
+- `src/styles/` — motyw (`_theme.scss`, zmienne `--st-*`) i wspólne części SCSS.
+- `src/server.ts` — serwer Express dla SSR.
+- `e2e/` — testy Playwright: `http/`, `browser/`, `support/` (konta i sesje testowe).
+- `scripts/` — `prepare-mydevil.mjs`, `test-time-zones.mjs`.
 
-## Building
+### Ważne zasady
 
-To build the project run:
+- Każda trasa jest domyślnie prerenderowana przy buildzie; trasy zależne od zalogowanego użytkownika potrzebują jawnego `RenderMode.Client` albo `RenderMode.Server` w `app.routes.server.ts` (szczegóły w [`CLAUDE.md`](../CLAUDE.md)).
+- Nic nie jest pobierane z Google: czcionka IBM Plex Sans z `@fontsource`, ikony jako inline SVG.
+- Jak dodać test: [`context/foundation/test-plan.md`](../context/foundation/test-plan.md) §6.1–6.2 (jednostkowe i komponentów), §6.5 (e2e przeglądarki).
 
-```bash
-ng build
-```
+---
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## English
 
-## Running unit tests
+The SubTracker frontend: Angular 22 (standalone components), SSR through `@angular/ssr`, Angular Material 22, SCSS styles. First run, requirements (Node 24) and working with the API: [main README](../README.md#first-local-run).
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+### Commands
 
-```bash
-ng test
-```
+All from this folder (`cd frontend-subtracker`):
 
-## Running end-to-end tests
+| Command | What it does |
+|---|---|
+| `npm start` | dev server `ng serve` on http://localhost:4200 |
+| `npm run build` | production build to `dist/frontend-subtracker/` (browser and server bundles) |
+| `npm run serve:ssr:frontend-subtracker` | runs the built SSR server (port `PORT`, default 4000) |
+| `npm test` | unit and component tests (Vitest via `@angular/build:unit-test`, `src/**/*.spec.ts`) |
+| `npm run test:ci` | the whole suite once per time zone (Warsaw, New York), as in CI |
+| `npm run build:e2e` | build in the `e2e` configuration (production optimisation, local API on :3000) to `dist/frontend-subtracker-e2e/` |
+| `npm run e2e` | Playwright (`e2e/**/*.e2e-spec.ts`, projects `http` and `chromium`) on the e2e build (:4000) and the real API; re-run `build:e2e` after changing code |
+| `npm run typecheck:e2e` | type check of the e2e tests |
+| `npm run prepare-mydevil` | MyDevil deploy package (used by CI) |
 
-For end-to-end (e2e) testing, run:
+### Layout
 
-```bash
-ng e2e
-```
+- `src/app/` — `app.routes.ts` (routes), `app.routes.server.ts` (render mode of each route), feature folders `auth/`, `subscriptions/`, `budget/`, `pages/`, shared `layout/` (public layout and app shell) and `shared/`.
+- `src/styles/` — the theme (`_theme.scss`, `--st-*` variables) and shared SCSS partials.
+- `src/server.ts` — the Express server for SSR.
+- `e2e/` — Playwright tests: `http/`, `browser/`, `support/` (test accounts and sessions).
+- `scripts/` — `prepare-mydevil.mjs`, `test-time-zones.mjs`.
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+### Key rules
 
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- Every route is prerendered at build time by default; routes that depend on the signed-in user need an explicit `RenderMode.Client` or `RenderMode.Server` in `app.routes.server.ts` (details in [`CLAUDE.md`](../CLAUDE.md)).
+- Nothing is loaded from Google: IBM Plex Sans comes from `@fontsource`, icons are inline SVG.
+- How to add a test: [`context/foundation/test-plan.md`](../context/foundation/test-plan.md) §6.1–6.2 (unit and component), §6.5 (browser e2e).

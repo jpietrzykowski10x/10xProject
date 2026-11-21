@@ -42,7 +42,7 @@
 - Ciasteczko `subtracker_session`, atrybuty według `MODE`:
   - zawsze `httpOnly`, `SameSite=Lax`, `Path=/`;
   - `Secure` tylko przy `MODE=PROD`;
-  - `Domain` z `SESSION_COOKIE_DOMAIN` tylko przy `MODE=PROD` (na produkcji `.jakubpietrzykowski.pl`), w DEV ciasteczko jest host-only.
+  - `Domain` z `SESSION_COOKIE_DOMAIN` tylko przy `MODE=PROD` (na produkcji `.<parent-domain>`), w DEV ciasteczko jest host-only.
   - `validateEnv` zatrzymuje start w PROD, gdy `SESSION_COOKIE_DOMAIN` nie obejmuje hosta `FRONTEND_URL` albo `CORS_ORIGINS` nie zawiera `FRONTEND_URL`.
 - Wylogowanie i blokada konta (S-09) ustawiają `revoked_at`.
 - Magic link: tabela `magic_link_token` (`token_hash`, `user_id`, `expires_at`, `used_at`). Jednorazowość zapewnia atomowy `UPDATE … SET used_at = now() WHERE used_at IS NULL AND expires_at > now()`. Link działa 15 minut (`MAGIC_LINK_TTL`), a nowy link unieważnia poprzednie.

@@ -15,9 +15,9 @@ const prodEnv = {
   ...devEnv,
   MODE: 'PROD',
   POSTGRES_DATABASE_DEV: undefined,
-  CORS_ORIGINS: 'https://subtracker.jakubpietrzykowski.pl',
-  FRONTEND_URL: 'https://subtracker.jakubpietrzykowski.pl',
-  SESSION_COOKIE_DOMAIN: '.jakubpietrzykowski.pl',
+  CORS_ORIGINS: 'https://app.example.test',
+  FRONTEND_URL: 'https://app.example.test',
+  SESSION_COOKIE_DOMAIN: '.example.test',
   SMTP_HOST: 'mail.example.com',
   SMTP_USERNAME: 'noreply@example.com',
   SMTP_PASSWORD: 'smtp-secret',
@@ -93,7 +93,7 @@ describe('validateEnv', () => {
     expect(() =>
       validateEnv({
         ...prodEnv,
-        CORS_ORIGINS: 'http://subtracker.jakubpietrzykowski.pl',
+        CORS_ORIGINS: 'http://app.example.test',
       }),
     ).toThrow(/https in PROD/);
   });
@@ -111,9 +111,9 @@ describe('validateEnv', () => {
   });
 
   it.each([
-    ['.jakubpietrzykowski.pl'],
-    ['jakubpietrzykowski.pl'],
-    ['subtracker.jakubpietrzykowski.pl'],
+    ['.example.test'],
+    ['example.test'],
+    ['app.example.test'],
   ])('accepts cookie domain %s, which covers the frontend', (domain) => {
     expect(() =>
       validateEnv({ ...prodEnv, SESSION_COOKIE_DOMAIN: domain }),
@@ -123,7 +123,7 @@ describe('validateEnv', () => {
   it.each([
     ['.example.com'],
     ['.pietrzykowski.pl'],
-    ['.other.jakubpietrzykowski.pl'],
+    ['.other.example.test'],
   ])(
     'rejects cookie domain %s, which does not cover the frontend in PROD',
     (domain) => {
@@ -152,8 +152,8 @@ describe('validateEnv', () => {
 
   it('accepts a complete PROD environment', () => {
     const env = validateEnv(prodEnv);
-    expect(env.FRONTEND_URL).toBe('https://subtracker.jakubpietrzykowski.pl');
-    expect(env.SESSION_COOKIE_DOMAIN).toBe('.jakubpietrzykowski.pl');
+    expect(env.FRONTEND_URL).toBe('https://app.example.test');
+    expect(env.SESSION_COOKIE_DOMAIN).toBe('.example.test');
     expect(env.SMTP_HOST).toBe('mail.example.com');
   });
 

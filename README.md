@@ -57,7 +57,7 @@ Dwie niezależne aplikacje, bez wspólnego `package.json` w katalogu głównym: 
    cd frontend-subtracker && npm start            # aplikacja na http://localhost:4200
    ```
 
-   Logowanie jest przez link w mailu: przy pustym `SMTP_HOST` link pojawi się w konsoli API. Bez maila można też założyć sesję skryptem z `dev-local/` (opis w `dev-local/README.md`):
+   Logowanie jest przez link w mailu: przy pustym `SMTP_HOST` link pojawi się w konsoli API. Bez maila można też założyć sesję skryptem z `dev-local/` (opis w [`dev-local/README.md`](dev-local/README.md)):
 
    ```sh
    cd backend-subtracker
@@ -69,7 +69,7 @@ Dwie niezależne aplikacje, bez wspólnego `package.json` w katalogu głównym: 
 
 `npm run start:dev` sam przeładowuje API po zmianie kodu, a `npm start` frontend. Pełny restart to `Ctrl+C` i ponowny start. Przy każdym starcie API uruchamia joby: cykl życia subskrypcji (czekając na wynik) i przypomnienia o trialu (w tle). Drugi start tego samego dnia nic już nie zmienia ani nie wysyła drugi raz.
 
-Uwaga: każde `npm run test:e2e` oznacza triale z Twojego lokalnego konta kończące się w ciągu 7 dni jako przypomniane (szczegóły w `dev-local/README.md`).
+Uwaga: każde `npm run test:e2e` oznacza triale z Twojego lokalnego konta kończące się w ciągu 7 dni jako przypomniane (szczegóły w [`dev-local/README.md`](dev-local/README.md)).
 
 ### Testy i kontrola jakości
 
@@ -115,7 +115,7 @@ Stan deployu sprawdzisz w zakładce Actions albo poleceniem `gh run list --branc
 
 ### Serwer (MyDevil)
 
-Obie aplikacje działają pod `forever` na Node 24 w `~/apps/subtracker/{api,frontend}/`. Skrypty są w `~/apps/subtracker/bin/` (źródła w `deploy/mydevil/`, wgrywane ręcznie przez `scp`). Pełny opis: `deploy/mydevil/README.md`.
+Obie aplikacje działają pod `forever` na Node 24 w `~/apps/subtracker/{api,frontend}/`. Skrypty są w `~/apps/subtracker/bin/` (źródła w `deploy/mydevil/`, wgrywane ręcznie przez `scp`). Pełny opis: [`deploy/mydevil/README.md`](deploy/mydevil/README.md).
 
 #### Restart
 
@@ -149,7 +149,7 @@ Logi większe niż 20 MB są czyszczone co niedzielę o 04:00 (crontab).
 - `~/apps/subtracker/bin/rollback.sh api` przywraca poprzednie wydanie **razem z bazą** z kopii sprzed jego deployu. Dane zapisane od tego deployu znikają z bazy (zostają w kopii `*_pre-restore.dump`). Skrypt prosi o potwierdzenie (`TAK`).
 - `~/apps/subtracker/bin/rollback.sh frontend` wycofuje tylko kod.
 - `~/apps/subtracker/bin/restore-db.sh <plik.dump>` przywraca samą bazę; przedtem zatrzymaj API (`stop-app.sh api`), potem uruchom (`start-app.sh api`).
-- Kopie bazy: `~/apps/subtracker/backups/` (10 najnowszych).
+- Kopie bazy: `~/apps/subtracker/backups/` (10 najnowszych, żadna starsza niż 180 dni; usuwa je `prune-backups.sh`, który najpierw dba o kopię młodszą niż 30 dni). Szczegóły: [Kopie bazy i usunięte konta](deploy/mydevil/README.md#kopie-bazy-i-usunięte-konta).
 
 #### Konfiguracja na serwerze
 
@@ -180,12 +180,25 @@ node .claude/skills/roadmap-project/scripts/build-roadmap-page.mjs --out roadmap
 
 ### Dokumentacja projektu
 
-- `CLAUDE.md` — skrót architektury, poleceń i pułapek (także dla agentów AI).
-- `context/foundation/prd.md` — wymagania; `roadmap.md` — kolejność slice'ów; `tech-stack.md` — stos i plan wdrożenia.
-- `context/foundation/backend-patterns.md` — wzorce backendu: logowanie, sesje, role, CORS, maile, dane domenowe, joby.
-- `context/foundation/test-plan.md` — strategia testów i „jak dodać test”.
-- `context/foundation/lessons.md` — powtarzające się reguły.
-- `deploy/mydevil/README.md` — deploy, skrypty serwera, baza i przywracanie.
+To README jest punktem wejścia: z niego da się dojść do całej dokumentacji. Każde nasze README (instrukcja obsługi naszego kodu) jest dwujęzyczne — najpierw Polski, potem English, z linkami na górze — i linkuje z powrotem tutaj. Nowe README dopisz do listy poniżej w obu językach. Pliki z narzędzi 10xDevs (`context/*/README.md`, `.claude/skills/10x-*`) zostają w oryginalnej postaci.
+
+Nasze README w podkatalogach:
+
+- [`frontend-subtracker/README.md`](frontend-subtracker/README.md) — polecenia, układ i zasady frontendu.
+- [`backend-subtracker/README.md`](backend-subtracker/README.md) — polecenia, konfiguracja, układ i zasady API.
+- [`deploy/mydevil/README.md`](deploy/mydevil/README.md) — deploy, skrypty serwera, baza, kopie i usunięte konta, przywracanie, jednorazowa konfiguracja serwera.
+- [`dev-local/README.md`](dev-local/README.md) — skrypty do ręcznych testów lokalnie (sesja bez maila, dane przykładowe, próba `prune-backups.sh`) i zasady dodawania nowych.
+
+Dokumenty projektu i procesu:
+
+- [`CLAUDE.md`](CLAUDE.md) — skrót architektury, poleceń i pułapek (także dla agentów AI).
+- [`context/foundation/prd.md`](context/foundation/prd.md) — wymagania; [`roadmap.md`](context/foundation/roadmap.md) — kolejność slice'ów; [`tech-stack.md`](context/foundation/tech-stack.md) — stos i plan wdrożenia; [`infrastructure.md`](context/foundation/infrastructure.md) — wybór platformy.
+- [`context/foundation/backend-patterns.md`](context/foundation/backend-patterns.md) — wzorce backendu: logowanie, sesje, role, CORS, maile, dane domenowe, joby.
+- [`context/foundation/test-plan.md`](context/foundation/test-plan.md) — strategia testów i „jak dodać test”.
+- [`context/foundation/lessons.md`](context/foundation/lessons.md) — powtarzające się reguły.
+- [`context/deployment/deploy-plan.md`](context/deployment/deploy-plan.md) — plan pierwszego wdrożenia na MyDevil (historyczny).
+- [`.claude/skills/roadmap-project/SKILL.md`](.claude/skills/roadmap-project/SKILL.md) — skill `/roadmap-project` (opis wyżej).
+- Struktura `context/` (narzędzia 10xDevs): [`foundation/`](context/foundation/README.md), [`changes/`](context/changes/README.md) (zmiany w toku), [`archive/`](context/archive/README.md) (zakończone zmiany).
 
 ---
 
@@ -242,7 +255,7 @@ Two independent apps with no shared `package.json` in the root: run every `npm` 
    cd frontend-subtracker && npm start            # app on http://localhost:4200
    ```
 
-   Sign-in works through a link sent by e-mail; with an empty `SMTP_HOST` the link appears in the API console. You can also create a session without e-mail using a `dev-local/` script (see `dev-local/README.md`):
+   Sign-in works through a link sent by e-mail; with an empty `SMTP_HOST` the link appears in the API console. You can also create a session without e-mail using a `dev-local/` script (see [`dev-local/README.md`](dev-local/README.md)):
 
    ```sh
    cd backend-subtracker
@@ -254,7 +267,7 @@ Two independent apps with no shared `package.json` in the root: run every `npm` 
 
 `npm run start:dev` reloads the API after a code change, and `npm start` does the same for the frontend. For a full restart, press `Ctrl+C` and start again. On every start the API runs its jobs: the subscription lifecycle (awaited) and the trial reminders (in the background). A second start on the same day changes nothing and sends nothing twice.
 
-Note: every `npm run test:e2e` marks the trials of your local account that end within 7 days as reminded (details in `dev-local/README.md`).
+Note: every `npm run test:e2e` marks the trials of your local account that end within 7 days as reminded (details in [`dev-local/README.md`](dev-local/README.md)).
 
 ### Tests and quality checks
 
@@ -300,7 +313,7 @@ Check the deploy status in the Actions tab or with `gh run list --branch main`.
 
 ### Server (MyDevil)
 
-Both apps run under `forever` on Node 24 in `~/apps/subtracker/{api,frontend}/`. The scripts live in `~/apps/subtracker/bin/` (sources in `deploy/mydevil/`, uploaded by hand with `scp`). Full description: `deploy/mydevil/README.md`.
+Both apps run under `forever` on Node 24 in `~/apps/subtracker/{api,frontend}/`. The scripts live in `~/apps/subtracker/bin/` (sources in `deploy/mydevil/`, uploaded by hand with `scp`). Full description: [`deploy/mydevil/README.md`](deploy/mydevil/README.md).
 
 #### Restart
 
@@ -334,7 +347,7 @@ Logs larger than 20 MB are emptied every Sunday at 04:00 (crontab).
 - `~/apps/subtracker/bin/rollback.sh api` restores the previous release **together with the database** from the backup taken before its deploy. Data written since that deploy disappears from the database (it is kept in the `*_pre-restore.dump` backup). The script asks for confirmation (type `TAK`).
 - `~/apps/subtracker/bin/rollback.sh frontend` rolls back the code only.
 - `~/apps/subtracker/bin/restore-db.sh <file.dump>` restores only the database; stop the API first (`stop-app.sh api`) and start it afterwards (`start-app.sh api`).
-- Database backups: `~/apps/subtracker/backups/` (10 newest kept).
+- Database backups: `~/apps/subtracker/backups/` (10 newest kept, none older than 180 days; `prune-backups.sh` deletes them after making sure a copy younger than 30 days exists). Details: [Backups and deleted accounts](deploy/mydevil/README.md#backups-and-deleted-accounts).
 
 #### Configuration on the server
 
@@ -365,9 +378,22 @@ node .claude/skills/roadmap-project/scripts/build-roadmap-page.mjs --out roadmap
 
 ### Project documentation
 
-- `CLAUDE.md` — a summary of the architecture, commands and pitfalls (also for AI agents).
-- `context/foundation/prd.md` — requirements; `roadmap.md` — slice order; `tech-stack.md` — stack and deployment plan.
-- `context/foundation/backend-patterns.md` — backend patterns: sign-in, sessions, roles, CORS, mail, domain data, jobs.
-- `context/foundation/test-plan.md` — test strategy and "how to add a test".
-- `context/foundation/lessons.md` — recurring rules.
-- `deploy/mydevil/README.md` — deploy, server scripts, database and restore.
+This README is the entry point: all documentation can be reached from it. Every README of ours (a manual for our code) is bilingual — Polski first, then English, with links at the top — and links back here. Add a new README to the list below in both languages. Files from the 10xDevs tooling (`context/*/README.md`, `.claude/skills/10x-*`) stay as they were generated.
+
+Our READMEs in subfolders:
+
+- [`frontend-subtracker/README.md`](frontend-subtracker/README.md) — frontend commands, layout and rules.
+- [`backend-subtracker/README.md`](backend-subtracker/README.md) — API commands, configuration, layout and rules.
+- [`deploy/mydevil/README.md`](deploy/mydevil/README.md) — deploy, server scripts, database, backups and deleted accounts, restore, one-time server setup.
+- [`dev-local/README.md`](dev-local/README.md) — scripts for manual local testing (session without e-mail, sample data, `prune-backups.sh` trial) and rules for adding new ones.
+
+Project and process documents:
+
+- [`CLAUDE.md`](CLAUDE.md) — a summary of the architecture, commands and pitfalls (also for AI agents).
+- [`context/foundation/prd.md`](context/foundation/prd.md) — requirements; [`roadmap.md`](context/foundation/roadmap.md) — slice order; [`tech-stack.md`](context/foundation/tech-stack.md) — stack and deployment plan; [`infrastructure.md`](context/foundation/infrastructure.md) — platform choice.
+- [`context/foundation/backend-patterns.md`](context/foundation/backend-patterns.md) — backend patterns: sign-in, sessions, roles, CORS, mail, domain data, jobs.
+- [`context/foundation/test-plan.md`](context/foundation/test-plan.md) — test strategy and "how to add a test".
+- [`context/foundation/lessons.md`](context/foundation/lessons.md) — recurring rules.
+- [`context/deployment/deploy-plan.md`](context/deployment/deploy-plan.md) — plan of the first MyDevil deployment (historical).
+- [`.claude/skills/roadmap-project/SKILL.md`](.claude/skills/roadmap-project/SKILL.md) — the `/roadmap-project` skill (described above).
+- The `context/` structure (10xDevs tooling): [`foundation/`](context/foundation/README.md), [`changes/`](context/changes/README.md) (in-flight changes), [`archive/`](context/archive/README.md) (completed changes).
