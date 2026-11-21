@@ -52,7 +52,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-06 | trial-end-reminder                | użytkownik dostaje e-mail 7 dni przed końcem okresu próbnego                      | S-05          | FR-014                        | done |
 | S-07 | category-duplicate-warning        | użytkownik widzi ostrzeżenie, gdy kategoria przekroczy jego próg subskrypcji      | S-04          | FR-009, FR-005                | done |
 | S-08 | budget-limits-and-alerts          | użytkownik ustawia limity budżetu i widzi alert przy 80% / 100%                   | S-04          | FR-010, FR-011, FR-005        | done        |
-| S-09 | admin-account-management          | administrator odblokowuje konto lub resetuje dostęp i wgląda w dane użytkownika   | S-02          | FR-002                        | proposed |
+| S-09 | admin-account-management          | administrator odblokowuje konto lub resetuje dostęp i wgląda w dane użytkownika   | S-02          | FR-002                        | in-progress |
 | S-10 | account-deletion                  | użytkownik sam usuwa swoje konto razem ze wszystkimi danymi                       | S-02          | NFR (usunięcie danych w 30 dni) | done        |
 
 ## Streams
@@ -64,7 +64,7 @@ Navigation aid — groups items that share a Prerequisites chain. Canonical orde
 | A      | Rdzeń: konto i lista   | `F-01` → `S-01` → `F-02` → `S-02` → `F-03` → `S-03` | Ścieżka krytyczna do gwiazdy przewodniej; wszystko inne startuje od `S-02`. `F-03` przed kolejną zmianą frontendu. |
 | B      | Koszt i alerty         | `S-04` → `S-07`, `S-08`                 | Dołącza do Stream A po `S-02`; `S-07` i `S-08` mogą iść równolegle po `S-04`.          |
 | C      | Cykl życia i e-mail    | `S-05` → `S-06`                         | Dołącza do Stream A po `S-02`; najbardziej ryzykowna technicznie gałąź — nie zwlekać.  |
-| D      | Administracja i konto  | `S-09`, `S-10`                          | Dołącza do Stream A po `S-02`; niezależna od B i C. `S-10` dzieli z `S-09` unieważnianie sesji i tokenów. |
+| D      | Administracja i konto  | `S-09`, `S-10`                          | Dołącza do Stream A po `S-02`; niezależna od B i C. `S-10` (done) usuwa sesje i tokeny kaskadą, więc unieważnianie sesji i tokenów przy blokadzie projektuje `S-09` (`account-deletion/plan.md`, „Czego nie robimy”). |
 
 ## Baseline
 
@@ -232,16 +232,26 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ### S-09: Zarządzanie kontami przez administratora
 
-- **Outcome:** administrator (rola nadana ręcznie poza aplikacją) odblokowuje konto lub resetuje dostęp użytkownika i ma wgląd w jego dane, w tym subskrypcje i kwoty.
+- **Outcome:** administrator (rola nadana ręcznie poza aplikacją) blokuje i odblokowuje konto lub resetuje dostęp użytkownika i ma wgląd w jego dane, w tym subskrypcje i kwoty.
 - **Change ID:** admin-account-management
 - **PRD refs:** FR-002
 - **Prerequisites:** S-02
-- **Parallel with:** S-03, S-04, S-05, S-06, S-07, S-08
+- **Parallel with:** S-03, S-04, S-05, S-06, S-07, S-08, S-10
 - **Blockers:** —
 - **Unknowns:**
-  - Co dokładnie oznacza „zablokowane konto” i „reset dostępu” przy logowaniu wyłącznie magic linkiem? — Owner: user. Block: no.
+  - ~~Co dokładnie oznacza „zablokowane konto” i „reset dostępu” przy logowaniu wyłącznie magic linkiem?~~ Rozstrzygnięte 2026-11-21, patrz Notes.
+- **Notes (2026-11-21, decyzje użytkownika; szczegóły w `context/changes/admin-account-management/research.md`, „Follow-up 2026-11-21”):**
+  - Blokada to `user.is_active = false`. Admin może zarówno blokować, jak i odblokowywać. Ten sam mechanizm posłuży później do automatycznej blokady po kilku nieudanych próbach logowania hasłem (FR-003) i do przycisku „to nie ja” w powiadomieniu o logowaniu z nowego urządzenia (oba w Parked).
+  - Zablokowany użytkownik dostaje informację, że konto zostało zablokowane: mailem (w chwili blokady i przy prośbie o link) oraz komunikatem na formularzu logowania. To świadomy wyjątek od jednakowej odpowiedzi 202 z S-01: zdradza tylko to, że znany już komuś adres jest zablokowany. Odblokowanie na MVP przez kontakt z adminem; samoobsługowa ścieżka razem z FR-003.
+  - „Reset dostępu” to „wyloguj wszędzie”: unieważnienie wszystkich sesji i niewykorzystanych linków konta, które zostaje aktywne.
+  - Role ADMIN i SUPERADMIN nadaje i odbiera wyłącznie skrypt CLI; w UI superadmin tylko blokuje i odblokowuje adminów.
+  - Audyt obejmuje zmiany (blokada, odblokowanie, reset) i każdy podgląd danych konkretnego użytkownika.
+  - Admin widzi wszystkie dane użytkownika i zarządza aktywnością konta, ale na tym etapie nie edytuje jego danych.
+  - Akcje admina są zapisywane w audycie (kto, komu, co, kiedy).
+  - Admin nie może zablokować samego siebie. Nowa rola superadmina (jedna osoba, nadawana tylko skryptem albo w bazie, niewidoczna w API) może wszystko, łącznie z blokadą innego admina. Zwykli admini zarządzają tylko użytkownikami.
+  - Zablokowane konta są pomijane przez joby i maile. Merytoryczne wyjątki, np. mail o zablokowaniu, wychodzą normalnie.
 - **Risk:** Niezależna gałąź — może iść równolegle z resztą; ryzyko w tym, że wyjątek od izolacji kont (pełny wgląd admina) przecieknie do zwykłych użytkowników.
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-10: Usunięcie konta
 
@@ -255,30 +265,30 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - Usunięcie natychmiastowe czy z okresem karencji (≤ 30 dni) i możliwością cofnięcia? — Owner: user. Block: no.
   - Co z wpisami w `mail` (adres odbiorcy bez FK do `user`) i z kopiami bazy z deployu (`backups/`, retencja)? — Owner: user. Block: no.
 - **Ustalenia z S-02:** `subscription` i własne `category` mają już `ON DELETE CASCADE` na `user_id` (test e2e kaskady). `session`, `magic_link_token` i `user_role` mają `NO ACTION` — trzeba je usunąć w tej samej transakcji albo zmienić migracją na kaskadę.
-- **Risk:** Operacja nieodwracalna: potwierdzenie (np. wpisanie adresu), CSRF jak przy innych zmianach stanu, unieważnienie wszystkich sesji użytkownika i test e2e, że po usunięciu nic po koncie nie zostaje. Wspólna logika z dezaktywacją w S-09.
+- **Risk:** Operacja nieodwracalna: potwierdzenie (np. wpisanie adresu), CSRF jak przy innych zmianach stanu, unieważnienie wszystkich sesji użytkownika i test e2e, że po usunięciu nic po koncie nie zostaje. (2026-11-21) Wspólnej logiki z blokadą w S-09 ostatecznie nie ma: sesje i tokeny znikają kaskadą, a S-09 projektuje własne unieważnianie.
 - **Status:** done
 
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                    | Suggested issue title                                    | Ready for `/10x-plan` | Notes                                  |
 | ---------- | ---------------------------- | -------------------------------------------------------- | --------------------- | -------------------------------------- |
-| F-01       | production-database-wiring   | Produkcyjna baza, migracje w deployu i CORS frontend→API | yes                   | Run `/10x-plan production-database-wiring` |
-| S-01       | magic-link-sign-in           | Logowanie magic linkiem                                   | yes                   | Run `/10x-plan magic-link-sign-in`     |
-| F-02       | ui-foundation                | Motyw Angular Material i docelowy układ ekranów S-01      | yes                   | Run `/10x-plan ui-foundation`          |
-| S-02       | first-subscription-in-list   | Dodanie subskrypcji i lista subskrypcji                   | no                    | Zrobione: PR #16, na produkcji 2026-11-11 |
-| S-03       | edit-and-delete-subscription | Edycja i usuwanie subskrypcji                             | no                    | Czeka na S-02                          |
-| S-04       | dashboard-cost-totals        | Dashboard: sumy miesięczne i roczne per kategoria         | no                    | Czeka na S-02                          |
-| S-05       | subscription-lifecycle       | Automatyczne przejścia cyklu życia subskrypcji            | no                    | Czeka na S-02                          |
-| S-06       | trial-end-reminder           | E-mail 7 dni przed końcem triala                          | no                    | Czeka na S-05                          |
-| S-07       | category-duplicate-warning   | Ostrzeżenie o duplikatach w kategorii                     | no                    | Czeka na S-04                          |
-| S-08       | budget-limits-and-alerts     | Limity budżetu i alerty 80% / 100%                        | no                    | Czeka na S-04                          |
-| S-09       | admin-account-management     | Panel administratora: odblokowanie i reset dostępu       | no                    | Czeka na S-02                          |
-| F-03       | frontend-unit-tests          | Test runner i testy jednostkowe frontendu w CI            | no                    | Czeka na S-02; przed S-03              |
-| S-10       | account-deletion             | Usunięcie konta przez użytkownika                         | no                    | Czeka na S-02                          |
+| F-01       | production-database-wiring   | Produkcyjna baza, migracje w deployu i CORS frontend→API | no                    | Zrobione; archiwum `2026-10-16-production-database-wiring` |
+| S-01       | magic-link-sign-in           | Logowanie magic linkiem                                  | no                    | Zrobione; archiwum `2026-11-03-magic-link-sign-in` |
+| F-02       | ui-foundation                | Motyw Angular Material i docelowy układ ekranów S-01     | no                    | Zrobione; archiwum `2026-11-10-ui-foundation` |
+| S-02       | first-subscription-in-list   | Dodanie subskrypcji i lista subskrypcji                  | no                    | Zrobione: PR #16, na produkcji 2026-11-11; archiwum `2026-11-11-first-subscription-in-list` |
+| S-03       | edit-and-delete-subscription | Edycja i usuwanie subskrypcji                            | no                    | Zrobione; archiwum `2026-11-15-edit-and-delete-subscription` |
+| S-04       | dashboard-cost-totals        | Dashboard: sumy miesięczne i roczne per kategoria        | no                    | Zrobione; archiwum `2026-11-15-dashboard-cost-totals` |
+| S-05       | subscription-lifecycle       | Automatyczne przejścia cyklu życia subskrypcji           | no                    | Zrobione; archiwum `2026-11-15-subscription-lifecycle` |
+| S-06       | trial-end-reminder           | E-mail 7 dni przed końcem triala                         | no                    | Zrobione; archiwum `2026-11-16-trial-end-reminder` |
+| S-07       | category-duplicate-warning   | Ostrzeżenie o duplikatach w kategorii                    | no                    | Zrobione; archiwum `2026-11-17-category-duplicate-warning` |
+| S-08       | budget-limits-and-alerts     | Limity budżetu i alerty 80% / 100%                       | no                    | Zrobione; archiwum `2026-11-17-budget-limits-and-alerts` |
+| S-09       | admin-account-management     | Panel administratora: blokada, reset dostępu i wgląd w dane | yes                   | Research gotowy 2026-11-21; Run `/10x-plan admin-account-management` |
+| F-03       | frontend-unit-tests          | Test runner i testy jednostkowe frontendu w CI           | no                    | Zrobione; archiwum `2026-11-13-frontend-unit-tests` |
+| S-10       | account-deletion             | Usunięcie konta przez użytkownika                        | no                    | Zrobione; archiwum `2026-11-20-account-deletion` |
 
 ## Open Roadmap Questions
 
-1. **Jak w MVP realizujemy usunięcie lub anonimizację danych w ciągu 30 dni od żądania (NFR)?** Ręcznie przez administratora (rozszerzenie S-09) czy samoobsługowo? — Owner: user. Block: — (nie blokuje planowania; dotyczy S-09).
+1. ~~**Jak w MVP realizujemy usunięcie lub anonimizację danych w ciągu 30 dni od żądania (NFR)?**~~ Rozstrzygnięte: samoobsługowo, natychmiastowe twarde usunięcie z anonimizacją archiwum `mail` (S-10, archiwum `2026-11-20-account-deletion`). S-09 tego nie rozszerza.
 2. **Czy poczta MyDevil wystarczy dla magic linku i przypomnień, czy potrzebny jest zewnętrzny dostawca e-maili?** Test dostarczalności przed startem. Na produkcji 2026-11-09 maile dochodzą na Gmaila i Outlooka, SPF PASS, DKIM brak, DMARC FAIL; pytanie zostaje otwarte do naprawy DKIM i DMARC. — Owner: user. Block: — (dotyczy S-01, S-06).
 3. **Czy MVP potrzebuje choćby minimalnego alarmu, gdy backend lub zadania cykliczne przestaną działać?** Wg pre-mortem w `infrastructure.md` o awarii dowiemy się od użytkownika. — Owner: user. Block: — (dotyczy S-06).
 
@@ -289,7 +299,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Rekomendacja przejścia na plan roczny** — Why parked: PRD §Non-Goals (backlog v2).
 - **Historia zmian cen w czasie** — Why parked: PRD §Non-Goals (backlog v2).
 - **Obsługa wielu walut** — Why parked: PRD §Non-Goals (MVP tylko PLN).
-- **FR-003: logowanie e-mailem i hasłem** — Why parked: nice-to-have; cel `speed`, magic link wystarcza.
+- **FR-003: logowanie e-mailem i hasłem** — Why parked: nice-to-have; cel `speed`, magic link wystarcza. Gdy powstanie: kilka nieudanych prób blokuje konto przez `is_active = false` z S-09 (decyzja 2026-11-21).
+- **Zaufane urządzenia i powiadomienie o logowaniu z nowego urządzenia** — Why parked: pomysł z S-09 (2026-11-21), poza zakresem slice'u. Mail o logowaniu z nieznanego urządzenia z opcją „to nie ja”, która blokuje konto mechanizmem z S-09.
 - **FR-012: prognoza przekroczenia budżetu przed dodaniem** — Why parked: nice-to-have; alert po dodaniu (FR-011) pokrywa potrzebę.
 - **FR-015: okresowy e-mail podsumowujący alerty** — Why parked: nice-to-have; druga funkcja mailowa obok S-06.
 - **FR-016: sortowanie i filtrowanie listy** — Why parked: nice-to-have, w PRD planowane na v2/v3.

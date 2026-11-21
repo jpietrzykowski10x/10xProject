@@ -8,9 +8,12 @@ import {
 } from '../../config/env.js';
 import { ROLE_DEFINITIONS } from '../../shared/types/role-code.js';
 import { Role } from '../entities/role.entity.js';
+import { SINGLE_SUPER_ADMIN_INDEX_SQL } from '../entities/user-role.entity.js';
 
-// Synchronization builds the dev database from entities without running migrations, so the seed
-// migration never reaches it. Every other database gets its roles from that migration.
+// Synchronization builds the dev database from entities without running migrations, so neither
+// the seed migrations nor the hand-written index of one superadmin reach it. Every other database
+// gets both from migrations. Runs after synchronization, which happens while the connection is set
+// up.
 @Injectable()
 export class RolesSeeder implements OnApplicationBootstrap {
   constructor(
@@ -29,5 +32,6 @@ export class RolesSeeder implements OnApplicationBootstrap {
       .values(ROLE_DEFINITIONS)
       .orIgnore()
       .execute();
+    await this.dataSource.query(SINGLE_SUPER_ADMIN_INDEX_SQL);
   }
 }
