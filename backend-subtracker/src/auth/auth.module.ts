@@ -8,6 +8,7 @@ import { AuthController } from './controllers/auth.controller.js';
 import { MagicLinkToken } from './entities/magic-link-token.entity.js';
 import { Session } from './entities/session.entity.js';
 import { SessionAuthGuard } from './guards/session-auth.guard.js';
+import { AccountDeletionService } from './services/account-deletion.service.js';
 import { AuthCleanupService } from './services/auth-cleanup.service.js';
 import { AuthService } from './services/auth.service.js';
 import { SessionService } from './services/session.service.js';
@@ -18,6 +19,7 @@ import { SessionService } from './services/session.service.js';
   providers: [
     SessionService,
     AuthService,
+    AccountDeletionService,
     AuthCleanupService,
     AuthCleanupScheduler,
     // Global guards run in this order: RolesGuard reads the request.user set by SessionAuthGuard.

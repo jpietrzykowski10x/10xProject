@@ -2,9 +2,11 @@ import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { Repository } from 'typeorm';
 import { type EnvConfig, validateEnv } from '../../config/env.js';
+import type { User } from '../../users/entities/user.entity.js';
 import type { Mail } from '../entities/mail.entity.js';
 import type { MailTransport } from '../mail.transport.js';
 import {
+  ANONYMIZED_RECIPIENT,
   type MailContent,
   type MailMessage,
   MailStatus,
@@ -53,12 +55,17 @@ function setup(operatorMail: string | null = OPERATOR) {
     Promise.resolve(),
   );
   const transport: MailTransport = { send };
+  // Every user address has an account unless a test says otherwise.
+  const users = {
+    exists: vi.fn<() => Promise<boolean>>(() => Promise.resolve(true)),
+  };
   const service = new MailService(
     mails as unknown as Repository<Mail>,
+    users as unknown as Repository<User>,
     transport,
     configFor(operatorMail),
   );
-  return { service, mails, send, rows };
+  return { service, mails, users, send, rows };
 }
 
 describe('MailService', () => {
@@ -259,6 +266,94 @@ describe('MailService', () => {
       ).resolves.toBe(false);
 
       expect(send.mock.calls[1][0].text).toContain('brak');
+    });
+
+    describe('only to an address that still has an account', () => {
+      it('checks the account by the address it mails', async () => {
+        const { service, users } = setup();
+
+        await service.sendToUser(MailType.MAGIC_LINK, USER, content);
+
+        expect(users.exists).toHaveBeenCalledWith({ where: { email: USER } });
+      });
+
+      it('neither sends, audits nor alerts without an account, and resolves to false', async () => {
+        const { service, users, send, mails } = setup();
+        users.exists.mockResolvedValue(false);
+
+        await expect(
+          service.sendToUser(MailType.TRIAL_REMINDER, USER, content),
+        ).resolves.toBe(false);
+
+        expect(send).not.toHaveBeenCalled();
+        expect(mails.save).not.toHaveBeenCalled();
+        expect(logWarn).toHaveBeenCalledExactlyOnceWith(
+          expect.stringContaining('no account'),
+        );
+        expect(JSON.stringify(logWarn.mock.calls)).not.toContain(USER);
+      });
+
+      it('treats a failed account lookup as a missing account', async () => {
+        const { service, users, send, mails } = setup();
+        users.exists.mockRejectedValue(new Error('db down'));
+
+        await expect(
+          service.sendToUser(MailType.MAGIC_LINK, USER, content),
+        ).resolves.toBe(false);
+
+        expect(send).not.toHaveBeenCalled();
+        expect(mails.save).not.toHaveBeenCalled();
+        expect(logError).toHaveBeenCalledWith(
+          expect.stringContaining('db down'),
+        );
+      });
+
+      it('audits the marker instead of the address when the account goes during sending', async () => {
+        const { service, users, rows } = setup();
+        users.exists.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+        await expect(
+          service.sendToUser(MailType.MAGIC_LINK, USER, content),
+        ).resolves.toBe(true);
+
+        expect(rows).toEqual([
+          {
+            type: MailType.MAGIC_LINK,
+            recipient: ANONYMIZED_RECIPIENT,
+            status: MailStatus.SENT,
+            errorMessage: null,
+            sentAt: expect.any(Date) as Date,
+          },
+        ]);
+      });
+
+      it('drops the error message, which can quote the address, from such a failed mail', async () => {
+        const { service, users, send, rows } = setup();
+        users.exists.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+        send.mockRejectedValueOnce(new Error(`550 refused ${USER}`));
+
+        await expect(
+          service.sendToUser(MailType.MAGIC_LINK, USER, content),
+        ).resolves.toBe(false);
+
+        expect(rows[0]).toEqual({
+          type: MailType.MAGIC_LINK,
+          recipient: ANONYMIZED_RECIPIENT,
+          status: MailStatus.FAILED,
+          errorMessage: null,
+          sentAt: null,
+        });
+        expect(JSON.stringify(rows)).not.toContain(USER);
+      });
+
+      it('does not check accounts for operator mail', async () => {
+        const { service, users, rows } = setup();
+
+        await service.notifyOperator(content);
+
+        expect(users.exists).not.toHaveBeenCalled();
+        expect(rows[0]).toMatchObject({ recipient: OPERATOR });
+      });
     });
   });
 

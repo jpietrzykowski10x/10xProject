@@ -8,6 +8,13 @@
 </header>
 
 <main>
+  @if (accountDeleted) {
+    <div class="home__wrap home__notice">
+      <p class="st-notice st-notice--success" role="status">
+        Konto zostało usunięte razem ze wszystkimi danymi.
+      </p>
+    </div>
+  }
   <section class="home__band home__hero" aria-labelledby="home-title">
     <div class="home__wrap home__row home__hero-inner">
       <div class="home__col">
@@ -98,8 +105,8 @@
       <h2 id="home-intro" class="home__h2">Arkusz trzeba pilnować. SubTracker pilnuje sam.</h2>
       <p class="home__text">
         Kilka usług, kilka kart, różne terminy i część opłat raz w roku. Arkusz albo kategorie w
-        banku wymagają regularnej ręcznej pracy. Tutaj dodajesz subskrypcję raz, a sumy, duplikaty i
-        terminy są liczone za Ciebie.
+        banku wymagają regularnej ręcznej pracy. Tutaj dodajesz subskrypcję raz, a sumy, progi
+        kategorii, limity i terminy są pilnowane za Ciebie.
       </p>
     </section>
 

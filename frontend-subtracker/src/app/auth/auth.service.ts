@@ -50,4 +50,12 @@ export class AuthService {
   logout(): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/logout`, null).pipe(tap(() => this.user.set(null)));
   }
+
+  // S-10: `email` confirms the deletion; the API compares it with the account's own address after
+  // the same normalization (400 when they differ). A 204 also clears the session cookie.
+  deleteAccount(email: string): Observable<void> {
+    return this.http
+      .post<void>(`${this.apiUrl}/delete-account`, { email })
+      .pipe(tap(() => this.user.set(null)));
+  }
 }

@@ -3,7 +3,7 @@ project: SubTracker
 version: 1
 status: draft
 created: 2026-10-16
-updated: 2026-11-18
+updated: 2026-11-20
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -53,7 +53,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-07 | category-duplicate-warning        | użytkownik widzi ostrzeżenie, gdy kategoria przekroczy jego próg subskrypcji      | S-04          | FR-009, FR-005                | done |
 | S-08 | budget-limits-and-alerts          | użytkownik ustawia limity budżetu i widzi alert przy 80% / 100%                   | S-04          | FR-010, FR-011, FR-005        | done        |
 | S-09 | admin-account-management          | administrator odblokowuje konto lub resetuje dostęp i wgląda w dane użytkownika   | S-02          | FR-002                        | proposed |
-| S-10 | account-deletion                  | użytkownik sam usuwa swoje konto razem ze wszystkimi danymi                       | S-02          | NFR (usunięcie danych w 30 dni) | proposed |
+| S-10 | account-deletion                  | użytkownik sam usuwa swoje konto razem ze wszystkimi danymi                       | S-02          | NFR (usunięcie danych w 30 dni) | in-progress |
 
 ## Streams
 
@@ -256,7 +256,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - Co z wpisami w `mail` (adres odbiorcy bez FK do `user`) i z kopiami bazy z deployu (`backups/`, retencja)? — Owner: user. Block: no.
 - **Ustalenia z S-02:** `subscription` i własne `category` mają już `ON DELETE CASCADE` na `user_id` (test e2e kaskady). `session`, `magic_link_token` i `user_role` mają `NO ACTION` — trzeba je usunąć w tej samej transakcji albo zmienić migracją na kaskadę.
 - **Risk:** Operacja nieodwracalna: potwierdzenie (np. wpisanie adresu), CSRF jak przy innych zmianach stanu, unieważnienie wszystkich sesji użytkownika i test e2e, że po usunięciu nic po koncie nie zostaje. Wspólna logika z dezaktywacją w S-09.
-- **Status:** proposed
+- **Status:** in-progress
 
 ## Backlog Handoff
 

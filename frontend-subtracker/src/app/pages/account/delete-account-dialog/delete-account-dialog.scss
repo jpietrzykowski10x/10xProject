@@ -1,0 +1,19 @@
+// The size comes from openDeleteAccountDialog (480px, at most the screen minus 16px a side);
+// colours from the theme, the error from the shared .st-notice.
+.dialog__text {
+  margin: 0 0 16px;
+}
+
+.dialog__field {
+  width: 100%;
+}
+
+.dialog__error {
+  margin: 4px 0 0;
+}
+
+// Both buttons have the same size (stroked and flat share the height and padding); only the
+// colour tells "Usuń konto" from "Anuluj".
+.dialog__actions button {
+  min-width: 112px;
+}

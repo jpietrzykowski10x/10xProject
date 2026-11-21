@@ -33,6 +33,16 @@
   min-height: 72px;
 }
 
+// S-10: the notice after an account deletion, between the header and the hero.
+.home__notice {
+  padding-top: 16px;
+  padding-bottom: 16px;
+
+  .st-notice {
+    margin: 0;
+  }
+}
+
 .home__wordmark {
   font-size: 20px;
   font-weight: 700;

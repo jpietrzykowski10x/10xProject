@@ -43,6 +43,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/budget/budget').then((m) => m.Budget),
   },
   {
+    path: 'account',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/account/account').then((m) => m.Account),
+  },
+  {
     // authGuard shows this page with skipLocationChange, so the address bar keeps the guarded URL.
     path: 'unavailable',
     loadComponent: () =>

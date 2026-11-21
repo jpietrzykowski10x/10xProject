@@ -36,3 +36,6 @@ Thumbs.db
 fyi
 # MyDevil deploy packages (both apps)
 .mydevil/
+
+# dev-local trial working directory (prune-backups-trial.sh)
+/dev-local/.prune-trial/

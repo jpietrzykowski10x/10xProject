@@ -3,7 +3,8 @@
 # Usage: restore-db.sh <file.dump>
 #
 # First dumps the current state to backups/<time>_pre-restore.dump (10 kept),
-# so the restore itself can be undone: restore-db.sh <that file>.
+# so the restore itself can be undone: restore-db.sh <that file>. After a
+# successful restore, prune-backups.sh deletes dumps older than 180 days.
 # Drops and recreates the public schema first, so tables added by a later
 # migration do not survive (pg_restore --clean only drops objects in the dump).
 # The drop and the restore run in one transaction: on any error nothing changes.
@@ -77,3 +78,11 @@ psql -X -q -o /dev/null -v ON_ERROR_STOP=1 --single-transaction -d "$POSTGRES_DA
   -f "$SQL"
 
 echo "restore-db: $POSTGRES_DATABASE restored from $DUMP"
+
+# Only after a successful restore: dumps older than 180 days go, never $DUMP
+# itself (the fresh pre-restore dump is too young anyway). The api lock is held
+# here, taken above or by the caller. A failure is only logged: the restore
+# succeeded.
+if ! SUBTRACKER_LOCKED=1 "$HOME/apps/subtracker/bin/prune-backups.sh" "$DUMP"; then
+  echo "restore-db: pruning old backups FAILED (restore OK)" >&2
+fi

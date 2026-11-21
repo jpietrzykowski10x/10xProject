@@ -25,7 +25,7 @@ export class UserRole {
   @Column({ name: 'granted_by', type: 'uuid', nullable: true })
   grantedBy: string | null;
 
-  @ManyToOne(() => User, (user) => user.userRoles)
+  @ManyToOne(() => User, (user) => user.userRoles, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: Relation<User>;
 

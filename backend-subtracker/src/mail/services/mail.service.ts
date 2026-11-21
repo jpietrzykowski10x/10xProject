@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { type EnvConfig, envFromConfig } from '../../config/env.js';
+import { User } from '../../users/entities/user.entity.js';
 import {
   Mail,
   MAIL_ERROR_MESSAGE_MAX_LENGTH,
@@ -10,6 +11,7 @@ import {
 import { escapeHtml } from '../escape-html.js';
 import { MAIL_TRANSPORT, type MailTransport } from '../mail.transport.js';
 import {
+  ANONYMIZED_RECIPIENT,
   type MailChannel,
   type MailContent,
   MailStatus,
@@ -49,6 +51,8 @@ function isRecipientRejected(error: unknown): boolean {
 // mail problem must not change their outcome. Failures end up in the audit row and in the logs.
 // sendToUser resolves to whether the transport accepted the mail (true even when the audit row
 // could not be saved), so a caller that keeps a "sent" marker can release it after a failure.
+// It mails only addresses that still have an account: a deleted account gets nothing, and one
+// deleted while its mail was on the way leaves an audit row without its address.
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
@@ -57,6 +61,7 @@ export class MailService {
 
   constructor(
     @InjectRepository(Mail) private readonly mails: Repository<Mail>,
+    @InjectRepository(User) private readonly users: Repository<User>,
     @Inject(MAIL_TRANSPORT) private readonly transport: MailTransport,
     config: ConfigService<EnvConfig, true>,
   ) {
@@ -68,6 +73,11 @@ export class MailService {
     to: string,
     content: MailContent,
   ): Promise<boolean> {
+    if (!(await this.accountExists(to))) {
+      // Nothing to audit or alert about, and no address in the log, as everywhere here.
+      this.logger.warn(`Skipped ${type} mail: no account has this address`);
+      return false;
+    }
     const { sent, needsAlert, rowId } = await this.deliver(
       'user',
       type,
@@ -109,13 +119,37 @@ export class MailService {
         0,
         MAIL_ERROR_MESSAGE_MAX_LENGTH,
       );
-      const rowId = await this.saveAudit(type, to, errorMessage);
+      const rowId = await this.saveAudit(
+        channel,
+        type,
+        to,
+        MailStatus.FAILED,
+        errorMessage,
+      );
       const recipientRejected = isRecipientRejected(error);
       this.logFailure(type, error, rowId, recipientRejected);
       return { sent: false, needsAlert: !recipientRejected, rowId };
     }
-    const rowId = await this.saveAudit(type, to, null);
+    const rowId = await this.saveAudit(
+      channel,
+      type,
+      to,
+      MailStatus.SENT,
+      null,
+    );
     return { sent: true, needsAlert: false, rowId };
+  }
+
+  // A failed lookup counts as a missing account: no mail before sending, no address in the audit.
+  private async accountExists(address: string): Promise<boolean> {
+    try {
+      return await this.users.exists({ where: { email: address } });
+    } catch (error) {
+      this.logger.error(
+        `Checking the account of a mail recipient failed: ${errorMessageOf(error)}`,
+      );
+      return false;
+    }
   }
 
   // SMTP messages can quote the address, so the full text stays in the audit row, next to it.
@@ -134,19 +168,25 @@ export class MailService {
     }
   }
 
+  // A user's account is checked again here: if it was deleted while the mail was on the way, its
+  // mail rows have already been anonymized, so this row must not bring the address back, nor an
+  // SMTP message quoting it.
   private async saveAudit(
+    channel: MailChannel,
     type: MailType,
-    recipient: string,
+    to: string,
+    status: MailStatus,
     errorMessage: string | null,
   ): Promise<string | null> {
+    const accountGone = channel === 'user' && !(await this.accountExists(to));
     try {
       const row = await this.mails.save(
         this.mails.create({
           type,
-          recipient,
-          status: errorMessage === null ? MailStatus.SENT : MailStatus.FAILED,
-          errorMessage,
-          sentAt: errorMessage === null ? new Date() : null,
+          recipient: accountGone ? ANONYMIZED_RECIPIENT : to,
+          status,
+          errorMessage: accountGone ? null : errorMessage,
+          sentAt: status === MailStatus.SENT ? new Date() : null,
         }),
       );
       return row.id;

@@ -1,0 +1,19 @@
+<app-shell>
+  <div class="account">
+    <h1 class="account__title">Konto</h1>
+    <p class="account__intro">
+      Zalogowano jako <strong class="account__email">{{ user()?.email }}</strong>
+    </p>
+
+    <section class="account__section" aria-labelledby="account-delete-title">
+      <h2 id="account-delete-title" class="account__section-title">Usuń konto</h2>
+      <p class="account__text">
+        Usunięcie konta jest natychmiastowe i nieodwracalne. Razem z kontem usuniemy wszystkie Twoje
+        subskrypcje, własne kategorie, limity i ustawienia.
+      </p>
+      <button mat-flat-button type="button" class="account__delete" (click)="confirmDelete()">
+        Usuń konto
+      </button>
+    </section>
+  </div>
+</app-shell>

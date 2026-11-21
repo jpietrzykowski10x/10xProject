@@ -217,4 +217,11 @@ if [ -d "$BACKUPS" ]; then
   done
 fi
 
+# Only the api has dumps: none may be older than 180 days (also checked daily
+# from crontab). SUBTRACKER_LOCKED=1 is exported above. A failure is only
+# logged: the deploy itself succeeded.
+if [ "$APP" = api ] && ! "$BIN/prune-backups.sh"; then
+  log "pruning old backups FAILED (deploy OK); see the messages above"
+fi
+
 log "deployed $SHA"

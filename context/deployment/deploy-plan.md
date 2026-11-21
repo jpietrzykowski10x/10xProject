@@ -15,11 +15,11 @@ platform: MyDevil
 - **wersjonowanie i rollback**: nowa wersja przygotowywana obok działającej (`public_nodejs_new`), zamiana przez `mv`, poprzednie wersje w `releases/` razem z `node_modules` (rollback = dwa `mv`, bez `npm install`); konfiguracja domen MyDevil nie zmienia się przy deployach;
 - **obie subdomeny jako proxy na `localhost:<port>`**, TLS kończony na MyDevil (Let's Encrypt, auto-odnawianie) — NestJS działa po HTTP na localhost, bez certyfikatów w aplikacji. Przeglądarka widzi HTTPS po obu stronach, więc nie ma mixed content (powód, dla którego wcześniej Nest musiał serwować HTTPS sam).
 
-Cel: obecne „hello world” obu aplikacji pod `https://subtracker.jakubpietrzykowski.pl` (Angular 22 SSR) i `https://apisubtracker.jakubpietrzykowski.pl` (NestJS 12 ESM). Agent **nie łączy się z MyDevil** — komendy serwerowe wykonuje użytkownik. Baza i migracje dochodzą w zmianie z TypeORM; tu tylko rezerwujemy na nie miejsce w skrypcie.
+Cel: obecne „hello world” obu aplikacji pod `https://<frontend-domain>` (Angular 22 SSR) i `https://<api-domain>` (NestJS 12 ESM). Agent **nie łączy się z MyDevil** — komendy serwerowe wykonuje użytkownik. Baza i migracje dochodzą w zmianie z TypeORM; tu tylko rezerwujemy na nie miejsce w skrypcie.
 
 ## Zmiany w repo (wykonuje agent)
 
-1. **`frontend-subtracker/angular.json`** — `security.allowedHosts`: `["subtracker.jakubpietrzykowski.pl", "localhost"]` (Angular 20.3+ sprawdza Host; bez tego SSR spada do CSR).
+1. **`frontend-subtracker/angular.json`** — `security.allowedHosts`: `["<frontend-domain>", "localhost"]` (Angular 20.3+ sprawdza Host; bez tego SSR spada do CSR).
 2. **`frontend-subtracker/scripts/prepare-mydevil.mjs`** + skrypt `"prepare-mydevil": "ng build && node scripts/prepare-mydevil.mjs"` — czyści `.mydevil/`, spłaszcza `dist/frontend-subtracker/server/*` do katalogu głównego paczki z `server.mjs` → **`app.mjs`** (MyDevil uruchamia tylko `app.js`/`app.mjs`), `browser/` → `public/`, plus `package.json`, `package-lock.json`. `src/server.ts` szuka plików statycznych najpierw w `./public`, potem w `../browser` (układ `dist`). Czysty `node:fs` (`rm`, `cp`) zamiast `copyfiles`/`renamer`/`rimraf` — zero nowych zależności, działa na Windows i w CI.
 3. **`backend-subtracker/scripts/prepare-mydevil.mjs`** + `"prepare-mydevil": "nest build && node scripts/prepare-mydevil.mjs"` — `.mydevil/` ze spłaszczonym `dist/*`, `main.js` → **`app.js`**, `package.json`, `package-lock.json` (ESM, `"type": "module"` jedzie w `package.json`). Później dojdą tu migracje i `data-source.js`.
 4. **`.gitignore`** — `.mydevil/`.
@@ -52,8 +52,8 @@ Po wklejeniu do GitHuba plik prywatny można usunąć z dysku — w razie potrze
 **B. MyDevil (SSH własnym kluczem)**
 1. `ls /usr/local/bin/node24 /usr/local/bin/npm24 && which forever curl`.
 2. `devil port add tcp random` ×2 → `PORT_FE`, `PORT_API`.
-3. `devil www add subtracker.jakubpietrzykowski.pl proxy localhost <PORT_FE>` i `devil www add apisubtracker.jakubpietrzykowski.pl proxy localhost <PORT_API>`; DNS A obu subdomen na IP z `devil vhost list public` (gdy strefa na MyDevil: `devil dns add jakubpietrzykowski.pl subtracker A <IP>`, analogicznie `apisubtracker`).
-4. `devil ssl www add <IP> le le subtracker.jakubpietrzykowski.pl` i to samo dla `apisubtracker.…` (po propagacji DNS).
+3. `devil www add <frontend-domain> proxy localhost <PORT_FE>` i `devil www add <api-domain> proxy localhost <PORT_API>`; DNS A obu subdomen na IP z `devil vhost list public` (gdy strefa na MyDevil: `devil dns add <parent-domain> subtracker A <IP>`, analogicznie `apisubtracker`).
+4. `devil ssl www add <IP> le le <frontend-domain>` i to samo dla `apisubtracker.…` (po propagacji DNS).
 5. `mkdir -p ~/apps/subtracker/{frontend,api}/{releases,shared,logs} ~/apps/subtracker/bin`; `shared/.env` każdej aplikacji: `PORT=<…>`, `NODE_ENV=production`; `chmod 600`.
 6. Skopiuj `deploy/mydevil/*.sh` do `~/apps/subtracker/bin`, `chmod 700`.
 7. `~/.ssh/authorized_keys`: `command="/usr/home/<login>/apps/subtracker/bin/ci-gate.sh",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding ssh-ed25519 AAAA… github-actions-subtracker`.
@@ -71,8 +71,8 @@ Backend serwuje HTTPS sam (jak w poprzednim projekcie), ale certyfikat i klucz c
 
 - Lokalnie przed pushem: `npm run prepare-mydevil` w obu katalogach → `.mydevil/` ma oczekiwaną zawartość; `cd .mydevil && npm ci --omit=dev && PORT=4100 node app.mjs` (frontend) i `PORT=3100 node app.js` (api) odpowiadają na `curl localhost:<port>`.
 - Actions: oba joby zielone, w logu `health-check OK`.
-- `curl -sI https://subtracker.jakubpietrzykowski.pl` → `200`, HTML zawiera wyrenderowaną treść (nie pusty `<app-root>`).
-- `curl -s https://apisubtracker.jakubpietrzykowski.pl/` → `Hello World!`; certyfikat ważny (`curl` bez `-k`).
+- `curl -sI https://<frontend-domain>` → `200`, HTML zawiera wyrenderowaną treść (nie pusty `<app-root>`).
+- `curl -s https://<api-domain>/` → `Hello World!`; certyfikat ważny (`curl` bez `-k`).
 - Serwer: `forever list` — `subtracker-api`, `subtracker-frontend` na `/usr/local/bin/node24`.
 - Klucz CI: `ssh -i ~/.ssh/subtracker_deploy <user>@<host> ls` → odrzucone.
 - Rollback: po drugim deployu `~/apps/subtracker/bin/rollback.sh api` → poprzednia wersja odpowiada; ponowny `workflow_dispatch` przywraca najnowszą.
@@ -80,9 +80,9 @@ Backend serwuje HTTPS sam (jak w poprzednim projekcie), ale certyfikat i klucz c
 
 ## Stan wykonania (2026-10-02)
 
-- [x] Zmiany w repo (pkt 1–9; entry `app.mjs`/`app.js` po uwadze użytkownika) — `prepare-mydevil` obu aplikacji zweryfikowane lokalnie: czysty `npm ci --omit=dev` w `.mydevil/`, frontend `200` (także `/main-*.js` i `/favicon.ico` z `public/`; Host `subtracker.jakubpietrzykowski.pl` → `200`, obcy Host → `400`), API `Hello World!`; backend lint + testy zielone; `ci-gate.sh` odrzuca wszystko poza `deploy <frontend|api> <sha>`.
+- [x] Zmiany w repo (pkt 1–9; entry `app.mjs`/`app.js` po uwadze użytkownika) — `prepare-mydevil` obu aplikacji zweryfikowane lokalnie: czysty `npm ci --omit=dev` w `.mydevil/`, frontend `200` (także `/main-*.js` i `/favicon.ico` z `public/`; Host `<frontend-domain>` → `200`, obcy Host → `400`), API `Hello World!`; backend lint + testy zielone; `ci-gate.sh` odrzuca wszystko poza `deploy <frontend|api> <sha>`.
 - [x] Bramki A–C (użytkownik) — porty 22722 (frontend) / 59663 (api); domeny proxy i Let's Encrypt dodane w panelu DevilWEB („Użyj HTTPS” odznaczone — proxy łączy się z aplikacją po HTTP); układ przeniesiony do `~/apps/subtracker/{bin,frontend,api}` (`~/bin` zawiera dowiązania node/npm konta); `~/.ssh` trzeba było założyć (700/600); klucz CI zweryfikowany (`ci-gate: rejected command: ls`).
-- [x] Push na `main` i weryfikacja produkcyjna — oba workflowy zielone; `https://subtracker.jakubpietrzykowski.pl` → 200 (SSR, ważny TLS), `https://apisubtracker.jakubpietrzykowski.pl` → `Hello World!` (ważny TLS). Ponowny deploy frontendu przeszedł przez wydania (`releases/` + `mv`) z `health-check OK`.
+- [x] Push na `main` i weryfikacja produkcyjna — oba workflowy zielone; `https://<frontend-domain>` → 200 (SSR, ważny TLS), `https://<api-domain>` → `Hello World!` (ważny TLS). Ponowny deploy frontendu przeszedł przez wydania (`releases/` + `mv`) z `health-check OK`.
 - [x] Test rollbacku — `rollback.sh frontend` przywrócił poprzednie wydanie (200 OK), bieżące odłożone jako `_rolledback`; ponowny deploy przywrócił najnowszą wersję.
 - [x] Symulacja restartu — `forever stop` obu procesów SubTrackera po uid, potem `start-all.sh` (wpis `@reboot`): oba wstały przez resolved path, pozostałe aplikacje konta nietknięte.
 

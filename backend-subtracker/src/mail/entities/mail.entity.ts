@@ -2,14 +2,16 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { MailStatus, MailType } from '../mail.types.js';
 
 export const MAIL_ERROR_MESSAGE_MAX_LENGTH = 500;
 
-// Audit of outgoing mail. Holds no subject or body: those can carry sign-in links. It has no
-// foreign key to `user`, so future account deletion must also cover `recipient`.
+// Archive of outgoing mail. Holds no subject or body: those can carry sign-in links. It has no
+// foreign key to `user` and outlives accounts: deleting an account replaces its address in
+// `recipient` with ANONYMIZED_RECIPIENT and clears `error_message`, which can quote the address.
 @Entity('mail')
 export class Mail {
   @PrimaryGeneratedColumn('uuid')
@@ -18,6 +20,8 @@ export class Mail {
   @Column({ type: 'varchar', length: 30 })
   type: MailType;
 
+  // Indexed: account deletion anonymizes rows by it.
+  @Index()
   @Column({ type: 'varchar', length: 254 })
   recipient: string;
 

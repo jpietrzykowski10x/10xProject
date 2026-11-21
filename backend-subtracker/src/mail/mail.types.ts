@@ -4,6 +4,10 @@ export enum MailType {
   OPERATOR_ALERT = 'OPERATOR_ALERT',
 }
 
+// Replaces the address of a deleted account in the mail archive: a valid address in the reserved
+// .invalid domain, so it fits `recipient` and passes any address format check.
+export const ANONYMIZED_RECIPIENT = 'zanonimizowano@anonymized.invalid';
+
 export enum MailStatus {
   SENT = 'SENT',
   FAILED = 'FAILED',
