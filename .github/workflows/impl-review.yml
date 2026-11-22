@@ -181,6 +181,18 @@ jobs:
             neutral "no plan" comment and exit cleanly — do not fail
             the workflow.
 
+      # The action hides Claude's conversation in the log ("full output hidden for security"). The
+      # transcript goes to an artifact instead, readable only by people with access to the repo, so
+      # a review that ends without a report or comment can be diagnosed (`gh run download`).
+      - name: Upload review transcript
+        if: always() && steps.guard.outputs.skip != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: impl-review-transcript
+          path: ${{ runner.temp }}/claude-execution-output.json
+          retention-days: 7
+          if-no-files-found: warn
+
       - name: Validate Claude's commit (skip-ci + output contract)
         if: always()
         env:
