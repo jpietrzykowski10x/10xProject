@@ -1,6 +1,6 @@
 ---
 project: SubTracker
-version: 1
+version: 2
 status: draft
 created: 2026-09-25
 context_type: greenfield
@@ -27,6 +27,8 @@ Analiza historii transakcji bankowych wymaga czasu, którego większość użytk
 
 Osoba fizyczna 18+, korzystająca z wielu subskrypcji i wielu kart kredytowych/debetowych (nie firma — tam kontrolę zapewnia księgowość). Sięga po narzędzie podczas przeglądu finansów osobistych lub przygotowań do wniosku kredytowego, gdy chce zrozumieć i ograniczyć swoje miesięczne zobowiązania cykliczne.
 
+Od v2 drugą personą jest **operator** — właściciel i jedyna osoba utrzymująca aplikację na produkcji. Nie korzysta z osobnego interfejsu: o awariach dowiaduje się z maili alarmowych, a diagnozuje je z logów procesów.
+
 ## Success Criteria
 
 ### Primary
@@ -36,6 +38,7 @@ Osoba fizyczna 18+, korzystająca z wielu subskrypcji i wielu kart kredytowych/d
 ### Secondary
 - Wykrywanie duplikatów/nakładających się subskrypcji w tej samej kategorii.
 - Kontrola budżetu: limity maksymalne na kategorię oraz limit całościowy.
+- (v2) O awarii API, zadania cyklicznego albo wysyłki maili operator dowiaduje się z alarmu, a nie od użytkownika; z jednej linii logu wie, której trasy, którego zadania i której wersji dotyczy błąd.
 
 ### Guardrails
 - Prywatność danych finansowych — dane subskrypcyjne/finansowe użytkownika nie są publiczne ani widoczne dla innych userów.
@@ -56,6 +59,8 @@ Osoba fizyczna 18+, korzystająca z wielu subskrypcji i wielu kart kredytowych/d
 
 ## Functional Requirements
 
+> **v2 (2026-11-22):** dopisane FR-019–FR-024 (poprawki po audycie obserwowalności `context/audits/observability/2026-11-22_sign-in-subscriptions-jobs-account-admin.md`; w notach ID ustaleń z raportu), FR-025 (edycja i usuwanie własnych kategorii) oraz FR-026–FR-027 (nice-to-have na koniec v2 albo do v3). Kolejność realizacji: najpierw FR-019–FR-024, zaraz po nich FR-025, potem nice-to-have z v1 (FR-016, FR-012, FR-017, FR-015, FR-003), na końcu FR-026, FR-027 i NFR o kontach nieaktywnych.
+
 ### Uwierzytelnianie i dostęp
 - FR-001: Użytkownik może zalogować się za pomocą magic linku wysłanego na e-mail. Priority: must-have
   > Socrates: Counter-argument considered: "magic link wymaga zawsze dostępu do skrzynki e-mail — tarcie przy szybkim sprawdzeniu z telefonu bez dostępu do maila w danej chwili." Resolution: kept; FR-003 (login e-mail+hasło) istnieje jako nice-to-have fallback na wypadek niewygody magic linku.
@@ -63,6 +68,7 @@ Osoba fizyczna 18+, korzystająca z wielu subskrypcji i wielu kart kredytowych/d
   > Socrates: Counter-argument considered: "pełny wgląd admina w dane finansowe zwiększa ryzyko wycieku wrażliwych danych." Resolution: kept; ryzyko świadomie zaakceptowane na MVP, zawężenie widoczności admina zaplanowane jako możliwe ograniczenie w v2 (patrz Access Control).
 - FR-003: Użytkownik może zalogować się przy użyciu e-maila i hasła (alternatywa dla magic linku). Priority: nice-to-have
   > Socrates: Counter-argument considered: "może okazać się zbędne, jeśli magic link się sprawdzi." Resolution: kept jako nice-to-have; implementowane tylko jeśli starczy czasu, nie blokuje ukończenia MVP.
+- FR-027: Użytkownik dostaje e-mail, gdy ktoś zaloguje się na jego konto z nieznanego urządzenia; link „to nie ja” w tym mailu blokuje konto (mechanizm blokady z FR-002), a urządzenia, z których już się logował, są zapamiętane jako zaufane. Priority: nice-to-have (koniec v2 albo v3)
 
 ### Zarządzanie subskrypcjami
 - FR-004: Użytkownik może dodać nową subskrypcję: nazwa, kategoria, kwota w PLN, cykl rozliczeniowy miesięczny/roczny, forma płatności (z zamkniętej listy: karta kredytowa, karta debetowa, BLIK, przelew/zlecenie stałe, portfel elektroniczny, inne), status, data końca okresu próbnego (dla subskrypcji w trialu) i data następnego rozliczenia. Priority: must-have
@@ -77,6 +83,9 @@ Osoba fizyczna 18+, korzystająca z wielu subskrypcji i wielu kart kredytowych/d
   > Socrates: Counter-argument considered: "uśredniona kwota roczna może wprowadzać w błąd." Resolution: odrzucony i rozszerzony — dashboard pokazuje oba podsumowania (miesięczne i roczne), co pomaga porównać koszt np. z wypłatą.
 - FR-016: Użytkownik może sortować i filtrować listę subskrypcji. Priority: nice-to-have (planowane na v2/v3)
 - FR-018: Użytkownik może wybrać kategorię subskrypcji z predefiniowanej listy lub dodać własną. Priority: must-have
+- FR-025: Użytkownik może zmienić nazwę własnej kategorii albo ją usunąć (np. błędnie wpisaną); kategorii predefiniowanych nie zmienia. Usunąć można tylko kategorię bez subskrypcji; próba usunięcia niepustej kończy się czytelnym komunikatem (nie błędem serwera) i nie rusza jej subskrypcji, a unikalność nazw, progi duplikatów (FR-009) i limity budżetu (FR-010) pozostają spójne. Priority: must-have
+  > Socrates: Counter-argument considered: "użytkownik może po prostu nie używać błędnej kategorii." Resolution: odrzucony — błędna kategoria zostaje na zawsze na liście wyboru, w podziale dashboardu i na stronie budżetu, a administrator nie edytuje danych użytkownika, więc nie ma innej drogi jej usunięcia.
+- FR-026: Forma płatności na liście subskrypcji jest pokazana ikoną z etykietą tekstową dla czytników ekranu zamiast samego tekstu. Priority: nice-to-have (koniec v2 albo v3)
 
 ### Wykrywanie duplikatów
 - FR-009: Użytkownik może ustawić konfigurowalny próg liczby aktywnych subskrypcji w danej kategorii (domyślnie: 2), po przekroczeniu którego system oznacza flagą/ostrzeżeniem na dashboardzie. Priority: must-have
@@ -101,12 +110,26 @@ Osoba fizyczna 18+, korzystająca z wielu subskrypcji i wielu kart kredytowych/d
 - FR-015: System wysyła okresowy e-mail podsumowujący, jeśli którekolwiek alerty są aktywne (np. 2+ subskrypcje w tej samej kategorii, przekroczony próg budżetowy). Priority: nice-to-have
   > Socrates: Counter-argument considered: "druga funkcja mailowa obok przypomnień o trialu to dodatkowy nakład na infrastrukturę i harmonogram." Resolution: brak kontrargumentu odrzucającego FR — zostaje jak jest, jako nice-to-have.
 
+### Niezawodność i diagnostyka (operator, v2)
+- FR-019: Operator dostaje e-mail, gdy API przestaje odpowiadać albo pada w pętli restartów (sprawdzenie spoza procesu API, działa także, gdy API leży), oraz gdy zadanie cykliczne zakończy się błędem albo nie zakończy się w ciągu 26 godzin; każdy przebieg zadania zostawia trwały ślad (start, koniec, wynik, liczniki). Priority: must-have
+  > Audyt: P1, J1, J2, J3, J4 (3 z 4 ustaleń krytycznych); odpowiada na pytanie roadmapy o minimalny alarm. Mail alarmowy nie zawiera danych użytkowników — tylko zadanie, dzień, wynik i liczniki.
+- FR-020: Alarm do operatora dochodzi także wtedy, gdy nie działa wysyłka maili do użytkowników: na produkcji wymagany jest osobny kanał alarmowy, blokada powtórzeń zaczyna działać dopiero po przyjęciu alarmu, a odrzucenie adresata przez serwer pocztowy (np. relay, limit wysyłki) jest odróżnione od literówki w adresie. Priority: must-have
+  > Audyt: L2, L3, J6, J10.
+- FR-021: Każdy błąd serwera w logu API zawiera metodę, szablon trasy, identyfikator użytkownika i identyfikator żądania; wybrane odmowy 4xx (weryfikacja linku logowania, sesja, CSRF/Origin, ranga administratora, walidacja) zostawiają linię z kodem przyczyny i nazwami pól — bez wartości, adresów e-mail, tokenów i parametrów zapytania — z limitem, żeby obcy ruch nie rozdmuchał logu. Priority: must-have
+  > Audyt: L1 (krytyczne), L7, P2, P5, P12, S1, S3, S4, A1, A2, A4.
+- FR-022: Logi obu procesów mają jednolity format bez kodów kolorów, ze znacznikiem czasu ISO ze strefą; linia startowa i `/health` podają wdrożoną wersję; każde żądanie zostawia jedną linię access logu (metoda, trasa, status, czas). Priority: must-have
+  > Audyt: P3, P4, P6.
+- FR-023: Błąd w przeglądarce albo przy renderowaniu na serwerze nie znika bez śladu: strony i formularze nie zamieniają nieznanego błędu w ogólny komunikat bez zapisu przyczyny, błąd nawigacji przy renderowaniu na serwerze nie wygląda jak 404, a nieaktualny plik aplikacji po wdrożeniu przeładowuje stronę zamiast zostawić martwy link. Priority: must-have
+  > Audyt: L4, L5, L6, S5, S6, S7, A9, P7, P8. Wysyłanie błędów z przeglądarki do API dopiero po decyzji z Open Questions #2.
+- FR-024: Zadania cykliczne i wysyłka maili rozróżniają przyczyny porażki (brak konta, konto zablokowane, błąd bazy, błąd SMTP) zamiast jednego wyniku „nie udało się”, a usunięcie konta, odmowy akcji administratora i jego wyszukiwania zostawiają ślad audytowy. Priority: must-have
+  > Audyt: §6 pkt 6–7 raportu (J5, J7–J9, J11, J15, L8, A3, A5–A8). Drobne poprawki z §6 pkt 8 wchodzą przy okazji slice'u, który dotyka danego kodu.
+
 ## Non-Functional Requirements
 
 - Aplikacja działa poprawnie na dwóch najnowszych wersjach głównych przeglądarek desktopowych.
 - Pierwszy widok ładuje się w czasie zgodnym z ogólnie przyjętymi wytycznymi dla portali internetowych (LCP < 3.5s).
 - Dane osobowe/finansowe użytkownika są usuwane lub anonimizowane w ciągu 30 dni od żądania usunięcia konta.
-- Konta nieaktywne (brak logowania) przez 12 miesięcy są zgłaszane użytkownikowi do potwierdzenia dalszego przechowywania lub usunięcia danych.
+- Konta nieaktywne (brak logowania) przez 12 miesięcy są zgłaszane użytkownikowi do potwierdzenia dalszego przechowywania lub usunięcia danych. (Realizacja: koniec v2 albo v3 — pierwsze takie konta pojawią się najwcześniej rok po starcie.)
 
 ## Business Logic
 
@@ -135,4 +158,7 @@ Zablokowane konto nie może się zalogować, a jego sesje i linki logowania prze
 
 ## Open Questions
 
-Brak otwartych pytań blokujących. Luki wykryte w przeglądzie po wygenerowaniu PRD (daty w cyklu życia subskrypcji, termin przypomnienia, źródło kategorii, forma płatności, nadawanie roli admina, waluta, mierzalność kryterium Primary, spójność reguły biznesowej z Non-Goals) zostały rozstrzygnięte przez użytkownika 2026-09-25 i naniesione w odpowiednich sekcjach.
+1. ~~**FR-025: co dzieje się z subskrypcjami usuwanej kategorii?**~~ Rozstrzygnięte 2026-11-22: usunąć można tylko pustą kategorię (bez subskrypcji); przy niepustej użytkownik dostaje komunikat, że najpierw musi przenieść albo usunąć jej subskrypcje.
+2. **FR-023: czy błędy z przeglądarki mają trafiać do API?** Wymaga decyzji o limicie i o tym, jakie dane (adres strony, komunikat) wolno zapisać bez danych osobowych. Do decyzji FR-023 obejmuje tylko zapis w konsoli przeglądarki i w logu serwera SSR. Owner: user.
+
+v1: brak otwartych pytań blokujących. Luki wykryte w przeglądzie po wygenerowaniu PRD (daty w cyklu życia subskrypcji, termin przypomnienia, źródło kategorii, forma płatności, nadawanie roli admina, waluta, mierzalność kryterium Primary, spójność reguły biznesowej z Non-Goals) zostały rozstrzygnięte przez użytkownika 2026-09-25 i naniesione w odpowiednich sekcjach.

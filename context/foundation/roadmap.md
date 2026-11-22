@@ -1,316 +1,228 @@
 ---
 project: SubTracker
-version: 1
+version: 2
 status: draft
 created: 2026-10-16
-updated: 2026-11-21
-prd_version: 1
-main_goal: speed
+updated: 2026-11-22
+prd_version: 2
+main_goal: quality
 top_blocker: time
-milestone_id: mvp-subscription-control
-milestone_seq: 1
+milestone_id: observable-production-and-categories
+milestone_seq: 2
 milestone_status: open
 ---
 
 # Roadmap: SubTracker
 
-> Derived from `context/foundation/prd.md` (v1) + `tech-stack.md`, `infrastructure.md`, `context/deployment/deploy-plan.md` + auto-researched codebase baseline.
+> Derived from `context/foundation/prd.md` (v2) + audyt obserwowalności `context/audits/observability/2026-11-22_sign-in-subscriptions-jobs-account-admin.md` + baseline po M-1.
 > Edit-in-place; the next milestone continues this file. Archive only when an independent roadmap replaces it.
-> Slices below are listed in dependency order. The "At a glance" table is the index.
+> Slices below are listed in dependency order. The "At a glance" table is the index. Pozycje M-1 (F-01…F-03, S-01…S-10) są w `## Done` i `## Milestone History`; numeracja M-2 zaczyna się od S-11, żeby ID się nie powtarzały.
 
 ## Milestone
 
-**M-1: MVP — kontrola subskrypcji i budżetu** — Status: open
+**M-2: Widoczna produkcja i porządek w kategoriach** — Status: open
 
-- **Intent:** Zalogowany użytkownik prowadzi pełną listę swoich subskrypcji, widzi ich realny koszt miesięczny i roczny, dostaje ostrzeżenia o duplikatach i przekroczeniu budżetu oraz przypomnienie przed końcem triala; administrator może obsłużyć konto, gdy zawiodą standardowe ścieżki. Wszystkie FR konieczne (must-have) z PRD działają na produkcji.
-- **Source materials:** `context/foundation/prd.md` (v1)
-- **Done when:** every F-NN and S-NN below is `done`.
-- **Scope anchors:** FR-001, FR-002, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-013, FR-014, FR-018 (wszystkie must-have); US-01. Nice-to-have (FR-003, FR-012, FR-015, FR-016, FR-017) są poza tym kamieniem milowym — patrz `## Parked`.
+- **Intent:** Operator dowiaduje się o awarii API, zadań cyklicznych i wysyłki maili z alarmu, a nie od użytkownika, i z jednej linii logu wie, gdzie i w której wersji coś padło (poprawki po audycie obserwowalności). Użytkownik może poprawić albo usunąć błędnie wpisaną własną kategorię i sortować oraz filtrować listę subskrypcji.
+- **Source materials:** `context/foundation/prd.md` (v2), w części „Niezawodność i diagnostyka (operator, v2)”, oraz raport audytu z 2026-11-22 (ID ustaleń przy FR-019…FR-024).
+- **Done when:** każde S-NN poniżej ma status `done`, a powtórny `/10x-observability-audit` pokazuje w „Changes since last audit” zamknięte ustalenia krytyczne P1, J1, J2 i L1.
+- **Scope anchors:** FR-019, FR-020, FR-021, FR-022, FR-023, FR-024, FR-025 (must-have v2); FR-009, FR-010 (spójność przy usuwaniu kategorii). Nice-to-have: FR-016.
+- **Sposób dostarczania (nie slice'y):** przed pierwszym PR-em M-2 osobny `chore/` z `/10x-impl-review-ci` w GitHub Actions, żeby każdy PR M-2 dostał automatyczny przegląd; S-14 i S-18 idą przez `/goal` + `/10x-goal-implement` (wąskie, dobrze sprawdzalne testami), reszta przez `/10x-implement` albo `/10x-tdd`. Zielony przebieg bez nadzoru nie zamyka slice'u: przegląd commitów i ręczna checklista przed merge'em.
+- **Kolejne kamienie milowe (plan, nie zobowiązanie):** M-3 — nice-to-have z v1: FR-012, FR-017, FR-015, FR-003; M-4 — FR-026, FR-027 i NFR o kontach nieaktywnych 12 miesięcy. Szczegóły w `## Parked`. Cel: cały zakres przed `hard_deadline` z PRD (2026-12-06), a jeśli się nie uda, M-3 i M-4 idą po nim.
 
 ## Vision recap
 
-Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklicznymi zobowiązaniami: przegapiają koniec okresów próbnych, płacą za nakładające się usługi i nie wiedzą, ile realnie wydają miesięcznie. SubTracker zbiera te zobowiązania w jednym miejscu, przelicza je do wspólnego mianownika (miesiąc/rok) i sam pilnuje duplikatów, budżetu i końców triali — zamiast wymagać regularnej ręcznej pracy jak arkusz czy kategoryzacja w banku.
+Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklicznymi zobowiązaniami: przegapiają koniec okresów próbnych, płacą za nakładające się usługi i nie wiedzą, ile realnie wydają miesięcznie. SubTracker zbiera te zobowiązania w jednym miejscu, przelicza je do wspólnego mianownika (miesiąc/rok) i sam pilnuje duplikatów, budżetu i końców triali. Po M-1 wszystko to działa na produkcji; M-2 sprawia, że awaria tej automatyki nie przejdzie niezauważona.
 
 ## North star
 
-**S-02: Użytkownik dodaje pierwszą subskrypcję i widzi ją na liście** — to dokładnie pierwsze kryterium sukcesu z PRD (od wejścia na stronę do pierwszej subskrypcji na liście w < 3 min); przy celu `speed` dostarczenie go jak najwcześniej potwierdza, że cały przepływ logowanie → zapis → lista działa na produkcji, zanim dojdą alerty i automatyka.
-
-> Gwiazda przewodnia (north star) oznacza tu najmniejszy przepływ end-to-end, którego działanie dowodzi, że produkt spełnia swoją podstawową obietnicę — dlatego stoi tak wcześnie, jak pozwalają jego wymagania wstępne: wszystko inne ma sens tylko wtedy, gdy to działa.
+**S-11: Operator dostaje mail, gdy API leży albo zadanie cykliczne nie przeszło** — gwiazda przewodnia (najmniejszy przepływ end-to-end, którego działanie dowodzi, że kamień milowy spełnia swoją obietnicę) stoi pierwsza, bo dziś API w pętli restartów albo job cyklu życia niedziałający tygodniami wyglądają w logach jak cisza; zamyka 3 z 4 krytycznych ustaleń audytu i odpowiada na dawne pytanie roadmapy o minimalny alarm.
 
 ## At a glance
 
-| ID   | Change ID                         | Outcome (user can …)                                                              | Prerequisites | PRD refs                      | Status   |
-| ---- | --------------------------------- | --------------------------------------------------------------------------------- | ------------- | ----------------------------- | -------- |
-| F-01 | production-database-wiring        | (foundation) API ma produkcyjną bazę z migracjami w deployu; frontend woła API    | —             | Access Control, Guardrails    | done |
-| S-01 | magic-link-sign-in                | użytkownik rejestruje się i loguje magic linkiem i widzi swoją (pustą) listę subskrypcji | F-01          | FR-001, US-01                 | done |
-| F-02 | ui-foundation                     | (foundation) ekrany S-01 mają docelowy wygląd i układ; gotowy motyw dla kolejnych slice'ów | S-01          | Guardrails                    | done        |
-| S-02 | first-subscription-in-list        | użytkownik dodaje subskrypcję ze wszystkimi szczegółami i widzi ją na liście      | S-01, F-02    | FR-004, FR-007, FR-018, US-01 | done |
-| F-03 | frontend-unit-tests               | (foundation) frontend ma test runner, testy jednostkowe w CI i pierwsze testy helperów `shared/` | S-02          | Guardrails                    | done |
-| S-03 | edit-and-delete-subscription      | użytkownik poprawia lub usuwa błędnie dodaną subskrypcję                          | S-02, F-03    | FR-005, FR-006                | done |
-| S-04 | dashboard-cost-totals             | użytkownik widzi sumę miesięczną i roczną z podziałem na kategorie                | S-02          | FR-008, US-01                 | done |
-| S-05 | subscription-lifecycle            | subskrypcja sama przechodzi trial → active i cancelled_pending → cancelled        | S-02          | FR-013                        | done |
-| S-06 | trial-end-reminder                | użytkownik dostaje e-mail 7 dni przed końcem okresu próbnego                      | S-05          | FR-014                        | done |
-| S-07 | category-duplicate-warning        | użytkownik widzi ostrzeżenie, gdy kategoria przekroczy jego próg subskrypcji      | S-04          | FR-009, FR-005                | done |
-| S-08 | budget-limits-and-alerts          | użytkownik ustawia limity budżetu i widzi alert przy 80% / 100%                   | S-04          | FR-010, FR-011, FR-005        | done        |
-| S-09 | admin-account-management          | administrator odblokowuje konto lub resetuje dostęp i wgląda w dane użytkownika   | S-02          | FR-002                        | done |
-| S-10 | account-deletion                  | użytkownik sam usuwa swoje konto razem ze wszystkimi danymi                       | S-02          | NFR (usunięcie danych w 30 dni) | done        |
+| ID   | Change ID                          | Outcome (user can …)                                                                 | Prerequisites | PRD refs                | Status   |
+| ---- | ---------------------------------- | ------------------------------------------------------------------------------------ | ------------- | ----------------------- | -------- |
+| S-11 | operator-liveness-alerts           | operator dostaje mail, gdy API nie odpowiada albo job padł lub nie ruszył przez 26 h | —             | FR-019                  | ready    |
+| S-12 | independent-alert-channel          | alarm operatora dochodzi także przy awarii SMTP dla użytkowników                     | S-11          | FR-020                  | proposed |
+| S-13 | request-context-and-denial-reasons | operator widzi w logu trasę, użytkownika i id żądania błędu oraz przyczyny odmów 4xx  | —             | FR-021                  | ready    |
+| S-14 | log-format-version-and-access-log  | operator czyta logi w jednym formacie, z wersją i access logiem obu procesów         | S-13          | FR-022                  | proposed |
+| S-15 | client-and-ssr-error-visibility    | błędy przeglądarki i SSR zostawiają ślad, a nieaktualny plik po deployu przeładowuje stronę | S-14     | FR-023                  | proposed |
+| S-16 | failure-causes-and-audit-trail     | operator widzi przyczynę porażki joba i maila, a usunięcia i odmowy admina mają ślad | S-11          | FR-024                  | proposed |
+| S-17 | own-category-rename-and-delete     | użytkownik zmienia nazwę własnej kategorii albo usuwa pustą                          | —             | FR-025, FR-009, FR-010  | ready    |
+| S-18 | subscription-list-sort-filter      | użytkownik sortuje i filtruje listę subskrypcji                                      | —             | FR-016                  | ready    |
 
 ## Streams
 
 Navigation aid — groups items that share a Prerequisites chain. Canonical ordering still lives in the dependency graph below; this table is the proposed reading order across parallel tracks.
 
-| Stream | Theme                  | Chain                                   | Note                                                                                   |
-| ------ | ---------------------- | --------------------------------------- | -------------------------------------------------------------------------------------- |
-| A      | Rdzeń: konto i lista   | `F-01` → `S-01` → `F-02` → `S-02` → `F-03` → `S-03` | Ścieżka krytyczna do gwiazdy przewodniej; wszystko inne startuje od `S-02`. `F-03` przed kolejną zmianą frontendu. |
-| B      | Koszt i alerty         | `S-04` → `S-07`, `S-08`                 | Dołącza do Stream A po `S-02`; `S-07` i `S-08` mogą iść równolegle po `S-04`.          |
-| C      | Cykl życia i e-mail    | `S-05` → `S-06`                         | Dołącza do Stream A po `S-02`; najbardziej ryzykowna technicznie gałąź — nie zwlekać.  |
-| D      | Administracja i konto  | `S-09`, `S-10`                          | Dołącza do Stream A po `S-02`; niezależna od B i C. `S-10` (done) usuwa sesje i tokeny kaskadą, więc unieważnianie sesji i tokenów przy blokadzie projektuje `S-09` (`account-deletion/plan.md`, „Czego nie robimy”). |
+| Stream | Theme                  | Chain                         | Note                                                                                              |
+| ------ | ---------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------- |
+| A      | Alarmy i zadania       | `S-11` → `S-12`, `S-16`       | Gwiazda przewodnia; `S-12` i `S-16` mogą iść równolegle po `S-11`.                                |
+| B      | Logi i diagnostyka     | `S-13` → `S-14` → `S-15`      | Równolegle ze Stream A; `S-14` dostaje id żądania z `S-13`, `S-15` dzieli z `S-14` `server.ts`.    |
+| C      | Własne kategorie       | `S-17`                        | Kolejność wg PRD v2: zaraz po audycie; technicznie niezależna, może wejść wcześniej, gdy A i B czekają. |
+| D      | Lista subskrypcji      | `S-18`                        | Nice-to-have; pierwszy kandydat na przebieg `/goal` bez nadzoru.                                   |
 
 ## Baseline
 
-What's already in place in the codebase as of `2026-10-16` (auto-researched + user-confirmed).
-Foundations below assume these are present and do NOT re-scaffold them.
+What's already in place in the codebase as of `2026-11-22` (po M-1; z `CLAUDE.md` i raportu audytu, potwierdzone przez użytkownika).
+Slices below assume these are present and do NOT re-scaffold them.
 
-- **Frontend:** partial — szkielet Angular 22 z SSR, routing pusty (`frontend-subtracker/src/app/app.routes.ts`), brak widoków domenowych.
-- **Backend / API:** partial — NestJS 12 „Hello World” (`backend-subtracker/src/app.controller.ts`), brak modułów domenowych i CORS.
-- **Data:** absent — brak sterownika bazy i ORM w zależnościach; baza na MyDevil tylko zaplanowana (`tech-stack.md`).
-- **Auth:** absent — brak magic linku, sesji, ochrony tras i roli administratora.
-- **Deploy / infra:** present — GitHub Actions (`.github/workflows/deploy-*.yml`) + `deploy/mydevil/*.sh`; obie aplikacje działają na produkcji, rollback i restart przetestowane (`context/deployment/deploy-plan.md`).
-- **Observability:** absent — tylko logi procesów (`deploy/mydevil/start-app.sh`), brak alertów i monitoringu.
+- **Frontend:** present — Angular 22 z SSR, Angular Material, app-shell, widoki `/subscriptions`, `/dashboard`, `/budget`, `/account`, `/admin/users`.
+- **Backend / API:** present — NestJS 12, moduły `auth/`, `users/`, `mail/`, `subscriptions/`, `admin/`, joby `@nestjs/schedule` (cykl życia, sprzątanie auth, przypomnienia o trialu).
+- **Data:** present — PostgreSQL przez TypeORM, migracje w deployu, kopie bazy z retencją 180 dni.
+- **Auth:** present — magic link, sesje w ciasteczku, role ADMIN i SUPER_ADMIN, blokada konta.
+- **Deploy / infra:** present — GitHub Actions (`ci.yml`, `deploy-*.yml`), skrypty `deploy/mydevil/`, rollback, `prune-backups.sh` z crontaba.
+- **Observability:** partial — tylko logi procesów pod `forever` i jeden alarm mailowy (nieudany przebieg przypomnień, nieudana wysyłka maila); brak trackera błędów, monitora dostępności, rejestru przebiegów jobów i kontekstu w logach (audyt 2026-11-22: 62 ustalenia, 4 krytyczne).
 
 ## Foundations
 
-### F-01: Produkcyjna baza i połączenie frontend → API
-
-- **Outcome:** (foundation) API łączy się z produkcyjną bazą danych, deploy robi kopię bazy i uruchamia migracje przed przełączeniem wersji, a frontend z innej subdomeny może wywołać API (pierwsze wywołanie potwierdzone na produkcji). Bez tabel domenowych — te dochodzą w slice'ach.
-- **Change ID:** production-database-wiring
-- **PRD refs:** Access Control, Guardrails
-- **Unlocks:** S-01 (konto użytkownika i tokeny logowania wymagają trwałego zapisu), S-02; ścieżka weryfikacji „migracja przechodzi w deployu i da się ją bezpiecznie zatrzymać” (zarezerwowany krok w skrypcie deployu z `deploy-plan.md`).
-- **Prerequisites:** —
-- **Parallel with:** —
-- **Blockers:** —
-- **Unknowns:**
-  - Jakie są limity połączeń współdzielonej bazy na koncie MyDevil (nieudokumentowane wg `infrastructure.md`)? — Owner: user. Block: no.
-- **Risk:** Stoi pierwsza, bo bez trwałego zapisu i migracji w deployu nie da się zweryfikować na produkcji ani logowania, ani gwiazdy przewodniej; zakres celowo minimalny (połączenie + migracje + CORS), żeby nie budować warstwy danych na zapas.
-- **Status:** done
-
-### F-02: Fundament interfejsu
-
-- **Outcome:** (foundation) istniejące ekrany S-01 mają docelowy wygląd i układ na desktopie i telefonie (Angular Material z motywem projektu), pod `/` jest strona startowa renderowana na serwerze, a kolejne slice'y korzystają z gotowego motywu, formularzy, przycisków i szkieletu strony.
-- **Change ID:** ui-foundation
-- **PRD refs:** Guardrails
-- **Unlocks:** S-02 (formularz dodawania i lista powstają od razu w docelowym stylu, bez przeróbek).
-- **Prerequisites:** S-01
-- **Parallel with:** —
-- **Blockers:** —
-- **Unknowns:** —
-- **Risk:** Stoi przed S-02, żeby nie przerabiać wyglądu w każdym kolejnym slice'ie; ryzyko w rozroście zakresu, więc zmiana obejmuje tylko istniejące ekrany, szkielet i stronę startową, a sumy i alerty dochodzą w swoich slice'ach.
-- **Status:** done
-
-### F-03: Testy jednostkowe frontendu
-
-- **Outcome:** (foundation) `frontend-subtracker` ma działający test runner (`ng test` / `npm test`), testy jednostkowe uruchamiane w CI (`ci.yml`, job `frontend`) i pierwsze testy czystych helperów: `shared/decimal.ts` (`parseDecimal`), `shared/pl-date-adapter.ts` (`parse`, w tym 31.02 i `d.m.rrrr`), `shared/date-only.ts` (`daysFromToday`, `toDateOnly` bez przesunięcia strefy), `subscriptions/subscription-amounts.ts` (`monthlyAmount`) i walidatory formularza subskrypcji. Kontrola celowego uszkodzenia dla każdego testu.
-- **Change ID:** frontend-unit-tests
-- **PRD refs:** Guardrails
-- **Unlocks:** S-03 i kolejne zmiany frontendu z bramką testów zamiast samych testów ręcznych; reguła z `lessons.md` („helper w `shared/` z testem obok”) da się spełnić także na froncie.
-- **Prerequisites:** S-02
-- **Parallel with:** S-04, S-05, S-09 (backend)
-- **Blockers:** —
-- **Unknowns:**
-  - Runner: wbudowany builder Angulara 22 (`@angular/build:unit-test` z Vitest) czy Karma/Jest — rozstrzygnąć w `/10x-research`; preferencja: Vitest, jak w backendzie. — Owner: agent. Block: no.
-  - Czy moduł 3 kursu (strategia testów, bramki jakości) narzuca układ testów — sprawdzić przed `/10x-plan`. — Owner: user. Block: no.
-- **Risk:** Frontend powstał z `--skip-tests`; w S-02 błąd w wyrażeniu regularnym kwoty (każda kwota odrzucana) wyszedł dopiero w teście ręcznym. Zakres celowo mały (runner, CI, helpery), bez testów komponentów i e2e przeglądarki.
-- **Status:** done
+Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalności wchodzą w pierwszym slice'ie, który ich potrzebuje (rejestr przebiegów jobów w S-11, identyfikator żądania w S-13). Przegląd w CI (`/10x-impl-review-ci`) jest zmianą sposobu dostarczania, opisaną w karcie kamienia milowego, a nie Foundation.
 
 ## Slices
 
-### S-01: Logowanie magic linkiem
+### S-11: Alarm o padnięciu API i zadań cyklicznych
 
-- **Outcome:** użytkownik rejestruje się e-mailem (z oświadczeniem o pełnoletności i akceptacją polityki prywatności) albo przy kolejnym wejściu wpisuje e-mail, dostaje jednorazowy, ograniczony czasowo link, loguje się nim i widzi swoją (na razie pustą) listę subskrypcji; inni użytkownicy nie mają do niej dostępu.
-- **Change ID:** magic-link-sign-in
-- **PRD refs:** FR-001, US-01
-- **Prerequisites:** F-01
-- **Parallel with:** —
+- **Outcome:** operator dostaje mail, gdy API przestaje odpowiadać albo pada w pętli restartów (sprawdzenie spoza procesu API), oraz gdy zadanie cykliczne zakończy się błędem albo nie zakończy się w ciągu 26 godzin; każdy przebieg zadania zostawia trwały ślad.
+- **Change ID:** operator-liveness-alerts
+- **PRD refs:** FR-019
+- **Prerequisites:** —
+- **Parallel with:** S-13, S-17, S-18
 - **Blockers:** —
 - **Unknowns:**
-  - Czy e-maile z poczty MyDevil docierają do Gmaila/Outlooka (SPF/DKIM/DMARC domeny, reputacja współdzielonego IP)? Sprawdzone na produkcji 2026-11-09: maile dochodzą na Gmaila i Outlooka, SPF PASS, DKIM brak, DMARC FAIL. Ryzyko przyjęte na MVP; DKIM i DMARC do naprawy przed publicznym startem. — Owner: user. Block: no.
-  - Rozstrzygnięte: jak długo ważny jest link i jak długo trwa sesja? Link 15 minut, sesja stałe 30 dni bez przedłużania. — Owner: user. Block: no.
-- **Risk:** Pierwszy slice użytkowy, bo wszystko inne wymaga zalogowanego użytkownika; ryzyko w dostarczalności e-maila i w ciasteczku sesji między subdomenami — widoki dla zalogowanego nie mogą być prerenderowane statycznie.
-- **Status:** done
+  - Interwał watchdoga i liczba porażek przed alarmem; czy watchdog pilnuje też frontendu SSR? — Owner: agent (`/10x-plan`). Block: no.
+- **Risk:** Stoi pierwsza, bo zamyka P1, J1 i J2 (krytyczne) i daje kanał, z którego korzystają S-12 i S-16. Ryzyko w części poza kodem: skrypt watchdoga wgrywany ręcznie (`scp`) i wpis w crontabie, jak `prune-backups.sh`; joby zostają idempotentne (`lessons.md`), mail bez danych użytkowników.
+- **Status:** ready
 
-### S-02: Pierwsza subskrypcja na liście
+### S-12: Niezależny kanał alarmów
 
-- **Outcome:** użytkownik dodaje subskrypcję (nazwa, kategoria z predefiniowanej listy lub własna, kwota w PLN, cykl miesięczny/roczny, forma płatności z zamkniętej listy, status, data końca triala, data następnego rozliczenia) i natychmiast widzi ją w tabeli wszystkich swoich subskrypcji.
-- **Change ID:** first-subscription-in-list
-- **PRD refs:** FR-004, FR-007, FR-018, US-01
-- **Prerequisites:** S-01, F-02
-- **Parallel with:** —
-- **Blockers:** — (ochrona CSRF zrobiona w `csrf-protection`, na produkcji od 2026-11-11).
+- **Outcome:** alarm do operatora dochodzi także wtedy, gdy nie działa wysyłka maili do użytkowników: na produkcji wymagany jest osobny kanał alarmowy, blokada powtórzeń zaczyna działać dopiero po przyjęciu alarmu, a odrzucenie adresata przez serwer pocztowy jest odróżnione od literówki.
+- **Change ID:** independent-alert-channel
+- **PRD refs:** FR-020
+- **Prerequisites:** S-11
+- **Parallel with:** S-13, S-14, S-15, S-16, S-17, S-18
+- **Blockers:** Osobna skrzynka alarmowa na MyDevil — do założenia przez użytkownika przed deployem (walidacja PROD w `env.ts` zatrzyma start bez niej).
 - **Unknowns:**
-  - ~~Jaka jest predefiniowana lista kategorii na start?~~ Rozstrzygnięte w S-02: 9 kategorii domyślnych (Streaming, Gry, Oprogramowanie i narzędzia, Chmura i dane, Edukacja, Zdrowie i sport, Prasa i książki, Dom i usługi, Inne) + własne.
-- **Risk:** Gwiazda przewodnia — stoi zaraz po logowaniu; ryzyko w czasie przejścia (< 3 min wg kryterium sukcesu), więc formularz musi być krótki mimo wielu pól.
-- **Status:** done
+  - ~~Drugi kanał na MyDevil czy zewnętrzny SMTP?~~ Rozstrzygnięte 2026-11-22: osobna skrzynka na MyDevil, bez zewnętrznych dostawców. Świadomie akceptowane ograniczenie: awaria całej poczty MyDevil wyłącza też alarmy (watchdog z S-11 nadal zapisuje porażki w logu).
+- **Risk:** Po S-11, bo S-11 dodaje nowe wywołania alarmu, a S-12 utwardza ich drogę; ryzyko w deployu — nowy wymagany klucz w `shared/.env` przed merge'em.
+- **Status:** proposed
 
-### S-03: Edycja i usuwanie subskrypcji
+### S-13: Kontekst żądania i przyczyny odmów w logu API
 
-- **Outcome:** użytkownik poprawia dane istniejącej subskrypcji albo trwale usuwa błędnie dodaną — odrębnie od anulowania usługi w cyklu życia.
-- **Change ID:** edit-and-delete-subscription
-- **PRD refs:** FR-005, FR-006
-- **Prerequisites:** S-02, F-03
-- **Parallel with:** S-04, S-05, S-06, S-07, S-08, S-09
+- **Outcome:** każdy błąd serwera w logu API ma metodę, szablon trasy, id użytkownika i id żądania; wybrane odmowy 4xx (weryfikacja linku, sesja, CSRF/Origin, ranga administratora, walidacja) zostawiają linię z kodem przyczyny i nazwami pól, bez wartości i danych osobowych, z limitem.
+- **Change ID:** request-context-and-denial-reasons
+- **PRD refs:** FR-021
+- **Prerequisites:** —
+- **Parallel with:** S-11, S-12, S-16, S-17, S-18
+- **Blockers:** —
+- **Unknowns:**
+  - Limit linii odmów 4xx: per proces i okno czasowe czy per kod przyczyny? — Owner: agent (`/10x-plan`). Block: no.
+- **Risk:** Zamyka L1 (krytyczne); ryzyko w odwróceniu świadomej decyzji „4xx nie logujemy” — powód (dane osobowe, rozrost logu przez obcy ruch) musi zostać spełniony testem, że linia nie zawiera adresu, tokenu ani query.
+- **Status:** ready
+
+### S-14: Format logu, wersja i access log
+
+- **Outcome:** logi obu procesów mają jednolity format bez kodów kolorów, ze znacznikiem czasu ISO ze strefą; linia startowa i `/health` podają wdrożoną wersję; każde żądanie zostawia jedną linię access logu (metoda, trasa, status, czas).
+- **Change ID:** log-format-version-and-access-log
+- **PRD refs:** FR-022
+- **Prerequisites:** S-13
+- **Parallel with:** S-11, S-12, S-16, S-17, S-18
+- **Blockers:** —
+- **Unknowns:**
+  - Czy MyDevil rotuje i ogranicza logi `forever`? Access log zwiększy ich objętość. — Owner: user. Block: no.
+- **Risk:** Po S-13, bo access log używa jego id żądania; wąski i dobrze sprawdzalny testami, więc kandydat na przebieg `/goal` + `/10x-goal-implement`.
+- **Status:** proposed
+
+### S-15: Błędy przeglądarki i SSR nie znikają
+
+- **Outcome:** strony i formularze nie zamieniają nieznanego błędu w ogólny komunikat bez zapisu przyczyny, błąd nawigacji przy renderowaniu na serwerze nie wygląda jak 404, a nieaktualny plik aplikacji po wdrożeniu przeładowuje stronę.
+- **Change ID:** client-and-ssr-error-visibility
+- **PRD refs:** FR-023
+- **Prerequisites:** S-14
+- **Parallel with:** S-12, S-16, S-17, S-18
+- **Blockers:** —
+- **Unknowns:**
+  - Czy błędy z przeglądarki mają trafiać do API (PRD Open Questions #2)? Do decyzji slice obejmuje tylko konsolę przeglądarki i log serwera SSR. — Owner: user. Block: no.
+- **Risk:** Po S-14, bo oba zmieniają `server.ts` (access log, middleware błędów); ryzyko w zmianie zachowania guardów i formularzy widocznej dla użytkownika — testy e2e komunikatów muszą zostać zielone.
+- **Status:** proposed
+
+### S-16: Przyczyny porażek i ślad audytowy
+
+- **Outcome:** zadania cykliczne i wysyłka maili rozróżniają przyczyny porażki (brak konta, konto zablokowane, błąd bazy, błąd SMTP), a usunięcie konta, odmowy akcji administratora i jego wyszukiwania zostawiają ślad audytowy.
+- **Change ID:** failure-causes-and-audit-trail
+- **PRD refs:** FR-024
+- **Prerequisites:** S-11
+- **Parallel with:** S-12, S-13, S-14, S-15, S-17, S-18
 - **Blockers:** —
 - **Unknowns:** —
-- **Risk:** Wcześnie, bo bez edycji pomyłki z S-02 blokują testowanie reszty; wymóg ponownego przeliczenia z FR-005 dociera do budżetu i duplikatów dopiero w S-07/S-08 — te slice'y muszą przeliczać po edycji.
-- **Status:** done
+- **Risk:** Po S-11, bo przyczyny trafiają do jego rejestru przebiegów; ryzyko w zakresie (wiele drobnych ustaleń) — plan grupuje je w fazy wg modułu, a reszta z §6 pkt 8 raportu wchodzi tylko tam, gdzie slice i tak dotyka kodu.
+- **Status:** proposed
 
-### S-04: Sumy kosztów na dashboardzie
+### S-17: Zmiana nazwy i usuwanie własnych kategorii
 
-- **Outcome:** użytkownik widzi na dashboardzie łączny koszt subskrypcji miesięcznie i rocznie, z podziałem na kategorie, zgodny z ręcznym wyliczeniem.
-- **Change ID:** dashboard-cost-totals
-- **PRD refs:** FR-008, US-01
-- **Prerequisites:** S-02
-- **Parallel with:** S-03, S-05, S-06, S-09
+- **Outcome:** użytkownik zmienia nazwę własnej kategorii albo usuwa ją, jeśli nie ma w niej subskrypcji; przy niepustej widzi komunikat, że najpierw musi przenieść albo usunąć jej subskrypcje. Kategorie predefiniowane się nie zmieniają, a próg duplikatów i limit budżetu usuwanej kategorii nie zostają osierocone.
+- **Change ID:** own-category-rename-and-delete
+- **PRD refs:** FR-025, FR-009, FR-010
+- **Prerequisites:** —
+- **Parallel with:** S-11, S-12, S-13, S-14, S-15, S-16, S-18
 - **Blockers:** —
 - **Unknowns:**
-  - Czy do sum wliczają się subskrypcje w trialu i w cancelled_pending? — Owner: user. Block: no.
-- **Ustalenia z S-02:** `amount` to kwota za cykl (`monthly` / `yearly`), w API string `"43.00"`; lista zwraca także subskrypcje anulowane (`cancelled`), więc sumy muszą je odfiltrować świadomie. Frontend ma już `monthlyAmount` (dzielenie rocznej przez 12 w groszach, `Math.round`) dla dopisku na liście — sumy po stronie API muszą liczyć tak samo (w groszach), inaczej lista i dashboard pokażą różne kwoty.
-- **Risk:** Drugie kryterium sukcesu (100% zgodności sum) — błąd przeliczenia roczne ↔ miesięczne propaguje się do budżetu (S-08), więc S-04 stoi przed alertami.
-- **Status:** done
+  - ~~Co z subskrypcjami usuwanej kategorii?~~ Rozstrzygnięte 2026-11-22 (PRD Open Questions #1): usunąć można tylko pustą.
+  - Gdzie w UI: na stronie budżetu, w formularzu subskrypcji czy na osobnej liście kategorii? — Owner: user (makiety ASCII wg `lessons.md`). Block: no.
+- **Risk:** Kolejność wg PRD v2 — zaraz po poprawkach audytu, choć technicznie niezależny. Ryzyko w kluczu obcym `subscription.category_id` (`23503` musi dać 409, nie 500; helper w `shared/database/`), w unikalności nazw (`toNameKey`) przy zmianie nazwy i w sortowaniu z `POLISH_COLLATION`.
+- **Status:** ready
 
-### S-05: Automatyczny cykl życia subskrypcji
+### S-18: Sortowanie i filtrowanie listy subskrypcji
 
-- **Outcome:** użytkownik anuluje subskrypcję (trafia do cancelled_pending), a system sam przenosi subskrypcje trial → active po dacie końca triala i cancelled_pending → cancelled po dacie następnego rozliczenia.
-- **Change ID:** subscription-lifecycle
-- **PRD refs:** FR-013
-- **Prerequisites:** S-02
-- **Parallel with:** S-03, S-04, S-07, S-08, S-09
+- **Outcome:** użytkownik sortuje listę subskrypcji (np. po nazwie, kwocie, dacie rozliczenia) i filtruje ją (np. po kategorii, statusie).
+- **Change ID:** subscription-list-sort-filter
+- **PRD refs:** FR-016
+- **Prerequisites:** —
+- **Parallel with:** S-11, S-12, S-13, S-14, S-15, S-16, S-17
 - **Blockers:** —
 - **Unknowns:**
-  - Które przejścia wyzwala użytkownik, a które tylko system (np. czy użytkownik może ręcznie wrócić z cancelled_pending do active)? — Owner: user. Block: no.
-  - W jakiej strefie czasowej liczone są daty przejść (zmiana czasu, `infrastructure.md`)? — Owner: user. Block: no.
-- **Risk:** Najbardziej ryzykowna technicznie gałąź (zadania cykliczne na stale działającym procesie) — sekwencjonowana zaraz po gwieździe przewodniej, żeby przy ryzyku `time` nie zostać na koniec.
-- **Status:** done
-
-### S-06: Przypomnienie przed końcem triala
-
-- **Outcome:** użytkownik z subskrypcją w trialu dostaje e-mail 7 dni przed końcem okresu próbnego — dokładnie raz.
-- **Change ID:** trial-end-reminder
-- **PRD refs:** FR-014
-- **Prerequisites:** S-05
-- **Parallel with:** S-03, S-04, S-07, S-08, S-09
-- **Blockers:** —
-- **Unknowns:**
-  - Jak wykryć, że przypomnienie nie wyszło (proces padł, e-mail odrzucony), skoro nie ma monitoringu? — Owner: user. Block: no.
-- **Risk:** Rdzeń obietnicy produktu i wg pre-mortem w `infrastructure.md` najcichsza możliwa awaria; ryzyko duplikatów lub pominięć przy restarcie procesu.
-- **Status:** done
-
-### S-07: Ostrzeżenie o duplikatach w kategorii
-
-- **Outcome:** użytkownik ustawia próg aktywnych subskrypcji per kategoria (domyślnie 2) i po dodaniu lub edycji subskrypcji widzi na dashboardzie flagę przy kategorii, która go przekracza.
-- **Change ID:** category-duplicate-warning
-- **PRD refs:** FR-009, FR-005
-- **Prerequisites:** S-04
-- **Parallel with:** S-03, S-05, S-06, S-08, S-09
-- **Blockers:** —
-- **Unknowns:** —
-- **Risk:** Prosta reguła, ale musi się przeliczać po każdej zmianie (Business Logic); stoi po S-04, bo flaga żyje na dashboardzie.
-- **Notes (dostarczono, 2026-11-17):** flaga ma dwa stany: pomarańczowy „osiągnięto próg” (liczba = próg ≥ 1) i czerwony „przekroczono” (liczba > próg); próg 0–99 bez wyłączania. Domyślny próg jest per użytkownik (startowo 3, nie 2), kopiowany do nowej własnej kategorii. Nowe strony `/dashboard` (pełne podsumowanie) i `/budget` (progi), flaga także w kolumnie sum. S-08 rozszerza `budget_settings` (limit całościowy), `category_setting` (limit kategorii) i stronę `/budget`.
-- **Status:** done
-
-### S-08: Limity budżetu i alerty
-
-- **Outcome:** użytkownik ustawia miesięczny limit całościowy i limity per kategoria, a dashboard pokazuje alert przy 80% i 100% limitu, przeliczany po dodaniu lub edycji subskrypcji.
-- **Change ID:** budget-limits-and-alerts
-- **PRD refs:** FR-010, FR-011, FR-005
-- **Prerequisites:** S-04
-- **Parallel with:** S-03, S-05, S-06, S-07, S-09
-- **Blockers:** —
-- **Unknowns:** —
-- **Risk:** Opiera się na sumach z S-04 — błąd tam daje fałszywe alerty; progi stałe 80/100% (konfigurowalne odłożone jako FR-017).
-- **Notes (2026-11-18):** alert ma trzy stany: pomarańczowy „zbliżasz się do limitu” (wydatki ≥ 80% i < 100%), czerwony „wykorzystano limit” (dokładnie 100%) i „przekroczono limit” (> 100%); wydatki 0 zł nigdy nie dają alertu. Limit jest miesięczny (porównywany z sumą miesięczną z S-04), opcjonalny (puste = brak) i może wynosić 0 zł (pierwszy wydatek go przekracza). Kategoria z limitem, ale bez aktywnych subskrypcji jest widoczna tylko na `/budget`, nie w kolumnie sum ani na `/dashboard`. Suma limitów kategorii może przekraczać limit całościowy: zapis nie jest blokowany, `/budget` pokazuje podpowiedź. Limity ustawia się na `/budget` razem z progami; kolumna sum pokazuje pasek wykorzystania limitu całościowego, `/dashboard` limit całościowy i kolumny limitu kategorii.
-- **Status:** done
-
-### S-09: Zarządzanie kontami przez administratora
-
-- **Outcome:** administrator (rola nadana ręcznie poza aplikacją) blokuje i odblokowuje konto lub resetuje dostęp użytkownika i ma wgląd w jego dane, w tym subskrypcje i kwoty.
-- **Change ID:** admin-account-management
-- **PRD refs:** FR-002
-- **Prerequisites:** S-02
-- **Parallel with:** S-03, S-04, S-05, S-06, S-07, S-08, S-10
-- **Blockers:** —
-- **Unknowns:**
-  - ~~Co dokładnie oznacza „zablokowane konto” i „reset dostępu” przy logowaniu wyłącznie magic linkiem?~~ Rozstrzygnięte 2026-11-21, patrz Notes.
-- **Notes (2026-11-21, decyzje użytkownika; szczegóły w `context/changes/admin-account-management/research.md`, „Follow-up 2026-11-21”):**
-  - Blokada to `user.is_active = false`. Admin może zarówno blokować, jak i odblokowywać. Ten sam mechanizm posłuży później do automatycznej blokady po kilku nieudanych próbach logowania hasłem (FR-003) i do przycisku „to nie ja” w powiadomieniu o logowaniu z nowego urządzenia (oba w Parked).
-  - Zablokowany użytkownik dostaje informację, że konto zostało zablokowane: mailem (w chwili blokady i przy prośbie o link) oraz komunikatem na formularzu logowania. To świadomy wyjątek od jednakowej odpowiedzi 202 z S-01: zdradza tylko to, że znany już komuś adres jest zablokowany. Odblokowanie na MVP przez kontakt z adminem; samoobsługowa ścieżka razem z FR-003.
-  - „Reset dostępu” to „wyloguj wszędzie”: unieważnienie wszystkich sesji i niewykorzystanych linków konta, które zostaje aktywne.
-  - Role ADMIN i SUPERADMIN nadaje i odbiera wyłącznie skrypt CLI; w UI superadmin tylko blokuje i odblokowuje adminów.
-  - Audyt obejmuje zmiany (blokada, odblokowanie, reset) i każdy podgląd danych konkretnego użytkownika.
-  - Admin widzi wszystkie dane użytkownika i zarządza aktywnością konta, ale na tym etapie nie edytuje jego danych.
-  - Akcje admina są zapisywane w audycie (kto, komu, co, kiedy).
-  - Admin nie może zablokować samego siebie. Nowa rola superadmina (jedna osoba, nadawana tylko skryptem albo w bazie, niewidoczna w API) może wszystko, łącznie z blokadą innego admina. Zwykli admini zarządzają tylko użytkownikami.
-  - Zablokowane konta są pomijane przez joby i maile. Merytoryczne wyjątki, np. mail o zablokowaniu, wychodzą normalnie.
-- **Risk:** Niezależna gałąź — może iść równolegle z resztą; ryzyko w tym, że wyjątek od izolacji kont (pełny wgląd admina) przecieknie do zwykłych użytkowników.
-- **Status:** done
-
-### S-10: Usunięcie konta
-
-- **Outcome:** użytkownik usuwa swoje konto z poziomu aplikacji. Przed usunięciem widzi potwierdzenie z informacją, że dane (subskrypcje, własne kategorie) przepadną bezpowrotnie. Po usunięciu jest wylogowany, a jego sesje, tokeny logowania i dane domenowe znikają.
-- **Change ID:** account-deletion
-- **PRD refs:** NFR „dane osobowe/finansowe usuwane lub anonimizowane w ciągu 30 dni od żądania usunięcia konta” (`prd.md`, Non-Functional)
-- **Prerequisites:** S-02
-- **Parallel with:** S-03, S-04, S-05, S-09
-- **Blockers:** —
-- **Unknowns:**
-  - Usunięcie natychmiastowe czy z okresem karencji (≤ 30 dni) i możliwością cofnięcia? — Owner: user. Block: no.
-  - Co z wpisami w `mail` (adres odbiorcy bez FK do `user`) i z kopiami bazy z deployu (`backups/`, retencja)? — Owner: user. Block: no.
-- **Ustalenia z S-02:** `subscription` i własne `category` mają już `ON DELETE CASCADE` na `user_id` (test e2e kaskady). `session`, `magic_link_token` i `user_role` mają `NO ACTION` — trzeba je usunąć w tej samej transakcji albo zmienić migracją na kaskadę.
-- **Risk:** Operacja nieodwracalna: potwierdzenie (np. wpisanie adresu), CSRF jak przy innych zmianach stanu, unieważnienie wszystkich sesji użytkownika i test e2e, że po usunięciu nic po koncie nie zostaje. (2026-11-21) Wspólnej logiki z blokadą w S-09 ostatecznie nie ma: sesje i tokeny znikają kaskadą, a S-09 projektuje własne unieważnianie.
-- **Status:** done
+  - Sortowanie i filtrowanie w przeglądarce czy w API? Przy małej skali (PRD `target_scale: small`) przeglądarka wystarczy. — Owner: agent (`/10x-plan`). Block: no.
+- **Risk:** Nice-to-have na koniec M-2; wąski zakres we froncie, więc pierwszy kandydat na przebieg `/goal` + `/10x-goal-implement`. Widok listy sprawdzany w trzech szerokościach (`lessons.md`).
+- **Status:** ready
 
 ## Backlog Handoff
 
-| Roadmap ID | Change ID                    | Suggested issue title                                    | Ready for `/10x-plan` | Notes                                  |
-| ---------- | ---------------------------- | -------------------------------------------------------- | --------------------- | -------------------------------------- |
-| F-01       | production-database-wiring   | Produkcyjna baza, migracje w deployu i CORS frontend→API | no                    | Zrobione; archiwum `2026-10-16-production-database-wiring` |
-| S-01       | magic-link-sign-in           | Logowanie magic linkiem                                  | no                    | Zrobione; archiwum `2026-11-03-magic-link-sign-in` |
-| F-02       | ui-foundation                | Motyw Angular Material i docelowy układ ekranów S-01     | no                    | Zrobione; archiwum `2026-11-10-ui-foundation` |
-| S-02       | first-subscription-in-list   | Dodanie subskrypcji i lista subskrypcji                  | no                    | Zrobione: PR #16, na produkcji 2026-11-11; archiwum `2026-11-11-first-subscription-in-list` |
-| S-03       | edit-and-delete-subscription | Edycja i usuwanie subskrypcji                            | no                    | Zrobione; archiwum `2026-11-15-edit-and-delete-subscription` |
-| S-04       | dashboard-cost-totals        | Dashboard: sumy miesięczne i roczne per kategoria        | no                    | Zrobione; archiwum `2026-11-15-dashboard-cost-totals` |
-| S-05       | subscription-lifecycle       | Automatyczne przejścia cyklu życia subskrypcji           | no                    | Zrobione; archiwum `2026-11-15-subscription-lifecycle` |
-| S-06       | trial-end-reminder           | E-mail 7 dni przed końcem triala                         | no                    | Zrobione; archiwum `2026-11-16-trial-end-reminder` |
-| S-07       | category-duplicate-warning   | Ostrzeżenie o duplikatach w kategorii                    | no                    | Zrobione; archiwum `2026-11-17-category-duplicate-warning` |
-| S-08       | budget-limits-and-alerts     | Limity budżetu i alerty 80% / 100%                       | no                    | Zrobione; archiwum `2026-11-17-budget-limits-and-alerts` |
-| S-09       | admin-account-management     | Panel administratora: blokada, reset dostępu i wgląd w dane | yes                   | Research gotowy 2026-11-21; Run `/10x-plan admin-account-management` |
-| F-03       | frontend-unit-tests          | Test runner i testy jednostkowe frontendu w CI           | no                    | Zrobione; archiwum `2026-11-13-frontend-unit-tests` |
-| S-10       | account-deletion             | Usunięcie konta przez użytkownika                        | no                    | Zrobione; archiwum `2026-11-20-account-deletion` |
+| Roadmap ID | Change ID                          | Suggested issue title                                   | Ready for `/10x-plan` | Notes |
+| ---------- | ---------------------------------- | ------------------------------------------------------- | --------------------- | ----- |
+| S-11       | operator-liveness-alerts           | Watchdog API i rejestr przebiegów jobów z alarmem       | yes                   | Gwiazda przewodnia; run `/10x-plan operator-liveness-alerts` |
+| S-12       | independent-alert-channel          | Osobny kanał alarmów operatora                          | no                    | Po S-11; osobna skrzynka alarmowa na MyDevil (zakłada użytkownik) |
+| S-13       | request-context-and-denial-reasons | Kontekst żądania i przyczyny odmów 4xx w logu API       | yes                   | Run `/10x-plan request-context-and-denial-reasons` |
+| S-14       | log-format-version-and-access-log  | Format logu, wersja i access log                        | no                    | Po S-13; kandydat na `/goal` |
+| S-15       | client-and-ssr-error-visibility    | Widoczność błędów przeglądarki i SSR                    | no                    | Po S-14 |
+| S-16       | failure-causes-and-audit-trail     | Przyczyny porażek jobów i maili, ślad audytowy          | no                    | Po S-11 |
+| S-17       | own-category-rename-and-delete     | Zmiana nazwy i usuwanie pustej własnej kategorii        | yes                   | Run `/10x-plan own-category-rename-and-delete` |
+| S-18       | subscription-list-sort-filter      | Sortowanie i filtrowanie listy subskrypcji              | yes                   | Kandydat na `/goal` |
 
 ## Open Roadmap Questions
 
-1. ~~**Jak w MVP realizujemy usunięcie lub anonimizację danych w ciągu 30 dni od żądania (NFR)?**~~ Rozstrzygnięte: samoobsługowo, natychmiastowe twarde usunięcie z anonimizacją archiwum `mail` (S-10, archiwum `2026-11-20-account-deletion`). S-09 tego nie rozszerza.
-2. **Czy poczta MyDevil wystarczy dla magic linku i przypomnień, czy potrzebny jest zewnętrzny dostawca e-maili?** Test dostarczalności przed startem. Na produkcji 2026-11-09 maile dochodzą na Gmaila i Outlooka, SPF PASS, DKIM brak, DMARC FAIL; pytanie zostaje otwarte do naprawy DKIM i DMARC. — Owner: user. Block: — (dotyczy S-01, S-06).
-3. **Czy MVP potrzebuje choćby minimalnego alarmu, gdy backend lub zadania cykliczne przestaną działać?** Wg pre-mortem w `infrastructure.md` o awarii dowiemy się od użytkownika. — Owner: user. Block: — (dotyczy S-06).
+1. **Czy poczta MyDevil wystarczy dla magic linku, przypomnień i alarmów, czy potrzebny jest zewnętrzny dostawca e-maili?** Na produkcji 2026-11-09 maile dochodzą na Gmaila i Outlooka, SPF PASS, DKIM brak, DMARC FAIL; do naprawy DKIM i DMARC przed publicznym startem (konfiguracja bez kodu). — Owner: user. Block: — (dotyczy S-12 i M-3: FR-015).
+2. **Czy błędy z przeglądarki mają trafiać do API?** (PRD Open Questions #2) — Owner: user. Block: — (S-15 bez tego endpointu).
+3. **Czy MyDevil rotuje i ogranicza logi procesów?** Założenie niepotwierdzone w audycie; pętla restartów albo access log mogą zapełnić dysk. — Owner: user. Block: — (dotyczy S-11, S-14).
+4. ~~Jak w MVP realizujemy usunięcie danych w 30 dni?~~ Rozstrzygnięte w M-1 (S-10). ~~Czy MVP potrzebuje minimalnego alarmu?~~ Tak — S-11 (M-2).
 
 ## Parked
 
+- **Plan M-3 — FR-012: prognoza przekroczenia budżetu przed dodaniem** — Why parked: nice-to-have z v1, kolejność wg PRD v2 po M-2; czysta funkcja, kandydat na pierwsze użycie `/10x-tdd`.
+- **Plan M-3 — FR-017: konfigurowalne progi alertów budżetowych** — Why parked: nice-to-have z v1, rozszerza S-08; pasuje do FR-012.
+- **Plan M-3 — FR-015: okresowy e-mail podsumowujący alerty** — Why parked: nice-to-have z v1; korzysta z rejestru przebiegów (S-11) i kanału alarmów (S-12), dostarczalność zależy od DKIM i DMARC.
+- **Plan M-3 — FR-003: logowanie e-mailem i hasłem** — Why parked: nice-to-have z v1, największe i najbardziej wrażliwe na bezpieczeństwo. Kilka nieudanych prób blokuje konto przez `is_active = false` z S-09 (decyzja 2026-11-21); samoobsługowe odblokowanie razem z nim.
+- **Plan M-4 — FR-026: ikony form płatności na liście** — Why parked: nice-to-have v2 na koniec (PRD v2). Ikona inline SVG z etykietą dla czytnika ekranu; w kompaktowej tabeli (container query poniżej 680 px) zastąpiłaby dopisek „· BLIK” pod nazwą.
+- **Plan M-4 — FR-027: zaufane urządzenia i mail „to nie ja”** — Why parked: nice-to-have v2 na koniec (PRD v2); blokada mechanizmem z S-09.
+- **Plan M-4 — NFR: powiadomienie o koncie nieaktywnym 12 miesięcy** — Why parked: pierwsze takie konta pojawią się najwcześniej rok po starcie (PRD v2).
 - **Scraping promocji od dostawców** — Why parked: PRD §Non-Goals (ryzyko techniczne i prawne).
 - **Współdzielone subskrypcje / split kosztów** — Why parked: PRD §Non-Goals (backlog v2).
 - **Rekomendacja przejścia na plan roczny** — Why parked: PRD §Non-Goals (backlog v2).
 - **Historia zmian cen w czasie** — Why parked: PRD §Non-Goals (backlog v2).
 - **Obsługa wielu walut** — Why parked: PRD §Non-Goals (MVP tylko PLN).
-- **FR-003: logowanie e-mailem i hasłem** — Why parked: nice-to-have; cel `speed`, magic link wystarcza. Gdy powstanie: kilka nieudanych prób blokuje konto przez `is_active = false` z S-09 (decyzja 2026-11-21).
-- **Zaufane urządzenia i powiadomienie o logowaniu z nowego urządzenia** — Why parked: pomysł z S-09 (2026-11-21), poza zakresem slice'u. Mail o logowaniu z nieznanego urządzenia z opcją „to nie ja”, która blokuje konto mechanizmem z S-09.
-- **FR-012: prognoza przekroczenia budżetu przed dodaniem** — Why parked: nice-to-have; alert po dodaniu (FR-011) pokrywa potrzebę.
-- **FR-015: okresowy e-mail podsumowujący alerty** — Why parked: nice-to-have; druga funkcja mailowa obok S-06.
-- **FR-016: sortowanie i filtrowanie listy** — Why parked: nice-to-have, w PRD planowane na v2/v3.
-- **FR-017: konfigurowalne progi alertów budżetowych** — Why parked: nice-to-have, w PRD planowane na v2.
-- **NFR: powiadomienie o koncie nieaktywnym 12 miesięcy** — Why parked: pierwsze takie konta pojawią się najwcześniej rok po starcie; cel `speed`.
-- **Monitoring i alerty produkcyjne poza logami procesów** — Why parked: cel `speed` i ryzyko `time`; decyzja otwarta w Open Roadmap Questions #3.
-- **Edycja i usuwanie własnych kategorii** — Why parked: poza zakresem S-02 (2026-11-11). Usunięcie kategorii trafi w FK `subscription.category_id` (`NO ACTION` → `23503`), więc musi przepiąć subskrypcje albo zwrócić 409 zamiast 500; do tego helper `isForeignKeyViolation` obok `src/shared/database/unique-violation.ts`.
-- **Ikony form płatności na liście subskrypcji** — Why parked: opcja dodatkowa z S-02 (2026-11-11). Ikona (inline SVG, z etykietą dla czytnika ekranu) zamiast tekstu formy płatności; w kompaktowej tabeli (container query poniżej 680 px) zastąpiłaby dopisek „· BLIK” pod nazwą i zajęła mniej miejsca.
+- **Limit wysyłki linków logowania i pool SMTP, rate limiting API** — Why parked: przed publicznym startem; brak FR w PRD v2 (follow-up z S-01 i S-09).
+- **Widok audytu administratora w UI** — Why parked: pomysł z S-09 bez FR w PRD v2.
 
 ## Milestone History
+
+- **M-1: MVP — kontrola subskrypcji i budżetu** (`mvp-subscription-control`) — closed 2026-11-22. Wszystkie FR konieczne z PRD v1 działają na produkcji: logowanie magic linkiem, lista z edycją i usuwaniem, sumy na dashboardzie, cykl życia i przypomnienie o trialu, duplikaty, limity budżetu, panel administratora i usunięcie konta (13/13 pozycji).
 
 ## Done
 
