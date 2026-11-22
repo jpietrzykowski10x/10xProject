@@ -4,13 +4,41 @@
 // a wrong classify() would block the agent on edits of non-code files, which is the costliest bug.
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { closeSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeSync } from 'node:fs';
+import {
+  closeSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+  writeSync,
+} from 'node:fs';
 import path from 'node:path';
 
-/** Directories (relative to the project) whose state decides whether Stop checks an app. */
+/**
+ * Paths (git pathspecs relative to the checkout) whose state decides whether Stop checks an app:
+ * the code plus the config the checks read, so a changed tsconfig, lint config or dependency also
+ * re-runs them.
+ */
 export const APP_DIRS = {
-  backend: ['backend-subtracker/src', 'backend-subtracker/test'],
-  frontend: ['frontend-subtracker/src'],
+  backend: [
+    'backend-subtracker/src',
+    'backend-subtracker/test',
+    'backend-subtracker/package.json',
+    'backend-subtracker/package-lock.json',
+    'backend-subtracker/tsconfig*.json',
+    'backend-subtracker/vitest.config.ts',
+    'backend-subtracker/.oxlintrc.json',
+  ],
+  frontend: [
+    'frontend-subtracker/src',
+    'frontend-subtracker/package.json',
+    'frontend-subtracker/package-lock.json',
+    'frontend-subtracker/tsconfig*.json',
+    'frontend-subtracker/angular.json',
+  ],
 };
 
 const MIN_NODE = [24, 15, 0];
@@ -224,6 +252,92 @@ export function processAlive(pid) {
   } catch (error) {
     return error.code === 'EPERM';
   }
+}
+
+/** Canonical form of an existing path (8.3 names, symlinks, separators and drive-letter case resolved). */
+function canonical(p) {
+  try {
+    const real = realpathSync.native(p);
+    return process.platform === 'win32' ? real.toLowerCase() : real;
+  } catch {
+    return null;
+  }
+}
+
+/** Whether two paths name the same existing directory. */
+export function sameDir(a, b) {
+  const ca = canonical(a);
+  return ca !== null && ca === canonical(b);
+}
+
+/**
+ * The git checkout that contains `target` (a file or directory; it may not exist yet, then its
+ * nearest existing parent counts): `{ root, commonDir }`, or `null` outside git. A worktree has its
+ * own `root` and the `commonDir` of its repository, so `commonDir` tells whether a file belongs to
+ * this repository at all (and not to ~/.claude or another project).
+ */
+export function checkoutOf(target) {
+  if (typeof target !== 'string' || target === '') return null;
+  let dir = path.resolve(target);
+  for (;;) {
+    try {
+      if (statSync(dir).isDirectory()) break;
+    } catch {
+      // does not exist (yet): try the parent
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+  const run = spawnSync('git', ['rev-parse', '--show-toplevel', '--git-common-dir'], {
+    cwd: dir,
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  if (run.error || run.status !== 0) return null;
+  const [top, common] = run.stdout.trim().split(/\r?\n/);
+  if (!top || !common) return null;
+  const root = realpathSync.native(path.resolve(top));
+  return { root, commonDir: realpathSync.native(path.resolve(dir, common)) };
+}
+
+/** Short stable tag of a checkout, used to keep the state and locks of worktrees apart. */
+export function checkoutTag(root) {
+  return createHash('sha256').update(canonical(root) ?? root).digest('hex').slice(0, 12);
+}
+
+function sessionFile(stateDir, sessionId) {
+  if (typeof sessionId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(sessionId)) return null;
+  return path.join(stateDir, 'sessions', `${sessionId}.json`);
+}
+
+/**
+ * Checkouts other than the main one that the post-edit hook saw edited in this session; Stop sweeps
+ * them too, because neither the payload `cwd` nor $CLAUDE_PROJECT_DIR names a sibling worktree.
+ */
+export function registeredCheckouts(stateDir, sessionId) {
+  const file = sessionFile(stateDir, sessionId);
+  if (!file) return [];
+  try {
+    const roots = JSON.parse(readFileSync(file, 'utf8'));
+    return Array.isArray(roots) ? roots.filter((r) => typeof r === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+export function registerCheckout(stateDir, sessionId, root) {
+  const file = sessionFile(stateDir, sessionId);
+  if (!file) return;
+  const roots = registeredCheckouts(stateDir, sessionId);
+  if (roots.some((r) => sameDir(r, root))) return;
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, JSON.stringify([...roots, root]));
+}
+
+export function clearRegisteredCheckouts(stateDir, sessionId) {
+  const file = sessionFile(stateDir, sessionId);
+  if (file) rmSync(file, { force: true });
 }
 
 /** Hook input JSON from stdin; `{}` when stdin is empty or not JSON. */
