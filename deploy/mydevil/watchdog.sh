@@ -65,6 +65,16 @@ umask 077
 mkdir -p "$STATE_DIR"
 chmod 700 "$STATE_DIR"
 
+# One run at a time: a hanging SMTP can make a run outlast the 5-minute cron
+# step, and two runs on the same state.json would send the same alert twice.
+RUN_LOCK="$STATE_DIR/.run.lock"
+if ! mkdir "$RUN_LOCK" 2>/dev/null; then
+  log "the previous watchdog run is still going; skipped"
+  exit 0
+fi
+trap 'rmdir "$RUN_LOCK"' EXIT
+trap 'exit 1' INT TERM HUP
+
 # Subshell: the api env stays local. Run from the live release, like the
 # migrations in deploy.sh; the exit code is the watchdog's own (1 = bad env).
 (
