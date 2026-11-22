@@ -10,7 +10,8 @@
 #   on the same PR, and the prompt says so.
 #
 # Runs only on PRs labelled `impl-review` (plan-based changes); docs and chore PRs stay unreviewed.
-# Needs the repository secret ANTHROPIC_API_KEY and the labels `impl-review` and
+# Needs the repository secret CLAUDE_CODE_OAUTH_TOKEN (a Claude Pro/Max subscription token from
+# `claude setup-token`, so reviews use the plan's limits instead of paid API credits) and the labels `impl-review` and
 # `impl-review-override` (the override lets a REJECTED verdict through).
 # The skill comes from origin/<base> (`git archive`), so its committed copy on main is what runs:
 # a change to the skill takes effect after its PR is merged.
@@ -134,11 +135,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           # The project's agent-loop hooks (post-edit, Stop) are for local sessions only.
           SUBTRACKER_AGENT_HOOKS: "off"
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: |
             --model claude-opus-5-5
             --max-turns 60
