@@ -8,6 +8,10 @@ on:
     branches-ignore: [main]
   pull_request:
     branches: [main]
+  # impl-review.yml dispatches this workflow on the PR branch after it commits its review report:
+  # that commit carries [skip ci] and is pushed with GITHUB_TOKEN, so it starts no run itself, and
+  # without checks on the new head the PR stays "waiting for status" and cannot be merged.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
