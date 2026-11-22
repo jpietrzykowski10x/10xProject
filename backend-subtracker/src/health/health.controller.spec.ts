@@ -2,39 +2,65 @@ import { HttpStatus, Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Response } from 'express';
 import { DataSource } from 'typeorm';
+import { JobRunService } from '../jobs/job-run.service.js';
+import type { JobName, LatestJobRun } from '../jobs/job-run.types.js';
 import { HealthController } from './health.controller.js';
 
 describe('HealthController', () => {
   let controller: HealthController;
   const query = vi.fn<(sql: string) => Promise<unknown>>();
+  const latestFinished = vi.fn<() => Promise<Map<JobName, LatestJobRun>>>();
   const status = vi.fn();
   const res = { status } as unknown as Response;
+  let logError: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     query.mockReset();
+    latestFinished.mockReset();
     status.mockReset();
-    // The failure path logs the error on purpose; keep the test output clean.
-    vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    // The failure paths log the error on purpose; keep the test output clean.
+    logError = vi
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
     const module: TestingModule = await Test.createTestingModule({
       controllers: [HealthController],
-      providers: [{ provide: DataSource, useValue: { query } }],
+      providers: [
+        { provide: DataSource, useValue: { query } },
+        { provide: JobRunService, useValue: { latestFinished } },
+      ],
     }).compile();
 
     controller = module.get<HealthController>(HealthController);
   });
 
-  it('reports ok when the database answers', async () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('reports ok and the state of each job when the database answers', async () => {
     query.mockResolvedValue([{ '?column?': 1 }]);
+    const finishedAt = new Date();
+    latestFinished.mockResolvedValue(
+      new Map<JobName, LatestJobRun>([
+        ['subscription-lifecycle', { finishedAt, outcome: 'success' }],
+        ['auth-cleanup', { finishedAt, outcome: 'failed' }],
+      ]),
+    );
 
     await expect(controller.check(res)).resolves.toEqual({
       status: 'ok',
       db: 'ok',
+      jobs: {
+        'subscription-lifecycle': 'ok',
+        'auth-cleanup': 'failed',
+        'trial-reminder': 'stale',
+      },
     });
     expect(query).toHaveBeenCalledWith('SELECT 1');
     expect(status).not.toHaveBeenCalled();
   });
 
-  it('reports 503 when the database query fails', async () => {
+  it('reports 503 without the jobs when the database query fails', async () => {
     query.mockRejectedValue(new Error('connection refused'));
 
     await expect(controller.check(res)).resolves.toEqual({
@@ -42,5 +68,22 @@ describe('HealthController', () => {
       db: 'error',
     });
     expect(status).toHaveBeenCalledWith(HttpStatus.SERVICE_UNAVAILABLE);
+    expect(latestFinished).not.toHaveBeenCalled();
+  });
+
+  it('stays 200 without the jobs when the job runs cannot be read', async () => {
+    query.mockResolvedValue([{ '?column?': 1 }]);
+    latestFinished.mockRejectedValue(
+      new Error('relation "job_run" does not exist'),
+    );
+
+    await expect(controller.check(res)).resolves.toEqual({
+      status: 'ok',
+      db: 'ok',
+    });
+    expect(status).not.toHaveBeenCalled();
+    expect(logError).toHaveBeenCalledExactlyOnceWith(
+      'Reading the job runs for the health check failed: relation "job_run" does not exist',
+    );
   });
 });

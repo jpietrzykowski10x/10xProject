@@ -35,14 +35,15 @@ describe('AppController (e2e)', () => {
       .expect('Hello World!');
   });
 
-  it('/health (GET) reports the database and allows the configured origin', () => {
-    return request(app.getHttpServer())
+  it('/health (GET) reports the database and allows the configured origin', async () => {
+    const response = await request(app.getHttpServer())
       .get('/health')
       .set('Origin', allowedOrigin)
       .expect(200)
       .expect('Access-Control-Allow-Origin', allowedOrigin)
-      .expect('Access-Control-Allow-Credentials', 'true')
-      .expect({ status: 'ok', db: 'ok' });
+      .expect('Access-Control-Allow-Credentials', 'true');
+    // The job state itself is covered by test/jobs/health.e2e-spec.ts.
+    expect(response.body).toMatchObject({ status: 'ok', db: 'ok' });
   });
 
   it('/health (GET) sends no CORS headers to a foreign origin', async () => {

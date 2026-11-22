@@ -339,30 +339,30 @@ Nowa tabela, bez zmian istniejących danych. Na produkcji migracja wchodzi w `de
 
 #### Automated
 
-- [x] 1.1 Migracja `JobRun` wygenerowana względem `subtracker-db`, przejrzana i zastosowana
-- [x] 1.2 Testy jednostkowe `JobRunService` i `job-run-alert`
-- [x] 1.3 Testy e2e: wiersze `success` po starcie, `failed` + `OPERATOR_ALERT` przy błędzie
-- [x] 1.4 Celowe uszkodzenie `track` czerwieni test
-- [x] 1.5 Lint i build backendu
-- [x] 1.6 Wszystkie testy backendu
+- [x] 1.1 Migracja `JobRun` wygenerowana względem `subtracker-db`, przejrzana i zastosowana — 67145e7
+- [x] 1.2 Testy jednostkowe `JobRunService` i `job-run-alert` — 67145e7
+- [x] 1.3 Testy e2e: wiersze `success` po starcie, `failed` + `OPERATOR_ALERT` przy błędzie — 67145e7
+- [x] 1.4 Celowe uszkodzenie `track` czerwieni test — 67145e7
+- [x] 1.5 Lint i build backendu — 67145e7
+- [x] 1.6 Wszystkie testy backendu — 67145e7
 
 #### Manual
 
-- [x] 1.7 Lokalnie trzy linie podsumowania i trzy wiersze `job_run` po `start:dev`
+- [x] 1.7 Lokalnie trzy linie podsumowania i trzy wiersze `job_run` po `start:dev` — 67145e7
 
 ### Phase 2: `/health` z polem `jobs` i handlery procesu
 
 #### Automated
 
-- [ ] 2.1 Testy jednostkowe `jobHealth` i `installFatalHandlers`
-- [ ] 2.2 Test e2e `/health` z `jobs` (`ok`, `stale` po postarzeniu)
-- [ ] 2.3 Istniejące testy `/health` zielone
-- [ ] 2.4 Celowe uszkodzenie progu 26 h czerwieni test
-- [ ] 2.5 Lint i build backendu
+- [x] 2.1 Testy jednostkowe `jobHealth` i `installFatalHandlers`
+- [x] 2.2 Test e2e `/health` z `jobs` (`ok`, `stale` po postarzeniu)
+- [x] 2.3 Istniejące testy `/health` zielone
+- [x] 2.4 Celowe uszkodzenie progu 26 h czerwieni test
+- [x] 2.5 Lint i build backendu
 
 #### Manual
 
-- [ ] 2.6 Lokalnie `curl /health` pokazuje pole `jobs`
+- [x] 2.6 Lokalnie `curl /health` pokazuje pole `jobs`
 
 ### Phase 3: Watchdog
 
