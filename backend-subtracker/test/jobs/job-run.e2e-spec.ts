@@ -7,7 +7,17 @@ import { Mail } from '../../src/mail/entities/mail.entity.js';
 import { MailType } from '../../src/mail/mail.types.js';
 import { SubscriptionLifecycleService } from '../../src/subscriptions/services/subscription-lifecycle.service.js';
 import { SubscriptionLifecycleScheduler } from '../../src/subscriptions/subscription-lifecycle.scheduler.js';
+import { TrialReminderScheduler } from '../../src/subscriptions/trial-reminder.scheduler.js';
+import {
+  addDays,
+  APP_TIME_ZONE,
+  calendarDayIn,
+} from '../../src/shared/date/calendar-day.js';
 import { ADDRESS_DOMAIN, createE2eApp } from '../support/e2e-app.js';
+import {
+  subscriptionBody,
+  subscriptionRequests,
+} from '../subscriptions/subscriptions-e2e.js';
 
 describe('Jobs — run register (e2e)', () => {
   // Runs against the database from .env (locally the dev database, in CI the C.UTF-8 database of
@@ -139,5 +149,56 @@ describe('Jobs — run register (e2e)', () => {
     );
     expect(mails[0].text).not.toContain('forced lifecycle failure');
     expect(mails[0].html).not.toContain('forced lifecycle failure');
+  });
+
+  // J4: a run in which some users got no reminder must not look like a success.
+  it('records a trial reminder run with a failed mail as partial and mails the operator', async () => {
+    const { postSubscription } = subscriptionRequests(e2e);
+    const failing = await e2e.signIn();
+    const trialEndDate = addDays(calendarDayIn(APP_TIME_ZONE, new Date()), 3);
+    await postSubscription(
+      failing.cookie,
+      subscriptionBody({
+        name: 'Partial run trial',
+        status: 'trial',
+        trialEndDate,
+        nextBillingDate: trialEndDate,
+      }),
+    ).expect(201);
+    e2e.failMailTo(failing.address, true);
+    const since = new Date();
+    const sentBefore = sent.length;
+    const logOutput = [
+      vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined),
+      vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined),
+    ];
+
+    try {
+      await e2e.app.get(TrialReminderScheduler).daily();
+    } finally {
+      e2e.failMailTo(failing.address, false);
+      for (const spy of logOutput) {
+        spy.mockRestore();
+      }
+    }
+
+    const runs = await runsSince(since);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({
+      job: 'trial-reminder',
+      trigger: 'cron',
+      outcome: 'partial',
+    });
+    expect(runs[0].counters?.usersFailed).toBeGreaterThanOrEqual(1);
+
+    // MailService may add its own "failed mail" alert; the run's alert is the one by subject.
+    const runAlerts = sent
+      .slice(sentBefore)
+      .filter(
+        (mail) =>
+          mail.to === operator &&
+          mail.subject === 'SubTracker: zadanie trial-reminder — partial',
+      );
+    expect(runAlerts).toHaveLength(1);
   });
 });
