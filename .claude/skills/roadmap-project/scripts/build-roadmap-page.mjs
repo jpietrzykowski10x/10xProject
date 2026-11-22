@@ -5,10 +5,21 @@
 //
 //   node .claude/skills/roadmap-project/scripts/build-roadmap-page.mjs --out <file.html>
 //        [--next <ID>] [--title "<page title>"] [--date YYYY-MM-DD] [--root <repo dir>]
+//        [--current-only] [--refresh-history]
+//
+// Closed milestones stay on the page: every entry of "## Milestone History" is drawn below the
+// current milestone as a finished band. Closing a milestone removes its item blocks from
+// roadmap.md, so their titles, prerequisites and streams come from the last git version of
+// roadmap.md in which that milestone was the current one; without git, from "## Done" (no edges).
+// --current-only leaves the closed milestones out (only when the user asks for it).
+// Once read from git, a closed milestone is saved in ../data/milestones/<M-N>.json and read from
+// there afterwards; --refresh-history reads git again and rewrites those files.
 //
 // Exit codes: 0 ok, 2 no roadmap, 1 any other error.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 
 // ---------------------------------------------------------------- arguments
 
@@ -25,6 +36,7 @@ function parseArgs(argv) {
 
 const args = parseArgs(process.argv.slice(2));
 const root = resolve(args.root ?? process.cwd());
+const skillDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const roadmapPath = join(root, 'context/foundation/roadmap.md');
 const testPlanPath = join(root, 'context/foundation/test-plan.md');
 
@@ -88,65 +100,245 @@ const field = (block, name) => {
   return m ? m[1].trim() : '';
 };
 
-const meta = frontmatter(roadmap);
-
-// Items: every "### F-NN: Title" / "### S-NN: Title" block, in document order.
-const items = [];
-const blockRe = /^### ([FS]-\d{2,}): (.+)$/gm;
-const heads = [...roadmap.matchAll(blockRe)];
-heads.forEach((m, i) => {
-  const from = m.index;
-  const nextHead = heads[i + 1]?.index ?? roadmap.length;
-  // The block ends at the next item heading or the next "## " section, whichever comes first;
-  // the search starts after the heading line, which itself contains "## ".
-  const bodyStart = from + m[0].length;
-  const nextSection = roadmap.slice(bodyStart).search(/^## /m);
-  const to = nextSection < 0 ? nextHead : Math.min(nextHead, bodyStart + nextSection);
-  const block = roadmap.slice(from, to);
-  items.push({
-    id: m[1],
-    title: m[2].trim(),
-    kind: m[1].startsWith('F') ? 'foundation' : 'slice',
-    outcome: field(block, 'Outcome').replace(/^\(foundation\)\s*/, ''),
-    changeId: field(block, 'Change ID'),
-    refs: [...new Set(field(block, 'PRD refs').match(/FR-\d+/g) ?? [])],
-    prereqs: idsIn(field(block, 'Prerequisites')),
-    status: (field(block, 'Status') || 'proposed').toLowerCase(),
+function parseItems(text) {
+  const out = [];
+  const heads = [...text.matchAll(/^### ([FS]-\d{2,}): (.+)$/gm)];
+  heads.forEach((m, i) => {
+    const from = m.index;
+    const nextHead = heads[i + 1]?.index ?? text.length;
+    // The block ends at the next item heading or the next "## " section, whichever comes first;
+    // the search starts after the heading line, which itself contains "## ".
+    const bodyStart = from + m[0].length;
+    const nextSection = text.slice(bodyStart).search(/^## /m);
+    const to = nextSection < 0 ? nextHead : Math.min(nextHead, bodyStart + nextSection);
+    const block = text.slice(from, to);
+    out.push({
+      id: m[1],
+      title: m[2].trim(),
+      kind: m[1].startsWith('F') ? 'foundation' : 'slice',
+      outcome: field(block, 'Outcome').replace(/^\(foundation\)\s*/, ''),
+      changeId: field(block, 'Change ID'),
+      refs: [...new Set(field(block, 'PRD refs').match(/FR-\d+/g) ?? [])],
+      prereqs: idsIn(field(block, 'Prerequisites')),
+      status: (field(block, 'Status') || 'proposed').toLowerCase(),
+    });
   });
-});
+  return out;
+}
+
+// "## Done": "- **S-08: outcome…** — Archived 2026-11-18 → …".
+function parseDone(text) {
+  const out = new Map();
+  for (const line of section(text, 'Done').split('\n')) {
+    const m = /^- \*\*([FS]-\d{2,}):\s*([\s\S]*?)\*\*[\s\S]*?Archived (\d{4}-\d{2}-\d{2})/.exec(line);
+    if (m) out.set(m[1], { outcome: m[2].replace(/^\(foundation\)\s*/, '').trim(), archived: m[3] });
+  }
+  return out;
+}
+
+// One milestone as the roadmap describes it while it is the current one.
+function parseMilestone(text) {
+  const milestoneText = section(text, 'Milestone');
+  const head = /\*\*([^*]+?)\*\*\s*—\s*Status:\s*(\w+)/.exec(milestoneText);
+  const full = head ? head[1].trim() : '';
+  const list = parseItems(text);
+  const ids = new Set(list.map((it) => it.id));
+  for (const it of list) it.prereqs = it.prereqs.filter((p) => ids.has(p) && p !== it.id);
+  const streamList = tableRows(section(text, 'Streams'))
+    .map((row) => ({
+      name: row.stream ?? '',
+      theme: row.theme ?? '',
+      ids: idsIn(row.chain ?? '').filter((id) => ids.has(id)),
+      chain: (row.chain ?? '').replace(/`/g, ''),
+    }))
+    .filter((s) => s.name && s.ids.length > 0);
+  for (const s of streamList) for (const it of list) if (s.ids.includes(it.id)) it.stream ??= s.name;
+  const anchors = field(milestoneText, 'Scope anchors').split(/Nice-to-have/i)[0];
+  return {
+    id: /^(M-\d+)/.exec(full)?.[1] ?? '',
+    name: full.replace(/^M-\d+:\s*/, ''),
+    full,
+    status: head ? head[2].toLowerCase() : '',
+    items: list,
+    streams: streamList,
+    mustHave: [...new Set(anchors.match(/FR-\d+/g) ?? [])],
+    northStar: idsIn(section(text, 'North star'))[0] ?? null,
+  };
+}
+
+const meta = frontmatter(roadmap);
+const current = parseMilestone(roadmap);
+const items = current.items;
 if (items.length === 0) {
   process.stderr.write('The roadmap has no "### F-NN:" / "### S-NN:" items.\n');
   process.exit(1);
 }
-const byId = new Map(items.map((it) => [it.id, it]));
-for (const it of items) it.prereqs = it.prereqs.filter((p) => byId.has(p) && p !== it.id);
+const doneLog = parseDone(roadmap);
+for (const it of items) if (doneLog.has(it.id)) it.archived = doneLog.get(it.id).archived;
+const milestone = current.full;
+const mustHave = current.mustHave;
+const northStar = current.northStar;
+const streams = current.streams;
 
-// Archive dates from "## Done": "- **S-08: …** — Archived 2026-11-18 → …".
-for (const line of section(roadmap, 'Done').split('\n')) {
-  const m = /\*\*([FS]-\d{2,}):[\s\S]*?Archived (\d{4}-\d{2}-\d{2})/.exec(line);
-  if (m && byId.has(m[1])) byId.get(m[1]).archived = m[2];
+// ---------------------------------------------------------------- closed milestones
+
+// "## Milestone History": "- **M-1: Name** (`slug`) — closed 2026-11-22. Summary…".
+const history = section(roadmap, 'Milestone History')
+  .split('\n')
+  .map((line) =>
+    /^- \*\*(M-\d+):\s*(.+?)\*\*(?:\s*\(`([^`]+)`\))?[\s\S]*?closed (\d{4}-\d{2}-\d{2})\.?\s*(.*)$/.exec(line),
+  )
+  .filter(Boolean)
+  .map((m) => ({ id: m[1], name: m[2].trim(), slug: m[3] ?? '', closed: m[4], summary: m[5].trim() }))
+  .filter((h) => h.id !== current.id);
+
+// Git versions of roadmap.md, newest first, read lazily.
+const roadmapRel = 'context/foundation/roadmap.md';
+let gitCommits = null;
+const gitShowCache = new Map();
+function git(argv) {
+  try {
+    return execFileSync('git', argv, {
+      cwd: root,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      maxBuffer: 64 * 1024 * 1024,
+    });
+  } catch {
+    return null;
+  }
+}
+// The newest git version in which `milestoneId` was the current milestone = its final state.
+function snapshotOf(milestoneId) {
+  gitCommits ??= (git(['log', '--format=%H', '--', roadmapRel]) ?? '').split('\n').filter(Boolean);
+  for (const hash of gitCommits) {
+    if (!gitShowCache.has(hash)) {
+      gitShowCache.set(hash, git(['show', `${hash}:${roadmapRel}`])?.replace(/\r\n/g, '\n') ?? null);
+    }
+    const text = gitShowCache.get(hash);
+    if (!text) continue;
+    const parsed = parseMilestone(text);
+    if (parsed.id === milestoneId && parsed.items.length > 0) {
+      return { ...parsed, doneLog: parseDone(text), commit: hash.slice(0, 7) };
+    }
+  }
+  return null;
 }
 
-// Milestone name and must-have FRs ("Scope anchors", before "Nice-to-have").
-const milestoneText = section(roadmap, 'Milestone');
-const milestoneMatch = /\*\*([^*]+?)\*\*\s*—\s*Status:\s*(\w+)/.exec(milestoneText);
-const milestone = milestoneMatch ? milestoneMatch[1].trim() : '';
-const anchors = field(milestoneText, 'Scope anchors').split(/Nice-to-have/i)[0];
-const mustHave = [...new Set(anchors.match(/FR-\d+/g) ?? [])];
+// A closed milestone does not change any more, so once read from git it is saved as
+// data/milestones/<M-N>.json next to the skill and read from there on every later run.
+// --refresh-history ignores the saved files and reads git again (and rewrites them).
+const dataDir = join(skillDir, 'data', 'milestones');
+const dataRel = (id) => `.claude/skills/roadmap-project/data/milestones/${id}.json`;
+function readSaved(id) {
+  const file = join(dataDir, `${id}.json`);
+  if (args['refresh-history'] === 'true' || !existsSync(file)) return null;
+  try {
+    return JSON.parse(readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+function save(record) {
+  mkdirSync(dataDir, { recursive: true });
+  writeFileSync(join(dataDir, `${record.id}.json`), JSON.stringify(record, null, 2) + '\n', 'utf8');
+}
 
-// North star: the first ID under "## North star".
-const northStar = idsIn(section(roadmap, 'North star'))[0] ?? null;
+// Final state of a closed milestone from git, with archive dates and "done" from "## Done".
+function fromGit(h) {
+  const snap = snapshotOf(h.id);
+  if (!snap) return null;
+  for (const it of snap.items) {
+    const d = doneLog.get(it.id) ?? snap.doneLog.get(it.id);
+    if (d) {
+      it.archived = d.archived;
+      it.status = 'done';
+    }
+  }
+  return {
+    id: h.id,
+    name: h.name,
+    slug: h.slug,
+    closed: h.closed,
+    summary: h.summary,
+    commit: snap.commit,
+    mustHave: snap.mustHave,
+    northStar: snap.northStar,
+    streams: snap.streams,
+    items: snap.items.map(({ id, title, kind, outcome, changeId, refs, prereqs, status, archived, stream }) => ({
+      id, title, kind, outcome, changeId, refs, prereqs, status, archived, stream,
+    })),
+  };
+}
 
-// Streams table.
-const streams = tableRows(section(roadmap, 'Streams'))
-  .map((row) => ({
-    name: row.stream ?? '',
-    theme: row.theme ?? '',
-    ids: idsIn(row.chain ?? '').filter((id) => byId.has(id)),
-    chain: (row.chain ?? '').replace(/`/g, ''),
-  }))
-  .filter((s) => s.name && s.ids.length > 0);
-for (const s of streams) for (const id of s.ids) byId.get(id).stream ??= s.name;
+const seen = new Set(items.map((it) => it.id));
+const closed = [];
+const savedNow = [];
+if (args['current-only'] !== 'true') {
+  for (const h of history) {
+    let record = readSaved(h.id);
+    let source = record ? `z pliku ${dataRel(h.id)}` : '';
+    if (!record) {
+      record = fromGit(h);
+      if (record) {
+        save(record);
+        savedNow.push(dataRel(h.id));
+        source = `z git ${record.commit}, zapisane w ${dataRel(h.id)}`;
+      }
+    }
+    if (!record) {
+      closed.push({ ...h, items: [], streams: [], mustHave: [], northStar: null, source: 'z ## Done, bez zależności' });
+      continue;
+    }
+    const own = record.items.filter((it) => !seen.has(it.id));
+    for (const it of own) seen.add(it.id);
+    const ownIds = new Set(own.map((it) => it.id));
+    for (const it of own) it.prereqs = it.prereqs.filter((p) => ownIds.has(p));
+    closed.push({
+      ...h,
+      items: own,
+      streams: record.streams
+        .map((s) => ({ ...s, ids: s.ids.filter((id) => ownIds.has(id)) }))
+        .filter((s) => s.ids.length > 0),
+      mustHave: record.mustHave,
+      northStar: record.northStar,
+      source,
+    });
+  }
+  // Neither a saved file nor git: whatever "## Done" lists and no band has drawn yet, no edges.
+  const leftovers = [...doneLog.entries()]
+    .filter(([id]) => !seen.has(id))
+    .map(([id, d]) => ({
+      id,
+      title: d.outcome.length > 60 ? `${d.outcome.slice(0, 57).replace(/\s+\S*$/, '')}…` : d.outcome,
+      kind: id.startsWith('F') ? 'foundation' : 'slice',
+      outcome: d.outcome,
+      refs: [],
+      prereqs: [],
+      status: 'done',
+      archived: d.archived,
+    }));
+  if (leftovers.length > 0) {
+    const target = closed.find((c) => c.items.length === 0);
+    if (target) target.items = leftovers;
+    else {
+      closed.push({
+        id: '',
+        name: 'Wcześniej zrobione',
+        slug: '',
+        closed: '',
+        summary: '',
+        items: leftovers,
+        streams: [],
+        mustHave: [],
+        northStar: null,
+        source: 'z ## Done, bez zależności',
+      });
+    }
+  }
+}
+const closedBands = closed.filter((c) => c.items.length > 0);
+const byId = new Map([...items, ...closedBands.flatMap((c) => c.items)].map((it) => [it.id, it]));
 
 // Test plan §3: rows with Status "complete".
 let testPlan = null;
@@ -191,82 +383,111 @@ remaining.sort((a, b) => (a.id === next ? -1 : b.id === next ? 1 : 0));
 
 // ---------------------------------------------------------------- graph layout
 
-// Transitive reduction: drop u→v when v is reachable from u another way.
-function reachable(from, target, skipDirect) {
-  const stack = byId.get(from).prereqs.filter((p) => !(skipDirect && p === target));
-  const seen = new Set();
-  while (stack.length) {
-    const cur = stack.pop();
-    if (cur === target) return true;
-    if (seen.has(cur)) continue;
-    seen.add(cur);
-    stack.push(...byId.get(cur).prereqs);
-  }
-  return false;
-}
-const omitted = [];
-for (const it of items) {
-  const kept = it.prereqs.filter((p) => !reachable(it.id, p, true));
-  for (const p of it.prereqs) if (!kept.includes(p)) omitted.push(`${p} → ${it.id}`);
-  it.parents = kept;
-}
-for (const it of items) it.children = items.filter((c) => c.parents.includes(it.id)).map((c) => c.id);
-
-// Depth = longest path from a root.
-const depthMemo = new Map();
-function depth(id, trail = new Set()) {
-  if (depthMemo.has(id)) return depthMemo.get(id);
-  if (trail.has(id)) return 0; // cycle guard
-  trail.add(id);
-  const it = byId.get(id);
-  const d = it.parents.length ? 1 + Math.max(...it.parents.map((p) => depth(p, trail))) : 0;
-  trail.delete(id);
-  depthMemo.set(id, d);
-  return d;
-}
-for (const it of items) it.depth = depth(it.id);
-const maxDepth = Math.max(...items.map((it) => it.depth));
-const columns = Array.from({ length: maxDepth + 1 }, (_, d) => items.filter((it) => it.depth === d));
-
 const W = 184;
 const H = 84;
 const COL_GAP = 40;
 const ROW = H + 18;
-const order = new Map(items.map((it, i) => [it.id, i]));
+const BAND_HEAD = 40; // milestone label above each band
+const BAND_GAP = 36; // space between bands (a rule sits in the middle)
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
-function place(column, desired) {
-  const sorted = [...column].sort(
-    (a, b) => desired.get(a.id) - desired.get(b.id) || order.get(a.id) - order.get(b.id),
-  );
-  let prev = -Infinity;
-  const ys = sorted.map((it) => (prev = Math.max(desired.get(it.id), prev + ROW)));
-  const shift = mean(sorted.map((it) => desired.get(it.id))) - mean(ys);
-  sorted.forEach((it, i) => (it.y = ys[i] + shift));
+// Lays out one milestone's items left to right (depth = column); y starts at 0. Prerequisites
+// only point inside the same list. Returns the omitted transitive edges and the band size.
+function layout(list) {
+  const local = new Map(list.map((it) => [it.id, it]));
+  const prereqsOf = (id) => local.get(id).prereqs.filter((p) => local.has(p));
+
+  // Transitive reduction: drop u→v when v is reachable from u another way.
+  function reachable(from, target) {
+    const stack = prereqsOf(from).filter((p) => p !== target);
+    const visited = new Set();
+    while (stack.length) {
+      const cur = stack.pop();
+      if (cur === target) return true;
+      if (visited.has(cur)) continue;
+      visited.add(cur);
+      stack.push(...prereqsOf(cur));
+    }
+    return false;
+  }
+  const omittedHere = [];
+  for (const it of list) {
+    const own = prereqsOf(it.id);
+    it.parents = own.filter((p) => !reachable(it.id, p));
+    for (const p of own) if (!it.parents.includes(p)) omittedHere.push(`${p} → ${it.id}`);
+  }
+  for (const it of list) it.children = list.filter((c) => c.parents.includes(it.id)).map((c) => c.id);
+
+  // Depth = longest path from a root.
+  const depthMemo = new Map();
+  function depth(id, trail = new Set()) {
+    if (depthMemo.has(id)) return depthMemo.get(id);
+    if (trail.has(id)) return 0; // cycle guard
+    trail.add(id);
+    const it = local.get(id);
+    const d = it.parents.length ? 1 + Math.max(...it.parents.map((p) => depth(p, trail))) : 0;
+    trail.delete(id);
+    depthMemo.set(id, d);
+    return d;
+  }
+  for (const it of list) it.depth = depth(it.id);
+  const maxDepth = Math.max(...list.map((it) => it.depth));
+  const columns = Array.from({ length: maxDepth + 1 }, (_, d) => list.filter((it) => it.depth === d));
+  const order = new Map(list.map((it, i) => [it.id, i]));
+
+  function place(column, desired) {
+    const sorted = [...column].sort(
+      (a, b) => desired.get(a.id) - desired.get(b.id) || order.get(a.id) - order.get(b.id),
+    );
+    let prev = -Infinity;
+    const ys = sorted.map((it) => (prev = Math.max(desired.get(it.id), prev + ROW)));
+    const shift = mean(sorted.map((it) => desired.get(it.id))) - mean(ys);
+    sorted.forEach((it, i) => (it.y = ys[i] + shift));
+  }
+  for (const column of columns) {
+    const desired = new Map(
+      column.map((it) => [it.id, it.parents.length ? mean(it.parents.map((p) => local.get(p).y)) : 0]),
+    );
+    place(column, desired);
+  }
+  for (let d = columns.length - 2; d >= 0; d -= 1) {
+    const desired = new Map(
+      columns[d].map((it) => [
+        it.id,
+        it.children.length ? mean(it.children.map((c) => local.get(c).y)) : it.y,
+      ]),
+    );
+    place(columns[d], desired);
+  }
+  const minY = Math.min(...list.map((it) => it.y));
+  for (const it of list) {
+    it.y = Math.round(it.y - minY);
+    it.x = 20 + it.depth * (W + COL_GAP);
+  }
+  return {
+    omitted: omittedHere,
+    width: (maxDepth + 1) * (W + COL_GAP) - COL_GAP,
+    height: Math.max(...list.map((it) => it.y)) + H,
+  };
 }
-for (const column of columns) {
-  const desired = new Map(
-    column.map((it) => [it.id, it.parents.length ? mean(it.parents.map((p) => byId.get(p).y)) : 0]),
-  );
-  place(column, desired);
+
+// Bands top to bottom: the current milestone, then the closed ones (newest first, as listed).
+const bands = [
+  { kind: 'current', id: current.id, name: current.name, items, northStar },
+  ...closedBands.map((c) => ({ kind: 'closed', id: c.id, name: c.name, closed: c.closed, items: c.items, northStar: c.northStar })),
+];
+let cursor = 20;
+for (const band of bands) {
+  const box = layout(band.items);
+  band.omitted = box.omitted;
+  band.top = cursor;
+  for (const it of band.items) it.y += cursor + BAND_HEAD;
+  band.width = box.width;
+  cursor += BAND_HEAD + box.height + BAND_GAP;
 }
-for (let d = columns.length - 2; d >= 0; d -= 1) {
-  const desired = new Map(
-    columns[d].map((it) => [
-      it.id,
-      it.children.length ? mean(it.children.map((c) => byId.get(c).y)) : it.y,
-    ]),
-  );
-  place(columns[d], desired);
-}
-const TOP = 34;
-const minY = Math.min(...items.map((it) => it.y));
-for (const it of items) {
-  it.y = Math.round(it.y - minY + TOP);
-  it.x = 20 + it.depth * (W + COL_GAP);
-}
-const svgW = 20 + (maxDepth + 1) * (W + COL_GAP) - COL_GAP + 20;
-const svgH = Math.max(...items.map((it) => it.y)) + H + 20;
+const omitted = bands.flatMap((b) => b.omitted);
+const svgW = 20 + Math.max(...bands.map((b) => b.width)) + 20;
+const svgH = cursor - BAND_GAP + 20;
 
 // ---------------------------------------------------------------- text helpers
 
@@ -311,10 +532,10 @@ const longDate = (iso) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0,
 
 // ---------------------------------------------------------------- SVG
 
-function nodeSvg(it) {
+function nodeSvg(it, band) {
   const cls = isDone(it) ? 'done' : it.status === 'in-progress' ? 'active' : 'todo';
   const nextCls = it.id === next ? ' next' : '';
-  const label = `${it.id}${it.id === northStar ? ' ★' : ''}${it.stream ? ` · ${it.stream}` : ''}`;
+  const label = `${it.id}${it.id === band.northStar ? ' ★' : ''}${it.stream ? ` · ${it.stream}` : ''}`;
   const name = wrap(it.title, 24, 2);
   const refs = it.refs.slice(0, 2).join(', ') + (it.refs.length > 2 ? '…' : '');
   const metaText = [isDone(it) ? shortDate(it.archived) || 'zrobione' : statusPl(it.status), refs]
@@ -351,11 +572,37 @@ function edgeSvg(parent, child) {
   return `<path class="edge ${done ? 'done' : 'todo'}" marker-end="url(#${done ? 'ad' : 'at'})" d="${d}"/>`;
 }
 
-const edges = items.flatMap((it) => it.parents.map((p) => edgeSvg(byId.get(p), it)));
+// Band heading: "M-2 · Name — w toku" for the current milestone, "… — zamknięty DD.MM.RRRR" below.
+function bandLabel(band) {
+  const doneHere = band.items.filter(isDone).length;
+  const state =
+    band.kind === 'current'
+      ? `bieżący · ${doneHere} z ${band.items.length}`
+      : `zamknięty${band.closed ? ` ${longDate(band.closed)}` : ''} · ${doneHere} z ${band.items.length}`;
+  return { head: [band.id, band.name].filter(Boolean).join(' · '), state };
+}
+function bandSvg(band, index) {
+  const { head, state } = bandLabel(band);
+  const rule =
+    index > 0
+      ? `<line class="band-rule" x1="20" x2="${svgW - 20}" y1="${band.top - BAND_GAP / 2}" y2="${band.top - BAND_GAP / 2}"/>`
+      : '';
+  return `${rule}
+          <text class="band-head ${band.kind}" x="20" y="${band.top + 16}">${esc(head)}<tspan class="band-state" dx="12">${esc(state)}</tspan></text>
+          ${band.items.flatMap((it) => it.parents.map((p) => edgeSvg(byId.get(p), it))).join('\n          ')}
+          ${band.items.map((it) => nodeSvg(it, band)).join('\n          ')}`;
+}
+const graphSvg = bands.map(bandSvg).join('\n          ');
 const svgDesc =
-  items
-    .map((it) => `${it.id} (${statusPl(it.status)})${it.parents.length ? ` zależy od ${it.parents.join(', ')}` : ''}`)
-    .join('; ') + '.';
+  bands
+    .map(
+      (band) =>
+        `${bandLabel(band).head} (${bandLabel(band).state}): ` +
+        band.items
+          .map((it) => `${it.id} (${statusPl(it.status)})${it.parents.length ? ` zależy od ${it.parents.join(', ')}` : ''}`)
+          .join('; '),
+    )
+    .join('. ') + '.';
 
 // ---------------------------------------------------------------- page
 
@@ -432,6 +679,42 @@ const remainingCards = remaining
 const omittedNote = omitted.length
   ? ` Pominięte zależności przechodnie: ${omitted.join(', ')}.`
   : '';
+const bandsNote = closedBands.length
+  ? ` Pod bieżącym kamieniem milowym są zamknięte (${closedBands.map((c) => c.id || c.name).join(', ')}).`
+  : '';
+
+function closedNumbers(c) {
+  const doneHere = c.items.filter(isDone);
+  const frDone = new Set(doneHere.flatMap((it) => it.refs));
+  return {
+    done: doneHere.length,
+    total: c.items.length,
+    frCovered: c.mustHave.filter((fr) => frDone.has(fr)).length,
+    frTotal: c.mustHave.length,
+  };
+}
+const closedCards = closed
+  .map((c) => {
+    const n = closedNumbers(c);
+    const facts = [
+      `${n.done} z ${n.total} pozycji`,
+      n.frTotal ? `${n.frCovered} z ${n.frTotal} FR must-have` : '',
+      c.closed ? `zamknięty ${longDate(c.closed)}` : '',
+    ].filter(Boolean);
+    const streamLines = c.streams
+      .map((s) => {
+        const d = s.ids.filter((id) => isDone(byId.get(id))).length;
+        return `<li><span class="stream-title">${esc(s.name)} · ${esc(s.theme)}</span> <span class="stream-count num">${d} z ${s.ids.length}</span><div class="stream-chain">${esc(s.chain)}</div></li>`;
+      })
+      .join('');
+    return `<div class="closed-item">
+  <div class="stream-head"><span class="stream-title">${esc([c.id, c.name].filter(Boolean).join(' · '))}</span><span class="closed-tag">zamknięty</span></div>
+  <p class="closed-facts num">${esc(facts.join(' · '))}</p>
+  ${c.summary ? `<p class="left-body closed-summary">${esc(c.summary)}</p>` : ''}
+  ${streamLines ? `<ul class="closed-streams">${streamLines}</ul>` : ''}
+</div>`;
+  })
+  .join('\n');
 
 const html = `<title>${esc(title)}</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -531,6 +814,17 @@ const html = `<title>${esc(title)}</title>
   .left-body { grid-column: 2; color: var(--ink-soft); margin: 0; }
   .tag { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--lime); color: var(--on-lime); font-size: 12px; font-weight: 700; vertical-align: 2px; }
   .foot { color: var(--muted); font-size: 13px; margin: 0; }
+  .band-head { font-family: var(--font-sans); font-size: 14px; font-weight: 700; fill: var(--ink); }
+  .band-head.closed { fill: var(--muted); }
+  .band-state { font-size: 12.5px; font-weight: 500; fill: var(--muted); }
+  .band-rule { stroke: var(--line); stroke-width: 1; }
+  .closed-list { display: grid; gap: 12px; }
+  .closed-item { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 16px 18px; display: grid; gap: 6px; min-width: 0; }
+  .closed-tag { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--node-done); color: var(--node-done-ink); font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .closed-facts { margin: 0; color: var(--muted); font-size: 13px; }
+  .closed-summary { grid-column: auto; }
+  .closed-streams { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
+  .closed-streams .stream-count { margin-left: 6px; }
   @media (max-width: 520px) { .left-item { grid-template-columns: 1fr; } .left-body { grid-column: 1; } }
 </style>
 
@@ -551,7 +845,7 @@ ${meters.join('\n')}
   <div class="wrap">
     <section aria-labelledby="graph-title">
       <h2 id="graph-title">Zależności</h2>
-      <p class="section-note">Strzałka prowadzi od wymagania wstępnego do pozycji, która na nim stoi.${esc(omittedNote)}</p>
+      <p class="section-note">Strzałka prowadzi od wymagania wstępnego do pozycji, która na nim stoi.${esc(bandsNote + omittedNote)}</p>
       <div class="graph-frame" tabindex="0" role="region" aria-label="Graf zależności roadmapy, przewijany w poziomie">
         <svg class="graph" width="${svgW}" viewBox="0 0 ${svgW} ${svgH}" role="img" aria-labelledby="svg-title svg-desc">
           <title id="svg-title">Graf zależności: ${esc(title)}</title>
@@ -560,16 +854,15 @@ ${meters.join('\n')}
             <marker id="ad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow-done" d="M0 0 L10 5 L0 10 z"/></marker>
             <marker id="at" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow-todo" d="M0 0 L10 5 L0 10 z"/></marker>
           </defs>
-          ${edges.join('\n          ')}
-          ${items.map(nodeSvg).join('\n          ')}
+          ${graphSvg}
         </svg>
       </div>
       <div class="legend">
         <span><i class="swatch done"></i>zrobione (data archiwum)</span>
         <span><i class="swatch todo"></i>jeszcze nie zrobione</span>
         <span><i class="swatch next"></i>następne w kolejce</span>
-        ${northStar ? '<span>★ gwiazda przewodnia</span>' : ''}
-        ${streams.length ? `<span>${esc(streams.map((s) => s.name).join('–'))}: stream</span>` : ''}
+        ${bands.some((b) => b.northStar) ? '<span>★ gwiazda przewodnia</span>' : ''}
+        ${streams.length || closedBands.some((c) => c.streams.length) ? '<span>litera po ID: stream danego kamienia milowego</span>' : ''}
       </div>
     </section>
 ${
@@ -595,7 +888,19 @@ ${remainingCards}
     </section>`
     : ''
 }
-    <p class="foot">Źródło: context/foundation/roadmap.md (updated ${esc(meta.updated ?? '?')})${testPlan ? ' i context/foundation/test-plan.md §3' : ''}. Strona generowana skillem /roadmap-project.</p>
+${
+  closed.length
+    ? `
+    <section aria-labelledby="closed-title">
+      <h2 id="closed-title">Zamknięte kamienie milowe</h2>
+      <p class="section-note">Wykonana wcześniej praca. Pozycje są na grafie pod bieżącym kamieniem milowym.</p>
+      <div class="closed-list">
+${closedCards}
+      </div>
+    </section>`
+    : ''
+}
+    <p class="foot">Źródło: context/foundation/roadmap.md (updated ${esc(meta.updated ?? '?')})${testPlan ? ' i context/foundation/test-plan.md §3' : ''}${closed.length ? `; zamknięte kamienie milowe: ${esc(closed.map((c) => `${c.id || c.name} ${c.source}`).join(', '))}` : ''}. Strona generowana skillem /roadmap-project.</p>
   </div>
 </main>
 `;
@@ -625,6 +930,18 @@ const summary = {
   })),
   remaining: remaining.map((it) => ({ id: it.id, title: it.title, status: it.status })),
   next,
+  closedMilestones: closed.map((c) => {
+    const n = closedNumbers(c);
+    return {
+      id: c.id,
+      name: c.name,
+      closed: c.closed,
+      items: { done: n.done, total: n.total },
+      mustHaveFr: n.frTotal ? { covered: n.frCovered, total: n.frTotal } : null,
+      source: c.source,
+    };
+  }),
+  savedClosedMilestones: savedNow,
   omittedTransitiveEdges: omitted,
   out: resolve(args.out),
 };
