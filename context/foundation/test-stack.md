@@ -1,6 +1,34 @@
 # Test stack
 
 How to add and run each kind of test, with the reasoning: `context/foundation/test-plan.md` §6 (browser e2e: §6.5).
+Read by `/10x-tdd` (runner, single-file command, placement) and `/10x-e2e`. No root `package.json`: every
+command runs inside its app's directory. Commands checked 2026-11-22.
+
+## Frontend unit and component tests
+
+- runner: Vitest through Angular's `@angular/build:unit-test` builder (`ng test`), jsdom; component tests with TestBed
+- location: `*.spec.ts` next to the tested file in `frontend-subtracker/src/` (cookbook §6.1 units, §6.2 components)
+- single-file command: cd frontend-subtracker && npx ng test --include src/app/subscriptions/subscription-amounts.spec.ts --watch=false
+- full-suite command: cd frontend-subtracker && npm test -- --watch=false (machine time zone); as CI runs it, in Europe/Warsaw and America/New_York: npm run test:ci
+- time zones: a test that depends on the zone passes in both; `TZ=...` before `ng test` does not work on Windows, use `test:ci`
+- CI: job `frontend` (`npm run test:ci`)
+
+## Backend unit tests
+
+- runner: Vitest (`backend-subtracker/vitest.config.ts`, `**/*.spec.ts`, globals on; `*.e2e-spec.ts` is not matched)
+- location: `*.spec.ts` next to the tested file in `backend-subtracker/src/`; helpers in `src/shared/<area>/` always with a test next to them (cookbook §6.3)
+- single-file command: cd backend-subtracker && npx vitest run src/shared/database/like-pattern.spec.ts
+- full-suite command: cd backend-subtracker && npm test
+- CI: job `backend` (`npm run lint`, `npm test`)
+
+## Backend API tests (e2e against PostgreSQL)
+
+- runner: Vitest with `backend-subtracker/vitest.config.e2e.ts` (`test/**/*.e2e-spec.ts`, files one after another on one database); helper `test/support/e2e-app.ts`
+- location: `backend-subtracker/test/<area>.e2e-spec.ts` or `test/<area>/<topic>.e2e-spec.ts`; shared requests of an area in a helper without `.e2e-spec` (cookbook §6.4)
+- single-file command: cd backend-subtracker && npx vitest run --config ./vitest.config.e2e.ts test/subscriptions/account-isolation.e2e-spec.ts
+- full-suite command: cd backend-subtracker && npm run test:e2e
+- needs: local PostgreSQL and `backend-subtracker/.env` (`subtracker-db-dev`); sorting of Polish text is proven only in CI (Postgres 16, `C.UTF-8`)
+- CI: job `backend-e2e`
 
 ## E2E
 
