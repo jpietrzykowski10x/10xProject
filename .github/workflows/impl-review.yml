@@ -174,7 +174,10 @@ jobs:
             npm command inside backend-subtracker/ or frontend-subtracker/ (see CLAUDE.md).
             Dependencies of both apps are installed and a Postgres 16 (C.UTF-8) with the schema
             migrated is running. FIRST run `cp "$RUNNER_TEMP/backend-ci.env" backend-subtracker/.env`
-            (the checkout was reset after setup, so the .env is gone); then backend `npm test`,
+            (the checkout was reset after setup, so the .env is gone). Prefix every backend command
+            with `unset MODE;` (e.g. `cd backend-subtracker && unset MODE; npm run test:e2e`): the
+            runner exports an empty MODE, and process.loadEnvFile never overrides a variable that
+            is already set, so it would shadow MODE=DEV from the .env. Then backend `npm test`,
             `npm run test:e2e` and `npm run migration:show` work here. Playwright browsers are NOT installed: browser e2e
             (`npm run build:e2e && npm run e2e`) runs in the required check `browser-e2e` of
             ci.yml on this PR; report it as covered by that check, not as a failure.
