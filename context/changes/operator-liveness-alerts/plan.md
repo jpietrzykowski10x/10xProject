@@ -354,28 +354,28 @@ Nowa tabela, bez zmian istniejących danych. Na produkcji migracja wchodzi w `de
 
 #### Automated
 
-- [x] 2.1 Testy jednostkowe `jobHealth` i `installFatalHandlers`
-- [x] 2.2 Test e2e `/health` z `jobs` (`ok`, `stale` po postarzeniu)
-- [x] 2.3 Istniejące testy `/health` zielone
-- [x] 2.4 Celowe uszkodzenie progu 26 h czerwieni test
-- [x] 2.5 Lint i build backendu
+- [x] 2.1 Testy jednostkowe `jobHealth` i `installFatalHandlers` — ed0e08a
+- [x] 2.2 Test e2e `/health` z `jobs` (`ok`, `stale` po postarzeniu) — ed0e08a
+- [x] 2.3 Istniejące testy `/health` zielone — ed0e08a
+- [x] 2.4 Celowe uszkodzenie progu 26 h czerwieni test — ed0e08a
+- [x] 2.5 Lint i build backendu — ed0e08a
 
 #### Manual
 
-- [x] 2.6 Lokalnie `curl /health` pokazuje pole `jobs`
+- [x] 2.6 Lokalnie `curl /health` pokazuje pole `jobs` — ed0e08a
 
 ### Phase 3: Watchdog
 
 #### Automated
 
-- [ ] 3.1 Testy jednostkowe `decide`
-- [ ] 3.2 Celowe uszkodzenie progu 3 albo 12 h czerwieni test
-- [ ] 3.3 Shellcheck skryptów MyDevil czysty
-- [ ] 3.4 Lint i build backendu, `cli/watchdog.js` w paczce
+- [x] 3.1 Testy jednostkowe `decide`
+- [x] 3.2 Celowe uszkodzenie progu 3 albo 12 h czerwieni test
+- [x] 3.3 Shellcheck skryptów MyDevil czysty
+- [x] 3.4 Lint i build backendu, `cli/watchdog.js` w paczce
 
 #### Manual
 
-- [ ] 3.5 Lokalna próba: mail przy 3. porażce i jeden mail o powrocie
+- [x] 3.5 Lokalna próba: mail przy 3. porażce i jeden mail o powrocie
 
 ### Phase 4: Dokumentacja i produkcja
 
