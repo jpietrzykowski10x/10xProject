@@ -113,6 +113,10 @@ jobs:
           EOF
           npm ci
           npm run migration:run
+          # A copy outside the repo: claude-code-action resets the checkout when it restores
+          # .claude/ from the base branch and the untracked .env is gone in Claude's session
+          # (PR #62: "Missing required environment variable MODE"). The prompt restores it.
+          cp .env "$RUNNER_TEMP/backend-ci.env"
 
       - name: Frontend dependencies
         if: steps.guard.outputs.skip != 'true'
@@ -168,13 +172,21 @@ jobs:
 
             Repository layout: two independent npm apps without a root package.json. Run every
             npm command inside backend-subtracker/ or frontend-subtracker/ (see CLAUDE.md).
-            Dependencies of both apps are installed; backend-subtracker/.env points at a
-            Postgres 16 (C.UTF-8) with the schema migrated, so backend `npm test` and
-            `npm run test:e2e` work here. Playwright browsers are NOT installed: browser e2e
+            Dependencies of both apps are installed and a Postgres 16 (C.UTF-8) with the schema
+            migrated is running. FIRST run `cp "$RUNNER_TEMP/backend-ci.env" backend-subtracker/.env`
+            (the checkout was reset after setup, so the .env is gone); then backend `npm test`,
+            `npm run test:e2e` and `npm run migration:show` work here. Playwright browsers are NOT installed: browser e2e
             (`npm run build:e2e && npm run e2e`) runs in the required check `browser-e2e` of
             ci.yml on this PR; report it as covered by that check, not as a failure.
             Manual Verification rows and production steps (deploy, scp, crontab, MyDevil) cannot
             run here: treat them as pending human checks, as the skill describes.
+
+            No one is watching and this session ends the moment you end your turn. Run the
+            evidence subagents (Agent tool) in the FOREGROUND — several Agent calls in one message
+            run in parallel and you get their results back — and never with `run_in_background`.
+            Never end a turn to "wait" for subagents or commands: keep working until the report
+            is committed and the summary comment is posted (PR #62's first run ended after
+            launching background subagents and produced nothing).
 
             Plan discovery is automatic (PR diff + optional `Plan: ...`
             override in the PR body). If no plan is detected, post the
