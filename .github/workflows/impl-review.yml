@@ -38,6 +38,8 @@ jobs:
       contents: write
       pull-requests: write
       statuses: write
+      # gh workflow run ci.yml on the review commit (last step).
+      actions: write
     services:
       postgres:
         image: postgres:16
@@ -247,6 +249,25 @@ jobs:
           fi
 
           exit $FAILED
+
+      # The review commit has [skip ci] and is pushed with GITHUB_TOKEN, so it starts no CI run; as
+      # the new PR head it would leave the required checks of the protect-main ruleset "waiting for
+      # status" and block the merge until someone pushes again. A workflow_dispatch from
+      # GITHUB_TOKEN does start a run (GitHub's exception), and [skip ci] does not apply to it.
+      - name: Run CI on the review commit
+        if: always() && steps.guard.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git fetch origin "$HEAD_REF" --depth=1 2>&1 | tail -1
+          AUTHOR=$(git log -1 --format='%an' FETCH_HEAD)
+          if [[ "$AUTHOR" != "claude[bot]" && "$AUTHOR" != "github-actions[bot]" ]]; then
+            echo "Branch tip is not a review commit (author: $AUTHOR) — CI already runs on it."
+            exit 0
+          fi
+          gh workflow run ci.yml --ref "$HEAD_REF"
+          echo "::notice::CI dispatched on $HEAD_REF for the review commit $(git rev-parse --short FETCH_HEAD)."
 
       - name: Check review verdict
         if: always()
