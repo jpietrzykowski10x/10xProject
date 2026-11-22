@@ -1,2 +1,5 @@
 # Server scripts run on FreeBSD (MyDevil) — never check them out with CRLF.
 *.sh text eol=lf
+# The 10x CLI hashes its managed block in CLAUDE.md byte for byte; a CRLF checkout makes it
+# look locally modified and the CLI skips every later lesson's rules.
+CLAUDE.md text eol=lf
