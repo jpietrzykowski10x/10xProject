@@ -79,8 +79,10 @@ jobs:
           SUBJECT=$(git log -1 --format='%s')
           # Without a prior review a labeled event must still run (gh pr create --label sends
           # opened + labeled and concurrency cancels opened).
-          PRIOR_CLAUDE=$(git log --author='claude\[bot\]' -1 --format='%H' 2>/dev/null || true)
-          if [[ "$AUTHOR" == "claude[bot]" || "$SUBJECT" == *"[skip ci]"* ]]; then
+          # The review commit is authored by claude[bot] (Claude GitHub App) or github-actions[bot]
+          # (the workflow token passed as github_token below); both count as the bot.
+          PRIOR_CLAUDE=$(git log --author='claude\[bot\]' --author='github-actions\[bot\]' -1 --format='%H' 2>/dev/null || true)
+          if [[ "$AUTHOR" == "claude[bot]" || "$AUTHOR" == "github-actions[bot]" || "$SUBJECT" == *"[skip ci]"* ]]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
           elif [[ "$EVENT_ACTION" == "labeled" || "$EVENT_ACTION" == "unlabeled" ]] && [[ -n "$PRIOR_CLAUDE" ]]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -139,6 +141,10 @@ jobs:
           SUBTRACKER_AGENT_HOOKS: "off"
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # The workflow token (the job's permissions above) instead of the Claude GitHub App token,
+          # which the action would fetch through OIDC and which needs the app installed and
+          # `id-token: write`.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           claude_args: |
             --model claude-opus-5-5
             --max-turns 60
@@ -187,7 +193,7 @@ jobs:
           SUBJECT=$(git log -1 --format='%s' FETCH_HEAD)
           echo "Branch tip: sha=${TIP:0:10} author=\"$AUTHOR\" subject=\"$SUBJECT\""
 
-          if [[ "$AUTHOR" != "claude[bot]" ]]; then
+          if [[ "$AUTHOR" != "claude[bot]" && "$AUTHOR" != "github-actions[bot]" ]]; then
             echo "Tip is not a bot commit — nothing to validate."
             exit 0
           fi
