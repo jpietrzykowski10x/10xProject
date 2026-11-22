@@ -67,16 +67,35 @@ chmod 700 "$STATE_DIR"
 
 # One run at a time: a hanging SMTP can make a run outlast the 5-minute cron
 # step, and two runs on the same state.json would send the same alert twice.
+# A run is stopped after RUN_TIMEOUT_SECONDS, so a lock older than
+# RUN_LOCK_MAX_AGE_MINUTES was left by a run that was killed (SIGKILL, reboot)
+# before its trap: it is taken over and logged, never left to silence the
+# watchdog for good (the same rule as .ops.lock above).
 RUN_LOCK="$STATE_DIR/.run.lock"
+RUN_TIMEOUT_SECONDS=240
+RUN_LOCK_MAX_AGE_MINUTES=15
 if ! mkdir "$RUN_LOCK" 2>/dev/null; then
-  log "the previous watchdog run is still going; skipped"
-  exit 0
+  if [ ! -d "$RUN_LOCK" ]; then
+    log "cannot create the lock $RUN_LOCK; cannot run"
+    exit 1
+  fi
+  if [ -n "$(find "$RUN_LOCK" -maxdepth 0 -mmin -"$RUN_LOCK_MAX_AGE_MINUTES")" ]; then
+    log "the previous watchdog run is still going; skipped"
+    exit 0
+  fi
+  log "$RUN_LOCK is older than $RUN_LOCK_MAX_AGE_MINUTES minutes (left by a killed run); taking it over"
+  if ! { rmdir "$RUN_LOCK" && mkdir "$RUN_LOCK"; }; then
+    log "cannot take over the lock $RUN_LOCK; cannot run"
+    exit 1
+  fi
 fi
 trap 'rmdir "$RUN_LOCK"' EXIT
 trap 'exit 1' INT TERM HUP
 
 # Subshell: the api env stays local. Run from the live release, like the
-# migrations in deploy.sh; the exit code is the watchdog's own (1 = bad env).
+# migrations in deploy.sh; the exit code is the watchdog's own (1 = bad env,
+# 124 = stopped by the time limit).
+STATUS=0
 (
   cd "$API_LIVE"
   set -a
@@ -87,5 +106,9 @@ trap 'exit 1' INT TERM HUP
   export WATCHDOG_API_PORT="$API_PORT"
   export WATCHDOG_FRONTEND_PORT="$FRONTEND_PORT"
   export WATCHDOG_STATE_FILE="$STATE_DIR/state.json"
-  exec "$NODE" cli/watchdog.js
-)
+  exec timeout "$RUN_TIMEOUT_SECONDS" "$NODE" cli/watchdog.js
+) || STATUS=$?
+if [ "$STATUS" -eq 124 ]; then
+  log "the run took longer than $RUN_TIMEOUT_SECONDS s and was stopped"
+fi
+exit "$STATUS"

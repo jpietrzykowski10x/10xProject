@@ -154,6 +154,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Po S-11, bo przyczyny trafiają do jego rejestru przebiegów; ryzyko w zakresie (wiele drobnych ustaleń) — plan grupuje je w fazy wg modułu, a reszta z §6 pkt 8 raportu wchodzi tylko tam, gdzie slice i tak dotyka kodu.
+- **Notes:** Przeniesione z przeglądu CI S-11 (PR #62, `context/changes/operator-liveness-alerts/reviews/impl-review.md`, F3): ścieżka „poprzedni przebieg trwa” (`recordSkipped` przy podniesionej fladze `running`) w trzech schedulerach nie ma testów; dopisać po jednym teście na scheduler (pierwszy przebieg trzymany otwarty, drugi zostawia wiersz `skipped`; dla przypomnień także: drugie wywołanie rozwiązuje się dopiero po pierwszym, na czym polega `idle()`).
 - **Status:** proposed
 
 ### S-17: Zmiana nazwy i usuwanie własnych kategorii

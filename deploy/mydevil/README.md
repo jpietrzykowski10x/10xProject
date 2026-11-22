@@ -214,6 +214,8 @@ Mail, który się nie wysłał, nie zmienia stanu alarmu, więc następny przebi
 
 W czasie deployu, rollbacku i przywrócenia (`api/.ops.lock` albo `frontend/.ops.lock` młodszy niż 30 minut) przebieg jest pomijany z kodem 0, więc zwykły deploy nie daje alarmu. Starsza blokada (zostawiona przez zabity proces) nie ucisza watchdoga: każdy przebieg zapisuje ją w logu, dopóki nie usuniesz jej przez `rmdir`. Kod wyjścia 1 oznacza, że watchdog nie może działać (brak `.env`, brak `PORT`, zły env api); wtedy nie wysyła żadnego maila, a przyczyna jest w logu.
 
+Jednocześnie działa jeden przebieg: watchdog bierze blokadę `~/apps/subtracker/watchdog/.run.lock`, a gdy poprzedni przebieg jeszcze trwa, kończy się kodem 0 z wpisem w logu. Przebieg jest przerywany po 240 s (`timeout`, kod 124 z wpisem w logu), więc blokada starsza niż 15 minut została po przebiegu zabitym bez sprzątania (SIGKILL, restart serwera): kolejny przebieg ją przejmuje i zapisuje to w logu, nie trzeba jej usuwać ręcznie. Gdy blokady nie da się założyć z innego powodu (uprawnienia, pełny dysk), przebieg kończy się kodem 1.
+
 **Instalacja** (raz, po deployu api zawierającym `cli/watchdog.js`):
 
 1. Wgraj `watchdog.sh` i sprawdź go jak resztę skryptów: `scp`, `chmod 700`, porównanie `sha256` z repo (zob. [Aktualizacja skryptów na serwerze](#aktualizacja-skryptów-na-serwerze)).
@@ -470,6 +472,8 @@ Mail goes to `NOTIFICATION_ADMINISTRATOR_MAIL` through the operator transport (`
 A mail that could not be sent leaves the alert state unchanged, so the next run tries again. The state lives in `~/apps/subtracker/watchdog/state.json` (written atomically, outside the releases). The log `~/apps/subtracker/api/logs/watchdog.log` gets a line only for a mail (sent or not), a skipped run or an error of the watchdog itself; a quiet run writes nothing.
 
 During a deploy, rollback or restore (`api/.ops.lock` or `frontend/.ops.lock` younger than 30 minutes) the run is skipped with exit code 0, so a normal deploy raises no alert. An older lock (left by a killed process) does not silence the watchdog: every run logs it until you remove it with `rmdir`. Exit code 1 means the watchdog cannot run (no `.env`, no `PORT`, invalid api env); it then sends no mail, and the cause is in the log.
+
+One run at a time: the watchdog takes the lock `~/apps/subtracker/watchdog/.run.lock`, and while the previous run is still going it exits 0 with a log line. A run is stopped after 240 s (`timeout`, exit code 124 with a log line), so a lock older than 15 minutes was left by a run killed before it could clean up (SIGKILL, a server restart): the next run takes it over and logs it; there is no need to remove it by hand. When the lock cannot be created for another reason (permissions, a full disk), the run exits 1.
 
 **Installing** (once, after an api deploy that contains `cli/watchdog.js`):
 
