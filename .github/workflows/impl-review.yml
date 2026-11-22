@@ -1,0 +1,280 @@
+# Implementation review of a PR against its plan (/10x-impl-review-ci, course module 5 lesson 3).
+#
+# Adapted from .claude/skills/10x-impl-review-ci/references/workflow-template.yml:
+# - npm and two apps without a root package.json (backend-subtracker/, frontend-subtracker/);
+# - Postgres 16 on C.UTF-8 and a schema from migrations, as in the ci.yml job backend-e2e, so the
+#   plan's `npm run test:e2e` works inside the review;
+# - the agent-loop hooks from .claude/settings.json are switched off (SUBTRACKER_AGENT_HOOKS=off):
+#   they run local checks after every edit and at the end of a turn, which the review does not need;
+# - browser e2e (Playwright) is not installed here: the required check browser-e2e in ci.yml runs it
+#   on the same PR, and the prompt says so.
+#
+# Runs only on PRs labelled `impl-review` (plan-based changes); docs and chore PRs stay unreviewed.
+# Needs the repository secret CLAUDE_CODE_OAUTH_TOKEN (a Claude Pro/Max subscription token from
+# `claude setup-token`, so reviews use the plan's limits instead of paid API credits) and the labels `impl-review` and
+# `impl-review-override` (the override lets a REJECTED verdict through).
+# The skill comes from origin/<base> (`git archive`), so its committed copy on main is what runs:
+# a change to the skill takes effect after its PR is merged.
+
+name: Impl Review
+
+on:
+  pull_request:
+    # labeled / unlabeled: re-evaluate the impl-review-override gate without a new review.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions: {}
+
+jobs:
+  impl-review:
+    # Fork PRs cannot receive commits back or use the secret.
+    if: contains(github.event.pull_request.labels.*.name, 'impl-review') && github.event.pull_request.head.repo.full_name == github.repository
+    concurrency:
+      group: impl-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      statuses: write
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: subtracker_ci
+          POSTGRES_DB: subtracker_ci
+          # Reachable only from this runner and removed with the job, so no password is set.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_INITDB_ARGS: --locale=C.UTF-8 --encoding=UTF8
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U subtracker_ci -d subtracker_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The skill computes origin/BASE...HEAD and reads plan history across the merge-base.
+          fetch-depth: 0
+          # The PR head, so the review report can be committed back to it.
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            backend-subtracker/package-lock.json
+            frontend-subtracker/package-lock.json
+
+      - name: Skip Claude run on bot commits and label-only events
+        id: guard
+        env:
+          EVENT_ACTION: ${{ github.event.action }}
+        run: |
+          AUTHOR=$(git log -1 --format='%an')
+          SUBJECT=$(git log -1 --format='%s')
+          # Without a prior review a labeled event must still run (gh pr create --label sends
+          # opened + labeled and concurrency cancels opened).
+          PRIOR_CLAUDE=$(git log --author='claude\[bot\]' -1 --format='%H' 2>/dev/null || true)
+          if [[ "$AUTHOR" == "claude[bot]" || "$SUBJECT" == *"[skip ci]"* ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$EVENT_ACTION" == "labeled" || "$EVENT_ACTION" == "unlabeled" ]] && [[ -n "$PRIOR_CLAUDE" ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Same .env as the ci.yml job backend-e2e: no secrets, mail to the console.
+      - name: Backend dependencies, .env and schema
+        if: steps.guard.outputs.skip != 'true'
+        working-directory: backend-subtracker
+        run: |
+          cat > .env <<'EOF'
+          MODE=DEV
+          POSTGRES_HOST=localhost
+          POSTGRES_PORT=5432
+          POSTGRES_USER=subtracker_ci
+          # Not checked: the CI server uses trust authentication. validateEnv only needs a value.
+          POSTGRES_PASSWORD=unused-trust-auth
+          # One throwaway database for both the migration CLI and the app (CI only).
+          POSTGRES_DATABASE=subtracker_ci
+          POSTGRES_DATABASE_DEV=subtracker_ci
+          DATABASE_AUTO_SYNCHRONIZATION=false
+          CORS_ORIGINS=http://localhost:4200
+          FRONTEND_URL=http://localhost:4200
+          # Empty: mail goes to the console.
+          SMTP_HOST=
+          EOF
+          npm ci
+          npm run migration:run
+
+      - name: Frontend dependencies
+        if: steps.guard.outputs.skip != 'true'
+        working-directory: frontend-subtracker
+        run: npm ci
+
+      - name: Stage impl-review-ci skill (user-level)
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          # User-level ~/.claude/skills/: claude-code-action moves the PR's .claude/ aside and
+          # restores the base branch's, so the skill is taken from origin/<base> as reviewed.
+          git fetch origin "$BASE_REF" --depth=1 2>&1 | tail -1
+          mkdir -p "$HOME/.claude/skills"
+          git archive "origin/$BASE_REF" .claude/skills/10x-impl-review-ci \
+            | tar -x --strip-components=2 -C "$HOME/.claude/skills/"
+
+      - name: Run impl-review (CI)
+        if: steps.guard.outputs.skip != 'true'
+        uses: anthropics/claude-code-action@1d6de8cb0c237e7c15e9e1bdf973826ebae490cc # v1.0.248
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          # The project's agent-loop hooks (post-edit, Stop) are for local sessions only.
+          SUBTRACKER_AGENT_HOOKS: "off"
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --model claude-opus-5-5
+            --max-turns 60
+            --allowedTools Read,Write,Glob,Grep,Bash,Agent,TaskCreate,TaskUpdate,TaskList,TaskGet,mcp__github_inline_comment__create_inline_comment
+          prompt: |
+            /10x-impl-review-ci
+
+            You are running in CI (GitHub Actions) on a pull request.
+            Execute the 10x-impl-review-ci skill to review this PR against
+            its plan, commit the review report to the branch, and post a
+            summary PR comment. Write the prose of the report and comments in Polish, but keep
+            every marker, heading and field the skill's output contract names exactly as specified
+            (the first-line marker and the `- **Verdict**:` line with APPROVED / NEEDS ATTENTION /
+            REJECTED are parsed by the next steps).
+
+            Context:
+              PR:       #${{ github.event.pull_request.number }}
+              Base:     ${{ github.event.pull_request.base.ref }}
+              Head:     ${{ github.event.pull_request.head.ref }}
+              Run URL:  ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Repository layout: two independent npm apps without a root package.json. Run every
+            npm command inside backend-subtracker/ or frontend-subtracker/ (see CLAUDE.md).
+            Dependencies of both apps are installed; backend-subtracker/.env points at a
+            Postgres 16 (C.UTF-8) with the schema migrated, so backend `npm test` and
+            `npm run test:e2e` work here. Playwright browsers are NOT installed: browser e2e
+            (`npm run build:e2e && npm run e2e`) runs in the required check `browser-e2e` of
+            ci.yml on this PR; report it as covered by that check, not as a failure.
+            Manual Verification rows and production steps (deploy, scp, crontab, MyDevil) cannot
+            run here: treat them as pending human checks, as the skill describes.
+
+            Plan discovery is automatic (PR diff + optional `Plan: ...`
+            override in the PR body). If no plan is detected, post the
+            neutral "no plan" comment and exit cleanly — do not fail
+            the workflow.
+
+      - name: Validate Claude's commit (skip-ci + output contract)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git fetch origin "$HEAD_REF" --depth=2 2>&1 | tail -1
+          TIP=$(git rev-parse FETCH_HEAD)
+          AUTHOR=$(git log -1 --format='%an' FETCH_HEAD)
+          SUBJECT=$(git log -1 --format='%s' FETCH_HEAD)
+          echo "Branch tip: sha=${TIP:0:10} author=\"$AUTHOR\" subject=\"$SUBJECT\""
+
+          if [[ "$AUTHOR" != "claude[bot]" ]]; then
+            echo "Tip is not a bot commit — nothing to validate."
+            exit 0
+          fi
+
+          FAILED=0
+
+          # Without [skip ci] the bot's push would retrigger this workflow.
+          if [[ "$SUBJECT" != *"[skip ci]"* ]]; then
+            echo "::error title=Missing [skip ci] marker::Bot commit \"$SUBJECT\" lacks [skip ci]. The skill must include the marker to prevent workflow recursion."
+            FAILED=1
+          fi
+
+          REVIEW_FILE=$(git show --name-only --format= FETCH_HEAD \
+            | grep -E '(^|/)context/changes/[^/]+/reviews/impl-review.*\.md$' \
+            | head -1)
+          if [ -n "$REVIEW_FILE" ]; then
+            FIRST_LINE=$(git show "FETCH_HEAD:$REVIEW_FILE" | head -1)
+            if [[ "$FIRST_LINE" != "<!-- IMPL-REVIEW-REPORT -->" ]]; then
+              echo "::error title=Skill output contract violated::Review file $REVIEW_FILE does not start with the <!-- IMPL-REVIEW-REPORT --> marker. First line was: \"$FIRST_LINE\"."
+              FAILED=1
+            fi
+          else
+            echo "::warning::Bot commit added no file matching context/changes/*/reviews/impl-review*.md."
+          fi
+
+          exit $FAILED
+
+      - name: Check review verdict
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # The review is committed with [skip ci], so no workflow runs on the bot's commit (the PR
+          # head): the verdict is posted as a commit status on that SHA instead.
+          HEAD_SHA=$(git rev-parse HEAD)
+          STATUS_CONTEXT="impl-review-ci/verdict"
+
+          post_status() {
+            local state="$1" description="$2"
+            gh api --method POST "repos/{owner}/{repo}/statuses/${HEAD_SHA}" \
+              -f state="$state" \
+              -f context="$STATUS_CONTEXT" \
+              -f description="$description" \
+              -f target_url="$RUN_URL" > /dev/null
+          }
+
+          REVIEW_FILE=$(find . -type f -path '*/context/changes/*/reviews/impl-review*.md' 2>/dev/null \
+                          | xargs ls -t 2>/dev/null | head -1)
+          if [ -z "$REVIEW_FILE" ] || [ ! -f "$REVIEW_FILE" ]; then
+            echo "No review file on this branch — nothing to gate on. Passing."
+            exit 0
+          fi
+
+          VERDICT=$(grep -m1 -E '^\- \*\*Verdict\*\*:' "$REVIEW_FILE" \
+            | grep -oE 'APPROVED|NEEDS ATTENTION|REJECTED' \
+            | head -1)
+
+          echo "Review file: $REVIEW_FILE"
+          echo "Verdict: ${VERDICT:-<unknown>}"
+          echo "Status target SHA: $HEAD_SHA"
+
+          if [ "$VERDICT" = "APPROVED" ]; then
+            post_status success "Verdict: APPROVED"
+            exit 0
+          fi
+
+          if [ "$VERDICT" = "NEEDS ATTENTION" ]; then
+            post_status success "Verdict: NEEDS ATTENTION (reviewer triage recommended)"
+            exit 0
+          fi
+
+          if [ "$VERDICT" != "REJECTED" ]; then
+            post_status success "Verdict unparseable; non-blocking (see logs)"
+            exit 0
+          fi
+
+          HAS_OVERRIDE=$(gh pr view "$PR_NUMBER" --json labels \
+            --jq '.labels[] | select(.name == "impl-review-override") | .name')
+
+          if [ -n "$HAS_OVERRIDE" ]; then
+            echo "::notice::Verdict is REJECTED but 'impl-review-override' label is present — bypassing gate."
+            post_status success "REJECTED bypassed by 'impl-review-override' label"
+            exit 0
+          fi
+
+          post_status failure "REJECTED — add 'impl-review-override' label to bypass"
+          echo "::error title=Implementation review rejected::Verdict is REJECTED. Review the findings in the PR comments, then add the 'impl-review-override' label to the PR to bypass this gate."
+          exit 1

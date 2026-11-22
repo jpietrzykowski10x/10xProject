@@ -1,0 +1,275 @@
+{
+  "id": "M-1",
+  "name": "MVP — kontrola subskrypcji i budżetu",
+  "slug": "mvp-subscription-control",
+  "closed": "2026-11-22",
+  "summary": "Wszystkie FR konieczne z PRD v1 działają na produkcji: logowanie magic linkiem, lista z edycją i usuwaniem, sumy na dashboardzie, cykl życia i przypomnienie o trialu, duplikaty, limity budżetu, panel administratora i usunięcie konta (13/13 pozycji).",
+  "commit": "14c136c",
+  "mustHave": [
+    "FR-001",
+    "FR-002",
+    "FR-004",
+    "FR-005",
+    "FR-006",
+    "FR-007",
+    "FR-008",
+    "FR-009",
+    "FR-010",
+    "FR-011",
+    "FR-013",
+    "FR-014",
+    "FR-018"
+  ],
+  "northStar": "S-02",
+  "streams": [
+    {
+      "name": "A",
+      "theme": "Rdzeń: konto i lista",
+      "ids": [
+        "F-01",
+        "S-01",
+        "F-02",
+        "S-02",
+        "F-03",
+        "S-03"
+      ],
+      "chain": "F-01 → S-01 → F-02 → S-02 → F-03 → S-03"
+    },
+    {
+      "name": "B",
+      "theme": "Koszt i alerty",
+      "ids": [
+        "S-04",
+        "S-07",
+        "S-08"
+      ],
+      "chain": "S-04 → S-07, S-08"
+    },
+    {
+      "name": "C",
+      "theme": "Cykl życia i e-mail",
+      "ids": [
+        "S-05",
+        "S-06"
+      ],
+      "chain": "S-05 → S-06"
+    },
+    {
+      "name": "D",
+      "theme": "Administracja i konto",
+      "ids": [
+        "S-09",
+        "S-10"
+      ],
+      "chain": "S-09, S-10"
+    }
+  ],
+  "items": [
+    {
+      "id": "F-01",
+      "title": "Produkcyjna baza i połączenie frontend → API",
+      "kind": "foundation",
+      "outcome": "API łączy się z produkcyjną bazą danych, deploy robi kopię bazy i uruchamia migracje przed przełączeniem wersji, a frontend z innej subdomeny może wywołać API (pierwsze wywołanie potwierdzone na produkcji). Bez tabel domenowych — te dochodzą w slice'ach.",
+      "changeId": "production-database-wiring",
+      "refs": [],
+      "prereqs": [],
+      "status": "done",
+      "archived": "2026-10-28",
+      "stream": "A"
+    },
+    {
+      "id": "F-02",
+      "title": "Fundament interfejsu",
+      "kind": "foundation",
+      "outcome": "istniejące ekrany S-01 mają docelowy wygląd i układ na desktopie i telefonie (Angular Material z motywem projektu), pod `/` jest strona startowa renderowana na serwerze, a kolejne slice'y korzystają z gotowego motywu, formularzy, przycisków i szkieletu strony.",
+      "changeId": "ui-foundation",
+      "refs": [],
+      "prereqs": [
+        "S-01"
+      ],
+      "status": "done",
+      "archived": "2026-11-11",
+      "stream": "A"
+    },
+    {
+      "id": "F-03",
+      "title": "Testy jednostkowe frontendu",
+      "kind": "foundation",
+      "outcome": "`frontend-subtracker` ma działający test runner (`ng test` / `npm test`), testy jednostkowe uruchamiane w CI (`ci.yml`, job `frontend`) i pierwsze testy czystych helperów: `shared/decimal.ts` (`parseDecimal`), `shared/pl-date-adapter.ts` (`parse`, w tym 31.02 i `d.m.rrrr`), `shared/date-only.ts` (`daysFromToday`, `toDateOnly` bez przesunięcia strefy), `subscriptions/subscription-amounts.ts` (`monthlyAmount`) i walidatory formularza subskrypcji. Kontrola celowego uszkodzenia dla każdego testu.",
+      "changeId": "frontend-unit-tests",
+      "refs": [],
+      "prereqs": [
+        "S-02"
+      ],
+      "status": "done",
+      "archived": "2026-11-13",
+      "stream": "A"
+    },
+    {
+      "id": "S-01",
+      "title": "Logowanie magic linkiem",
+      "kind": "slice",
+      "outcome": "użytkownik rejestruje się e-mailem (z oświadczeniem o pełnoletności i akceptacją polityki prywatności) albo przy kolejnym wejściu wpisuje e-mail, dostaje jednorazowy, ograniczony czasowo link, loguje się nim i widzi swoją (na razie pustą) listę subskrypcji; inni użytkownicy nie mają do niej dostępu.",
+      "changeId": "magic-link-sign-in",
+      "refs": [
+        "FR-001"
+      ],
+      "prereqs": [
+        "F-01"
+      ],
+      "status": "done",
+      "archived": "2026-11-09",
+      "stream": "A"
+    },
+    {
+      "id": "S-02",
+      "title": "Pierwsza subskrypcja na liście",
+      "kind": "slice",
+      "outcome": "użytkownik dodaje subskrypcję (nazwa, kategoria z predefiniowanej listy lub własna, kwota w PLN, cykl miesięczny/roczny, forma płatności z zamkniętej listy, status, data końca triala, data następnego rozliczenia) i natychmiast widzi ją w tabeli wszystkich swoich subskrypcji.",
+      "changeId": "first-subscription-in-list",
+      "refs": [
+        "FR-004",
+        "FR-007",
+        "FR-018"
+      ],
+      "prereqs": [
+        "S-01",
+        "F-02"
+      ],
+      "status": "done",
+      "archived": "2026-11-11",
+      "stream": "A"
+    },
+    {
+      "id": "S-03",
+      "title": "Edycja i usuwanie subskrypcji",
+      "kind": "slice",
+      "outcome": "użytkownik poprawia dane istniejącej subskrypcji albo trwale usuwa błędnie dodaną — odrębnie od anulowania usługi w cyklu życia.",
+      "changeId": "edit-and-delete-subscription",
+      "refs": [
+        "FR-005",
+        "FR-006"
+      ],
+      "prereqs": [
+        "S-02",
+        "F-03"
+      ],
+      "status": "done",
+      "archived": "2026-11-15",
+      "stream": "A"
+    },
+    {
+      "id": "S-04",
+      "title": "Sumy kosztów na dashboardzie",
+      "kind": "slice",
+      "outcome": "użytkownik widzi na dashboardzie łączny koszt subskrypcji miesięcznie i rocznie, z podziałem na kategorie, zgodny z ręcznym wyliczeniem.",
+      "changeId": "dashboard-cost-totals",
+      "refs": [
+        "FR-008"
+      ],
+      "prereqs": [
+        "S-02"
+      ],
+      "status": "done",
+      "archived": "2026-11-15",
+      "stream": "B"
+    },
+    {
+      "id": "S-05",
+      "title": "Automatyczny cykl życia subskrypcji",
+      "kind": "slice",
+      "outcome": "użytkownik anuluje subskrypcję (trafia do cancelled_pending), a system sam przenosi subskrypcje trial → active po dacie końca triala i cancelled_pending → cancelled po dacie następnego rozliczenia.",
+      "changeId": "subscription-lifecycle",
+      "refs": [
+        "FR-013"
+      ],
+      "prereqs": [
+        "S-02"
+      ],
+      "status": "done",
+      "archived": "2026-11-16",
+      "stream": "C"
+    },
+    {
+      "id": "S-06",
+      "title": "Przypomnienie przed końcem triala",
+      "kind": "slice",
+      "outcome": "użytkownik z subskrypcją w trialu dostaje e-mail 7 dni przed końcem okresu próbnego — dokładnie raz.",
+      "changeId": "trial-end-reminder",
+      "refs": [
+        "FR-014"
+      ],
+      "prereqs": [
+        "S-05"
+      ],
+      "status": "done",
+      "archived": "2026-11-16",
+      "stream": "C"
+    },
+    {
+      "id": "S-07",
+      "title": "Ostrzeżenie o duplikatach w kategorii",
+      "kind": "slice",
+      "outcome": "użytkownik ustawia próg aktywnych subskrypcji per kategoria (domyślnie 2) i po dodaniu lub edycji subskrypcji widzi na dashboardzie flagę przy kategorii, która go przekracza.",
+      "changeId": "category-duplicate-warning",
+      "refs": [
+        "FR-009",
+        "FR-005"
+      ],
+      "prereqs": [
+        "S-04"
+      ],
+      "status": "done",
+      "archived": "2026-11-17",
+      "stream": "B"
+    },
+    {
+      "id": "S-08",
+      "title": "Limity budżetu i alerty",
+      "kind": "slice",
+      "outcome": "użytkownik ustawia miesięczny limit całościowy i limity per kategoria, a dashboard pokazuje alert przy 80% i 100% limitu, przeliczany po dodaniu lub edycji subskrypcji.",
+      "changeId": "budget-limits-and-alerts",
+      "refs": [
+        "FR-010",
+        "FR-011",
+        "FR-005"
+      ],
+      "prereqs": [
+        "S-04"
+      ],
+      "status": "done",
+      "archived": "2026-11-18",
+      "stream": "B"
+    },
+    {
+      "id": "S-09",
+      "title": "Zarządzanie kontami przez administratora",
+      "kind": "slice",
+      "outcome": "administrator (rola nadana ręcznie poza aplikacją) blokuje i odblokowuje konto lub resetuje dostęp użytkownika i ma wgląd w jego dane, w tym subskrypcje i kwoty.",
+      "changeId": "admin-account-management",
+      "refs": [
+        "FR-002"
+      ],
+      "prereqs": [
+        "S-02"
+      ],
+      "status": "done",
+      "archived": "2026-11-21",
+      "stream": "D"
+    },
+    {
+      "id": "S-10",
+      "title": "Usunięcie konta",
+      "kind": "slice",
+      "outcome": "użytkownik usuwa swoje konto z poziomu aplikacji. Przed usunięciem widzi potwierdzenie z informacją, że dane (subskrypcje, własne kategorie) przepadną bezpowrotnie. Po usunięciu jest wylogowany, a jego sesje, tokeny logowania i dane domenowe znikają.",
+      "changeId": "account-deletion",
+      "refs": [],
+      "prereqs": [
+        "S-02"
+      ],
+      "status": "done",
+      "archived": "2026-11-21",
+      "stream": "D"
+    }
+  ]
+}
