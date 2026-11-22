@@ -5,9 +5,9 @@
 - **Plan**: `context/changes/operator-liveness-alerts/plan.md`
 - **Scope**: Full plan (CI review on PR #62)
 - **Date**: 2026-11-22
-- **CI run**: https://github.com/jpietrzykowski10x/10xProject/actions/runs/45078954120
+- **CI run**: https://github.com/jpietrzykowski10x/10xProject/actions/runs/45079661203
 - **Verdict**: APPROVED
-- **Findings**: 0 critical, 0 warnings, 3 observations
+- **Findings**: 0 critical, 0 warnings, 2 observations
 
 ## Verdicts
 
@@ -21,36 +21,23 @@
 | Test Coverage       | PASS    |
 | Success Criteria    | PASS    |
 
-To trzeci przegląd CI tego PR. Od poprzedniego (run 45075848606, commit `cedae22`) doszedł tylko `9d5c457`: w `deploy/mydevil/watchdog.sh` blokada `.run.lock` starsza niż 15 minut jest przejmowana z wpisem w logu, inny błąd `mkdir` kończy przebieg kodem 1, a `node cli/watchdog.js` działa pod `timeout 240` (kod 124 z wpisem w logu). Opis trafił do README (PL i EN), a notatki do `change.md` i `roadmap.md`. Poprzednie F3 (brak testów ścieżki `recordSkipped` w schedulerach) autor jawnie przeniósł do S-16.
+To czwarty przegląd CI tego PR. Od poprzedniego (run 45078954120, commit `00b9ae8`) doszedł tylko `73f2816`: jedno zdanie w Notes S-16 w `context/foundation/roadmap.md`, które przenosi tam F3 z poprzedniego przeglądu (literalne granice 12 h w testach `decide`). Kod, kontrakty planu i opisane zachowanie się nie zmieniły.
 
-Plan Adherence PASS: każdy kontrakt faz 1–4 jest zgodny z planem, bez braków. Należą do nich:
+Plan Adherence PASS: wszystkie 22 planowane zmiany z faz 1–4 są zgodne z planem, bez DRIFT i bez MISSING. Jedyna różnica jest świadoma i zapisana w Notes `change.md`: gdy baza działa, a odczyt `job_run` się nie uda, `/health` zwraca 200 bez `jobs` (przy błędzie bazy nadal 503). Wszystkie pozycje z „What We're NOT Doing” są uszanowane: brak `enableShutdownHooks`, `/health` bez zmiany kodu przy złych jobach, brak widoku w UI admina i zewnętrznego monitora.
 
-- encja i migracja `job_run` z indeksem `(job, started_at)`,
-- `track()`, `recordSkipped()` i `latestFinished()` z retencją 90 dni i mailem przy `failed` i `partial`,
-- schedulery, w których start jest nadal awaitowany albo w tle, jak przed zmianą,
-- `/health` z polem `jobs`: 200 przy działającej bazie, 503 bez `jobs` przy błędzie bazy,
-- `installFatalHandlers` przed `NestFactory.create`,
-- `decide()` z progiem 3 porażek i przypomnieniem co 12 h,
-- CLI z limitem 5 s i atomowym zapisem stanu,
-- `watchdog.sh` i dokumentacja.
+Scope Discipline PASS: dodatki spoza listy plików planu służą planowanym zmianom albo poprawiają ustalenia poprzednich przeglądów:
 
-Jedyna różnica jest świadoma i zapisana w Notes `change.md`: gdy baza działa, a odczyt `job_run` się nie uda, `/health` zwraca 200 bez `jobs`.
+- `run-watchdog.ts` i `watchdog-mail.ts` — warstwa I/O i maila wydzielona z CLI do testów,
+- `dev-local/watchdog-trial.mjs` — pomocnik ręcznej próby zgodny z zasadami `dev-local/`,
+- importy `JobsModule` w `app.module.ts`, `auth.module.ts`, `subscriptions.module.ts`,
+- `.run.lock`, przejęcie osieroconej blokady i `timeout 240` w `watchdog.sh` (opisane w README PL i EN),
+- wpisy w `roadmap.md`.
 
-Scope Discipline PASS: `.run.lock`, przejęcie blokady i `timeout 240` wykraczają poza kontrakt `watchdog.sh`, ale poprawiają ustalenia poprzednich przeglądów i są opisane. `dev-local/watchdog-trial.mjs`, `run-watchdog.ts` i `watchdog-mail.ts` służą planowanym zmianom.
-
-Safety & Quality PASS: poprawka z `9d5c457` jest poprawna:
-
-- `shellcheck` przechodzi czysto,
-- `/usr/bin/timeout` jest w bazie FreeBSD od 10.3 i zwraca 124 po upływie limitu,
-- CLI nie przechwytuje SIGTERM, więc limit naprawdę kończy proces,
-- 240 s to wyraźnie mniej niż próg 15 minut, po którym blokada uchodzi za osieroconą,
-- `( … ) || STATUS=$?` wyłącza `set -e` w podpowłoce, ale `. ./.env` jako specjalny builtin nadal przerywa ją przy braku pliku, a sam plik jest sprawdzany wcześniej.
-
-`dev-local/watchdog-trial.mjs` woła `dist/cli/watchdog.js` bezpośrednio, więc zmiana go nie dotyczy. Zostają dwie drobne uwagi (F1, F2).
+Safety & Quality PASS: bez nowych problemów. Escapowanie HTML w obu mailach, brak danych użytkowników i treści błędów w mailach, migracja tylko tworzy tabelę i indeks `(job, started_at)` (bez FK, więc reguła indeksów FK nie dotyczy), brak `any`, importy z `.js`, `shared/process/` pozostaje liściem. `track` i `recordSkipped` łapią każdy błąd zapisu, więc rejestr nie wywraca zadania ani startu. Dwie drobne uwagi niżej (F1, F2).
 
 Success Criteria — polecenia uruchomione w tym przebiegu CI:
 
-| Polecenie (`backend-subtracker/`)                                    | Wynik                                                                                      |
+| Polecenie                                                            | Wynik                                                                                      |
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `npm test`                                                           | ✅ exit 0 — 42 pliki, 572 testy                                                            |
 | `npm run test:e2e`                                                   | ✅ exit 0 — 23 pliki, 199 testów                                                           |
@@ -62,58 +49,45 @@ Success Criteria — polecenia uruchomione w tym przebiegu CI:
 
 Celowe uszkodzenia potwierdzone, każde cofnięte:
 
-- `JOB_STALE_AFTER_HOURS` 26→27 daje 2 czerwone testy,
-- `FAILURES_BEFORE_ALERT` 3→4 daje 4 czerwone testy,
-- `REMIND_EVERY_HOURS` 12→13 daje 2 czerwone testy (zob. F3).
+- `JOB_STALE_AFTER_HOURS` 26→27 daje 4 czerwone testy,
+- `FAILURES_BEFORE_ALERT` 3→4 daje 8 czerwonych testów,
+- `REMIND_EVERY_HOURS` 12→13 daje 2 czerwone testy,
+- `track` bez zapisu wyniku daje 5 czerwonych testów jednostkowych i 5 z 7 testów e2e `test/jobs/job-run.e2e-spec.ts`.
+
+Każde zobowiązanie testowe planu ma swój test (jednostkowe `JobRunService`, `job-run-alert`, `jobHealth`, `installFatalHandlers`, `decide`; e2e rejestru przebiegów i `/health`).
 
 Browser e2e (`npm run build:e2e && npm run e2e`) nie jest uruchamiany w tym środowisku. Pokrywa go wymagany check `browser-e2e` w `ci.yml` na tym PR.
 
-Ręczne kontrole: 1.7, 2.6 i 3.5 są odhaczone i mają pokrycie w kodzie. Faza 4 (4.1–4.5) czeka na człowieka i produkcję, to stan oczekujący, a nie porażka:
+Ręczne kontrole: 1.7, 2.6 i 3.5 są odhaczone i mają pokrycie w kodzie. Faza 4 (4.1–4.5) czeka na człowieka i produkcję — to stan oczekujący, a nie porażka:
 
-- 4.1: CI zielone,
-- 4.2: `/health` z `jobs` na serwerze,
-- 4.3: wgranie `watchdog.sh` i wpis w crontabie,
+- 4.1: CI zielone na PR,
+- 4.2: `/health` z `jobs` na serwerze po deployu,
+- 4.3: wgranie `watchdog.sh` (`scp`, `chmod 700`, `sha256`) i wpis w crontabie,
 - 4.4: mail przy zatrzymanym API i mail o powrocie,
 - 4.5: deploy bez fałszywego alarmu.
 
-Ustaleń, które autor świadomie zostawił w poprzednich przeglądach, tu nie powtarzam:
-
-- trzy zapytania w `latestFinished()`,
-- nazwy zadań w publicznym `/health`,
-- martwa gałąź `skipped`,
-- warstwa I/O watchdoga bez testów,
-- testy `recordSkipped`, przeniesione do S-16.
+Ustaleń, które autor świadomie zostawił albo przeniósł w poprzednich przeglądach, tu nie powtarzam: trzy zapytania w `latestFinished()`, nazwy zadań w publicznym `/health`, martwa gałąź `skipped`, lekko testowana warstwa I/O watchdoga, testy `recordSkipped` i literalne granice 12 h (S-16), limit 240 s przed `writeState` i nieatomowe przejęcie `.run.lock`.
 
 ## Findings
 
-### F1 — Limit 240 s może przerwać przebieg po wysłanym mailu, przed zapisem stanu
+### F1 — Linia podsumowania przebiegu nie podaje już dnia, dla którego zadanie działało
+
+- **Severity**: 👁 OBSERVATION
+- **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
+- **Dimension**: Pattern Consistency
+- **Location**: backend-subtracker/src/jobs/job-run.service.ts:80
+- **Detail**: Przed zmianą scheduler cyklu życia logował `Lifecycle run for ${today}: …`. Teraz jedyną linią jest podsumowanie z `track` (`Job <job> (<trigger>): <outcome> in <ms> ms …`), bez dnia w `APP_TIME_ZONE`. Mail do operatora ma dzień, ale przy przebiegu startowym tuż po północy w logu trudniej odróżnić, który dzień kalendarzowy był przetwarzany. Plan wymaga w linii logu tylko zadania, wyzwalacza, wyniku, liczników i czasu, więc to nie jest odstępstwo od planu.
+- **Fix**: Dodać `calendarDayIn(APP_TIME_ZONE, startedAt)` do linii podsumowania albo zostawić to S-14 (format logu).
+- **Decision**: PENDING
+
+### F2 — `port_of` nie zdejmuje apostrofów ani spacji z `PORT`
 
 - **Severity**: 👁 OBSERVATION
 - **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
 - **Dimension**: Safety & Quality
-- **Location**: deploy/mydevil/watchdog.sh:109
-- **Detail**: `runWatchdog` wysyła maile po kolei i zapisuje stan jeden raz, na końcu (`backend-subtracker/src/watchdog/run-watchdog.ts:208`). Każdy etap wysyłki ma osobny limit 30 s (`connectionTimeout`, `greetingTimeout` i `socketTimeout` w `mail.transport.ts:35-37`). Przy wolnym, ale działającym SMTP i dwóch–trzech celach z akcją przebieg może przekroczyć nowy limit `timeout 240`. Gdy `timeout` zabije proces po wysłaniu maila, a przed `writeState`, mail nie trafi do stanu i następny przebieg wyśle go ponownie. Skutek to duplikat alarmu, a nie cisza, więc ryzyko jest niewielkie.
-- **Fix**: Zapisywać stan po każdym udanym mailu (`writeState` w pętli) albo opisać w komentarzu, ile wysyłek mieści się w 240 s.
-- **Decision**: PENDING
-
-### F2 — Przejęcie osieroconej `.run.lock` nie jest atomowe
-
-- **Severity**: 👁 OBSERVATION
-- **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
-- **Dimension**: Safety & Quality
-- **Location**: deploy/mydevil/watchdog.sh:87
-- **Detail**: Weźmy dwa przebiegi, A i B, które oba widzą starą blokadę. A robi `rmdir && mkdir`, a B robi `rmdir` dopiero po nim. Wtedy B usuwa świeżą blokadę A i zakłada własną, więc oba działają na tym samym `state.json`. Wymaga to dwóch wywołań w tej samej chwili przy już osieroconej blokadzie (np. cron i ręczne uruchomienie), więc w praktyce prawie nieosiągalne.
-- **Fix**: Przejmować przez atomowe `mv "$RUN_LOCK" "$RUN_LOCK.stale.$$" && rmdir "$RUN_LOCK.stale.$$"`, a potem `mkdir`; zwycięża tylko jeden `rename`. Pozostawienie jak jest też jest rozsądne.
-- **Decision**: PENDING
-
-### F3 — Testy granicy 12 h liczą czas z samej stałej `REMIND_EVERY_HOURS`
-
-- **Severity**: 👁 OBSERVATION
-- **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
-- **Dimension**: Test Coverage
-- **Location**: backend-subtracker/src/watchdog/watchdog-policy.spec.ts:78
-- **Detail**: Testy „stays quiet … less than 12 h” i „reminds once 12 h have passed” wyliczają czas jako `REMIND_EVERY_HOURS * HOUR_MS`, więc idą za zmienioną stałą i same nie czerwienieją. Zmianę 12→13 łapie tylko test przypinający stałą (`toBe(12)`) i jeden test `keepUnsent`. Kryterium planu („celowe uszkodzenie progu 12 h czerwieni test”) jest spełnione, ale słabiej, niż sugerują nazwy testów.
-- **Fix**: Zapisać granice w testach literałem (`12 * HOUR_MS`, `12 * HOUR_MS - 1`) zamiast stałej.
+- **Location**: deploy/mydevil/watchdog.sh:45
+- **Detail**: `sed -n 's/^PORT=//p' | tail -n 1 | tr -d '"\r'` usuwa cudzysłowy i `\r`, ale nie `'` ani końcowe spacje. `.env` z `PORT='3000'` dałby zły port i każdy przebieg watchdoga kończyłby się błędem widocznym tylko w logu, bez maila. Parsowanie jest identyczne jak w `deploy.sh:57`, więc taki `.env` zepsułby też health-check deployu — ryzyko istnieje tylko przy zmianie formatu `.env`.
+- **Fix**: Rozszerzyć filtr do `tr -d "\"' \r"` (w obu skryptach naraz) albo zostawić jak jest.
 - **Decision**: PENDING
 
 <!-- End of report -->
