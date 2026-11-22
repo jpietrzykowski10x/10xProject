@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { createE2eAccounts, sessionCookie } from '../support/accounts';
 
+// Risk: #2 (role guard of the admin pages); roadmap S-09 — context/foundation/test-plan.md §2.
 // S-09: the one critical admin flow in the browser, against the e2e build and the real API: an
 // administrator finds an account, blocks it, and its owner sees the block with a contact address
 // at sign-in. Plus the role guard: an ordinary user never gets the admin pages. The matrix of

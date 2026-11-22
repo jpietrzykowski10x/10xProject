@@ -1,6 +1,8 @@
-import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
-import { API_ORIGIN, createE2eAccounts, SESSION_COOKIE, sessionCookie } from '../support/accounts';
+import { expect, type Page, test } from '@playwright/test';
+import { createE2eAccounts, sessionCookie } from '../support/accounts';
+import { createSubscriptionThroughApi } from '../support/subscriptions';
 
+// Risk: #7 (edit panel and delete dialog work end to end); roadmap S-03 — context/foundation/test-plan.md §2.
 // Edit and delete in a real browser against the real API (desktop layout): the edit panel saves
 // through PUT and the change survives a reload, and the delete dialog sends DELETE so the row is
 // gone after a reload. Field rules, messages and the phone layout are covered by component tests;
@@ -19,47 +21,6 @@ test.afterAll(async () => {
     await accounts.close();
   }
 });
-
-interface CategoryResponse {
-  id: string;
-}
-
-// A day 30 days ahead in local time, as the API takes it ("YYYY-MM-DD").
-function futureDay(): string {
-  const day = new Date();
-  day.setDate(day.getDate() + 30);
-  const yyyy = String(day.getFullYear());
-  const mm = String(day.getMonth() + 1).padStart(2, '0');
-  const dd = String(day.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-// Straight to the API with the account's cookie. A client without browser headers passes the
-// CSRF check, so no Origin header is needed.
-async function createSubscriptionThroughApi(
-  request: APIRequestContext,
-  token: string,
-  name: string,
-): Promise<void> {
-  const headers = { Cookie: `${SESSION_COOKIE}=${token}` };
-  const categories = await request.get(`${API_ORIGIN}/categories`, { headers });
-  expect(categories.status()).toBe(200);
-  const [category] = (await categories.json()) as CategoryResponse[];
-  expect(category, 'no default categories (were the migrations run?)').toBeDefined();
-  const created = await request.post(`${API_ORIGIN}/subscriptions`, {
-    headers,
-    data: {
-      name,
-      categoryId: category.id,
-      amount: 25,
-      billingCycle: 'monthly',
-      paymentMethod: 'blik',
-      status: 'active',
-      nextBillingDate: futureDay(),
-    },
-  });
-  expect(created.status()).toBe(201);
-}
 
 // The list as rendered from the API's answer (not the status message, which also names it).
 function subscriptionList(page: Page) {
@@ -99,7 +60,11 @@ test('a subscription edited in the panel and then deleted in the dialog stays ch
   await page.reload();
   const list = subscriptionList(page);
   await expect(list.getByText(editedName)).toBeVisible();
-  await expect(list.getByText(/31,50/).first()).toBeVisible();
+  // In the edited row itself (the amount and the monthly column both show it), not anywhere on
+  // the list: another row or a total with 31,50 would hide a lost amount.
+  await expect(
+    list.getByRole('row').filter({ hasText: editedName }).getByText(/31,50/).first(),
+  ).toBeVisible();
   await expect(list.getByText(name)).toHaveCount(0);
 
   // 3. Delete: the dialog names the subscription; "Usuń" in it sends DELETE.

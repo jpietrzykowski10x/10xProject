@@ -1,6 +1,8 @@
-import { type APIRequestContext, expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { API_ORIGIN, createE2eAccounts, SESSION_COOKIE, sessionCookie } from '../support/accounts';
+import { createSubscriptionThroughApi } from '../support/subscriptions';
 
+// Risk: #6 (the old session gives no access after the deletion); roadmap S-10 — context/foundation/test-plan.md §2.
 // Account deletion in a real browser against the real API (desktop layout): the e-mail address in
 // the column leads to /account, the dialog lets "Usuń konto" through only for the account's own
 // address, the API deletes the account and clears the cookie, and the start page says so. What is
@@ -21,48 +23,6 @@ test.afterAll(async () => {
     await accounts.close();
   }
 });
-
-interface CategoryResponse {
-  id: string;
-}
-
-// A day 30 days ahead in local time, as the API takes it ("YYYY-MM-DD"). Never a past day: the
-// lifecycle job on the API's start would move it on.
-function futureDay(): string {
-  const day = new Date();
-  day.setDate(day.getDate() + 30);
-  const yyyy = String(day.getFullYear());
-  const mm = String(day.getMonth() + 1).padStart(2, '0');
-  const dd = String(day.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-// Straight to the API with the account's cookie. A client without browser headers passes the
-// CSRF check, so no Origin header is needed.
-async function createSubscriptionThroughApi(
-  request: APIRequestContext,
-  token: string,
-  name: string,
-): Promise<void> {
-  const headers = { Cookie: `${SESSION_COOKIE}=${token}` };
-  const categories = await request.get(`${API_ORIGIN}/categories`, { headers });
-  expect(categories.status()).toBe(200);
-  const [category] = (await categories.json()) as CategoryResponse[];
-  expect(category, 'no default categories (were the migrations run?)').toBeDefined();
-  const created = await request.post(`${API_ORIGIN}/subscriptions`, {
-    headers,
-    data: {
-      name,
-      categoryId: category.id,
-      amount: 25,
-      billingCycle: 'monthly',
-      paymentMethod: 'blik',
-      status: 'active',
-      nextBillingDate: futureDay(),
-    },
-  });
-  expect(created.status()).toBe(201);
-}
 
 test('an account deleted from /account is gone: the start page says so and the old session is signed out', async ({
   context,

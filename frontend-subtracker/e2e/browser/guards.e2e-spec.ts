@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { API_ORIGIN, createE2eAccounts, sessionCookie } from '../support/accounts';
 
+// Risk: #2 (guards in the browser) — context/foundation/test-plan.md §2.
 // The guards of client-rendered routes run only in the browser: against the real router, the e2e
 // build and the API. The decision matrix itself is covered by the guard's unit tests; here only the
 // network is replaced (page.route), never AuthService. An expired session differs from no session

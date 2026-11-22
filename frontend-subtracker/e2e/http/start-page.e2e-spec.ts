@@ -1,6 +1,7 @@
 import { expect, test, type APIResponse } from '@playwright/test';
 import { createE2eAccounts, SESSION_COOKIE } from '../support/accounts';
 
+// Risk: #2 (HTML that depends on the cookie cached or rendered for the wrong visitor) — context/foundation/test-plan.md §2.
 // The start page is rendered on the server per request (RenderMode.Server): its HTML depends on the
 // visitor's cookie, so no cache may keep it, and the server-side guestGuard forwards the cookie to
 // the API and redirects a signed-in visitor before any HTML is sent. "API does not answer" on the

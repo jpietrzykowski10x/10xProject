@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createE2eAccounts, SESSION_COOKIE } from '../support/accounts';
 
+// Risk: #2 (a guarded route prerendered or rendered with user data) — context/foundation/test-plan.md §2.
 // Routes with a guard never get HTML from the server or from the prerender: every one of them
 // serves the same CSR shell, with or without a session. The prerender covers only static pages.
 const accounts = createE2eAccounts({ addressPrefix: 'e2e-browser-render-modes-' });

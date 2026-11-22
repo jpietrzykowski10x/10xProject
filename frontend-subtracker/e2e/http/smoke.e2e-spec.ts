@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { API_ORIGIN, createE2eAccounts, SESSION_COOKIE } from '../support/accounts';
 
+// Risk: none: a diagnosis of the setup (servers, helper sessions), not a risk — context/foundation/test-plan.md §2.
 // The skeleton works: both servers are up from the right build and a session from the helper is
 // valid for the API. When this fails, the problem is the setup, not a guard.
 const accounts = createE2eAccounts({ addressPrefix: 'e2e-browser-smoke-' });
