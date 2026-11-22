@@ -1,7 +1,7 @@
 ---
 change_id: operator-liveness-alerts
 title: Operator liveness alerts
-status: implementing
+status: impl_reviewed
 created: 2026-11-22
 updated: 2026-11-22
 ---
