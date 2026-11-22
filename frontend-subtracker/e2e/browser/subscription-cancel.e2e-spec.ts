@@ -1,6 +1,8 @@
-import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
-import { API_ORIGIN, createE2eAccounts, SESSION_COOKIE, sessionCookie } from '../support/accounts';
+import { expect, type Page, test } from '@playwright/test';
+import { createE2eAccounts, sessionCookie } from '../support/accounts';
+import { createSubscriptionThroughApi } from '../support/subscriptions';
 
+// Risk: #7 (cancel dialog and resume work end to end); roadmap S-05 — context/foundation/test-plan.md §2.
 // Cancel and resume in a real browser against the real API (desktop layout): "Anuluj subskrypcję"
 // confirms in the dialog and the row turns "W trakcie anulowania", "Przywróć" makes it "Aktywna"
 // again; each state is checked after a reload, so it was stored. The dialog's texts and results,
@@ -21,48 +23,6 @@ test.afterAll(async () => {
   }
 });
 
-interface CategoryResponse {
-  id: string;
-}
-
-// A day 30 days ahead in local time, as the API takes it ("YYYY-MM-DD"). Never a past day: the
-// lifecycle job on the API's start would move it on.
-function futureDay(): string {
-  const day = new Date();
-  day.setDate(day.getDate() + 30);
-  const yyyy = String(day.getFullYear());
-  const mm = String(day.getMonth() + 1).padStart(2, '0');
-  const dd = String(day.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-// Straight to the API with the account's cookie. A client without browser headers passes the
-// CSRF check, so no Origin header is needed.
-async function createActiveSubscriptionThroughApi(
-  request: APIRequestContext,
-  token: string,
-  name: string,
-): Promise<void> {
-  const headers = { Cookie: `${SESSION_COOKIE}=${token}` };
-  const categories = await request.get(`${API_ORIGIN}/categories`, { headers });
-  expect(categories.status()).toBe(200);
-  const [category] = (await categories.json()) as CategoryResponse[];
-  expect(category, 'no default categories (were the migrations run?)').toBeDefined();
-  const created = await request.post(`${API_ORIGIN}/subscriptions`, {
-    headers,
-    data: {
-      name,
-      categoryId: category.id,
-      amount: 25,
-      billingCycle: 'monthly',
-      paymentMethod: 'blik',
-      status: 'active',
-      nextBillingDate: futureDay(),
-    },
-  });
-  expect(created.status()).toBe(201);
-}
-
 // The row of the subscription in the list as rendered from the API's answer (not the status
 // message, which also names it).
 function row(page: Page, name: string) {
@@ -81,7 +41,7 @@ test('a subscription cancelled in the dialog is "W trakcie anulowania" and "Przy
 
   const account = await accounts.newAccount();
   const token = await accounts.sessionFor(account);
-  await createActiveSubscriptionThroughApi(request, token, name);
+  await createSubscriptionThroughApi(request, token, name);
 
   await context.addCookies([sessionCookie(token)]);
   await page.goto('/subscriptions');

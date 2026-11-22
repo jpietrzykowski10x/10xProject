@@ -181,6 +181,17 @@ export function createE2eAccounts({ addressPrefix }: E2eAccountsOptions): E2eAcc
       [ids],
     );
     await client.query('DELETE FROM "user" WHERE id = ANY($1::uuid[])', [ids]);
+    // A cleanup that leaves rows behind has to turn the run red, not hide behind unique addresses.
+    // Every other row of these accounts goes with the user (cascade), so the accounts are enough.
+    const left = await client.query<{ count: string }>(
+      'SELECT count(*) AS count FROM "user" WHERE email LIKE $1',
+      [addressPattern],
+    );
+    if (Number(left.rows[0].count) !== 0) {
+      throw new Error(
+        `removeTestData left ${left.rows[0].count} account(s) matching ${addressPattern}`,
+      );
+    }
   }
 
   async function close(): Promise<void> {

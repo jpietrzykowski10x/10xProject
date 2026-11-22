@@ -1,6 +1,8 @@
-import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
-import { API_ORIGIN, createE2eAccounts, SESSION_COOKIE, sessionCookie } from '../support/accounts';
+import { expect, type Page, test } from '@playwright/test';
+import { createE2eAccounts, sessionCookie } from '../support/accounts';
+import { createSubscriptionThroughApi, futureDay } from '../support/subscriptions';
 
+// Risk: #1 (what the browser could keep between accounts), #7 (the add form works end to end) — context/foundation/test-plan.md §2.
 // The main flow of the product in a real browser: a subscription added in the form reaches the API
 // and comes back on the owner's list, and after a sign-out another account signed in in the same
 // tab (same storage, HTTP cache and browser context) does not see it. Isolation in the API itself
@@ -20,50 +22,6 @@ test.afterAll(async () => {
     await accounts.close();
   }
 });
-
-interface CategoryResponse {
-  id: string;
-}
-
-// A day 30 days ahead in local time, as the API ("YYYY-MM-DD") and the form ("dd.mm.rrrr") take it.
-function futureDay(): { iso: string; polish: string } {
-  const day = new Date();
-  day.setDate(day.getDate() + 30);
-  const yyyy = String(day.getFullYear());
-  const mm = String(day.getMonth() + 1).padStart(2, '0');
-  const dd = String(day.getDate()).padStart(2, '0');
-  return { iso: `${yyyy}-${mm}-${dd}`, polish: `${dd}.${mm}.${yyyy}` };
-}
-
-// Straight to the API with the account's cookie. A client without browser headers passes the
-// CSRF check, so no Origin header is needed.
-async function createSubscriptionThroughApi(
-  request: APIRequestContext,
-  token: string,
-  name: string,
-): Promise<void> {
-  const headers = { Cookie: `${SESSION_COOKIE}=${token}` };
-  const categories = await request.get(`${API_ORIGIN}/categories`, { headers });
-  expect(categories.status()).toBe(200);
-  const categoryList = (await categories.json()) as CategoryResponse[];
-  expect(categoryList.length, 'no default categories (were the migrations run?)').toBeGreaterThan(
-    0,
-  );
-  const [category] = categoryList;
-  const created = await request.post(`${API_ORIGIN}/subscriptions`, {
-    headers,
-    data: {
-      name,
-      categoryId: category.id,
-      amount: 25,
-      billingCycle: 'monthly',
-      paymentMethod: 'blik',
-      status: 'active',
-      nextBillingDate: futureDay().iso,
-    },
-  });
-  expect(created.status()).toBe(201);
-}
 
 // The list as rendered from the API's answer (not the "added" message, which also names it).
 function subscriptionList(page: Page) {

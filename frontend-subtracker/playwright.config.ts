@@ -54,7 +54,11 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: SSR_ORIGIN,
+    // Recorded for every test, kept only for a failed one: with retries: 0 'on-first-retry' would
+    // never record anything.
     trace: 'retain-on-failure',
+    // Taken only after a failure (a passing test pays nothing); readable without opening the trace.
+    screenshot: 'only-on-failure',
   },
   projects: [
     // Plain HTTP against the servers: tests use only the `request` fixture.

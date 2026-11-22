@@ -43,3 +43,7 @@ fyi
 
 # dev-local trial working directory (prune-backups-trial.sh)
 /dev-local/.prune-trial/
+
+# playwright-cli (/10x-e2e explores the app in a browser): snapshots and console logs may hold
+# credentials or session data; no leading slash, the CLI writes it wherever it is started.
+.playwright-cli/
