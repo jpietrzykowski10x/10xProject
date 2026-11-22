@@ -3,3 +3,8 @@
 # The 10x CLI hashes its managed block in CLAUDE.md byte for byte; a CRLF checkout makes it
 # look locally modified and the CLI skips every later lesson's rules.
 CLAUDE.md text eol=lf
+# Same for every other file the 10x CLI writes and tracks by hash (prompts, config templates,
+# the .agents skill): a CRLF checkout turns each one into a "skipped-conflict" on `10x sync`.
+.claude/prompts/** text eol=lf
+.claude/config-templates/** text eol=lf
+.agents/skills/** text eol=lf
