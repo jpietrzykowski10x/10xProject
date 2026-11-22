@@ -368,14 +368,14 @@ Nowa tabela, bez zmian istniejących danych. Na produkcji migracja wchodzi w `de
 
 #### Automated
 
-- [x] 3.1 Testy jednostkowe `decide`
-- [x] 3.2 Celowe uszkodzenie progu 3 albo 12 h czerwieni test
-- [x] 3.3 Shellcheck skryptów MyDevil czysty
-- [x] 3.4 Lint i build backendu, `cli/watchdog.js` w paczce
+- [x] 3.1 Testy jednostkowe `decide` — bf99e6b
+- [x] 3.2 Celowe uszkodzenie progu 3 albo 12 h czerwieni test — bf99e6b
+- [x] 3.3 Shellcheck skryptów MyDevil czysty — bf99e6b
+- [x] 3.4 Lint i build backendu, `cli/watchdog.js` w paczce — bf99e6b
 
 #### Manual
 
-- [x] 3.5 Lokalna próba: mail przy 3. porażce i jeden mail o powrocie
+- [x] 3.5 Lokalna próba: mail przy 3. porażce i jeden mail o powrocie — bf99e6b
 
 ### Phase 4: Dokumentacja i produkcja
 
