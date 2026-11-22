@@ -40,6 +40,12 @@ jobs:
       - run: npm test
       - run: npm run prepare-mydevil
 
+      # Local agent-loop hooks (.claude/hooks/, test-plan.md §6.7): their own tests need only Node
+      # and git (throwaway repos, stub tools), so they ride along here instead of a job of their own.
+      - name: Agent-loop hook tests
+        working-directory: .
+        run: node --test ".claude/hooks/**/*.test.mjs"
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

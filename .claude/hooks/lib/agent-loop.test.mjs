@@ -1,4 +1,4 @@
-// Run: node --test .claude/hooks/
+// Run from the repo root: node --test ".claude/hooks/**/*.test.mjs" (a directory alone does not work in Node 24)
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
