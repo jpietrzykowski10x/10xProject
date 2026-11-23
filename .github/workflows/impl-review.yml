@@ -254,6 +254,8 @@ jobs:
       # the new PR head it would leave the required checks of the protect-main ruleset "waiting for
       # status" and block the merge until someone pushes again. A workflow_dispatch from
       # GITHUB_TOKEN does start a run (GitHub's exception), and [skip ci] does not apply to it.
+      # The PR does not list check runs of a dispatched run, so ci.yml's job pr-statuses copies
+      # each job's result onto the commit as a commit status of the same name (PR #62).
       - name: Run CI on the review commit
         if: always() && steps.guard.outputs.skip != 'true'
         env:

@@ -11,6 +11,8 @@ on:
   # impl-review.yml dispatches this workflow on the PR branch after it commits its review report:
   # that commit carries [skip ci] and is pushed with GITHUB_TOKEN, so it starts no run itself, and
   # without checks on the new head the PR stays "waiting for status" and cannot be merged.
+  # The PR lists only check runs from push and pull_request runs, so a dispatched run reports
+  # its results to the PR through the job pr-statuses at the end of this file.
   workflow_dispatch:
 
 concurrency:
@@ -274,3 +276,41 @@ jobs:
         run: |
           shellcheck --version
           shellcheck --shell=sh -S warning deploy/mydevil/*.sh
+
+  # Only in a run dispatched by impl-review.yml (on its review commit). The PR's check list and
+  # the required checks of the protect-main ruleset ignore check runs of a workflow_dispatch
+  # run (PR #62: five green check runs on the head, PR still BLOCKED), while commit statuses on
+  # the head do count. So this job posts each job's result as a commit status named exactly like
+  # the job (= the required check's context) on the commit this run tested. The statuses are
+  # created with GITHUB_TOKEN, i.e. by the GitHub Actions app the ruleset expects.
+  # A new job above belongs in `needs` too, or the PR never gets its status after a review.
+  pr-statuses:
+    if: always() && github.event_name == 'workflow_dispatch'
+    needs: [backend, frontend, backend-e2e, browser-e2e, deploy-scripts]
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Post each job's result as a commit status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEEDS: ${{ toJSON(needs) }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          FAILED=0
+          while read -r job result; do
+            case "$result" in
+              success) state=success ;;
+              failure) state=failure ;;
+              *) state=error ;; # cancelled or skipped: not a pass
+            esac
+            gh api --method POST "repos/$REPO/statuses/$SHA" \
+              -f state="$state" \
+              -f context="$job" \
+              -f description="CI (workflow_dispatch): $result" \
+              -f target_url="$RUN_URL" > /dev/null || FAILED=1
+            echo "$job: $result -> $state"
+          done < <(jq -r 'to_entries[] | "\(.key) \(.value.result)"' <<< "$NEEDS")
+          exit $FAILED
