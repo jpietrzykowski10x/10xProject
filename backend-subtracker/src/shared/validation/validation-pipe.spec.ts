@@ -7,7 +7,7 @@ import {
 import { Type } from 'class-transformer';
 import { IsEmail, IsInt, IsString, ValidateNested } from 'class-validator';
 import { denialOf } from '../logging/denial.js';
-import { LoggingValidationPipe } from './validation-pipe.js';
+import { LoggingValidationPipe, MAX_LOGGED_FIELDS } from './validation-pipe.js';
 
 const ADDRESS = 'jan.kowalski@example.com';
 
@@ -116,6 +116,27 @@ describe('LoggingValidationPipe', () => {
       ids: { unknown: '3' },
     });
     expect(JSON.stringify(denial)).not.toContain(ADDRESS);
+  });
+
+  it('names at most MAX_LOGGED_FIELDS fields and counts the rest', async () => {
+    const extra = Object.fromEntries(
+      Array.from({ length: 30 }, (_, i) => [
+        `extra${String(i).padStart(2, '0')}`,
+        1,
+      ]),
+    );
+    const denied = await refusal(pipe, {
+      email: ADDRESS,
+      count: 1,
+      item: { name: 'a' },
+      ...extra,
+    });
+
+    const denial = denialOf(denied);
+    expect(MAX_LOGGED_FIELDS).toBe(20);
+    expect(denial?.fields).toHaveLength(20);
+    expect(denial?.fields?.[0]).toBe('extra00');
+    expect(denial?.ids).toEqual({ more: '10' });
   });
 
   it('lets a valid body through', async () => {

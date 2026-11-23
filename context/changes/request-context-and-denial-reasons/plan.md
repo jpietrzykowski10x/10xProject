@@ -460,7 +460,7 @@ Bez zmian schematu i bez migracji: `magic_link_token.expires_at` istnieje, zmien
 
 #### Automated
 
-- [ ] 4.1 CI zielone na PR
+- [x] 4.1 CI zielone na PR — 52031c3
 
 #### Manual
 

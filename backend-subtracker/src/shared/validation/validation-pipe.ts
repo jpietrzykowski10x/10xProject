@@ -16,9 +16,13 @@ const WHITELIST_CONSTRAINT = 'whitelistValidation';
 // text. Only a name shaped like an identifier goes into the log; the rest are only counted.
 const IDENTIFIER_SHAPE = /^[a-zA-Z][a-zA-Z0-9]{0,39}$/;
 
+// A body with hundreds of unknown keys must not make one huge line: the first names (sorted) are
+// enough to see the mismatch, the rest are counted in `ids.more`.
+export const MAX_LOGGED_FIELDS = 20;
+
 // `fields`: the paths of the refused properties (nested ones joined with dots), without values or
 // constraint texts, unique and sorted; `ids.unknown`: how many properties outside the DTO were left
-// out of `fields` because of their shape.
+// out of `fields` because of their shape; `ids.more`: how many fields beyond MAX_LOGGED_FIELDS were cut.
 export function validationDenial(errors: readonly ValidationError[]): Denial {
   const fields = new Set<string>();
   let unknown = 0;
@@ -44,10 +48,16 @@ export function validationDenial(errors: readonly ValidationError[]): Denial {
     visit(error, '');
   }
 
+  const sorted = [...fields].sort();
+  const more = sorted.length - MAX_LOGGED_FIELDS;
+  const ids = {
+    ...(unknown > 0 ? { unknown: String(unknown) } : {}),
+    ...(more > 0 ? { more: String(more) } : {}),
+  };
   return {
     code: VALIDATION_DENIAL,
-    fields: [...fields].sort(),
-    ...(unknown > 0 ? { ids: { unknown: String(unknown) } } : {}),
+    fields: sorted.slice(0, MAX_LOGGED_FIELDS),
+    ...(Object.keys(ids).length > 0 ? { ids } : {}),
   };
 }
 
