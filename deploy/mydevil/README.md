@@ -251,7 +251,7 @@ command="/usr/home/<login>/apps/subtracker/bin/ci-gate.sh",no-pty,no-port-forwar
 crontab:
 
 ```
-@reboot /usr/home/<login>/apps/subtracker/bin/start-all.sh
+@reboot /usr/home/<login>/apps/subtracker/bin/start-all.sh >> /usr/home/<login>/apps/subtracker/api/logs/start-all.log 2>&1
 0 4 * * 0 find /usr/home/<login>/apps/subtracker/*/logs -name '*.log' -size +20M -exec truncate -s 0 {} \;
 30 4 * * * /usr/home/<login>/apps/subtracker/bin/prune-backups.sh >> /usr/home/<login>/apps/subtracker/api/logs/prune-backups.log 2>&1
 */5 * * * * /usr/home/<login>/apps/subtracker/bin/watchdog.sh >> /usr/home/<login>/apps/subtracker/api/logs/watchdog.log 2>&1
@@ -512,7 +512,7 @@ command="/usr/home/<login>/apps/subtracker/bin/ci-gate.sh",no-pty,no-port-forwar
 crontab:
 
 ```
-@reboot /usr/home/<login>/apps/subtracker/bin/start-all.sh
+@reboot /usr/home/<login>/apps/subtracker/bin/start-all.sh >> /usr/home/<login>/apps/subtracker/api/logs/start-all.log 2>&1
 0 4 * * 0 find /usr/home/<login>/apps/subtracker/*/logs -name '*.log' -size +20M -exec truncate -s 0 {} \;
 30 4 * * * /usr/home/<login>/apps/subtracker/bin/prune-backups.sh >> /usr/home/<login>/apps/subtracker/api/logs/prune-backups.log 2>&1
 */5 * * * * /usr/home/<login>/apps/subtracker/bin/watchdog.sh >> /usr/home/<login>/apps/subtracker/api/logs/watchdog.log 2>&1
