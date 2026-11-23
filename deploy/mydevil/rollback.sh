@@ -38,7 +38,8 @@ trap 'exit 1' INT TERM HUP
 export SUBTRACKER_LOCKED=1
 
 health_check() {
-  port=$(sed -n 's/^PORT=//p' "$LIVE/.env" | tr -d "\"' \t\r")
+  # The last PORT= line: the one the app gets (start-app.sh sources .env) and watchdog.sh reads.
+  port=$(sed -n 's/^PORT=//p' "$LIVE/.env" | tail -n 1 | tr -d "\"' \t\r")
   for _ in 1 2 3 4 5; do
     sleep 3
     if curl -fsS -o /dev/null --max-time 5 "http://localhost:$port$HEALTH_PATH"; then

@@ -97,7 +97,7 @@ Ustaleń, które autor świadomie zostawił albo przeniósł w poprzednich przeg
   Problem istniał przed `d344328` i wymaga błędnego `.env`.
 
 - **Fix**: Dopisać `| tail -n 1` w obu skryptach (jak w `port_of` watchdoga) albo zostawić jak jest.
-- **Decision**: PENDING
+- **Decision**: FIXED (chore/port-last-line): deploy.sh i rollback.sh biorą ostatni wiersz PORT= (tail -n 1), tak jak watchdog.sh i start-app.sh, który wczytuje .env powłoką
 
 ### F2 — Temat maila o API zależy tylko od bieżącego sprawdzenia
 
@@ -107,7 +107,7 @@ Ustaleń, które autor świadomie zostawił albo przeniósł w poprzednich przeg
 - **Location**: backend-subtracker/src/watchdog/run-watchdog.ts:153
 - **Detail**: `databaseDown` nie jest zapisywane w stanie, więc temat maila opisuje tylko trzecie (albo przypominające) sprawdzenie. Przykład: dwa sprawdzenia bez odpowiedzi, a trzecie z 503 `db: error`, dają mail „API bez bazy danych”. Kolejne przypomnienia mogą zmieniać temat razem z przyczyną. Licznik porażek i czas ich początku są poprawne, więc alarm przychodzi na czas, a mylić może co najwyżej temat.
 - **Fix**: Zostawić jak jest (temat opisuje stan w chwili maila) albo dopisać jedno zdanie o tym w README.
-- **Decision**: PENDING
+- **Decision**: KEPT: temat opisuje sprawdzenie, przy którym wychodzi mail (stan w chwili wysyłki); zapamiętywanie przyczyny w stanie nie daje operatorowi więcej niż treść bieżącego maila. Zdanie o tym dopisane w README (PL/EN)
 
 ### F3 — Odczyt `PORT` w skryptach `sh` bez testu automatycznego
 
@@ -117,6 +117,6 @@ Ustaleń, które autor świadomie zostawił albo przeniósł w poprzednich przeg
 - **Location**: deploy/mydevil/watchdog.sh:45
 - **Detail**: Zmieniony w F4 potok `sed | tr` w `watchdog.sh`, `deploy.sh` i `rollback.sh` sprawdza tylko `shellcheck` w jobie `deploy-scripts`. Ręczna próba w tym przebiegu dała poprawne wyniki. Regresja wyszłaby jednak dopiero na serwerze, przy deployu albo przy watchdogu. Plan nie wymaga testów skryptów `sh`, więc to nie jest brak względem planu.
 - **Fix**: Zostawić jak jest albo przy F1 wydzielić wspólny `port_of` i sprawdzić go jednym wywołaniem w jobie `deploy-scripts`.
-- **Decision**: PENDING
+- **Decision**: KEPT: skrypty sh wgrywa się ręcznie po jednym (scp), więc wspólny plik z port_of dodałby zależność przy wgrywaniu; potok sprawdzają shellcheck i sh -n w jobie deploy-scripts, a wartości z apostrofami, spacjami, CR i dwoma wierszami PORT= sprawdzone ręcznie. Plan nie wymaga testów skryptów sh
 
 <!-- End of report -->
