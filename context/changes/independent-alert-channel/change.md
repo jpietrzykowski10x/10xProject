@@ -1,7 +1,7 @@
 ---
 change_id: independent-alert-channel
 title: Niezależny kanał alarmów operatora
-status: implementing
+status: impl_reviewed
 created: 2026-11-23
 updated: 2026-11-23
 archived_at: null
