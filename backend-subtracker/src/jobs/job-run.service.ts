@@ -76,8 +76,11 @@ export class JobRunService {
       counters,
     });
 
+    // The day the run worked for (its start in APP_TIME_ZONE): what the jobs compare their dates
+    // with, so a run started around midnight shows which day it handled.
+    const day = calendarDayIn(APP_TIME_ZONE, startedAt);
     const summary =
-      `Job ${job} (${trigger}): ${outcome} in ${finishedAt.getTime() - startedAt.getTime()} ms` +
+      `Job ${job} (${trigger}) for ${day}: ${outcome} in ${finishedAt.getTime() - startedAt.getTime()} ms` +
       countersText(counters);
     if (outcome === 'failed') {
       this.logger.error(`${summary}: ${errorMessage ?? ''}`);
@@ -94,7 +97,7 @@ export class JobRunService {
           job,
           trigger,
           outcome,
-          day: calendarDayIn(APP_TIME_ZONE, startedAt),
+          day,
           counters,
         }),
       );

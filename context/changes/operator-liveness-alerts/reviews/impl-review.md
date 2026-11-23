@@ -81,7 +81,7 @@ Ustaleń, które autor świadomie zostawił albo przeniósł w poprzednich przeg
   - **Ponowiony mail podaje 0 porażek.** `run-watchdog.ts:187` bierze licznik z `previous`, więc ponowiony przy następnym zdrowym sprawdzeniu mail o powrocie podaje „0” nieudanych sprawdzeń.
   - **Nowa awaria może być cicha do 12 h.** Gdy cel padnie znowu, zanim mail o powrocie wyjdzie, `decide` widzi `alerted: true` i wysyła tylko `remind-down` po 12 h od starego `lastMailAt`. Operator i tak nie dostał maila o powrocie, więc uważa, że cel dalej leży, i szkoda jest mała.
 - **Fix**: W `keepUnsent` przy `decision.action === 'recovered'` zachować `failures: previous.failures` (analogicznie do `firstFailureAt`) i dopisać przypadek do `watchdog-policy.spec.ts`.
-- **Decision**: PENDING
+- **Decision**: FIXED: keepUnsent przy nieudanym mailu o powrocie zachowuje licznik porażek (obok firstFailureAt); testy w watchdog-policy.spec.ts i run-watchdog.spec.ts
 
 ### F2 — Padnięta baza daje mail „API nie odpowiada”
 
@@ -91,7 +91,7 @@ Ustaleń, które autor świadomie zostawił albo przeniósł w poprzednich przeg
 - **Location**: backend-subtracker/src/watchdog/run-watchdog.ts:144
 - **Detail**: Gdy baza leży, `/health` zwraca 503 `{ status: 'error', db: 'error' }`. Watchdog liczy to jako niezdrowe `api` i wysyła „SubTracker: API nie odpowiada”, choć proces API odpowiada, a problemem jest baza. Alarm przychodzi poprawnie i na czas, ale wprowadza w błąd przy diagnozie. Zgodne z planem („Zdrowy = 2xx z `status: 'ok'`”).
 - **Fix**: Przy odpowiedzi 503 z czytelnym `db: 'error'` dopisać do treści maila „baza danych nie odpowiada” albo zostawić to S-12/S-14.
-- **Decision**: PENDING
+- **Decision**: FIXED: 503 z db: error daje temat „SubTracker: API bez bazy danych” i linię przyczyny; nadal porażka celu api; testy w watchdog-mail.spec.ts i run-watchdog.spec.ts, README PL/EN
 
 ### F3 — Linia podsumowania przebiegu nie podaje dnia, dla którego zadanie działało
 
@@ -101,7 +101,7 @@ Ustaleń, które autor świadomie zostawił albo przeniósł w poprzednich przeg
 - **Location**: backend-subtracker/src/jobs/job-run.service.ts:80
 - **Detail**: Ustalenie z poprzedniego przeglądu, nadal otwarte. Przed zmianą scheduler cyklu życia logował `Lifecycle run for ${today}: …`. Teraz jedyną linią jest podsumowanie z `track`, bez dnia w `APP_TIME_ZONE`. Plan wymaga w linii tylko zadania, wyzwalacza, wyniku, liczników i czasu, więc nie jest to odstępstwo od planu.
 - **Fix**: Dodać `calendarDayIn(APP_TIME_ZONE, startedAt)` do linii podsumowania albo zostawić to S-14 (format logu).
-- **Decision**: PENDING
+- **Decision**: FIXED: linia podsumowania „Job <job> (<trigger>) for <dzień w APP_TIME_ZONE>: …”; test granicy północy w job-run.service.spec.ts, backend-patterns.md
 
 ### F4 — `port_of` nie zdejmuje apostrofów ani spacji z `PORT`
 
@@ -111,7 +111,7 @@ Ustaleń, które autor świadomie zostawił albo przeniósł w poprzednich przeg
 - **Location**: deploy/mydevil/watchdog.sh:45
 - **Detail**: Ustalenie z poprzedniego przeglądu, nadal otwarte. `tr -d '"\r'` usuwa cudzysłowy i `\r`, ale nie `'` ani końcowe spacje. `.env` z `PORT='3000'` dałby zły port i każdy przebieg kończyłby się błędem widocznym tylko w logu. Parsowanie jest identyczne jak w `deploy.sh`, więc taki `.env` zepsułby też health-check deployu.
 - **Fix**: Rozszerzyć filtr do `tr -d "\"' \r"` w obu skryptach naraz albo zostawić jak jest.
-- **Decision**: PENDING
+- **Decision**: FIXED: filtr tr -d usuwa oba rodzaje cudzysłowów, spacje, tabulatory i `\r` w watchdog.sh, deploy.sh i rollback.sh naraz
 
 ### F5 — `CLAUDE.md` nadal mówi, że błąd przebiegu startowego jest „tylko logowany”
 
@@ -121,6 +121,6 @@ Ustaleń, które autor świadomie zostawił albo przeniósł w poprzednich przeg
 - **Location**: CLAUDE.md:34
 - **Detail**: PR dopisał w tym akapicie zdanie o `JobRunService.track` (wiersz `job_run`, linia podsumowania, mail do operatora przy `failed`/`partial`), ale zostawił wcześniejszy nawias „with the startup run awaited (a failure is only logged)” przy zadaniach z 00:05. Po S-11 błąd jest zapisywany w `job_run` i mailowany, więc akapit przeczy sam sobie. Plan (faza 4) wymaga w `CLAUDE.md` tylko zdania o `job_run`, `/health.jobs` i watchdogu, więc to drobna niedokładność dokumentu, a nie brak.
 - **Fix**: Zmienić nawias na np. „(a failure is recorded and mailed, see below)” albo go usunąć.
-- **Decision**: PENDING
+- **Decision**: FIXED: nawias w CLAUDE.md mówi, że błąd przebiegu startowego nie zatrzymuje startu i jest zapisywany oraz mailowany
 
 <!-- End of report -->

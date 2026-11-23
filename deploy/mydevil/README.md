@@ -206,7 +206,7 @@ Sprawdzane cele:
 
 Maile idą na `NOTIFICATION_ADMINISTRATOR_MAIL` transportem operatora (`NOTIFICATION_SMTP_*`, a bez nich `SMTP_*`), bez bazy: nie powstaje wiersz w tabeli `mail`. Dla każdego celu:
 
-- po 3 kolejnych porażkach (ok. 15 minut): `SubTracker: API nie odpowiada`, `SubTracker: Frontend nie odpowiada` albo `SubTracker: zadanie cykliczne nie ruszyło od 26 h` (`... stan zadań cyklicznych nieczytelny`, gdy brak pola `jobs`);
+- po 3 kolejnych porażkach (ok. 15 minut): `SubTracker: API nie odpowiada`, `SubTracker: Frontend nie odpowiada` albo `SubTracker: zadanie cykliczne nie ruszyło od 26 h` (`... stan zadań cyklicznych nieczytelny`, gdy brak pola `jobs`); gdy api odpowiada, ale `/health` zgłasza bazę danych (503, `db: error`), temat brzmi `SubTracker: API bez bazy danych`;
 - dopóki cel leży, przypomnienie co 12 h (`... nadal ...`);
 - po powrocie jeden mail `... działa ponownie`.
 
@@ -465,7 +465,7 @@ Targets checked:
 
 Mail goes to `NOTIFICATION_ADMINISTRATOR_MAIL` through the operator transport (`NOTIFICATION_SMTP_*`, or `SMTP_*` without them), without the database: no row is written to the `mail` table. For each target:
 
-- after 3 consecutive failures (about 15 minutes): `SubTracker: API nie odpowiada`, `SubTracker: Frontend nie odpowiada` or `SubTracker: zadanie cykliczne nie ruszyło od 26 h` (`... stan zadań cyklicznych nieczytelny` when the `jobs` field is missing);
+- after 3 consecutive failures (about 15 minutes): `SubTracker: API nie odpowiada`, `SubTracker: Frontend nie odpowiada` or `SubTracker: zadanie cykliczne nie ruszyło od 26 h` (`... stan zadań cyklicznych nieczytelny` when the `jobs` field is missing); when the API answers but `/health` reports the database (503, `db: error`), the subject is `SubTracker: API bez bazy danych`;
 - while the target stays down, a reminder every 12 h (`... nadal ...`);
 - once it is back, one `... działa ponownie` mail.
 

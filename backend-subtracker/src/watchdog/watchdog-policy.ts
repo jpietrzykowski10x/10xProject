@@ -92,13 +92,16 @@ export function keepUnsent(
   decision: Decision,
 ): TargetState {
   const previous = state ?? HEALTHY_STATE;
-  // A failed recovery mail keeps the start of the failure for the retry on the next check.
-  const firstFailureAt =
-    decision.action === 'recovered'
-      ? previous.firstFailureAt
-      : decision.next.firstFailureAt;
+  // A failed recovery mail keeps the failure as it was (its count and start) for the retry on the
+  // next check: the operator has not heard of the recovery, so for them the failure goes on. A new
+  // failure before that retry continues it (count + 1, same start, reminder 12 h after the last
+  // mail the operator did get) instead of opening a new one with a fresh "down" alert.
+  const unsentRecovery = decision.action === 'recovered';
+  const firstFailureAt = unsentRecovery
+    ? previous.firstFailureAt
+    : decision.next.firstFailureAt;
   return {
-    failures: decision.next.failures,
+    failures: unsentRecovery ? previous.failures : decision.next.failures,
     alerted: previous.alerted,
     ...(previous.lastMailAt !== undefined && {
       lastMailAt: previous.lastMailAt,

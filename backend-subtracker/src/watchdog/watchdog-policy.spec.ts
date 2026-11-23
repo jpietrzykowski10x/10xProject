@@ -175,11 +175,26 @@ describe('keepUnsent', () => {
     const stored = keepUnsent(state, recovered);
 
     expect(stored).toEqual({
-      failures: 0,
+      failures: 3,
       alerted: true,
       lastMailAt: at(10).toISOString(),
       firstFailureAt: START.toISOString(),
     });
     expect(decide(stored, true, at(25)).action).toBe('recovered');
+  });
+
+  it('continues the failure when the target fails again before the recovery mail went out', () => {
+    const { state } = failChecks(3);
+    const stored = keepUnsent(state, decide(state, true, at(20)));
+
+    const again = decide(stored, false, at(25));
+
+    expect(again.action).toBe('none');
+    expect(again.next).toEqual({
+      failures: 4,
+      alerted: true,
+      lastMailAt: at(10).toISOString(),
+      firstFailureAt: START.toISOString(),
+    });
   });
 });

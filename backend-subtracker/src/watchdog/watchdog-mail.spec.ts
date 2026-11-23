@@ -51,6 +51,27 @@ describe('watchdogMail', () => {
     expect(unreadable.text).toContain('nie zwrócił poprawnego pola jobs');
   });
 
+  it.each([
+    ['alert-down', 'SubTracker: API bez bazy danych', true],
+    ['remind-down', 'SubTracker: API nadal bez bazy danych', true],
+    ['recovered', 'SubTracker: API działa ponownie', false],
+  ] as const)(
+    'names the database for an api %s when /health reported db error',
+    (action, subject, causeLine) => {
+      const mail = watchdogMail({
+        target: 'api',
+        action,
+        failures: 3,
+        firstFailureAt: FIRST,
+        now: NOW,
+        databaseDown: true,
+      });
+
+      expect(mail.subject).toBe(subject);
+      expect(mail.text.includes('db: error')).toBe(causeLine);
+    },
+  );
+
   it('gives the target, the failure count and the start of the failure in Warsaw time', () => {
     const mail = watchdogMail({
       target: 'api',

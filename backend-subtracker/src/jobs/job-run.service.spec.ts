@@ -111,7 +111,7 @@ describe('JobRunService', () => {
       );
 
       expect(logLog).toHaveBeenCalledExactlyOnceWith(
-        'Job auth-cleanup (cron): success in 0 ms, tokens=0, sessions=0',
+        'Job auth-cleanup (cron) for 2026-11-22: success in 0 ms, tokens=0, sessions=0',
       );
       expect(logWarn).not.toHaveBeenCalled();
       expect(logError).not.toHaveBeenCalled();
@@ -130,7 +130,7 @@ describe('JobRunService', () => {
         { finishedAt: NOW, outcome: 'partial', counters },
       );
       expect(logWarn).toHaveBeenCalledExactlyOnceWith(
-        'Job trial-reminder (cron): partial in 0 ms, usersNotified=1, remindersSent=1, usersFailed=2',
+        'Job trial-reminder (cron) for 2026-11-22: partial in 0 ms, usersNotified=1, remindersSent=1, usersFailed=2',
       );
       expect(notifyOperator).toHaveBeenCalledOnce();
       const mail = notifyOperator.mock.calls[0][0];
@@ -154,7 +154,7 @@ describe('JobRunService', () => {
         { finishedAt: NOW, outcome: 'failed', counters: null },
       );
       expect(logError).toHaveBeenCalledExactlyOnceWith(
-        'Job subscription-lifecycle (cron): failed in 0 ms: relation "x" violated by jan@example.com',
+        'Job subscription-lifecycle (cron) for 2026-11-22: failed in 0 ms: relation "x" violated by jan@example.com',
       );
       expect(notifyOperator).toHaveBeenCalledOnce();
       const mail = notifyOperator.mock.calls[0][0];
@@ -177,7 +177,21 @@ describe('JobRunService', () => {
       });
 
       expect(logLog).toHaveBeenCalledExactlyOnceWith(
-        'Job auth-cleanup (startup): success in 1234 ms, tokens=1, sessions=0',
+        'Job auth-cleanup (startup) for 2026-11-22: success in 1234 ms, tokens=1, sessions=0',
+      );
+    });
+
+    it('names the day of the start in Warsaw, not in UTC', async () => {
+      const { service } = setup();
+      // 23:05 UTC on 22 November is 00:05 on 23 November in Warsaw (the daily cron).
+      vi.setSystemTime(new Date('2026-11-22T23:05:00.000Z'));
+
+      await service.track('subscription-lifecycle', 'cron', () =>
+        Promise.resolve({ counters: {} }),
+      );
+
+      expect(logLog).toHaveBeenCalledExactlyOnceWith(
+        'Job subscription-lifecycle (cron) for 2026-11-23: success in 0 ms',
       );
     });
 

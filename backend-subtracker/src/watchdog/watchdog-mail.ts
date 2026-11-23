@@ -19,6 +19,8 @@ export interface WatchdogMailInput {
   now: Date;
   // The `jobs` target only: which jobs are stale, or that /health did not report them at all.
   jobs?: JobsProblem;
+  // The `api` target only: the API answered, but /health reports the database as down.
+  databaseDown?: boolean;
 }
 
 export type JobsProblem =
@@ -41,6 +43,9 @@ function subjectOf(input: WatchdogMailInput): string {
     return `SubTracker: ${input.action === 'remind-down' ? 'nadal ' : ''}${problem}`;
   }
   const name = TARGET_NAMES[input.target];
+  if (input.databaseDown === true && input.action !== 'recovered') {
+    return `SubTracker: ${name} ${input.action === 'remind-down' ? 'nadal ' : ''}bez bazy danych`;
+  }
   switch (input.action) {
     case 'alert-down':
       return `SubTracker: ${name} nie odpowiada`;
@@ -86,6 +91,11 @@ export function watchdogMail(input: WatchdogMailInput): MailContent {
   ];
   if (input.jobs !== undefined && input.action !== 'recovered') {
     lines.push(jobsLine(input.jobs));
+  }
+  if (input.databaseDown === true && input.action !== 'recovered') {
+    lines.push(
+      'przyczyna: API odpowiada, ale /health zgłasza niedziałającą bazę danych (db: error)',
+    );
   }
   const sentence = sentenceOf(input.action);
   const footer = 'Szczegóły w logu watchdoga i w logach aplikacji na serwerze.';

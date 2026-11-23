@@ -42,7 +42,7 @@ done
 # PORT only, read as text: the frontend's .env belongs to the other app and is
 # never executed here.
 port_of() {
-  sed -n 's/^PORT=//p' "$1" | tail -n 1 | tr -d '"\r'
+  sed -n 's/^PORT=//p' "$1" | tail -n 1 | tr -d "\"' \t\r"
 }
 
 if [ ! -f "$API_LIVE/.env" ]; then

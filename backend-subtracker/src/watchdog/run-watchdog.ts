@@ -130,6 +130,9 @@ interface Checks {
   // undefined = not judged this time (the `jobs` target while the API is down).
   healthy: Partial<Record<WatchdogTarget, boolean>>;
   jobsProblem?: JobsProblem;
+  // The API answered but /health says the database is down (503 with `db: 'error'`): still an
+  // `api` failure, but the mail names the database instead of a dead process.
+  databaseDown?: boolean;
 }
 
 async function check(
@@ -147,6 +150,9 @@ async function check(
   const checks: Checks = {
     healthy: { api: apiBody !== undefined, frontend: is2xx(frontend) },
   };
+  if (apiBody === undefined && isRecord(api?.json) && api.json.db === 'error') {
+    checks.databaseDown = true;
+  }
   if (apiBody !== undefined) {
     checks.jobsProblem = jobsProblemOf(apiBody);
     checks.healthy.jobs = checks.jobsProblem === undefined;
@@ -193,6 +199,8 @@ export async function runWatchdog(
         now,
         ...(target === 'jobs' &&
           checks.jobsProblem !== undefined && { jobs: checks.jobsProblem }),
+        ...(target === 'api' &&
+          checks.databaseDown === true && { databaseDown: true }),
       });
       try {
         await deps.sendMail(mail);

@@ -226,6 +226,59 @@ describe('runWatchdog', () => {
     expect(run.written()?.api).toEqual({ failures: 0, alerted: false });
   });
 
+  it('retries a failed recovery mail with the failure count it had', async () => {
+    const apiDown = {
+      failures: 5,
+      alerted: true,
+      lastMailAt: '2026-11-22T09:45:00.000Z',
+      firstFailureAt: '2026-11-22T09:35:00.000Z',
+    };
+    const failing = fake({
+      api: apiAnswer(),
+      frontend: { status: 200 },
+      state: { api: apiDown },
+      mailFails: true,
+    });
+    await runWatchdog(CONFIG, failing.deps);
+    expect(failing.written()?.api).toEqual(apiDown);
+
+    const retry = fake({
+      api: apiAnswer(),
+      frontend: { status: 200 },
+      state: failing.written(),
+    });
+    await runWatchdog(CONFIG, retry.deps);
+
+    expect(retry.mails.map((mail) => mail.subject)).toEqual([
+      'SubTracker: API działa ponownie',
+    ]);
+    expect(retry.mails[0].text).toContain('kolejne nieudane sprawdzenia: 5');
+  });
+
+  it('names the database when /health answers 503 with db error', async () => {
+    const run = fake({
+      api: { status: 503, json: { status: 'error', db: 'error' } },
+      frontend: { status: 200 },
+      state: { api: DOWN_TWICE },
+    });
+
+    await runWatchdog(CONFIG, run.deps);
+
+    expect(run.mails.map((mail) => mail.subject)).toEqual([
+      'SubTracker: API bez bazy danych',
+    ]);
+    expect(run.mails[0].text).toContain('db: error');
+    expect(run.written()?.api).toMatchObject({ failures: 3, alerted: true });
+  });
+
+  it('keeps "API nie odpowiada" when there is no answer at all', async () => {
+    const run = fake({ frontend: { status: 200 }, state: { api: DOWN_TWICE } });
+
+    await runWatchdog(CONFIG, run.deps);
+
+    expect(run.mails[0].text).not.toContain('baz');
+  });
+
   it('logs its own error and does not throw when the state cannot be written', async () => {
     const run = fake({ api: apiAnswer(), frontend: { status: 200 } });
     run.deps.writeState = () => Promise.reject(new Error('disk full'));

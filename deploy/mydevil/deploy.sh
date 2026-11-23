@@ -54,7 +54,7 @@ trap 'exit 1' INT TERM HUP
 export SUBTRACKER_LOCKED=1
 
 health_check() {
-  port=$(sed -n 's/^PORT=//p' "$LIVE/.env" | tr -d '"\r')
+  port=$(sed -n 's/^PORT=//p' "$LIVE/.env" | tr -d "\"' \t\r")
   for attempt in 1 2 3 4 5; do
     sleep 3
     if curl -fsS -o /dev/null --max-time 5 "http://localhost:$port$HEALTH_PATH"; then
