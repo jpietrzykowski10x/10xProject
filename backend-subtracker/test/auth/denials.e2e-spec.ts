@@ -231,5 +231,14 @@ describe('Auth denials in the log (e2e)', () => {
 
       expect(warned).not.toHaveBeenCalled();
     });
+
+    it('answers POST /auth/logout with an unknown cookie with 204 and no warn line', async () => {
+      await http()
+        .post('/auth/logout')
+        .set('Cookie', UNKNOWN_COOKIE)
+        .expect(204);
+
+      expect(warned).not.toHaveBeenCalled();
+    });
   });
 });

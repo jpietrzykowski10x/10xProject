@@ -10,6 +10,9 @@ import { withDenial } from '../logging/denial.js';
 import type { AuthenticatedRequest } from '../types/auth-user.js';
 import type { RoleCode } from '../types/role-code.js';
 
+// Code of the `warn` line for a request without the required role (SafeLoggingExceptionFilter).
+export const ROLE_MISSING_DENIAL = 'role_missing';
+
 // Runs after the session guard and only reads request.user: it neither authenticates again nor
 // queries the database.
 @Injectable()
@@ -29,7 +32,7 @@ export class RolesGuard implements CanActivate {
     if (!required.some((role) => user?.roles.includes(role))) {
       // The response stays a bare 403; the log line names the actor.
       throw withDenial(new ForbiddenException(), {
-        code: 'role_missing',
+        code: ROLE_MISSING_DENIAL,
         ...(user === undefined ? {} : { ids: { actor: user.id } }),
       });
     }

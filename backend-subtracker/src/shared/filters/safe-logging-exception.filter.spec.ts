@@ -76,6 +76,7 @@ const CSRF_ORIGIN =
 
 function hostFor(request: RequestWithContext, response: object): ArgumentsHost {
   return {
+    getType: () => 'http',
     getArgByIndex: () => response,
     switchToHttp: () => ({
       getRequest: () => request,
@@ -234,6 +235,22 @@ describe('SafeLoggingExceptionFilter', () => {
     createFilter(true).catch(failure, host);
 
     expect(logged.mock.calls).toEqual([[`${CONTEXT}: broken`, failure.stack]]);
+  });
+
+  it('logs an error from a context other than HTTP without a request', () => {
+    const rpcHost = {
+      getType: () => 'rpc',
+      getArgByIndex: () => response,
+      switchToHttp: () => {
+        throw new Error('not an HTTP context');
+      },
+    } as unknown as ArgumentsHost;
+
+    createFilter(false).catch(queryFailure(), rpcHost);
+
+    expect(logged.mock.calls).toEqual([
+      ['(no http request): value too long (code: 22001)'],
+    ]);
   });
 
   it('handles a thrown value that is not an error', () => {

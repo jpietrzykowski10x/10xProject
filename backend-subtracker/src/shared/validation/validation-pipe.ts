@@ -5,6 +5,9 @@ import {
 } from '@nestjs/common';
 import { type Denial, withDenial } from '../logging/denial.js';
 
+// Code of the `warn` line for a body refused by validation (SafeLoggingExceptionFilter).
+export const VALIDATION_DENIAL = 'validation';
+
 // The constraint class-validator reports for a property the DTO does not declare
 // (forbidNonWhitelisted).
 const WHITELIST_CONSTRAINT = 'whitelistValidation';
@@ -42,7 +45,7 @@ export function validationDenial(errors: readonly ValidationError[]): Denial {
   }
 
   return {
-    code: 'validation',
+    code: VALIDATION_DENIAL,
     fields: [...fields].sort(),
     ...(unknown > 0 ? { ids: { unknown: String(unknown) } } : {}),
   };

@@ -25,7 +25,10 @@ export function assignRequestId(
 // `<METHOD> <route template|(unrouted)> user=<uuid|-> req=<uuid|->` for a log line. The route
 // template (e.g. /subscriptions/:id) only: never originalUrl or url, whose query may carry an
 // address or a token. A request refused before routing (CSRF, unknown path) has no template.
-export function describeRequest(req: RequestWithContext): string {
+export function describeRequest(req: RequestWithContext | undefined): string {
+  if (req === undefined) {
+    return '(no http request)';
+  }
   const route = req.route as { path?: unknown } | undefined;
   const template = typeof route?.path === 'string' ? route.path : '(unrouted)';
   return `${req.method} ${template} user=${req.user?.id ?? '-'} req=${req.requestId ?? '-'}`;

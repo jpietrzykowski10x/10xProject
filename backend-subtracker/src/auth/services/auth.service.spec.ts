@@ -463,6 +463,18 @@ describe('AuthService', () => {
         );
       });
 
+      it('is link_race for a token unused and valid again by the second read', async () => {
+        const { error } = await refusalOf({
+          refused: { id: TOKEN_ID, usedAt: null, live: true },
+        });
+
+        expect(error).toBeInstanceOf(UnauthorizedException);
+        expect(denialOf(error)).toEqual({
+          code: 'link_race',
+          ids: { token: TOKEN_ID },
+        });
+      });
+
       it('is link_user_missing when the owner is gone by the lock', async () => {
         const { error } = await refusalOf({
           tokenOwner: 'user-1',

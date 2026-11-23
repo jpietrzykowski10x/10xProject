@@ -52,8 +52,8 @@ function describeError(exception: unknown): string {
 // `scheme://host[:port]` of the Origin header in lower case, cut to 100 characters; `invalid` when
 // it is not a URL with an origin, `none` when the header is missing. The site's name only: it tells
 // a wrong CORS_ORIGINS apart from a foreign site.
-function originOf(request: RequestWithContext): string {
-  const header: unknown = request.headers?.origin;
+function originOf(request: RequestWithContext | undefined): string {
+  const header: unknown = request?.headers?.origin;
   if (typeof header !== 'string' || header === '') {
     return 'none';
   }
@@ -69,7 +69,7 @@ function originOf(request: RequestWithContext): string {
 
 function csrfDenial(
   exception: HttpException,
-  request: RequestWithContext,
+  request: RequestWithContext | undefined,
 ): Denial | undefined {
   if (exception.getStatus() !== HttpStatus.FORBIDDEN) {
     return undefined;
@@ -104,7 +104,11 @@ export class SafeLoggingExceptionFilter extends BaseExceptionFilter {
   }
 
   override catch(exception: unknown, host: ArgumentsHost): void {
-    const request = host.switchToHttp().getRequest<RequestWithContext>();
+    // Only HTTP is served today; another context (e.g. a future gateway) gets lines without a request.
+    const request =
+      host.getType() === 'http'
+        ? host.switchToHttp().getRequest<RequestWithContext>()
+        : undefined;
 
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
@@ -138,7 +142,10 @@ export class SafeLoggingExceptionFilter extends BaseExceptionFilter {
 
   // `<METHOD> <route template> user=<id> req=<id>: <message> (code: X)`: which request failed and
   // for whom, without its URL, query, body or headers.
-  private logFailure(exception: unknown, request: RequestWithContext): void {
+  private logFailure(
+    exception: unknown,
+    request: RequestWithContext | undefined,
+  ): void {
     const line = `${describeRequest(request)}: ${describeError(exception)}`;
     if (this.logStacks && exception instanceof Error && exception.stack) {
       this.logger.error(line, exception.stack);
@@ -150,7 +157,7 @@ export class SafeLoggingExceptionFilter extends BaseExceptionFilter {
   private logDenial(
     denial: Denial | undefined,
     status: number,
-    request: RequestWithContext,
+    request: RequestWithContext | undefined,
   ): void {
     if (denial === undefined) {
       return;
