@@ -381,11 +381,11 @@ Nowa tabela, bez zmian istniejących danych. Na produkcji migracja wchodzi w `de
 
 #### Automated
 
-- [ ] 4.1 CI zielone na PR
+- [x] 4.1 CI zielone na PR — PR #62 (f02ae98)
 
 #### Manual
 
-- [ ] 4.2 Po deployu `/health` na serwerze pokazuje `jobs` z `ok`
-- [ ] 4.3 `watchdog.sh` wgrany, wpis w crontabie, ręczne uruchomienie bez maila
-- [ ] 4.4 Zatrzymane API daje mail w ~15 min, start daje mail o powrocie
-- [ ] 4.5 Deploy bez fałszywego alarmu
+- [x] 4.2 Po deployu `/health` na serwerze pokazuje `jobs` z `ok` — serwer, 2026-11-23
+- [x] 4.3 `watchdog.sh` wgrany, wpis w crontabie, ręczne uruchomienie bez maila — serwer, 2026-11-23 (crontab poprawiony, zob. Notes w `change.md`)
+- [x] 4.4 Zatrzymane API daje mail w ~15 min, start daje mail o powrocie — serwer, 2026-11-23
+- [x] 4.5 Deploy bez fałszywego alarmu — serwer, 2026-11-23 (run 45174145722, `workflow_dispatch`; bez maila, `failures: 0`)
