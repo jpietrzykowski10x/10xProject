@@ -46,7 +46,7 @@ Plan realizuje PRD v2 FR-020 i roadmapę S-12. Zamyka L2, L3, J6 i J10 z audytu 
   - kończy się kodem 0, gdy serwer przyjął mail, a kodem 1 przy błędzie env, braku adresu albo odrzuceniu;
   - w logu ma tylko wynik i kod błędu SMTP, bez hasła i adresu.
   
-  Na serwerze: `cd ~/apps/subtracker/api/live && node cli/operator-test-mail.js`.
+  Na serwerze: `cd ~/apps/subtracker/api/public_nodejs && node cli/operator-test-mail.js`.
 - **Odrzucenie adresata:**
   - literówką jest tylko `EENVELOPE` + `RCPT TO` z rozszerzonym statusem `5.1.x` w odpowiedzi; zostaje `warn` bez alarmu, jak dziś;
   - każde inne odrzucenie (5.7.x, 5.2.x, 5.5.x, 4xx, 5xx bez rozszerzonego statusu) to `error` i alarm;
@@ -239,7 +239,7 @@ Dokumenty opisują wymagany kanał i nowe reguły alarmu, a nowa skrzynka dział
   - `:65` i `:326`: `NOTIFICATION_SMTP_*` wymagane w PROD, osobna skrzynka (inny login niż `SMTP_USERNAME`); bez nich nie przejdzie `migration:run` ani start API (deploy się wycofa), nie zadziałają skrypty ról i watchdog;
   - `:207` i `:468`: transport operatora bez fallbacku w PROD;
   - `:239` i `:500`: zdanie „Do S-12…” zastąpione opisem ograniczenia (awaria całej poczty MyDevil);
-  - nowy akapit o `node cli/operator-test-mail.js` z `api/live`, z kodem wyjścia, po zmianie hasła i po deployu.
+  - nowy akapit o `node cli/operator-test-mail.js` z `api/public_nodejs`, z kodem wyjścia, po zmianie hasła i po deployu.
 - `backend-patterns.md`, „Maile”:
   - puste `NOTIFICATION_SMTP_*` tylko w DEV;
   - reguła alarmu o nieudanej wysyłce: per typ, 15 min od przyjęcia, 1 min po porażce, licznik pominiętych;
@@ -255,7 +255,7 @@ Dokumenty opisują wymagany kanał i nowe reguły alarmu, a nowa skrzynka dział
 #### Manual Verification:
 
 - Przed merge'em: `NOTIFICATION_SMTP_HOST`, `_PORT`, `_SECURE`, `_USERNAME`, `_PASSWORD`, `_FROM_EMAIL` dopisane do `~/apps/subtracker/api/shared/.env` na serwerze
-- Po deployu API: `curl localhost:<PORT_API>/health` zwraca 200, a na serwerze `cd ~/apps/subtracker/api/live && node cli/operator-test-mail.js; echo "exit $?"` daje `exit 0` i mail od nowej skrzynki
+- Po deployu API: `curl localhost:<PORT_API>/health` zwraca 200, a na serwerze `cd ~/apps/subtracker/api/public_nodejs && node cli/operator-test-mail.js; echo "exit $?"` daje `exit 0` i mail od nowej skrzynki
 - Następny przebieg watchdoga nie wpisuje `cannot run` do `watchdog.log`
 
 **Implementation Note**: Po wdrożeniu i ręcznych testach na produkcji zatrzymaj się na potwierdzenie przed `/10x-impl-review` i `/10x-archive`.
@@ -340,6 +340,6 @@ Bez zmian schematu i bez migracji. Wdrożenie wymaga nowych kluczy w `shared/.en
 
 #### Manual
 
-- [x] 3.2 Klucze `NOTIFICATION_SMTP_*` w `shared/.env` przed merge'em
-- [ ] 3.3 Po deployu `/health` 200 i `operator-test-mail.js` z `exit 0`
-- [ ] 3.4 Watchdog bez `cannot run` po deployu
+- [x] 3.2 Klucze `NOTIFICATION_SMTP_*` w `shared/.env` przed merge'em — 8a02289
+- [x] 3.3 Po deployu `/health` 200 i `operator-test-mail.js` z `exit 0` — 3fb85a1
+- [x] 3.4 Watchdog bez `cannot run` po deployu — 3fb85a1
