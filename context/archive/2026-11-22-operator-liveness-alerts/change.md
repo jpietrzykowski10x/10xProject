@@ -1,9 +1,10 @@
 ---
 change_id: operator-liveness-alerts
 title: Operator liveness alerts
-status: impl_reviewed
+status: archived
 created: 2026-11-22
 updated: 2026-11-23
+archived_at: 2026-11-23T13:49:24Z
 ---
 
 ## Notes

@@ -3,7 +3,7 @@ project: SubTracker
 version: 2
 status: draft
 created: 2026-10-16
-updated: 2026-11-22
+updated: 2026-11-23
 prd_version: 2
 main_goal: quality
 top_blocker: time
@@ -41,7 +41,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 
 | ID   | Change ID                          | Outcome (user can …)                                                                 | Prerequisites | PRD refs                | Status   |
 | ---- | ---------------------------------- | ------------------------------------------------------------------------------------ | ------------- | ----------------------- | -------- |
-| S-11 | operator-liveness-alerts           | operator dostaje mail, gdy API nie odpowiada albo job padł lub nie ruszył przez 26 h | —             | FR-019                  | in-progress |
+| S-11 | operator-liveness-alerts           | operator dostaje mail, gdy API nie odpowiada albo job padł lub nie ruszył przez 26 h | —             | FR-019                  | done        |
 | S-12 | independent-alert-channel          | alarm operatora dochodzi także przy awarii SMTP dla użytkowników                     | S-11          | FR-020                  | proposed |
 | S-13 | request-context-and-denial-reasons | operator widzi w logu trasę, użytkownika i id żądania błędu oraz przyczyny odmów 4xx  | —             | FR-021                  | ready    |
 | S-14 | log-format-version-and-access-log  | operator czyta logi w jednym formacie, z wersją i access logiem obu procesów         | S-13          | FR-022                  | proposed |
@@ -240,3 +240,4 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **S-08: użytkownik ustawia miesięczny limit całościowy i limity per kategoria, a dashboard pokazuje alert przy 80% i 100% limitu, przeliczany po dodaniu lub edycji subskrypcji.** — Archived 2026-11-18 → `context/archive/2026-11-17-budget-limits-and-alerts/`. Lesson: —.
 - **S-10: użytkownik usuwa swoje konto z poziomu aplikacji. Przed usunięciem widzi potwierdzenie z informacją, że dane (subskrypcje, własne kategorie) przepadną bezpowrotnie. Po usunięciu jest wylogowany, a jego sesje, tokeny logowania i dane domenowe znikają.** — Archived 2026-11-21 → `context/archive/2026-11-20-account-deletion/`. Lesson: —.
 - **S-09: administrator (rola nadana ręcznie poza aplikacją) blokuje i odblokowuje konto lub resetuje dostęp użytkownika i ma wgląd w jego dane, w tym subskrypcje i kwoty.** — Archived 2026-11-21 → `context/archive/2026-11-21-admin-account-management/`. Lesson: widok listy w trzech szerokościach; przyciski i pola z tokenów motywu.
+- **S-11: operator dostaje mail, gdy API przestaje odpowiadać albo pada w pętli restartów (sprawdzenie spoza procesu API), oraz gdy zadanie cykliczne zakończy się błędem albo nie zakończy się w ciągu 26 godzin; każdy przebieg zadania zostawia trwały ślad.** — Archived 2026-11-23 → `context/archive/2026-11-22-operator-liveness-alerts/`. Lesson: —.
