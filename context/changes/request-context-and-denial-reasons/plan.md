@@ -421,27 +421,27 @@ Bez zmian schematu i bez migracji: `magic_link_token.expires_at` istnieje, zmien
 
 #### Automated
 
-- [x] 1.1 Testy jednostkowe `request-context` i filtra (kontekst, P12, brak query)
-- [x] 1.2 Celowe uszkodzenie `describeRequest` (`originalUrl`) czerwieni test
-- [x] 1.3 Testy e2e kontekstu
-- [x] 1.4 Lint i build backendu
+- [x] 1.1 Testy jednostkowe `request-context` i filtra (kontekst, P12, brak query) — c20b6b6
+- [x] 1.2 Celowe uszkodzenie `describeRequest` (`originalUrl`) czerwieni test — c20b6b6
+- [x] 1.3 Testy e2e kontekstu — c20b6b6
+- [x] 1.4 Lint i build backendu — c20b6b6
 
 #### Manual
 
-- [x] 1.5 Lokalnie nagłówek `X-Request-Id` i linia 5xx z kontekstem
+- [x] 1.5 Lokalnie nagłówek `X-Request-Id` i linia 5xx z kontekstem — c20b6b6
 
 ### Phase 2: Mechanizm odmów i odmowy przekrojowe
 
 #### Automated
 
-- [ ] 2.1 Testy jednostkowe limitera, `denial`, filtra i pipe'a
-- [ ] 2.2 Celowe uszkodzenie limitu albo `fields` czerwieni test
-- [ ] 2.3 Testy e2e odmów przekrojowych
-- [ ] 2.4 Lint i build backendu
+- [x] 2.1 Testy jednostkowe limitera, `denial`, filtra i pipe'a
+- [x] 2.2 Celowe uszkodzenie limitu albo `fields` czerwieni test
+- [x] 2.3 Testy e2e odmów przekrojowych
+- [x] 2.4 Lint i build backendu
 
 #### Manual
 
-- [ ] 2.5 Lokalnie `curl` CSRF daje linię `csrf_sec_fetch_site`
+- [x] 2.5 Lokalnie `curl` CSRF daje linię `csrf_sec_fetch_site`
 
 ### Phase 3: Przyczyny logowania i sesji
 

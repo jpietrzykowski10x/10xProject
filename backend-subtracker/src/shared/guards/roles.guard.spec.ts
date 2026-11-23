@@ -1,6 +1,7 @@
 import { type ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Roles } from '../decorators/roles.decorator.js';
+import { denialOf } from '../logging/denial.js';
 import type { AuthUser } from '../types/auth-user.js';
 import { RoleCode } from '../types/role-code.js';
 import { RolesGuard } from './roles.guard.js';
@@ -78,6 +79,39 @@ describe('RolesGuard', () => {
     const context = contextFor(routes.adminOnly, Routes);
 
     expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+  });
+
+  // The filter logs the denial; the response stays a bare 403.
+  function refusalOf(context: ExecutionContext): ForbiddenException {
+    try {
+      guard.canActivate(context);
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        return error;
+      }
+      throw error;
+    }
+    throw new Error('The guard let the request through');
+  }
+
+  it('marks the refusal as role_missing with the actor', () => {
+    const refusal = refusalOf(
+      contextFor(routes.adminOnly, Routes, userWith(RoleCode.USER)),
+    );
+
+    expect(denialOf(refusal)).toEqual({
+      code: 'role_missing',
+      ids: { actor: 'user-1' },
+    });
+    expect(refusal.getResponse()).toEqual(
+      new ForbiddenException().getResponse(),
+    );
+  });
+
+  it('marks the refusal without an actor when there is no user', () => {
+    expect(denialOf(refusalOf(contextFor(routes.adminOnly, Routes)))).toEqual({
+      code: 'role_missing',
+    });
   });
 
   it('reads class metadata, and the method overrides it', () => {

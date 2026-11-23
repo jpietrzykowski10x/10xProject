@@ -1,14 +1,19 @@
 import {
   type ArgumentsHost,
   BadRequestException,
+  ForbiddenException,
   HttpException,
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import { type EnvConfig, validateEnv } from '../../config/env.js';
+import { withDenial } from '../logging/denial.js';
 import type { RequestWithContext } from '../logging/request-context.js';
-import { SafeLoggingExceptionFilter } from './safe-logging-exception.filter.js';
+import {
+  DENIAL_LOG_WINDOW_MS,
+  SafeLoggingExceptionFilter,
+} from './safe-logging-exception.filter.js';
 
 const ADDRESS = 'ktos@example.com';
 const USER_ID = '11111111-1111-4111-8111-111111111111';
@@ -50,8 +55,24 @@ function routedRequest(): RequestWithContext {
     route: { path: '/subscriptions/:id' },
     user: { id: USER_ID, email: ADDRESS, roles: [] },
     requestId: REQUEST_ID,
+    headers: { origin: 'https://app.example.com' },
   } as unknown as RequestWithContext;
 }
+
+// A request refused by Nest's CSRF check, before routing, with these headers.
+function csrfRequest(headers: Record<string, string>): RequestWithContext {
+  return {
+    method: 'POST',
+    originalUrl: `/auth/logout?email=${ADDRESS}`,
+    requestId: REQUEST_ID,
+    headers,
+  } as unknown as RequestWithContext;
+}
+
+const CSRF_SEC_FETCH_SITE =
+  'Cross-origin request detected from Sec-Fetch-Site header';
+const CSRF_ORIGIN =
+  'Cross-origin request detected, and/or browser is out of date: Sec-Fetch-Site is missing, and Origin does not match Host';
 
 function hostFor(request: RequestWithContext, response: object): ArgumentsHost {
   return {
@@ -68,6 +89,7 @@ describe('SafeLoggingExceptionFilter', () => {
   const host = hostFor(routedRequest(), response);
   const reply = vi.fn();
   let logged: ReturnType<typeof vi.spyOn>;
+  let warned: ReturnType<typeof vi.spyOn>;
 
   function createFilter(logStacks: boolean): SafeLoggingExceptionFilter {
     return Object.assign(
@@ -83,10 +105,14 @@ describe('SafeLoggingExceptionFilter', () => {
     logged = vi
       .spyOn(Logger.prototype, 'error')
       .mockImplementation(() => undefined);
+    warned = vi
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => undefined);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it('logs the request context, message, code and stack of a failed query but not its parameters', () => {
@@ -185,6 +211,7 @@ describe('SafeLoggingExceptionFilter', () => {
     createFilter(true).catch(new BadRequestException('zly adres'), host);
 
     expect(logged).not.toHaveBeenCalled();
+    expect(warned).not.toHaveBeenCalled();
     expect(reply).toHaveBeenCalledWith(
       response,
       expect.objectContaining({ statusCode: 400, message: 'zly adres' }),
@@ -218,5 +245,158 @@ describe('SafeLoggingExceptionFilter', () => {
       { statusCode: 500, message: 'Internal server error' },
       500,
     );
+  });
+
+  describe('denials', () => {
+    const START = Date.parse('2026-11-23T10:00:00.000Z');
+    const roleDenial = () =>
+      withDenial(new ForbiddenException(), {
+        code: 'role_missing',
+        ids: { actor: USER_ID },
+      });
+
+    it('logs a marked client error once, as a warn line in the Denials context, and keeps its response', () => {
+      const denied = roleDenial();
+
+      createFilter(true).catch(denied, host);
+
+      expect(logged).not.toHaveBeenCalled();
+      expect(warned.mock.calls).toEqual([
+        [`role_missing 403 ${CONTEXT} actor=${USER_ID}`],
+      ]);
+      expect(warned.mock.contexts[0]).toMatchObject({ context: 'Denials' });
+      expect(reply).toHaveBeenCalledWith(response, denied.getResponse(), 403);
+    });
+
+    it('logs the denial of a middleware error, read before the error is replaced', () => {
+      const failure = withDenial(
+        Object.assign(new Error('payload too large'), {
+          expose: true,
+          statusCode: 413,
+          status: 413,
+        }) as unknown as HttpException,
+        { code: 'body_too_large' },
+      );
+
+      createFilter(true).catch(failure, host);
+
+      expect(warned.mock.calls).toEqual([[`body_too_large 413 ${CONTEXT}`]]);
+      expect(reply).toHaveBeenCalledWith(
+        response,
+        { statusCode: 413, message: 'payload too large' },
+        413,
+      );
+    });
+
+    it('writes at most 10 lines per code a minute and reports the rest in the next window', () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(START);
+      const filter = createFilter(false);
+
+      for (let i = 0; i < 11; i++) {
+        filter.catch(roleDenial(), host);
+      }
+      // Another code has its own limit.
+      filter.catch(
+        withDenial(new BadRequestException(), { code: 'validation' }),
+        host,
+      );
+
+      expect(warned).toHaveBeenCalledTimes(11);
+      expect(
+        warned.mock.calls.filter((call: unknown[]) =>
+          String(call[0]).startsWith('role_missing'),
+        ),
+      ).toHaveLength(10);
+      expect(reply).toHaveBeenCalledTimes(12);
+
+      vi.setSystemTime(START + DENIAL_LOG_WINDOW_MS);
+      filter.catch(roleDenial(), host);
+      filter.catch(roleDenial(), host);
+
+      expect(warned.mock.calls.slice(11)).toEqual([
+        [
+          `role_missing 403 ${CONTEXT} actor=${USER_ID} (suppressed 1 in the previous window)`,
+        ],
+        [`role_missing 403 ${CONTEXT} actor=${USER_ID}`],
+      ]);
+    });
+
+    it('recognises a CSRF refusal by Sec-Fetch-Site with the origin of the request', () => {
+      createFilter(false).catch(
+        new ForbiddenException(CSRF_SEC_FETCH_SITE),
+        hostFor(
+          csrfRequest({
+            origin: 'https://Evil.Example:8443',
+            'sec-fetch-site': 'cross-site',
+          }),
+          response,
+        ),
+      );
+
+      expect(warned.mock.calls).toEqual([
+        [
+          `csrf_sec_fetch_site 403 POST (unrouted) user=- req=${REQUEST_ID} origin=https://evil.example:8443`,
+        ],
+      ]);
+      expect(JSON.stringify(warned.mock.calls)).not.toContain(ADDRESS);
+    });
+
+    it('recognises a CSRF refusal by Origin and keeps only scheme, host and port', () => {
+      createFilter(false).catch(
+        new ForbiddenException(CSRF_ORIGIN),
+        hostFor(
+          csrfRequest({ origin: `https://evil.example/path?email=${ADDRESS}` }),
+          response,
+        ),
+      );
+
+      expect(warned.mock.calls).toEqual([
+        [
+          `csrf_origin 403 POST (unrouted) user=- req=${REQUEST_ID} origin=https://evil.example`,
+        ],
+      ]);
+      expect(JSON.stringify(warned.mock.calls)).not.toContain(ADDRESS);
+    });
+
+    it.each([
+      [{}, 'none'],
+      [{ origin: 'not a url' }, 'invalid'],
+      [{ origin: 'null' }, 'invalid'],
+    ])('marks the origin of %j as %s', (headers, origin) => {
+      createFilter(false).catch(
+        new ForbiddenException(CSRF_ORIGIN),
+        hostFor(csrfRequest(headers), response),
+      );
+
+      expect(warned.mock.calls).toEqual([
+        [
+          `csrf_origin 403 POST (unrouted) user=- req=${REQUEST_ID} origin=${origin}`,
+        ],
+      ]);
+    });
+
+    it('cuts a long origin to 100 characters', () => {
+      const longOrigin = `https://${'a'.repeat(200)}.example`;
+
+      createFilter(false).catch(
+        new ForbiddenException(CSRF_SEC_FETCH_SITE),
+        hostFor(csrfRequest({ origin: longOrigin }), response),
+      );
+
+      const line = String(warned.mock.calls[0][0]);
+      expect(line.slice(line.indexOf('origin=') + 'origin='.length)).toBe(
+        longOrigin.slice(0, 100),
+      );
+    });
+
+    it('does not log another 403 or a CSRF text with another status', () => {
+      const filter = createFilter(false);
+
+      filter.catch(new ForbiddenException('Cannot manage this account'), host);
+      filter.catch(new BadRequestException(CSRF_ORIGIN), host);
+
+      expect(warned).not.toHaveBeenCalled();
+    });
   });
 });

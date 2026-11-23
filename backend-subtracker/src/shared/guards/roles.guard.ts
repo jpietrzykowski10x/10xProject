@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Roles } from '../decorators/roles.decorator.js';
+import { withDenial } from '../logging/denial.js';
 import type { AuthenticatedRequest } from '../types/auth-user.js';
 import type { RoleCode } from '../types/role-code.js';
 
@@ -26,7 +27,11 @@ export class RolesGuard implements CanActivate {
 
     const { user } = context.switchToHttp().getRequest<AuthenticatedRequest>();
     if (!required.some((role) => user?.roles.includes(role))) {
-      throw new ForbiddenException();
+      // The response stays a bare 403; the log line names the actor.
+      throw withDenial(new ForbiddenException(), {
+        code: 'role_missing',
+        ...(user === undefined ? {} : { ids: { actor: user.id } }),
+      });
     }
     return true;
   }
