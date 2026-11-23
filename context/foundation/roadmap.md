@@ -90,7 +90,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **Unknowns:**
   - Interwał watchdoga i liczba porażek przed alarmem; czy watchdog pilnuje też frontendu SSR? — Owner: agent (`/10x-plan`). Block: no.
 - **Risk:** Stoi pierwsza, bo zamyka P1, J1 i J2 (krytyczne) i daje kanał, z którego korzystają S-12 i S-16. Ryzyko w części poza kodem: skrypt watchdoga wgrywany ręcznie (`scp`) i wpis w crontabie, jak `prune-backups.sh`; joby zostają idempotentne (`lessons.md`), mail bez danych użytkowników.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-12: Niezależny kanał alarmów
 
@@ -188,9 +188,9 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 
 | Roadmap ID | Change ID                          | Suggested issue title                                   | Ready for `/10x-plan` | Notes |
 | ---------- | ---------------------------------- | ------------------------------------------------------- | --------------------- | ----- |
-| S-11       | operator-liveness-alerts           | Watchdog API i rejestr przebiegów jobów z alarmem       | yes                   | Gwiazda przewodnia; run `/10x-plan operator-liveness-alerts` |
+| S-11       | operator-liveness-alerts           | Watchdog API i rejestr przebiegów jobów z alarmem       | done                   | Zarchiwizowane 2026-11-22 |
 | S-12       | independent-alert-channel          | Osobny kanał alarmów operatora                          | no                    | Po S-11; osobna skrzynka alarmowa na MyDevil (zakłada użytkownik) |
-| S-13       | request-context-and-denial-reasons | Kontekst żądania i przyczyny odmów 4xx w logu API       | yes                   | Run `/10x-plan request-context-and-denial-reasons` |
+| S-13       | request-context-and-denial-reasons | Kontekst żądania i przyczyny odmów 4xx w logu API       | done                   | Zarchiwizowane 2026-11-23 |
 | S-14       | log-format-version-and-access-log  | Format logu, wersja i access log                        | no                    | Po S-13; kandydat na `/goal` |
 | S-15       | client-and-ssr-error-visibility    | Widoczność błędów przeglądarki i SSR                    | no                    | Po S-14 |
 | S-16       | failure-causes-and-audit-trail     | Przyczyny porażek jobów i maili, ślad audytowy          | no                    | Po S-11 |
