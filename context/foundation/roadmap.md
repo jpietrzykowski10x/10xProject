@@ -42,7 +42,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | ID   | Change ID                          | Outcome (user can …)                                                                 | Prerequisites | PRD refs                | Status   |
 | ---- | ---------------------------------- | ------------------------------------------------------------------------------------ | ------------- | ----------------------- | -------- |
 | S-11 | operator-liveness-alerts           | operator dostaje mail, gdy API nie odpowiada albo job padł lub nie ruszył przez 26 h | —             | FR-019                  | done        |
-| S-12 | independent-alert-channel          | alarm operatora dochodzi także przy awarii SMTP dla użytkowników                     | S-11          | FR-020                  | proposed |
+| S-12 | independent-alert-channel          | alarm operatora dochodzi także przy awarii SMTP dla użytkowników                     | S-11          | FR-020                  | in-progress |
 | S-13 | request-context-and-denial-reasons | operator widzi w logu trasę, użytkownika i id żądania błędu oraz przyczyny odmów 4xx  | —             | FR-021                  | done |
 | S-14 | log-format-version-and-access-log  | operator czyta logi w jednym formacie, z wersją i access logiem obu procesów         | S-13          | FR-022                  | proposed |
 | S-15 | client-and-ssr-error-visibility    | błędy przeglądarki i SSR zostawiają ślad, a nieaktualny plik po deployu przeładowuje stronę | S-14     | FR-023                  | proposed |
@@ -103,7 +103,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **Unknowns:**
   - ~~Drugi kanał na MyDevil czy zewnętrzny SMTP?~~ Rozstrzygnięte 2026-11-22: osobna skrzynka na MyDevil, bez zewnętrznych dostawców. Świadomie akceptowane ograniczenie: awaria całej poczty MyDevil wyłącza też alarmy (watchdog z S-11 nadal zapisuje porażki w logu).
 - **Risk:** Po S-11, bo S-11 dodaje nowe wywołania alarmu, a S-12 utwardza ich drogę; ryzyko w deployu — nowy wymagany klucz w `shared/.env` przed merge'em.
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-13: Kontekst żądania i przyczyny odmów w logu API
 

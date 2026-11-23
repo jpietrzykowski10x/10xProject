@@ -26,6 +26,10 @@ const prodEnv = validateEnv({
   SMTP_PASSWORD: 'smtp-secret',
   SMTP_FROM_EMAIL: 'noreply@example.com',
   NOTIFICATION_ADMINISTRATOR_MAIL: 'operator@example.com',
+  NOTIFICATION_SMTP_HOST: 'alerts.example.com',
+  NOTIFICATION_SMTP_USERNAME: 'alerts@example.com',
+  NOTIFICATION_SMTP_PASSWORD: 'alerts-secret',
+  NOTIFICATION_SMTP_FROM_EMAIL: 'alerts@example.com',
   SUPPORT_EMAIL: 'support@example.com',
 });
 

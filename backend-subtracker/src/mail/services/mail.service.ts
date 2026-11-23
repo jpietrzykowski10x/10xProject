@@ -19,33 +19,29 @@ import {
   MailType,
   type UserMailType,
 } from '../mail.types.js';
+import {
+  enhancedStatusOf,
+  isRecipientTypo,
+  smtpFieldsOf,
+} from '../smtp-error.js';
 
+// Quiet time for one mail type after an accepted failure alert.
 export const OPERATOR_ALERT_INTERVAL_MS = 15 * 60 * 1000;
+// Reserved while an alert is on the way, and kept as the retry delay when it fails.
+export const OPERATOR_ALERT_RETRY_MS = 60 * 1000;
+
+interface OperatorAlertState {
+  // Until then a failure of this type sends no alert and only counts as skipped.
+  blockedUntil: number;
+  // Failures not reported yet; the next alert names them.
+  skipped: number;
+  // An alert of this type is being sent. The reservation alone is not enough: a send can outlast
+  // it (three nodemailer timeouts of 30 s each), and a second alert would then go out in parallel.
+  inFlight: boolean;
+}
 
 function errorMessageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-interface SmtpErrorFields {
-  code?: unknown;
-  command?: unknown;
-  responseCode?: unknown;
-}
-
-function smtpFieldsOf(error: unknown): SmtpErrorFields {
-  return typeof error === 'object' && error !== null ? error : {};
-}
-
-// The server permanently refused this address, most likely a typo. Anything else, including a
-// refused sender or a temporary refusal, points at our side or the server.
-function isRecipientRejected(error: unknown): boolean {
-  const { code, command, responseCode } = smtpFieldsOf(error);
-  return (
-    code === 'EENVELOPE' &&
-    command === 'RCPT TO' &&
-    typeof responseCode === 'number' &&
-    responseCode >= 500
-  );
 }
 
 // Neither public method rejects: callers fire mail after their response or transaction, and a
@@ -58,7 +54,7 @@ function isRecipientRejected(error: unknown): boolean {
 export class MailService {
   private readonly logger = new Logger(MailService.name);
   private readonly operatorMail: string | undefined;
-  private lastOperatorAlertAt: number | undefined;
+  private readonly operatorAlerts = new Map<MailType, OperatorAlertState>();
 
   constructor(
     @InjectRepository(Mail) private readonly mails: Repository<Mail>,
@@ -93,20 +89,22 @@ export class MailService {
     return sent;
   }
 
-  async notifyOperator(content: MailContent): Promise<void> {
+  // Resolves to whether the transport accepted the mail; false without an operator address.
+  async notifyOperator(content: MailContent): Promise<boolean> {
     if (this.operatorMail === undefined) {
       this.logger.warn(
         `NOTIFICATION_ADMINISTRATOR_MAIL is not set, operator notification only logged: ${content.subject}`,
       );
-      return;
+      return false;
     }
     // A failed alert is only logged and audited by deliver(), so it cannot trigger another alert.
-    await this.deliver(
+    const { sent } = await this.deliver(
       'operator',
       MailType.OPERATOR_ALERT,
       this.operatorMail,
       content,
     );
+    return sent;
   }
 
   private async deliver(
@@ -129,9 +127,9 @@ export class MailService {
         MailStatus.FAILED,
         errorMessage,
       );
-      const recipientRejected = isRecipientRejected(error);
-      this.logFailure(type, error, rowId, recipientRejected);
-      return { sent: false, needsAlert: !recipientRejected, rowId };
+      const recipientTypo = isRecipientTypo(error);
+      this.logFailure(type, error, rowId, recipientTypo);
+      return { sent: false, needsAlert: !recipientTypo, rowId };
     }
     const rowId = await this.saveAudit(
       channel,
@@ -165,16 +163,21 @@ export class MailService {
     }
   }
 
-  // SMTP messages can quote the address, so the full text stays in the audit row, next to it.
+  // SMTP messages can quote the address, so the full text stays in the audit row, next to it; the
+  // log gets the enhanced status only.
   private logFailure(
     type: MailType,
     error: unknown,
     rowId: string | null,
-    recipientRejected: boolean,
+    recipientTypo: boolean,
   ): void {
     const { code } = smtpFieldsOf(error);
-    const details = `code: ${typeof code === 'string' ? code : 'unknown'}, audit row: ${rowId ?? 'none'}`;
-    if (recipientRejected) {
+    const status = enhancedStatusOf(error);
+    const details =
+      `code: ${typeof code === 'string' ? code : 'unknown'}` +
+      (status === undefined ? '' : `, status: ${status}`) +
+      `, audit row: ${rowId ?? 'none'}`;
+    if (recipientTypo) {
       this.logger.warn(`Recipient of ${type} mail rejected (${details})`);
     } else {
       this.logger.error(`Sending ${type} mail failed (${details})`);
@@ -213,24 +216,45 @@ export class MailService {
   }
 
   // The alert names the audit row only: never the mail body, which can hold a sign-in link.
+  // Each mail type has its own window. While an alert is on the way, the type is reserved for the
+  // retry delay, so failures arriving meanwhile (parallel sign-in requests) count as skipped
+  // instead of sending a second alert. An accepted alert extends the window to the full interval
+  // from its acceptance and takes the number it reported off the counter; after a failed one the
+  // reservation stays as the retry delay and the counter keeps that number plus this failure.
   private async alertOperatorAboutFailure(
     type: MailType,
     rowId: string | null,
   ): Promise<void> {
-    const now = Date.now();
-    if (
-      this.lastOperatorAlertAt !== undefined &&
-      now - this.lastOperatorAlertAt < OPERATOR_ALERT_INTERVAL_MS
-    ) {
+    let state = this.operatorAlerts.get(type);
+    if (state === undefined) {
+      state = { blockedUntil: 0, skipped: 0, inFlight: false };
+      this.operatorAlerts.set(type, state);
+    }
+    if (state.inFlight || Date.now() < state.blockedUntil) {
+      state.skipped += 1;
       return;
     }
-    this.lastOperatorAlertAt = now;
+    state.blockedUntil = Date.now() + OPERATOR_ALERT_RETRY_MS;
+    state.inFlight = true;
+    const reported = state.skipped;
 
     const id = rowId ?? 'brak (nie zapisano wiersza audytu)';
-    await this.notifyOperator({
-      subject: 'SubTracker: nieudana wysyłka maila',
-      text: `Nie udało się wysłać maila.\nid: ${id}\ntyp: ${type}`,
-      html: `<p>Nie udało się wysłać maila.</p><p>id: ${escapeHtml(id)}<br>typ: ${escapeHtml(type)}</p>`,
-    });
+    const skippedLine = `pominięte od poprzedniego alarmu: ${reported}`;
+    let sent: boolean;
+    try {
+      sent = await this.notifyOperator({
+        subject: 'SubTracker: nieudana wysyłka maila',
+        text: `Nie udało się wysłać maila.\nid: ${id}\ntyp: ${type}\n${skippedLine}`,
+        html: `<p>Nie udało się wysłać maila.</p><p>id: ${escapeHtml(id)}<br>typ: ${escapeHtml(type)}<br>${escapeHtml(skippedLine)}</p>`,
+      });
+    } finally {
+      state.inFlight = false;
+    }
+    if (sent) {
+      state.blockedUntil = Date.now() + OPERATOR_ALERT_INTERVAL_MS;
+      state.skipped -= reported;
+    } else {
+      state.skipped += 1;
+    }
   }
 }

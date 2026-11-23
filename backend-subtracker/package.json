@@ -23,6 +23,7 @@
     "admin:revoke": "nest build && node dist/cli/admin-revoke.js",
     "superadmin:grant": "nest build && node dist/cli/superadmin-grant.js",
     "superadmin:revoke": "nest build && node dist/cli/superadmin-revoke.js",
+    "operator:test-mail": "nest build && node dist/cli/operator-test-mail.js",
     "lint": "oxlint --type-aware src/ test/",
     "test": "vitest run",
     "test:watch": "vitest",
