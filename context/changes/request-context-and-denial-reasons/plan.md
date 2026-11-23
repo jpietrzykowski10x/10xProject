@@ -447,14 +447,14 @@ Bez zmian schematu i bez migracji: `magic_link_token.expires_at` istnieje, zmien
 
 #### Automated
 
-- [x] 3.1 Testy e2e przyczyn auth
-- [x] 3.2 Pełne testy backendu
-- [x] 3.3 Celowe uszkodzenie kolejności w `check` albo `Date.now()` w `issueLink` czerwieni test
-- [x] 3.4 Lint i build backendu
+- [x] 3.1 Testy e2e przyczyn auth — 81ed222
+- [x] 3.2 Pełne testy backendu — 81ed222
+- [x] 3.3 Celowe uszkodzenie kolejności w `check` albo `Date.now()` w `issueLink` czerwieni test — 81ed222
+- [x] 3.4 Lint i build backendu — 81ed222
 
 #### Manual
 
-- [x] 3.5 Lokalnie `link_used` i `session_revoked`
+- [x] 3.5 Lokalnie `link_used` i `session_revoked` — 81ed222
 
 ### Phase 4: Dokumentacja i produkcja
 

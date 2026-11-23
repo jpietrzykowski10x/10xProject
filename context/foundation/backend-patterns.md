@@ -60,7 +60,7 @@
   - `GET /auth/session` jest publiczne, zwraca 200 `{ user: AuthUser | null }` z `Cache-Control: no-store` i z niego korzysta frontend. Niezalogowany gość to tam normalny przypadek, a 401 pokazywałby się jako błąd w konsoli przeglądarki na każdej publicznej stronie.
   - `GET /auth/me` zostaje chronione: bez sesji zwraca 401.
   - `POST /auth/logout` jest publiczne i idempotentne, zawsze zwraca 204. Kończy tylko sesję, której token niesie żądanie.
-- **Ochrona CSRF** (zmiana `csrf-protection`, sprawdzone na produkcji 2026-11-11): `app.enableCsrfProtection({ trustedOrigins: corsOrigins })` w `applyHttpSecurity`, więc mają ją `main.ts` i wszystkie testy e2e, bo każdy wywołuje tę funkcję. Nest odrzuca 403 każde żądanie zmieniające stan (`POST`, `PUT`, `PATCH`, `DELETE`), które przeglądarka wysłała z obcej strony: `Sec-Fetch-Site` inne niż `same-origin`/`none` albo `Origin` niezgodny z `Host`. Frontend na innej subdomenie wysyła `Sec-Fetch-Site: same-site`, więc przechodzi tylko dlatego, że jego origin jest w `CORS_ORIGINS` — nowy frontend musi trafić na tę listę. `GET`, `HEAD`, `OPTIONS` oraz klienci bez `Origin` (curl, health-check, SSR frontendu) przechodzą. Odrzucenia nie są logowane (4xx). Testy: macierz nagłówków w `test/app.e2e-spec.ts`, atak login CSRF na `/auth/verify` w `test/auth/token-rules.e2e-spec.ts`. Nowe trasy nie potrzebują nic dodatkowego; wyjątki (`exclude`) tylko dla tras wołanych z obcych domen, np. webhooków.
+- **Ochrona CSRF** (zmiana `csrf-protection`, sprawdzone na produkcji 2026-11-11): `app.enableCsrfProtection({ trustedOrigins: corsOrigins })` w `applyHttpSecurity`, więc mają ją `main.ts` i wszystkie testy e2e, bo każdy wywołuje tę funkcję. Nest odrzuca 403 każde żądanie zmieniające stan (`POST`, `PUT`, `PATCH`, `DELETE`), które przeglądarka wysłała z obcej strony: `Sec-Fetch-Site` inne niż `same-origin`/`none` albo `Origin` niezgodny z `Host`. Frontend na innej subdomenie wysyła `Sec-Fetch-Site: same-site`, więc przechodzi tylko dlatego, że jego origin jest w `CORS_ORIGINS` — nowy frontend musi trafić na tę listę. `GET`, `HEAD`, `OPTIONS` oraz klienci bez `Origin` (curl, health-check, SSR frontendu) przechodzą. Każde odrzucenie zostawia linię `warn` `csrf_sec_fetch_site` albo `csrf_origin` z `origin=<scheme://host[:port]>` (przycięte do 100 znaków, `invalid` albo `none`); zła lista `CORS_ORIGINS` widać więc jako skok tych kodów z originem własnego frontu (sekcja „Logi błędów i odmów”). Testy: macierz nagłówków w `test/app.e2e-spec.ts`, atak login CSRF na `/auth/verify` w `test/auth/token-rules.e2e-spec.ts`. Nowe trasy nie potrzebują nic dodatkowego; wyjątki (`exclude`) tylko dla tras wołanych z obcych domen, np. webhooków.
 
 ## CORS
 
@@ -95,6 +95,25 @@
 - Importy względne z rozszerzeniem `.js`. Bez aliasu `src/...`, bo w natywnym ESM nie zadziała bez dodatkowego loadera.
 - Operacje na kilku encjach w `dataSource.transaction(...)` (wzór z `register`). Zwracamy DTO odpowiedzi; status zostaje w kodzie HTTP, nie w treści.
 - Każdy `Promise` z `await` albo jawnie obsłużony. W boilerplate dwa brakujące `await` przy `argon2.verify` i `changeActivateUserAccount` wyłączały kontrole bezpieczeństwa.
+
+## Logi błędów i odmów (od S-13)
+
+- **Id żądania.** Pierwsze middleware w `applyHttpSecurity` (`assignRequestId`, `src/shared/logging/request-context.ts`) nadaje każdemu żądaniu UUID i zwraca go w nagłówku `X-Request-Id` (CORS go eksponuje). Przychodzący nagłówek jest ignorowany. Zgłoszenie użytkownika dopasowujemy do logu po tym id albo po trasie, użytkowniku i czasie.
+- **Linie pisze tylko globalny `SafeLoggingExceptionFilter`.** Moduł nie loguje odmowy sam, tylko oznacza wyjątek. Filtr działa po wycofaniu transakcji, więc log nie zależy od jej wyniku.
+  - 5xx (także `HttpException` ≥ 500): `error` w postaci `<METODA> <szablon trasy|(unrouted)> user=<uuid|-> req=<uuid>: <komunikat> (code: X)`, stos pod `LOG_ERROR_STACKS`. `user=` jest znany dopiero po guardzie sesji.
+  - Oznaczone 4xx: `warn` w kontekście `Denials`: `<kod> <status> <METODA> <trasa> user=<uuid|-> req=<uuid> [klucz=wartość …] [fields=a,b]`.
+- **Oznaczanie odmowy:** `throw withDenial(new XxxException(...), { code, ids?, fields? })` (`src/shared/logging/denial.ts`). Body i status odpowiedzi się nie zmieniają. Kody domeny trzyma moduł funkcji (`auth/auth-denials.ts`, `CANNOT_MANAGE_DENIAL` w `admin/`), `shared/` zna tylko kody przekrojowe (`role_missing`, `validation`, `csrf_*`).
+  - `code`: małe litery i `_`.
+  - `ids`: tylko uuid i słowa z zamkniętego zbioru (`why=self|rank`, `action=reset_sessions`). Klucz `user` jest zajęty przez wywołującego, więc konto, którego dotyczy odmowa, to `account` (albo `target`). `formatDenial` usuwa znaki spoza dozwolonych, ale to siatka bezpieczeństwa, nie zgoda na dowolne dane.
+  - `fields`: tylko nazwy pól. Walidację oznacza `LoggingValidationPipe` (body jak domyślne); pole spoza DTO trafia do linii tylko w kształcie identyfikatora (`^[a-zA-Z][a-zA-Z0-9]{0,39}$`), reszta jako `unknown=N`.
+- **Nigdy w linii:** adres e-mail, token, hash, ciasteczko, `originalUrl` i query, body, wartości pól, nagłówki poza `Origin` (tylko `scheme://host[:port]`, do 100 znaków).
+- **Limit:** `FixedWindowLimiter` (`src/shared/rate-limit/`), 10 linii na kod na minutę, w pamięci procesu. Pierwsza linia kodu w kolejnym oknie dopisuje `(suppressed N in the previous window)`.
+- **Kody dziś:**
+  - link: `link_unknown`, `link_used` (sprawdzane przed wygaśnięciem), `link_expired`, `link_user_missing`, `link_race`, `link_account_blocked` (z `token=`, a dalej `account=`). Ważność linku liczy baza (`now() + interval`), tak samo jak porównanie;
+  - sesja, tylko 401 `SessionAuthGuard` (`SessionService.check`, kolejność: unieważniona, wygasła, nieaktywne konto): `session_missing`, `session_unknown`, `session_revoked`, `session_expired`, `session_inactive` (z `session=`, gdy znana). Po wylogowaniu przeglądarka nie ma już ciasteczka, więc zwykła druga karta daje `session_missing`, a `session_revoked` oznacza stare ciasteczko;
+  - `csrf_sec_fetch_site`, `csrf_origin`, `role_missing`, `admin_cannot_manage` (`actor`, `target`, `action`, `why=self|rank`), `validation`.
+- **Czego nie logujemy:** 404, 409, `ParseUUIDPipe`, 400 z serwisów, `GET /auth/session` i `POST /auth/logout` (gość to tam normalny przypadek), body-parser. Nowa odmowa trafia do logu tylko wtedy, gdy jej skok coś mówi o usterce systemu, a nie o pomyłce użytkownika.
+- **Test każdej nowej odmowy:** e2e ze spy na `Logger.prototype.warn` sprawdza kod i to, że w linii nie ma adresu, tokenu, ciasteczka ani query (wzór: `test/denials.e2e-spec.ts`, `test/auth/denials.e2e-spec.ts`).
 
 ## Dane domenowe (od S-02)
 
