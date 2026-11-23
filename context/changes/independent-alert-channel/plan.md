@@ -340,6 +340,6 @@ Bez zmian schematu i bez migracji. Wdrożenie wymaga nowych kluczy w `shared/.en
 
 #### Manual
 
-- [ ] 3.2 Klucze `NOTIFICATION_SMTP_*` w `shared/.env` przed merge'em
+- [x] 3.2 Klucze `NOTIFICATION_SMTP_*` w `shared/.env` przed merge'em
 - [ ] 3.3 Po deployu `/health` 200 i `operator-test-mail.js` z `exit 0`
 - [ ] 3.4 Watchdog bez `cannot run` po deployu
