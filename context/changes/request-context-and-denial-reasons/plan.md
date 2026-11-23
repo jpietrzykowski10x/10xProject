@@ -464,7 +464,7 @@ Bez zmian schematu i bez migracji: `magic_link_token.expires_at` istnieje, zmien
 
 #### Manual
 
-- [ ] 4.2 Po deployu nagłówek `X-Request-Id` na produkcji
-- [ ] 4.3 Na serwerze `curl` CSRF daje linię `csrf_sec_fetch_site`
-- [ ] 4.4 Logowanie linkiem na produkcji i linia `link_used`
-- [ ] 4.5 `watchdog.log` przy deployu (F1 z przeglądu S-11)
+- [x] 4.2 Po deployu nagłówek `X-Request-Id` na produkcji — e81e889
+- [x] 4.3 Na serwerze `curl` CSRF daje linię `csrf_sec_fetch_site` — e81e889
+- [x] 4.4 Logowanie linkiem na produkcji i linia `link_used` — e81e889
+- [x] 4.5 `watchdog.log` przy deployu (F1 z przeglądu S-11) — e81e889
