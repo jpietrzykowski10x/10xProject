@@ -4,10 +4,10 @@
 
 - **Plan**: `context/changes/operator-liveness-alerts/plan.md`
 - **Scope**: Full plan (CI review on PR #62)
-- **Date**: 2026-11-22
-- **CI run**: https://github.com/jpietrzykowski10x/10xProject/actions/runs/45080769506
+- **Date**: 2026-11-23
+- **CI run**: https://github.com/jpietrzykowski10x/10xProject/actions/runs/45131018718
 - **Verdict**: APPROVED
-- **Findings**: 0 critical, 0 warnings, 4 observations
+- **Findings**: 0 critical, 0 warnings, 5 observations
 
 ## Verdicts
 
@@ -21,9 +21,9 @@
 | Test Coverage       | PASS    |
 | Success Criteria    | PASS    |
 
-To piąty przegląd CI tego PR. Od poprzedniego (run 45079661203, commit `a7c6a19`) doszedł tylko merge `origin/main` (`1c469b0`). Wnosi on zmiany w `.github/workflows/ci.yml` i `impl-review.yml` oraz jedno zdanie w `CLAUDE.md` z PR #67. Nie należą one do diffu tego PR względem `main`. Kod i kontrakty planu się nie zmieniły. Przegląd przeszedł jednak całość od nowa i dodał dwie nowe drobne uwagi o watchdogu (F1, F2).
+To szósty przegląd CI tego PR. Od poprzedniego (run 45080769506, commit `deda3b8`) doszedł tylko merge `origin/main` (`fcd394f`) z PR #68. Wnosi on zmiany w `.github/workflows/ci.yml`, `impl-review.yml` i jedno zdanie w `CLAUDE.md`, które nie należą do diffu tego PR względem `main`. Kod i kontrakty planu się nie zmieniły. Przegląd przeszedł całość od nowa: F1–F4 są wciąż aktualne, a F5 to nowa drobna uwaga o `CLAUDE.md`.
 
-Plan Adherence PASS: wszystkie 21 planowanych zmian z faz 1–4 są zgodne z planem. Nie ma odstępstw (DRIFT) ani brakujących zmian (MISSING). Jedyna różnica jest świadoma i zapisana w Notes `change.md`: gdy baza odpowiada, a odczyt `job_run` się nie uda, `/health` zwraca 200 bez `jobs`, a watchdog traktuje to jako porażkę celu `jobs`. Wszystkie pozycje z „What We're NOT Doing” są uszanowane.
+Plan Adherence PASS: wszystkie planowane zmiany z faz 1–4 (12 bloków „Changes Required”) są zgodne z planem. Nie ma odstępstw (DRIFT) ani brakujących zmian (MISSING). Jedyna różnica jest świadoma i zapisana w Notes `change.md`: gdy baza odpowiada, a odczyt `job_run` się nie uda, `/health` zwraca 200 bez `jobs`, a watchdog traktuje to jako porażkę celu `jobs`. Wszystkie pozycje z „What We're NOT Doing” są uszanowane.
 
 Scope Discipline PASS: dodatki spoza listy plików planu służą planowanym zmianom:
 
@@ -56,11 +56,12 @@ Success Criteria — polecenia uruchomione w tym przebiegu CI:
 | `npm run build`                                                      | ✅ exit 0 — `dist/cli/watchdog.js` w buildzie                                              |
 | `shellcheck --shell=sh -S warning deploy/mydevil/*.sh`               | ✅ exit 0 — czysto                                                                         |
 
-Celowe uszkodzenia potwierdzone, każde cofnięte:
+Celowe uszkodzenia potwierdzone w tym przebiegu, każde cofnięte:
 
-- `JOB_STALE_AFTER_HOURS` 26→27 daje 4 czerwone testy,
+- `JOB_STALE_AFTER_HOURS` 26→27 daje 2 czerwone testy w `src/jobs`,
 - `FAILURES_BEFORE_ALERT` 3→4 daje 8 czerwonych testów,
-- `REMIND_EVERY_HOURS` 12→13 daje 2 czerwone testy.
+- `REMIND_EVERY_HOURS` 12→13 daje 2 czerwone testy,
+- `track` bez zapisu końca przebiegu (`recordFinish`) daje 5 czerwonych testów.
 
 Każde zobowiązanie testowe planu ma swój test: jednostkowe `JobRunService`, `job-run-alert`, `jobHealth`, `installFatalHandlers` i `decide` oraz e2e rejestru przebiegów i `/health`. Browser e2e (`npm run build:e2e && npm run e2e`) nie jest uruchamiany w tym środowisku. Pokrywa go wymagany check `browser-e2e` w `ci.yml` na tym PR.
 
@@ -110,6 +111,16 @@ Ustaleń, które autor świadomie zostawił albo przeniósł w poprzednich przeg
 - **Location**: deploy/mydevil/watchdog.sh:45
 - **Detail**: Ustalenie z poprzedniego przeglądu, nadal otwarte. `tr -d '"\r'` usuwa cudzysłowy i `\r`, ale nie `'` ani końcowe spacje. `.env` z `PORT='3000'` dałby zły port i każdy przebieg kończyłby się błędem widocznym tylko w logu. Parsowanie jest identyczne jak w `deploy.sh`, więc taki `.env` zepsułby też health-check deployu.
 - **Fix**: Rozszerzyć filtr do `tr -d "\"' \r"` w obu skryptach naraz albo zostawić jak jest.
+- **Decision**: PENDING
+
+### F5 — `CLAUDE.md` nadal mówi, że błąd przebiegu startowego jest „tylko logowany”
+
+- **Severity**: 👁 OBSERVATION
+- **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
+- **Dimension**: Plan Adherence
+- **Location**: CLAUDE.md:34
+- **Detail**: PR dopisał w tym akapicie zdanie o `JobRunService.track` (wiersz `job_run`, linia podsumowania, mail do operatora przy `failed`/`partial`), ale zostawił wcześniejszy nawias „with the startup run awaited (a failure is only logged)” przy zadaniach z 00:05. Po S-11 błąd jest zapisywany w `job_run` i mailowany, więc akapit przeczy sam sobie. Plan (faza 4) wymaga w `CLAUDE.md` tylko zdania o `job_run`, `/health.jobs` i watchdogu, więc to drobna niedokładność dokumentu, a nie brak.
+- **Fix**: Zmienić nawias na np. „(a failure is recorded and mailed, see below)” albo go usunąć.
 - **Decision**: PENDING
 
 <!-- End of report -->
