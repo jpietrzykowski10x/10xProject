@@ -336,7 +336,7 @@ Bez zmian schematu i bez migracji. Wdrożenie wymaga nowych kluczy w `shared/.en
 
 #### Automated
 
-- [ ] 3.1 CI zielone na PR
+- [x] 3.1 CI zielone na PR — f43f3de
 
 #### Manual
 

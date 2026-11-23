@@ -99,7 +99,10 @@ describe('sendOperatorTestMail', () => {
   it('reports a refused mail by its code only', async () => {
     const failure = Object.assign(
       new Error('550 mailbox operator@example.com unavailable'),
-      { code: 'EENVELOPE' },
+      {
+        code: 'EENVELOPE',
+        response: '550 5.7.1 <operator@example.com>: Relay access denied',
+      },
     );
     const { transport } = fakeTransport(failure);
     const lines: string[] = [];
@@ -111,7 +114,9 @@ describe('sendOperatorTestMail', () => {
     );
 
     expect(ok).toBe(false);
-    expect(lines).toContain('test mail failed (code: EENVELOPE)');
+    expect(lines).toContain(
+      'test mail failed (code: EENVELOPE, status: 5.7.1)',
+    );
     expect(lines.join('\n')).not.toContain('operator@example.com');
   });
 

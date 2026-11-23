@@ -86,7 +86,7 @@ Uwagi do kontroli:
   - Tradeoff: podwójny alarm przy wolnym serwerze nadal może wyjść, a licznik może zaniżać skalę.
   - Confidence: MEDIUM — usuwa tylko objaw.
   - Blind spot: None significant.
-- **Decision**: PENDING
+- **Decision**: FIXED (Fix A: flaga `inFlight` zdejmowana w `finally`; test „sends no second alert while one outlasts its reservation”)
 
 ### F2 — `errorCodeOf` powiela `smtpFieldsOf` i nie podaje statusu SMTP
 
@@ -99,7 +99,7 @@ Uwagi do kontroli:
   - Linia `test mail failed (code: …)` nie podaje rozszerzonego statusu, choć `logFailure` w `MailService` go podaje. Skrypt służy właśnie do diagnozy kanału, więc `status: 5.7.1` dałby operatorowi więcej informacji, nadal bez adresu.
   - Plan wymaga tylko kodu, więc to nie odstępstwo od planu.
 - **Fix**: Użyć `smtpFieldsOf` (z zamianą pustego kodu na `unknown`) i dopisać `status: <enhancedStatusOf(error)>`, gdy jest.
-- **Decision**: PENDING
+- **Decision**: FIXED (`failureOf` używa `smtpFieldsOf` i `enhancedStatusOf`; linia podaje kod i status)
 
 ### F3 — Wrapper CLI `operator-test-mail` bez testu kodów wyjścia
 
@@ -111,7 +111,7 @@ Uwagi do kontroli:
   - Kontrakt planu obejmuje kod 1 przy błędzie env (`cannot run: …`) i `process.exitCode = ok ? 0 : 1`. Logika `sendOperatorTestMail` ma pełne testy, ale mapowania na kod wyjścia nie sprawdza żaden test.
   - To sprawdzą tylko ręczne kroki 1.6 i 3.3. Wzorcowy `src/cli/watchdog.ts` też nie ma własnego testu, więc wrapper jest spójny z resztą repo.
 - **Fix**: Zostawić tak, jak jest (wrapper jest cienki), albo wydzielić funkcję zwracającą kod wyjścia i dodać do niej krótki test.
-- **Decision**: PENDING
+- **Decision**: ACCEPTED (cienki wrapper jak `cli/watchdog.ts`; kod wyjścia sprawdzony ręcznie w 1.6)
 
 ### F4 — Osobność skrzynki sprawdzana tylko po loginie
 
@@ -125,6 +125,6 @@ Uwagi do kontroli:
     - start w PROD przepuści alias o innym loginie, który prowadzi do tej samej skrzynki.
   - Przy jednym dostawcy (MyDevil) to bezpieczne uproszczenie.
 - **Fix**: Bez zmiany kodu; ewentualnie jedno zdanie w `backend-patterns.md`, że osobność oznacza inny login, a nie gwarancję innego konta.
-- **Decision**: PENDING
+- **Decision**: ACCEPTED (osobny login to granica planu; host MyDevil wspólny z założenia)
 
 <!-- End of report -->

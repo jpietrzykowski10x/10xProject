@@ -395,6 +395,36 @@ describe('MailService', () => {
           'pominięte od poprzedniego alarmu: 1',
         );
       });
+
+      it('sends no second alert while one outlasts its reservation', async () => {
+        const { service, send, alerts, lastAlert } = failingSetup();
+        let acceptAlert: () => void = () => undefined;
+        send.mockImplementationOnce(() =>
+          Promise.reject(new Error('smtp down')),
+        );
+        send.mockImplementationOnce(
+          () =>
+            new Promise<void>((resolve) => {
+              acceptAlert = resolve;
+            }),
+        );
+
+        const first = fail(service);
+        await vi.waitFor(() => expect(alerts()).toBe(1));
+        // Three nodemailer timeouts of 30 s: longer than the 60 s reservation.
+        vi.advanceTimersByTime(OPERATOR_ALERT_RETRY_MS + 30_000);
+        await fail(service);
+        expect(alerts()).toBe(1);
+        acceptAlert();
+        await first;
+
+        vi.advanceTimersByTime(OPERATOR_ALERT_INTERVAL_MS);
+        await fail(service);
+        expect(alerts()).toBe(2);
+        expect(lastAlert()?.text).toContain(
+          'pominięte od poprzedniego alarmu: 1',
+        );
+      });
     });
 
     it('does not loop when the operator alert fails too', async () => {

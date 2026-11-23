@@ -35,6 +35,9 @@ interface OperatorAlertState {
   blockedUntil: number;
   // Failures not reported yet; the next alert names them.
   skipped: number;
+  // An alert of this type is being sent. The reservation alone is not enough: a send can outlast
+  // it (three nodemailer timeouts of 30 s each), and a second alert would then go out in parallel.
+  inFlight: boolean;
 }
 
 function errorMessageOf(error: unknown): string {
@@ -224,23 +227,29 @@ export class MailService {
   ): Promise<void> {
     let state = this.operatorAlerts.get(type);
     if (state === undefined) {
-      state = { blockedUntil: 0, skipped: 0 };
+      state = { blockedUntil: 0, skipped: 0, inFlight: false };
       this.operatorAlerts.set(type, state);
     }
-    if (Date.now() < state.blockedUntil) {
+    if (state.inFlight || Date.now() < state.blockedUntil) {
       state.skipped += 1;
       return;
     }
     state.blockedUntil = Date.now() + OPERATOR_ALERT_RETRY_MS;
+    state.inFlight = true;
     const reported = state.skipped;
 
     const id = rowId ?? 'brak (nie zapisano wiersza audytu)';
     const skippedLine = `pominięte od poprzedniego alarmu: ${reported}`;
-    const sent = await this.notifyOperator({
-      subject: 'SubTracker: nieudana wysyłka maila',
-      text: `Nie udało się wysłać maila.\nid: ${id}\ntyp: ${type}\n${skippedLine}`,
-      html: `<p>Nie udało się wysłać maila.</p><p>id: ${escapeHtml(id)}<br>typ: ${escapeHtml(type)}<br>${escapeHtml(skippedLine)}</p>`,
-    });
+    let sent: boolean;
+    try {
+      sent = await this.notifyOperator({
+        subject: 'SubTracker: nieudana wysyłka maila',
+        text: `Nie udało się wysłać maila.\nid: ${id}\ntyp: ${type}\n${skippedLine}`,
+        html: `<p>Nie udało się wysłać maila.</p><p>id: ${escapeHtml(id)}<br>typ: ${escapeHtml(type)}<br>${escapeHtml(skippedLine)}</p>`,
+      });
+    } finally {
+      state.inFlight = false;
+    }
     if (sent) {
       state.blockedUntil = Date.now() + OPERATOR_ALERT_INTERVAL_MS;
       state.skipped -= reported;
