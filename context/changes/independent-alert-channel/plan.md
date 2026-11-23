@@ -308,29 +308,29 @@ Bez zmian schematu i bez migracji. Wdrożenie wymaga nowych kluczy w `shared/.en
 
 #### Automated
 
-- [x] 1.1 Testy env i skryptu testowego
-- [x] 1.2 Celowe uszkodzenie walidacji kanału czerwieni test
-- [x] 1.3 Pełne testy backendu
-- [x] 1.4 Testy e2e backendu
-- [x] 1.5 Lint i build backendu
+- [x] 1.1 Testy env i skryptu testowego — 21aa1b5
+- [x] 1.2 Celowe uszkodzenie walidacji kanału czerwieni test — 21aa1b5
+- [x] 1.3 Pełne testy backendu — 21aa1b5
+- [x] 1.4 Testy e2e backendu — 21aa1b5
+- [x] 1.5 Lint i build backendu — 21aa1b5
 
 #### Manual
 
-- [x] 1.6 Lokalnie `operator:test-mail` z nowej skrzynki
+- [x] 1.6 Lokalnie `operator:test-mail` z nowej skrzynki — 21aa1b5
 
 ### Phase 2: Alarm o nieudanej wysyłce
 
 #### Automated
 
-- [ ] 2.1 Testy poczty
-- [ ] 2.2 Celowe uszkodzenie blokady albo klasyfikacji czerwieni test
-- [ ] 2.3 Pełne testy backendu
-- [ ] 2.4 Testy e2e backendu
-- [ ] 2.5 Lint i build backendu
+- [x] 2.1 Testy poczty
+- [x] 2.2 Celowe uszkodzenie blokady albo klasyfikacji czerwieni test
+- [x] 2.3 Pełne testy backendu
+- [x] 2.4 Testy e2e backendu
+- [x] 2.5 Lint i build backendu
 
 #### Manual
 
-- [ ] 2.6 Lokalnie błędne `SMTP_PASSWORD` daje jeden alarm `MAGIC_LINK`
+- [x] 2.6 Lokalnie błędne `SMTP_PASSWORD` daje jeden alarm `MAGIC_LINK`
 
 ### Phase 3: Dokumentacja i produkcja
 
