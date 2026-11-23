@@ -12,7 +12,9 @@ import { Role } from '../../users/entities/role.entity.js';
 import { UserRole } from '../../users/entities/user-role.entity.js';
 import { User } from '../../users/entities/user.entity.js';
 import { normalizeEmail } from '../../users/normalize-email.js';
+import { withDenial } from '../../shared/logging/denial.js';
 import { AccountBlockedException } from '../account-blocked.exception.js';
+import { LinkDenial } from '../auth-denials.js';
 import {
   BLOCKED_MAIL_RESEND_INTERVAL,
   MAGIC_LINK_TTL,
@@ -28,6 +30,13 @@ interface IssuedLink {
   address: string;
   token: string;
   needsConsentConfirmation: boolean;
+}
+
+// A token verify could not use, as the database sees it.
+interface RefusedTokenRow {
+  id: string;
+  usedAt: Date | null;
+  live: boolean;
 }
 
 // What a link request found under the row lock of the address.
@@ -120,13 +129,14 @@ export class AuthService {
   }
 
   // Throwing rolls the transaction back, so a refused token creates nothing. Every failure but a
-  // blocked account is the same 401; the token of a blocked account stays unused.
+  // blocked account is the same 401; the token of a blocked account stays unused. Each refusal
+  // carries its reason (LinkDenial) for the log line, with ids only, never the token or its hash.
   verify(token: string, userAgent: string | null): Promise<SignIn> {
     return this.dataSource.transaction(async (manager) => {
       const tokenHash = hashToken(token);
       // Only to learn whose row to lock; the UPDATE below decides whether the token is used up.
       const unused = await manager.getRepository(MagicLinkToken).findOne({
-        select: { userId: true },
+        select: { id: true, userId: true },
         where: {
           tokenHash,
           usedAt: IsNull(),
@@ -134,8 +144,10 @@ export class AuthService {
         },
       });
       if (unused === null) {
-        throw new UnauthorizedException();
+        throw await this.refusedLink(manager, tokenHash);
       }
+      // `account`, not `user`: the filter's own user= is the signed-in caller, here nobody.
+      const ids = { token: unused.id, account: unused.userId };
 
       // A query of its own, without relations, so the lock covers only the user row.
       const users = manager.getRepository(User);
@@ -144,10 +156,16 @@ export class AuthService {
         lock: { mode: 'pessimistic_write' },
       });
       if (locked === null) {
-        throw new UnauthorizedException();
+        throw withDenial(new UnauthorizedException(), {
+          code: LinkDenial.USER_MISSING,
+          ids,
+        });
       }
       if (!locked.isActive) {
-        throw new AccountBlockedException(this.supportEmail);
+        throw withDenial(new AccountBlockedException(this.supportEmail), {
+          code: LinkDenial.ACCOUNT_BLOCKED,
+          ids,
+        });
       }
 
       const consumed = await manager
@@ -160,7 +178,10 @@ export class AuthService {
         )
         .execute();
       if (consumed.affected !== 1) {
-        throw new UnauthorizedException();
+        throw withDenial(new UnauthorizedException(), {
+          code: LinkDenial.RACE,
+          ids,
+        });
       }
 
       await users.update(
@@ -177,6 +198,38 @@ export class AuthService {
         manager,
       );
       return { user: toAuthUser(user), sessionToken };
+    });
+  }
+
+  // Why no usable token has this hash, decided by the database clock like the lookup in verify. A
+  // used token counts as used even when it has also expired: the use is the fact worth knowing.
+  private async refusedLink(
+    manager: EntityManager,
+    tokenHash: string,
+  ): Promise<UnauthorizedException> {
+    const row = await manager
+      .getRepository(MagicLinkToken)
+      .createQueryBuilder('token')
+      .select('token.id', 'id')
+      .addSelect('token.used_at', 'usedAt')
+      .addSelect('token.expires_at > now()', 'live')
+      .where('token.token_hash = :tokenHash', { tokenHash })
+      .getRawOne<RefusedTokenRow>();
+    if (row === undefined) {
+      return withDenial(new UnauthorizedException(), {
+        code: LinkDenial.UNKNOWN,
+      });
+    }
+    const code =
+      row.usedAt !== null
+        ? LinkDenial.USED
+        : !row.live
+          ? LinkDenial.EXPIRED
+          : // Unused and live now, yet not found a moment ago: it changed in between.
+            LinkDenial.RACE;
+    return withDenial(new UnauthorizedException(), {
+      code,
+      ids: { token: row.id },
     });
   }
 
@@ -240,7 +293,9 @@ export class AuthService {
     await tokens.insert({
       userId: user.id,
       tokenHash: hashToken(token),
-      expiresAt: new Date(Date.now() + MAGIC_LINK_TTL),
+      // The database clock, the same one verify checks the expiry with. MAGIC_LINK_TTL is a
+      // constant of the code, never input.
+      expiresAt: () => `now() + interval '${MAGIC_LINK_TTL / 1000} seconds'`,
     });
     return {
       address: user.email,

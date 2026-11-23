@@ -1,7 +1,13 @@
 import type { INestApplication } from '@nestjs/common';
+import { REQUEST_ID_HEADER } from '../shared/logging/request-context.js';
 
 export function applyCors(app: INestApplication, origins: string[]): void {
-  app.enableCors({ origin: origins, credentials: true });
+  // The frontend may read the request id, e.g. to quote it next to an error.
+  app.enableCors({
+    origin: origins,
+    credentials: true,
+    exposedHeaders: [REQUEST_ID_HEADER],
+  });
 }
 
 // Parses CORS_ORIGINS (comma-separated). The API sends credentials (session cookie from S-01),

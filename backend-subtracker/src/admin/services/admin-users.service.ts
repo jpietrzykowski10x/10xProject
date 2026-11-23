@@ -15,6 +15,7 @@ import {
   LIKE_ESCAPE,
 } from '../../shared/database/like-pattern.js';
 import { POLISH_COLLATION } from '../../shared/database/polish-collation.js';
+import { withDenial } from '../../shared/logging/denial.js';
 import type { AuthUser } from '../../shared/types/auth-user.js';
 import type { RoleCode } from '../../shared/types/role-code.js';
 import { BudgetService } from '../../subscriptions/services/budget.service.js';
@@ -33,6 +34,9 @@ import type { SearchUsersDto } from '../dtos/search-users.dto.js';
 import { AdminAuditService } from './admin-audit.service.js';
 
 export const CANNOT_MANAGE_MESSAGE = 'Cannot manage this account';
+
+// The code of the log line for a refused admin action (SafeLoggingExceptionFilter).
+export const CANNOT_MANAGE_DENIAL = 'admin_cannot_manage';
 
 const SEARCH_ALIAS = 'user';
 
@@ -182,7 +186,16 @@ export class AdminUsersService {
       targetRoles =
         (await activeRolesOf(manager, [locked.id])).get(locked.id) ?? [];
       if (!canManage(actor, { id: locked.id, roles: targetRoles })) {
-        throw new ForbiddenException(CANNOT_MANAGE_MESSAGE);
+        // The log tells refusing oneself from a rank too low; the response does not.
+        throw withDenial(new ForbiddenException(CANNOT_MANAGE_MESSAGE), {
+          code: CANNOT_MANAGE_DENIAL,
+          ids: {
+            actor: actor.id,
+            target: locked.id,
+            action: action.toLowerCase(),
+            why: actor.id === locked.id ? 'self' : 'rank',
+          },
+        });
       }
       await this.audit.record(manager, actor.id, locked.id, action);
     });

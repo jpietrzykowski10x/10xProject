@@ -6,8 +6,12 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Roles } from '../decorators/roles.decorator.js';
+import { withDenial } from '../logging/denial.js';
 import type { AuthenticatedRequest } from '../types/auth-user.js';
 import type { RoleCode } from '../types/role-code.js';
+
+// Code of the `warn` line for a request without the required role (SafeLoggingExceptionFilter).
+export const ROLE_MISSING_DENIAL = 'role_missing';
 
 // Runs after the session guard and only reads request.user: it neither authenticates again nor
 // queries the database.
@@ -26,7 +30,11 @@ export class RolesGuard implements CanActivate {
 
     const { user } = context.switchToHttp().getRequest<AuthenticatedRequest>();
     if (!required.some((role) => user?.roles.includes(role))) {
-      throw new ForbiddenException();
+      // The response stays a bare 403; the log line names the actor.
+      throw withDenial(new ForbiddenException(), {
+        code: ROLE_MISSING_DENIAL,
+        ...(user === undefined ? {} : { ids: { actor: user.id } }),
+      });
     }
     return true;
   }

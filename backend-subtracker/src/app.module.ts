@@ -1,4 +1,4 @@
-import { Module, ValidationPipe } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -13,6 +13,7 @@ import { HealthController } from './health/health.controller.js';
 import { JobsModule } from './jobs/jobs.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { SafeLoggingExceptionFilter } from './shared/filters/safe-logging-exception.filter.js';
+import { LoggingValidationPipe } from './shared/validation/validation-pipe.js';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
 import { UsersModule } from './users/users.module.js';
 
@@ -43,9 +44,10 @@ import { UsersModule } from './users/users.module.js';
   providers: [
     AppService,
     // Through APP_PIPE and APP_FILTER, not main.ts, so that e2e tests booting AppModule inherit them.
+    // The pipe is Nest's ValidationPipe whose 400 also names the refused fields in the log.
     {
       provide: APP_PIPE,
-      useValue: new ValidationPipe({
+      useValue: new LoggingValidationPipe({
         whitelist: true,
         forbidNonWhitelisted: true,
         transform: true,

@@ -3,6 +3,9 @@ import { AuthService } from '../../src/auth/services/auth.service.js';
 import { createE2eApp } from '../support/e2e-app.js';
 import { authRequests } from './auth-e2e.js';
 
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
 describe('Auth flow — unexpected errors (e2e)', () => {
   // Runs against the database from .env (locally the dev database, in CI the C.UTF-8 database of
   // the backend-e2e job) with a fake mail transport. Every row these tests create hangs off a
@@ -40,8 +43,13 @@ describe('Auth flow — unexpected errors (e2e)', () => {
         message: 'Internal server error',
       });
       expect(JSON.stringify(response.body)).not.toContain(address);
+      // The route template and the id from the response header; no user on a @Public() route.
+      const requestId = response.headers['x-request-id'];
+      expect(requestId).toMatch(UUID);
       expect(logged.mock.calls).toHaveLength(1);
-      expect(logged.mock.calls[0][0]).toBe('awaria bazy (code: 57P01)');
+      expect(logged.mock.calls[0][0]).toBe(
+        `POST /auth/request-link user=- req=${requestId}: awaria bazy (code: 57P01)`,
+      );
       expect(JSON.stringify(logged.mock.calls)).not.toContain(address);
     });
 
