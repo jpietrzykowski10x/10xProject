@@ -62,7 +62,7 @@ Aplikacja i migracje sprawdzają te ustawienia przy starcie, więc brakujący al
 - `FRONTEND_URL`, `SESSION_COOKIE_DOMAIN`, `SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `NOTIFICATION_ADMINISTRATOR_MAIL` i `SUPPORT_EMAIL` są wymagane. `SUPPORT_EMAIL` (od S-09) dopisz do `shared/.env` **przed** pierwszym deployem, który go wymaga: sprawdza go także CLI migracji w `deploy.sh`, więc bez niego deploy cofnie się na etapie migracji.
 - `CORS_ORIGINS` musi zawierać `FRONTEND_URL`.
 - `SESSION_COOKIE_DOMAIN` musi obejmować hosta z `FRONTEND_URL`.
-- `NOTIFICATION_SMTP_*` zostaw puste, chyba że powiadomienia operatora mają iść osobnym kontem; puste oznacza wysyłkę przez `SMTP_*`. Ustawiony `NOTIFICATION_SMTP_HOST` wymaga też `NOTIFICATION_SMTP_USERNAME`, `NOTIFICATION_SMTP_PASSWORD` i `NOTIFICATION_SMTP_FROM_EMAIL`.
+- `NOTIFICATION_SMTP_HOST`, `NOTIFICATION_SMTP_USERNAME`, `NOTIFICATION_SMTP_PASSWORD` i `NOTIFICATION_SMTP_FROM_EMAIL` są wymagane (od S-12): to osobna skrzynka tylko na alarmy operatora, z loginem innym niż `SMTP_USERNAME` (ten sam host MyDevil jest w porządku). Dzięki temu zablokowana albo padnięta skrzynka maili do użytkowników nie ucisza alarmów. Bez tych kluczy albo z tym samym loginem nie przejdzie `migration:run` w `deploy.sh` ani start api (deploy się wycofa), a skrypty ról i watchdog kończą się błędem. Kanał sprawdzisz skryptem testowym (niżej, „Test kanału alarmów”).
 
 Skrypty wczytują ten plik przez `sh` (`. .env`) i eksportują go, więc aplikacja dostaje to, co `sh` zrobił z każdej linii. Wartości wpisuj zwykłe albo w apostrofach (`KEY='dwa słowa'`); nigdy nie zostawiaj bez cudzysłowu `$`, `` ` ``, `"`, `\` ani `#`. Hasła tylko z liter i cyfr (`openssl rand -hex 16`). Klucze nie mogą się powtarzać: `deploy.sh` czyta `PORT` przez `sed`, a druga linia `PORT=` psuje health-check.
 
@@ -204,7 +204,7 @@ Sprawdzane cele:
 - **frontend**: `GET localhost:<PORT_FE>/` zwraca 2xx;
 - **jobs**: pole `jobs` z `/health`. Porażka, gdy któryś job jest `stale` (brak zakończonego przebiegu od 26 h) albo gdy `/health` odpowiada 200 bez poprawnego pola `jobs`. Joby `failed` mailuje samo api, watchdog ich nie powtarza. Gdy api leży, cel `jobs` nie jest oceniany.
 
-Maile idą na `NOTIFICATION_ADMINISTRATOR_MAIL` transportem operatora (`NOTIFICATION_SMTP_*`, a bez nich `SMTP_*`), bez bazy: nie powstaje wiersz w tabeli `mail`. Dla każdego celu:
+Maile idą na `NOTIFICATION_ADMINISTRATOR_MAIL` transportem operatora (`NOTIFICATION_SMTP_*`), bez bazy: nie powstaje wiersz w tabeli `mail`. Dla każdego celu:
 
 - po 3 kolejnych porażkach (ok. 15 minut): `SubTracker: API nie odpowiada`, `SubTracker: Frontend nie odpowiada` albo `SubTracker: zadanie cykliczne nie ruszyło od 26 h` (`... stan zadań cyklicznych nieczytelny`, gdy brak pola `jobs`); gdy api odpowiada, ale `/health` zgłasza bazę danych (503, `db: error`), temat brzmi `SubTracker: API bez bazy danych` (temat opisuje sprawdzenie, przy którym wychodzi mail, więc przypomnienie może nazwać przyczynę inaczej niż pierwszy alarm);
 - dopóki cel leży, przypomnienie co 12 h (`... nadal ...`);
@@ -236,7 +236,11 @@ Jednocześnie działa jeden przebieg: watchdog bierze blokadę `~/apps/subtracke
 
 - Sprawdza tylko `localhost`, tak jak health-check `deploy.sh`. Awaria proxy MyDevil, DNS albo TLS jest dla niego niewidoczna.
 - Działa z wydania api: zepsuta paczka api (brak `cli/watchdog.js`, zły `.env`) wyłącza też watchdoga. Ślad zostaje tylko w `watchdog.log`.
-- Do S-12 alarmy idą tym samym SMTP co poczta do użytkowników (o ile nie ustawiono `NOTIFICATION_SMTP_*`), więc awaria tego SMTP ucisza też alarmy.
+- Alarmy idą osobną skrzynką, ale tą samą pocztą MyDevil co maile do użytkowników. Awaria całej poczty MyDevil ucisza więc też alarmy; ślad zostaje w `watchdog.log` (przyjęte ograniczenie).
+
+**Test kanału alarmów.** Po deployu api, po zmianie hasła skrzynki alarmów albo gdy alarmy przestały przychodzić: `cd ~/apps/subtracker/api/live && node cli/operator-test-mail.js; echo "exit $?"`. Skrypt wypisuje, którym kanałem wysyła (`operator channel: separate (<nadawca>)`), i wysyła jeden mail `SubTracker: test kanału alarmów` na `NOTIFICATION_ADMINISTRATOR_MAIL`. `exit 0` oznacza, że serwer pocztowy przyjął mail; `exit 1` to zły `.env`, brak adresu operatora albo odrzucenie (w linii tylko kod błędu SMTP). Lokalnie: `npm run operator:test-mail` w `backend-subtracker/` (w DEV bez `NOTIFICATION_SMTP_HOST` linia mówi `shared with SMTP_* (DEV)`, czyli osobna skrzynka nie została sprawdzona).
+
+**Alarm o nieudanej wysyłce maila.** Gdy api nie wyśle maila do użytkownika, mailuje operatorowi `SubTracker: nieudana wysyłka maila` z id wiersza audytu, typem maila i liczbą porażek pominiętych od poprzedniego alarmu. Każdy typ maila ma osobne okno: po przyjętym alarmie następny tego typu najwcześniej po 15 minutach, po nieudanym próba ponowiona najwcześniej po minucie. Odrzucenie adresu jako nieistniejącego (status SMTP 5.1.x) to literówka użytkownika: tylko linia `warn` w `out.log`, bez alarmu. Każde inne odrzucenie (np. 5.7.1 przy relayu, limit wysyłki, SPF/DMARC) daje alarm, a linia w `err.log` podaje kod i status SMTP.
 
 Lokalna próba przed wgraniem albo po zmianie `src/watchdog/`: `dev-local/watchdog-trial.mjs` (zob. [`dev-local/README.md`](../../dev-local/README.md)).
 
@@ -323,7 +327,7 @@ The app and the migrations validate these settings at startup, so a missing or i
 - `FRONTEND_URL`, `SESSION_COOKIE_DOMAIN`, `SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `NOTIFICATION_ADMINISTRATOR_MAIL` and `SUPPORT_EMAIL` are required. Add `SUPPORT_EMAIL` (since S-09) to `shared/.env` **before** the first deploy that needs it: the migration CLI in `deploy.sh` checks it too, so without it the deploy rolls back at the migration step.
 - `CORS_ORIGINS` must include `FRONTEND_URL`.
 - `SESSION_COOKIE_DOMAIN` must cover the `FRONTEND_URL` host.
-- Leave `NOTIFICATION_SMTP_*` unset unless operator notifications need a separate transporter; unset, they go through `SMTP_*`. A set `NOTIFICATION_SMTP_HOST` requires `NOTIFICATION_SMTP_USERNAME`, `NOTIFICATION_SMTP_PASSWORD` and `NOTIFICATION_SMTP_FROM_EMAIL` too.
+- `NOTIFICATION_SMTP_HOST`, `NOTIFICATION_SMTP_USERNAME`, `NOTIFICATION_SMTP_PASSWORD` and `NOTIFICATION_SMTP_FROM_EMAIL` are required (since S-12): a separate mailbox used only for operator alerts, with a login different from `SMTP_USERNAME` (the same MyDevil host is fine). A blocked or failing user mailbox then cannot silence the alerts. Without these keys, or with the same login, neither `migration:run` in `deploy.sh` nor the api start passes (the deploy rolls back), and the role scripts and the watchdog fail. Check the channel with the test script (below, "Alert channel test").
 
 The scripts source this file with `sh` (`. .env`) and export it, so the app gets whatever `sh` made of each line. Keep values plain or in single quotes (`KEY='two words'`); never leave `$`, `` ` ``, `"`, `\` or `#` unquoted. Use letters and digits for passwords (`openssl rand -hex 16`). The keys must not repeat: `deploy.sh` reads `PORT` with `sed` and a second `PORT=` line breaks the health check.
 
@@ -465,7 +469,7 @@ Targets checked:
 - **frontend**: `GET localhost:<PORT_FE>/` answers 2xx;
 - **jobs**: the `jobs` field of `/health`. A failure when any job is `stale` (no finished run in 26 h) or when `/health` answers 200 without a valid `jobs` field. `failed` jobs are mailed by the api itself; the watchdog does not repeat them. While the api is down, the `jobs` target is not judged.
 
-Mail goes to `NOTIFICATION_ADMINISTRATOR_MAIL` through the operator transport (`NOTIFICATION_SMTP_*`, or `SMTP_*` without them), without the database: no row is written to the `mail` table. For each target:
+Mail goes to `NOTIFICATION_ADMINISTRATOR_MAIL` through the operator transport (`NOTIFICATION_SMTP_*`), without the database: no row is written to the `mail` table. For each target:
 
 - after 3 consecutive failures (about 15 minutes): `SubTracker: API nie odpowiada`, `SubTracker: Frontend nie odpowiada` or `SubTracker: zadanie cykliczne nie ruszyło od 26 h` (`... stan zadań cyklicznych nieczytelny` when the `jobs` field is missing); when the API answers but `/health` reports the database (503, `db: error`), the subject is `SubTracker: API bez bazy danych` (the subject describes the check that sends the mail, so a reminder may name a different cause than the first alert);
 - while the target stays down, a reminder every 12 h (`... nadal ...`);
@@ -497,7 +501,11 @@ One run at a time: the watchdog takes the lock `~/apps/subtracker/watchdog/.run.
 
 - It checks `localhost` only, like the `deploy.sh` health check. A failure of the MyDevil proxy, DNS or TLS is invisible to it.
 - It runs from the api release: a broken api package (no `cli/watchdog.js`, a bad `.env`) disables the watchdog too. The only trace is in `watchdog.log`.
-- Until S-12, alerts share the SMTP server with user mail (unless `NOTIFICATION_SMTP_*` is set), so an outage of that SMTP server silences the alerts too.
+- Alerts use a separate mailbox, but the same MyDevil mail service as user mail. An outage of the whole MyDevil mail service silences the alerts too; the trace stays in `watchdog.log` (an accepted limitation).
+
+**Alert channel test.** After an api deploy, after changing the alert mailbox password, or when alerts stop arriving: `cd ~/apps/subtracker/api/live && node cli/operator-test-mail.js; echo "exit $?"`. The script prints which channel it uses (`operator channel: separate (<sender>)`) and sends one mail `SubTracker: test kanału alarmów` to `NOTIFICATION_ADMINISTRATOR_MAIL`. `exit 0` means the mail server accepted it; `exit 1` is a bad `.env`, a missing operator address or a refusal (the line holds the SMTP error code only). Locally: `npm run operator:test-mail` in `backend-subtracker/` (in DEV without `NOTIFICATION_SMTP_HOST` the line says `shared with SMTP_* (DEV)`, so the separate mailbox was not tested).
+
+**Alert about a failed mail.** When the api cannot send a mail to a user, it mails the operator `SubTracker: nieudana wysyłka maila` with the audit row id, the mail type and the number of failures skipped since the previous alert. Each mail type has its own window: after an accepted alert the next one of that type comes at the earliest 15 minutes later, after a failed one it is retried at the earliest a minute later. A refusal of the address as unknown (SMTP status 5.1.x) is the user's typo: only a `warn` line in `out.log`, no alert. Any other refusal (e.g. 5.7.1 on relay, a sending limit, SPF/DMARC) alerts, and the `err.log` line gives the SMTP code and status.
 
 Local trial before uploading or after changing `src/watchdog/`: `dev-local/watchdog-trial.mjs` (see [`dev-local/README.md`](../../dev-local/README.md)).
 

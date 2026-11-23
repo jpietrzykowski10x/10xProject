@@ -322,15 +322,15 @@ Bez zmian schematu i bez migracji. Wdrożenie wymaga nowych kluczy w `shared/.en
 
 #### Automated
 
-- [x] 2.1 Testy poczty
-- [x] 2.2 Celowe uszkodzenie blokady albo klasyfikacji czerwieni test
-- [x] 2.3 Pełne testy backendu
-- [x] 2.4 Testy e2e backendu
-- [x] 2.5 Lint i build backendu
+- [x] 2.1 Testy poczty — bd04c54
+- [x] 2.2 Celowe uszkodzenie blokady albo klasyfikacji czerwieni test — bd04c54
+- [x] 2.3 Pełne testy backendu — bd04c54
+- [x] 2.4 Testy e2e backendu — bd04c54
+- [x] 2.5 Lint i build backendu — bd04c54
 
 #### Manual
 
-- [x] 2.6 Lokalnie błędne `SMTP_PASSWORD` daje jeden alarm `MAGIC_LINK`
+- [x] 2.6 Lokalnie błędne `SMTP_PASSWORD` daje jeden alarm `MAGIC_LINK` — bd04c54
 
 ### Phase 3: Dokumentacja i produkcja
 
