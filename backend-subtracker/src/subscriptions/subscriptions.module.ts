@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { JobsModule } from '../jobs/jobs.module.js';
 import { MailModule } from '../mail/mail.module.js';
 import { BudgetController } from './controllers/budget.controller.js';
 import { CategoriesController } from './controllers/categories.controller.js';
@@ -26,6 +27,7 @@ import { TrialReminderScheduler } from './trial-reminder.scheduler.js';
       BudgetSettings,
     ]),
     MailModule,
+    JobsModule,
   ],
   controllers: [
     BudgetController,

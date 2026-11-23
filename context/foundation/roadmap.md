@@ -41,7 +41,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 
 | ID   | Change ID                          | Outcome (user can …)                                                                 | Prerequisites | PRD refs                | Status   |
 | ---- | ---------------------------------- | ------------------------------------------------------------------------------------ | ------------- | ----------------------- | -------- |
-| S-11 | operator-liveness-alerts           | operator dostaje mail, gdy API nie odpowiada albo job padł lub nie ruszył przez 26 h | —             | FR-019                  | ready    |
+| S-11 | operator-liveness-alerts           | operator dostaje mail, gdy API nie odpowiada albo job padł lub nie ruszył przez 26 h | —             | FR-019                  | in-progress |
 | S-12 | independent-alert-channel          | alarm operatora dochodzi także przy awarii SMTP dla użytkowników                     | S-11          | FR-020                  | proposed |
 | S-13 | request-context-and-denial-reasons | operator widzi w logu trasę, użytkownika i id żądania błędu oraz przyczyny odmów 4xx  | —             | FR-021                  | ready    |
 | S-14 | log-format-version-and-access-log  | operator czyta logi w jednym formacie, z wersją i access logiem obu procesów         | S-13          | FR-022                  | proposed |
@@ -90,7 +90,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **Unknowns:**
   - Interwał watchdoga i liczba porażek przed alarmem; czy watchdog pilnuje też frontendu SSR? — Owner: agent (`/10x-plan`). Block: no.
 - **Risk:** Stoi pierwsza, bo zamyka P1, J1 i J2 (krytyczne) i daje kanał, z którego korzystają S-12 i S-16. Ryzyko w części poza kodem: skrypt watchdoga wgrywany ręcznie (`scp`) i wpis w crontabie, jak `prune-backups.sh`; joby zostają idempotentne (`lessons.md`), mail bez danych użytkowników.
-- **Status:** ready
+- **Status:** in-progress
 
 ### S-12: Niezależny kanał alarmów
 
@@ -154,6 +154,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Po S-11, bo przyczyny trafiają do jego rejestru przebiegów; ryzyko w zakresie (wiele drobnych ustaleń) — plan grupuje je w fazy wg modułu, a reszta z §6 pkt 8 raportu wchodzi tylko tam, gdzie slice i tak dotyka kodu.
+- **Notes:** Przeniesione z przeglądu CI S-11 (PR #62, `context/changes/operator-liveness-alerts/reviews/impl-review.md`, F3): ścieżka „poprzedni przebieg trwa” (`recordSkipped` przy podniesionej fladze `running`) w trzech schedulerach nie ma testów; dopisać po jednym teście na scheduler (pierwszy przebieg trzymany otwarty, drugi zostawia wiersz `skipped`; dla przypomnień także: drugie wywołanie rozwiązuje się dopiero po pierwszym, na czym polega `idle()`). Z trzeciego przeglądu (PR #62, F3): testy granicy 12 h w `watchdog-policy.spec.ts` liczą czas ze stałej `REMIND_EVERY_HOURS`, więc zmianę progu łapie tylko test przypinający wartość; dopisać przypadki z dosłownymi czasami (11 h 59 min cicho, 12 h przypomnienie).
 - **Status:** proposed
 
 ### S-17: Zmiana nazwy i usuwanie własnych kategorii

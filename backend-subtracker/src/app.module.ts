@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { type EnvConfig, envFromConfig, validateEnv } from './config/env.js';
 import { buildDatabaseOptions } from './database/database.options.js';
 import { HealthController } from './health/health.controller.js';
+import { JobsModule } from './jobs/jobs.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { SafeLoggingExceptionFilter } from './shared/filters/safe-logging-exception.filter.js';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
@@ -35,6 +36,8 @@ import { UsersModule } from './users/users.module.js';
     AuthModule,
     SubscriptionsModule,
     AdminModule,
+    // JobRunService for the job state in /health.
+    JobsModule,
   ],
   controllers: [AppController, HealthController],
   providers: [

@@ -25,6 +25,9 @@ W przykładach `<frontend-domain>`, `<api-domain>` i `<parent-domain>` to miejsc
 ~/apps/subtracker/backups/   (drwx------) kopie bazy api sprzed każdego deployu,
                              <YYYYmmdd-HHMMSS>_<sha7>.dump (-rw-------), 10 najnowszych,
                              żadna starsza niż 180 dni (zob. Kopie bazy i usunięte konta)
+
+~/apps/subtracker/watchdog/  (drwx------) state.json watchdoga: liczniki porażek i czas
+                             ostatniego maila, poza wydaniami, więc deploy go nie kasuje
 ```
 
 `shared/.env` api zawiera też ustawienia bazy, CORS, ciasteczka sesji i poczty (szablon: `backend-subtracker/.env.example`, kopia lokalna `backend-subtracker/.env.mydevil`):
@@ -80,6 +83,7 @@ Domeny to domeny proxy MyDevil, TLS kończy się na MyDevil:
 | `start-app.sh <app>` | Uruchamia aplikację od nowa pod `forever` na `/usr/local/bin/node24`, ze zmiennymi z `.env`. Plik startowy: `app.mjs` (frontend) / `app.js` (api), bo MyDevil uruchamia tylko te nazwy. |
 | `rollback.sh <app> [--yes]` | Przywraca najnowsze wydanie z `releases/`. Dla api przywraca też bazę z kopii zrobionej przed wycofywanym wydaniem (pyta o `TAK`). Frontend wycofuje tylko kod. Kończy się health-checkiem. |
 | `start-all.sh` | Uruchamia obie aplikacje po restarcie serwera. |
+| `watchdog.sh` | Co 5 minut z crontaba sprawdza na `localhost` api (`/health`, także stan jobów) i frontend (`/`) i mailuje operatorowi, gdy któryś leży. Milczy w czasie deployu, rollbacku i przywrócenia. Zob. [Watchdog: alarmy dla operatora](#watchdog-alarmy-dla-operatora). |
 
 ### Baza danych
 
@@ -113,7 +117,7 @@ Wydania w `releases/` nazywają się `<czas>_<sha7>` od SHA, które zawierają (
 
 Nigdy nie uruchamiaj `migration:revert` na produkcji: metody `down()` są zawodne. Powrót to zawsze przywrócenie z kopii.
 
-**Zadania cykliczne.** Api uruchamia swoje joby (cykl życia subskrypcji: koniec triali, dokończenie anulowań, przesuwanie dat rozliczeń; sprzątanie tokenów logowania i sesji starszych niż 7 dni) raz przy każdym starcie, zanim przyjmie żądania, a potem codziennie o 00:05 czasu Europe/Warsaw. Nic tu nie wymaga ręcznego kroku: to, co ominęło w czasie zatrzymania api (deploy przez północ, restart przez MyDevil, reboot), nadrabia następny start, a drugi przebieg tego samego dnia nic nie zmienia. Po rollbacku albo ręcznym przywróceniu kopii baza wraca do stanu sprzed deployu, a następny start wersji z jobami sam powtarza przejścia. Wydanie sprzed jobów ich nie uruchamia, więc po wycofaniu do niego daty zostają takie, jak w przywróconej kopii, dopóki nie wystartuje nowsza wersja. Nieudany przebieg trafia tylko do logu (`logs/err.log`) i nie psuje startu ani health-checku.
+**Zadania cykliczne.** Api uruchamia swoje joby (cykl życia subskrypcji: koniec triali, dokończenie anulowań, przesuwanie dat rozliczeń; sprzątanie tokenów logowania i sesji starszych niż 7 dni) raz przy każdym starcie, zanim przyjmie żądania, a potem codziennie o 00:05 czasu Europe/Warsaw. Nic tu nie wymaga ręcznego kroku: to, co ominęło w czasie zatrzymania api (deploy przez północ, restart przez MyDevil, reboot), nadrabia następny start, a drugi przebieg tego samego dnia nic nie zmienia. Po rollbacku albo ręcznym przywróceniu kopii baza wraca do stanu sprzed deployu, a następny start wersji z jobami sam powtarza przejścia. Wydanie sprzed jobów ich nie uruchamia, więc po wycofaniu do niego daty zostają takie, jak w przywróconej kopii, dopóki nie wystartuje nowsza wersja. Każdy przebieg (także przypomnień o trialu o 02:00) zapisuje wiersz w tabeli `job_run` i jedną linię podsumowania w logu. Przebieg nieudany (`failed`) albo częściowy (`partial`, np. część użytkowników bez przypomnienia) trafia do `logs/err.log` i wysyła mail na `NOTIFICATION_ADMINISTRATOR_MAIL` (temat `SubTracker: zadanie <job> — <wynik>`), ale nie psuje startu ani health-checku. `GET /health` zwraca w polu `jobs` stan każdego joba (`ok`, `stale` = brak zakończonego przebiegu od 26 h, `failed`); kod odpowiedzi zależy tylko od bazy. Nieobsłużony wyjątek procesu zostawia w `err.log` jedną linię `Fatal ...` i kończy proces, a `forever` go podnosi.
 
 ### Kopie bazy i usunięte konta
 
@@ -162,7 +166,7 @@ Skryptów **nie** wdraża GitHub Actions: workflowy wysyłają tylko paczki apli
 1. Lokalnie, z katalogu głównego repo (PowerShell albo Git Bash). Pliki wymień jawnie, bo PowerShell nie rozwija `*.sh` dla `scp`:
 
    ```
-   scp deploy/mydevil/ci-gate.sh deploy/mydevil/deploy.sh deploy/mydevil/restore-db.sh deploy/mydevil/stop-app.sh deploy/mydevil/start-app.sh deploy/mydevil/rollback.sh deploy/mydevil/start-all.sh deploy/mydevil/prune-backups.sh <login>@s<N>.mydevil.net:~/apps/subtracker/bin/
+   scp deploy/mydevil/ci-gate.sh deploy/mydevil/deploy.sh deploy/mydevil/restore-db.sh deploy/mydevil/stop-app.sh deploy/mydevil/start-app.sh deploy/mydevil/rollback.sh deploy/mydevil/start-all.sh deploy/mydevil/prune-backups.sh deploy/mydevil/watchdog.sh <login>@s<N>.mydevil.net:~/apps/subtracker/bin/
    ```
 
    Tak samo wgrasz pojedynczy zmieniony plik, np. tylko `deploy/mydevil/start-app.sh`.
@@ -186,9 +190,55 @@ Skryptów **nie** wdraża GitHub Actions: workflowy wysyłają tylko paczki apli
    forever list
    ```
 
-   Zmiany w `deploy.sh` i `ci-gate.sh` działają od następnego deployu. Zmiany w `stop-app.sh`, `restore-db.sh`, `rollback.sh`, `start-all.sh` i `prune-backups.sh` — od ich następnego uruchomienia.
+   Zmiany w `deploy.sh` i `ci-gate.sh` działają od następnego deployu. Zmiany w `stop-app.sh`, `restore-db.sh`, `rollback.sh`, `start-all.sh`, `prune-backups.sh` i `watchdog.sh` — od ich następnego uruchomienia.
 
 Lokalna próba `prune-backups.sh` przed wgraniem: `sh dev-local/prune-backups-trial.sh` (zob. [`dev-local/README.md`](../../dev-local/README.md)).
+
+### Watchdog: alarmy dla operatora
+
+`watchdog.sh` (od S-11) uruchamiany z crontaba co 5 minut pilnuje, żeby o awarii operator dowiedział się z maila, a nie od użytkownika. Sam skrypt tylko przygotowuje środowisko: czyta `PORT` z `api/public_nodejs/.env` i `frontend/public_nodejs/.env` (plik frontendu czyta jako tekst, nie wykonuje go), a potem uruchamia `/usr/local/bin/node24 cli/watchdog.js` z działającego wydania api z wyeksportowanym `.env` api. Polityka i treść maili są w paczce api (`src/watchdog/`), więc zmieniają się z deployem api.
+
+Sprawdzane cele:
+
+- **api**: `GET localhost:<PORT_API>/health` zwraca 2xx i `status: ok`;
+- **frontend**: `GET localhost:<PORT_FE>/` zwraca 2xx;
+- **jobs**: pole `jobs` z `/health`. Porażka, gdy któryś job jest `stale` (brak zakończonego przebiegu od 26 h) albo gdy `/health` odpowiada 200 bez poprawnego pola `jobs`. Joby `failed` mailuje samo api, watchdog ich nie powtarza. Gdy api leży, cel `jobs` nie jest oceniany.
+
+Maile idą na `NOTIFICATION_ADMINISTRATOR_MAIL` transportem operatora (`NOTIFICATION_SMTP_*`, a bez nich `SMTP_*`), bez bazy: nie powstaje wiersz w tabeli `mail`. Dla każdego celu:
+
+- po 3 kolejnych porażkach (ok. 15 minut): `SubTracker: API nie odpowiada`, `SubTracker: Frontend nie odpowiada` albo `SubTracker: zadanie cykliczne nie ruszyło od 26 h` (`... stan zadań cyklicznych nieczytelny`, gdy brak pola `jobs`); gdy api odpowiada, ale `/health` zgłasza bazę danych (503, `db: error`), temat brzmi `SubTracker: API bez bazy danych`;
+- dopóki cel leży, przypomnienie co 12 h (`... nadal ...`);
+- po powrocie jeden mail `... działa ponownie`.
+
+Mail, który się nie wysłał, nie zmienia stanu alarmu, więc następny przebieg spróbuje ponownie. Stan leży w `~/apps/subtracker/watchdog/state.json` (zapis atomowy, poza wydaniami). Log `~/apps/subtracker/api/logs/watchdog.log` dostaje linię tylko przy mailu (wysłanym albo nie), przy pominiętym przebiegu albo przy błędzie samego watchdoga; spokojny przebieg nic nie pisze.
+
+W czasie deployu, rollbacku i przywrócenia (`api/.ops.lock` albo `frontend/.ops.lock` młodszy niż 30 minut) przebieg jest pomijany z kodem 0, więc zwykły deploy nie daje alarmu. Starsza blokada (zostawiona przez zabity proces) nie ucisza watchdoga: każdy przebieg zapisuje ją w logu, dopóki nie usuniesz jej przez `rmdir`. Kod wyjścia 1 oznacza, że watchdog nie może działać (brak `.env`, brak `PORT`, zły env api); wtedy nie wysyła żadnego maila, a przyczyna jest w logu.
+
+Jednocześnie działa jeden przebieg: watchdog bierze blokadę `~/apps/subtracker/watchdog/.run.lock`, a gdy poprzedni przebieg jeszcze trwa, kończy się kodem 0 z wpisem w logu. Przebieg jest przerywany po 240 s (`timeout`, kod 124 z wpisem w logu), więc blokada starsza niż 15 minut została po przebiegu zabitym bez sprzątania (SIGKILL, restart serwera): kolejny przebieg ją przejmuje i zapisuje to w logu, nie trzeba jej usuwać ręcznie. Gdy blokady nie da się założyć z innego powodu (uprawnienia, pełny dysk), przebieg kończy się kodem 1.
+
+**Instalacja** (raz, po deployu api zawierającym `cli/watchdog.js`):
+
+1. Wgraj `watchdog.sh` i sprawdź go jak resztę skryptów: `scp`, `chmod 700`, porównanie `sha256` z repo (zob. [Aktualizacja skryptów na serwerze](#aktualizacja-skryptów-na-serwerze)).
+2. Na serwerze sprawdź, że api zgłasza joby, i uruchom watchdoga raz ręcznie:
+
+   ```
+   curl -s localhost:<PORT_API>/health
+   ~/apps/subtracker/bin/watchdog.sh; echo "exit $?"
+   cat ~/apps/subtracker/watchdog/state.json
+   ```
+
+   Oczekiwany wynik: `/health` zawiera `"jobs"` z `ok` dla trzech jobów, watchdog nic nie wypisuje i kończy się `exit 0`, nie przychodzi żaden mail, a `state.json` ma `"failures": 0` dla `api`, `frontend` i `jobs`.
+3. Dodaj linię watchdoga do crontaba (zob. [Jednorazowa konfiguracja](#jednorazowa-konfiguracja)).
+
+**Wyciszenie:** zakomentuj linię watchdoga w crontabie (`crontab -e`, `#` na początku). Po odkomentowaniu watchdog kontynuuje od zapisanego stanu: cel, który był w alarmie i już działa, dostanie mail o powrocie. Usunięcie `state.json` zeruje liczniki (bez maila o powrocie).
+
+**Ograniczenia:**
+
+- Sprawdza tylko `localhost`, tak jak health-check `deploy.sh`. Awaria proxy MyDevil, DNS albo TLS jest dla niego niewidoczna.
+- Działa z wydania api: zepsuta paczka api (brak `cli/watchdog.js`, zły `.env`) wyłącza też watchdoga. Ślad zostaje tylko w `watchdog.log`.
+- Do S-12 alarmy idą tym samym SMTP co poczta do użytkowników (o ile nie ustawiono `NOTIFICATION_SMTP_*`), więc awaria tego SMTP ucisza też alarmy.
+
+Lokalna próba przed wgraniem albo po zmianie `src/watchdog/`: `dev-local/watchdog-trial.mjs` (zob. [`dev-local/README.md`](../../dev-local/README.md)).
 
 ### Jednorazowa konfiguracja
 
@@ -204,9 +254,10 @@ crontab:
 @reboot /usr/home/<login>/apps/subtracker/bin/start-all.sh
 0 4 * * 0 find /usr/home/<login>/apps/subtracker/*/logs -name '*.log' -size +20M -exec truncate -s 0 {} \;
 30 4 * * * /usr/home/<login>/apps/subtracker/bin/prune-backups.sh >> /usr/home/<login>/apps/subtracker/api/logs/prune-backups.log 2>&1
+*/5 * * * * /usr/home/<login>/apps/subtracker/bin/watchdog.sh >> /usr/home/<login>/apps/subtracker/api/logs/watchdog.log 2>&1
 ```
 
-Ostatnia linia codziennie usuwa kopie bazy starsze niż 180 dni, także bez deployów (zob. [Kopie bazy i usunięte konta](#kopie-bazy-i-usunięte-konta)). Po dodaniu uruchom ją raz ręcznie; powinna skończyć się linią `done: <n> dump(s) deleted`.
+Linia `prune-backups.sh` codziennie usuwa kopie bazy starsze niż 180 dni, także bez deployów (zob. [Kopie bazy i usunięte konta](#kopie-bazy-i-usunięte-konta)). Po dodaniu uruchom ją raz ręcznie; powinna skończyć się linią `done: <n> dump(s) deleted`. Linia `watchdog.sh` co 5 minut sprawdza api i frontend (zob. [Watchdog: alarmy dla operatora](#watchdog-alarmy-dla-operatora)); przed dodaniem uruchom go raz ręcznie.
 
 Skrypty oczekują `forever` w `PATH`. Szukają w `/usr/local/bin` i `~/.npm-global/bin`. Jeśli Twój jest gdzie indziej, popraw linię `PATH` na początku każdego skryptu.
 
@@ -233,6 +284,9 @@ In the examples, `<frontend-domain>`, `<api-domain>` and `<parent-domain>` stand
 ~/apps/subtracker/backups/   (drwx------) api database dumps before each deploy,
                              <YYYYmmdd-HHMMSS>_<sha7>.dump (-rw-------), 10 newest kept,
                              none older than 180 days (see Backups and deleted accounts)
+
+~/apps/subtracker/watchdog/  (drwx------) the watchdog's state.json: failure counts and the
+                             time of the last mail, outside the releases so a deploy keeps it
 ```
 
 `shared/.env` of the api also holds the database, CORS, session cookie and mail settings (template: `backend-subtracker/.env.example`, local copy `backend-subtracker/.env.mydevil`):
@@ -288,6 +342,7 @@ Domains are MyDevil proxy domains, and TLS terminates on MyDevil:
 | `start-app.sh <app>` | Restarts the app under `forever` on `/usr/local/bin/node24`, using the env from `.env`. Entry: `app.mjs` (frontend) / `app.js` (api), since MyDevil starts only these names. |
 | `rollback.sh <app> [--yes]` | Makes the newest entry in `releases/` live again. For the api it also restores the database from the backup taken before the rolled-back release (asks for `TAK`). The frontend rolls back code only. Ends with a health check. |
 | `start-all.sh` | Starts both apps after a reboot. |
+| `watchdog.sh` | Every 5 minutes from crontab, checks the api (`/health`, including the state of the jobs) and the frontend (`/`) on `localhost` and mails the operator when one is down. Silent during a deploy, rollback or restore. See [Watchdog: operator alerts](#watchdog-operator-alerts). |
 
 ### Database
 
@@ -321,7 +376,7 @@ Releases in `releases/` are named `<time>_<sha7>` after the SHA they contain (`.
 
 Never run `migration:revert` in production: `down()` methods are unreliable. Going back is always a restore from a backup.
 
-**Scheduled jobs.** The api runs its jobs (subscription lifecycle: trials ending, cancellations completing, billing dates moving forward; cleanup of sign-in tokens and sessions older than 7 days) once at every start, before it takes requests, and then daily at 00:05 Europe/Warsaw. None of this needs a manual step: whatever was missed while the api was stopped (a deploy across midnight, a restart by MyDevil, a reboot) is caught up by the next start, and a second run on the same day changes nothing. After a rollback or a manual restore from a dump, the database is back to its state from before the deploy, and the next start of a version that has the jobs repeats the transitions by itself. A release from before the jobs existed does not run them, so after rolling back to it dates stay as restored until a newer version starts. A failed run is only logged (`logs/err.log`) and does not fail the start or the health check.
+**Scheduled jobs.** The api runs its jobs (subscription lifecycle: trials ending, cancellations completing, billing dates moving forward; cleanup of sign-in tokens and sessions older than 7 days) once at every start, before it takes requests, and then daily at 00:05 Europe/Warsaw. None of this needs a manual step: whatever was missed while the api was stopped (a deploy across midnight, a restart by MyDevil, a reboot) is caught up by the next start, and a second run on the same day changes nothing. After a rollback or a manual restore from a dump, the database is back to its state from before the deploy, and the next start of a version that has the jobs repeats the transitions by itself. A release from before the jobs existed does not run them, so after rolling back to it dates stay as restored until a newer version starts. Every run (the trial reminders at 02:00 too) writes a row to the `job_run` table and one summary line to the log. A failed run (`failed`) or a partial one (`partial`, e.g. some users not reminded) goes to `logs/err.log` and sends a mail to `NOTIFICATION_ADMINISTRATOR_MAIL` (subject `SubTracker: zadanie <job> — <outcome>`), but does not fail the start or the health check. `GET /health` reports each job's state in its `jobs` field (`ok`, `stale` = no finished run in 26 h, `failed`); the status code depends on the database only. An uncaught exception in the process leaves one `Fatal ...` line in `err.log` and ends the process, and `forever` starts it again.
 
 ### Backups and deleted accounts
 
@@ -370,7 +425,7 @@ The scripts are **not** deployed by GitHub Actions: the workflows only ship app 
 1. Locally, from the repo root (PowerShell or Git Bash). List the files explicitly, because PowerShell doesn't expand `*.sh` for `scp`:
 
    ```
-   scp deploy/mydevil/ci-gate.sh deploy/mydevil/deploy.sh deploy/mydevil/restore-db.sh deploy/mydevil/stop-app.sh deploy/mydevil/start-app.sh deploy/mydevil/rollback.sh deploy/mydevil/start-all.sh deploy/mydevil/prune-backups.sh <login>@s<N>.mydevil.net:~/apps/subtracker/bin/
+   scp deploy/mydevil/ci-gate.sh deploy/mydevil/deploy.sh deploy/mydevil/restore-db.sh deploy/mydevil/stop-app.sh deploy/mydevil/start-app.sh deploy/mydevil/rollback.sh deploy/mydevil/start-all.sh deploy/mydevil/prune-backups.sh deploy/mydevil/watchdog.sh <login>@s<N>.mydevil.net:~/apps/subtracker/bin/
    ```
 
    You can upload a single changed file the same way, for example only `deploy/mydevil/start-app.sh`.
@@ -394,9 +449,55 @@ The scripts are **not** deployed by GitHub Actions: the workflows only ship app 
    forever list
    ```
 
-   Changes to `deploy.sh` and `ci-gate.sh` take effect with the next deploy. Changes to `stop-app.sh`, `restore-db.sh`, `rollback.sh`, `start-all.sh` and `prune-backups.sh` take effect the next time they run.
+   Changes to `deploy.sh` and `ci-gate.sh` take effect with the next deploy. Changes to `stop-app.sh`, `restore-db.sh`, `rollback.sh`, `start-all.sh`, `prune-backups.sh` and `watchdog.sh` take effect the next time they run.
 
 Local trial of `prune-backups.sh` before uploading: `sh dev-local/prune-backups-trial.sh` (see [`dev-local/README.md`](../../dev-local/README.md)).
+
+### Watchdog: operator alerts
+
+`watchdog.sh` (since S-11), run from crontab every 5 minutes, makes sure the operator learns about an outage from a mail rather than from a user. The script only prepares the environment: it reads `PORT` from `api/public_nodejs/.env` and `frontend/public_nodejs/.env` (the frontend file is read as text, never executed), then runs `/usr/local/bin/node24 cli/watchdog.js` from the live api release with the api's `.env` exported. The policy and the mail texts live in the api package (`src/watchdog/`), so they change with an api deploy.
+
+Targets checked:
+
+- **api**: `GET localhost:<PORT_API>/health` answers 2xx with `status: ok`;
+- **frontend**: `GET localhost:<PORT_FE>/` answers 2xx;
+- **jobs**: the `jobs` field of `/health`. A failure when any job is `stale` (no finished run in 26 h) or when `/health` answers 200 without a valid `jobs` field. `failed` jobs are mailed by the api itself; the watchdog does not repeat them. While the api is down, the `jobs` target is not judged.
+
+Mail goes to `NOTIFICATION_ADMINISTRATOR_MAIL` through the operator transport (`NOTIFICATION_SMTP_*`, or `SMTP_*` without them), without the database: no row is written to the `mail` table. For each target:
+
+- after 3 consecutive failures (about 15 minutes): `SubTracker: API nie odpowiada`, `SubTracker: Frontend nie odpowiada` or `SubTracker: zadanie cykliczne nie ruszyło od 26 h` (`... stan zadań cyklicznych nieczytelny` when the `jobs` field is missing); when the API answers but `/health` reports the database (503, `db: error`), the subject is `SubTracker: API bez bazy danych`;
+- while the target stays down, a reminder every 12 h (`... nadal ...`);
+- once it is back, one `... działa ponownie` mail.
+
+A mail that could not be sent leaves the alert state unchanged, so the next run tries again. The state lives in `~/apps/subtracker/watchdog/state.json` (written atomically, outside the releases). The log `~/apps/subtracker/api/logs/watchdog.log` gets a line only for a mail (sent or not), a skipped run or an error of the watchdog itself; a quiet run writes nothing.
+
+During a deploy, rollback or restore (`api/.ops.lock` or `frontend/.ops.lock` younger than 30 minutes) the run is skipped with exit code 0, so a normal deploy raises no alert. An older lock (left by a killed process) does not silence the watchdog: every run logs it until you remove it with `rmdir`. Exit code 1 means the watchdog cannot run (no `.env`, no `PORT`, invalid api env); it then sends no mail, and the cause is in the log.
+
+One run at a time: the watchdog takes the lock `~/apps/subtracker/watchdog/.run.lock`, and while the previous run is still going it exits 0 with a log line. A run is stopped after 240 s (`timeout`, exit code 124 with a log line), so a lock older than 15 minutes was left by a run killed before it could clean up (SIGKILL, a server restart): the next run takes it over and logs it; there is no need to remove it by hand. When the lock cannot be created for another reason (permissions, a full disk), the run exits 1.
+
+**Installing** (once, after an api deploy that contains `cli/watchdog.js`):
+
+1. Upload `watchdog.sh` and check it like the other scripts: `scp`, `chmod 700`, `sha256` compared with the repo (see [Updating the scripts on the server](#updating-the-scripts-on-the-server)).
+2. On the server, check that the api reports its jobs and run the watchdog once by hand:
+
+   ```
+   curl -s localhost:<PORT_API>/health
+   ~/apps/subtracker/bin/watchdog.sh; echo "exit $?"
+   cat ~/apps/subtracker/watchdog/state.json
+   ```
+
+   Expected result: `/health` contains `"jobs"` with `ok` for the three jobs, the watchdog prints nothing and ends with `exit 0`, no mail arrives, and `state.json` has `"failures": 0` for `api`, `frontend` and `jobs`.
+3. Add the watchdog line to crontab (see [One-time setup](#one-time-setup)).
+
+**Silencing it:** comment out the watchdog line in crontab (`crontab -e`, `#` at the start). Once it is back, the watchdog continues from the stored state: a target that was alerted and works again gets the recovery mail. Deleting `state.json` resets the counts (without a recovery mail).
+
+**Limits:**
+
+- It checks `localhost` only, like the `deploy.sh` health check. A failure of the MyDevil proxy, DNS or TLS is invisible to it.
+- It runs from the api release: a broken api package (no `cli/watchdog.js`, a bad `.env`) disables the watchdog too. The only trace is in `watchdog.log`.
+- Until S-12, alerts share the SMTP server with user mail (unless `NOTIFICATION_SMTP_*` is set), so an outage of that SMTP server silences the alerts too.
+
+Local trial before uploading or after changing `src/watchdog/`: `dev-local/watchdog-trial.mjs` (see [`dev-local/README.md`](../../dev-local/README.md)).
 
 ### One-time setup
 
@@ -412,9 +513,10 @@ crontab:
 @reboot /usr/home/<login>/apps/subtracker/bin/start-all.sh
 0 4 * * 0 find /usr/home/<login>/apps/subtracker/*/logs -name '*.log' -size +20M -exec truncate -s 0 {} \;
 30 4 * * * /usr/home/<login>/apps/subtracker/bin/prune-backups.sh >> /usr/home/<login>/apps/subtracker/api/logs/prune-backups.log 2>&1
+*/5 * * * * /usr/home/<login>/apps/subtracker/bin/watchdog.sh >> /usr/home/<login>/apps/subtracker/api/logs/watchdog.log 2>&1
 ```
 
-The last line deletes database dumps older than 180 days every day, also without deploys (see [Backups and deleted accounts](#backups-and-deleted-accounts)). Run it once by hand after adding it; it should end with `done: <n> dump(s) deleted`.
+The `prune-backups.sh` line deletes database dumps older than 180 days every day, also without deploys (see [Backups and deleted accounts](#backups-and-deleted-accounts)). Run it once by hand after adding it; it should end with `done: <n> dump(s) deleted`. The `watchdog.sh` line checks the api and the frontend every 5 minutes (see [Watchdog: operator alerts](#watchdog-operator-alerts)); run it once by hand before adding it.
 
 The scripts expect `forever` on `PATH`. They look in `/usr/local/bin` and `~/.npm-global/bin`. If yours lives elsewhere, adjust the `PATH` line at the top of each script.
 

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { JobsModule } from '../jobs/jobs.module.js';
 import { MailModule } from '../mail/mail.module.js';
 import { RolesGuard } from '../shared/guards/roles.guard.js';
 import { AuthCleanupScheduler } from './auth-cleanup.scheduler.js';
@@ -15,7 +16,11 @@ import { AuthService } from './services/auth.service.js';
 import { SessionService } from './services/session.service.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Session, MagicLinkToken]), MailModule],
+  imports: [
+    TypeOrmModule.forFeature([Session, MagicLinkToken]),
+    MailModule,
+    JobsModule,
+  ],
   controllers: [AuthController],
   providers: [
     SessionService,

@@ -8,6 +8,7 @@ import {
   isAutoSynchronization,
 } from './config/env.js';
 import { applyHttpSecurity } from './config/http-security.js';
+import { installFatalHandlers } from './shared/process/fatal-handlers.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -26,4 +27,9 @@ async function bootstrap() {
     `\x1b[46m APP MODE: ${env.MODE}, CURRENT DATABASE: ${appDatabaseName(env)}, AUTO SYNCHRONIZATION: ${isAutoSynchronization(env) ? 'YES' : 'NO'}, PORT: ${env.PORT} \x1b[0m`,
   );
 }
+// Before NestFactory.create, so a crash during startup leaves its line in the log too.
+installFatalHandlers(
+  (line) => console.error(line),
+  (code) => process.exit(code),
+);
 await bootstrap();

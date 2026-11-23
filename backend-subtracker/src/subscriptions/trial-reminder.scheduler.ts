@@ -5,8 +5,8 @@ import {
   type OnApplicationBootstrap,
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { escapeHtml } from '../mail/escape-html.js';
-import { MailService } from '../mail/services/mail.service.js';
+import { JobRunService } from '../jobs/job-run.service.js';
+import type { JobTrigger } from '../jobs/job-run.types.js';
 import { APP_TIME_ZONE, calendarDayIn } from '../shared/date/calendar-day.js';
 import { TrialReminderService } from './services/trial-reminder.service.js';
 
@@ -16,8 +16,9 @@ import { TrialReminderService } from './services/trial-reminder.service.js';
 export const TRIAL_REMINDER_CRON = '0 2 * * *';
 
 // Runs the trial reminder job once at startup (catching up the deploy window or a restart) and
-// every day at 02:00 in Warsaw. The logic lives in the service; this only picks "today", logs and
-// alerts the operator when a whole run fails.
+// every day at 02:00 in Warsaw. The logic lives in the service; this only picks "today" and hands
+// the run to JobRunService, which records it, logs the summary and alerts the operator when the
+// run fails or some users were not reminded (partial).
 @Injectable()
 export class TrialReminderScheduler
   implements OnApplicationBootstrap, BeforeApplicationShutdown
@@ -28,13 +29,13 @@ export class TrialReminderScheduler
 
   constructor(
     private readonly reminders: TrialReminderService,
-    private readonly mail: MailService,
+    private readonly jobRuns: JobRunService,
   ) {}
 
   // Not awaited: sending mail (many users, a hanging SMTP server) must not delay the startup and
   // the deploy health-check. run() never rejects.
   onApplicationBootstrap(): void {
-    void this.run();
+    void this.run('startup');
   }
 
   // Lets a run in progress finish before app.close() closes the database connection (e2e tests).
@@ -45,7 +46,7 @@ export class TrialReminderScheduler
 
   @Cron(TRIAL_REMINDER_CRON, { timeZone: APP_TIME_ZONE })
   async daily(): Promise<void> {
-    await this.run();
+    await this.run('cron');
   }
 
   // Resolves when the run in progress (if any) has ended, e.g. the startup run in an e2e test.
@@ -53,50 +54,28 @@ export class TrialReminderScheduler
     return this.currentRun;
   }
 
-  private run(): Promise<void> {
+  // Never rejects: track() and recordSkipped() catch everything.
+  private run(trigger: JobTrigger): Promise<void> {
     if (this.running) {
       this.logger.warn(
         'Skipped: the previous trial reminder run is still going',
       );
-      return this.currentRun;
+      const running = this.currentRun;
+      return this.jobRuns
+        .recordSkipped('trial-reminder', trigger)
+        .then(() => running);
     }
     this.running = true;
-    this.currentRun = this.runOnce().finally(() => {
-      this.running = false;
-    });
-    return this.currentRun;
-  }
-
-  private async runOnce(): Promise<void> {
-    let today: string | undefined;
-    try {
-      today = calendarDayIn(APP_TIME_ZONE, new Date());
-      const result = await this.reminders.sendDue(today);
-      if (result.usersNotified + result.usersFailed > 0) {
-        // Black on green, so the run stands out among Nest's lines like the startup lines of
-        // main.ts (an explicit text colour: Nest prints a log message in green).
-        this.logger.log(
-          `\x1b[30;42m Trial reminder run for ${today}: ${result.usersNotified} users notified, ` +
-            `${result.remindersSent} trials reminded about, ${result.usersFailed} users failed \x1b[0m`,
-        );
-      }
-      if (result.usersFailed > 0) {
-        this.logger.warn(
-          `Trial reminder run for ${today}: ${result.usersFailed} users not reminded, retried on the next run`,
-        );
-      }
-    } catch (error) {
-      // The message only: the parameters of a failed query stay out of the log.
-      this.logger.error(
-        `Trial reminder run failed: ${error instanceof Error ? error.message : 'non-error value thrown'}`,
-      );
-      // The date only: no error text and no user data in the mail. notifyOperator never rejects.
-      const day = today ?? 'nieznany';
-      await this.mail.notifyOperator({
-        subject: 'SubTracker: przebieg przypomnień o trialu nie powiódł się',
-        text: `Przebieg przypomnień o kończących się okresach próbnych nie powiódł się.\ndzień: ${day}\nSzczegóły w logu API.`,
-        html: `<p>Przebieg przypomnień o kończących się okresach próbnych nie powiódł się.</p><p>dzień: ${escapeHtml(day)}<br>Szczegóły w logu API.</p>`,
+    this.currentRun = this.jobRuns
+      .track('trial-reminder', trigger, async () => {
+        const today = calendarDayIn(APP_TIME_ZONE, new Date());
+        const result = await this.reminders.sendDue(today);
+        // Users whose mail failed stay due for the next run; the operator hears about them.
+        return { counters: { ...result }, partial: result.usersFailed > 0 };
+      })
+      .finally(() => {
+        this.running = false;
       });
-    }
+    return this.currentRun;
   }
 }

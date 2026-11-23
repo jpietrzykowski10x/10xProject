@@ -4,55 +4,49 @@ import {
   type OnApplicationBootstrap,
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { JobRunService } from '../jobs/job-run.service.js';
+import type { JobTrigger } from '../jobs/job-run.types.js';
 import { APP_TIME_ZONE, calendarDayIn } from '../shared/date/calendar-day.js';
 import { SubscriptionLifecycleService } from './services/subscription-lifecycle.service.js';
 
 // Runs the lifecycle job once at startup (catching up the deploy window or a restart) and every
-// day at 00:05 in Warsaw. The logic lives in the service; this only picks "today" and logs.
+// day at 00:05 in Warsaw. The logic lives in the service; this only picks "today" and hands the
+// run to JobRunService, which records it, logs the summary and alerts the operator on a failure.
 @Injectable()
 export class SubscriptionLifecycleScheduler implements OnApplicationBootstrap {
   private readonly logger = new Logger(SubscriptionLifecycleScheduler.name);
   private running = false;
 
-  constructor(private readonly lifecycle: SubscriptionLifecycleService) {}
+  constructor(
+    private readonly lifecycle: SubscriptionLifecycleService,
+    private readonly jobRuns: JobRunService,
+  ) {}
 
-  // Awaited, so the run ends before the app takes requests; a failure is only logged, so it does
-  // not stop the startup or the deploy health-check.
+  // Awaited, so the run ends before the app takes requests; a failure is only recorded, logged and
+  // mailed, so it does not stop the startup or the deploy health-check.
   async onApplicationBootstrap(): Promise<void> {
-    await this.run();
+    await this.run('startup');
   }
 
   @Cron('5 0 * * *', { timeZone: APP_TIME_ZONE })
   async daily(): Promise<void> {
-    await this.run();
+    await this.run('cron');
   }
 
-  private async run(): Promise<void> {
+  // Never rejects: track() and recordSkipped() catch everything.
+  private async run(trigger: JobTrigger): Promise<void> {
     if (this.running) {
       this.logger.warn('Skipped: the previous lifecycle run is still going');
+      await this.jobRuns.recordSkipped('subscription-lifecycle', trigger);
       return;
     }
     this.running = true;
     try {
-      const today = calendarDayIn(APP_TIME_ZONE, new Date());
-      const result = await this.lifecycle.advance(today);
-      if (
-        result.trialsActivated +
-          result.cancellationsCompleted +
-          result.billingDatesRolled >
-        0
-      ) {
-        this.logger.log(
-          `Lifecycle run for ${today}: ${result.trialsActivated} trials activated, ` +
-            `${result.cancellationsCompleted} cancellations completed, ` +
-            `${result.billingDatesRolled} billing dates rolled`,
-        );
-      }
-    } catch (error) {
-      // The message only: the parameters of a failed query stay out of the log.
-      this.logger.error(
-        `Lifecycle run failed: ${error instanceof Error ? error.message : 'non-error value thrown'}`,
-      );
+      await this.jobRuns.track('subscription-lifecycle', trigger, async () => {
+        const today = calendarDayIn(APP_TIME_ZONE, new Date());
+        const result = await this.lifecycle.advance(today);
+        return { counters: { ...result } };
+      });
     } finally {
       this.running = false;
     }
