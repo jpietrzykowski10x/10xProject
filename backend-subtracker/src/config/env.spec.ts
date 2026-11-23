@@ -23,6 +23,10 @@ const prodEnv = {
   SMTP_PASSWORD: 'smtp-secret',
   SMTP_FROM_EMAIL: 'noreply@example.com',
   NOTIFICATION_ADMINISTRATOR_MAIL: 'operator@example.com',
+  NOTIFICATION_SMTP_HOST: 'alerts.example.com',
+  NOTIFICATION_SMTP_USERNAME: 'alerts@example.com',
+  NOTIFICATION_SMTP_PASSWORD: 'alerts-secret',
+  NOTIFICATION_SMTP_FROM_EMAIL: 'alerts@example.com',
   SUPPORT_EMAIL: 'support@example.com',
 };
 
@@ -151,6 +155,8 @@ describe('validateEnv', () => {
     expect(env.FRONTEND_URL).toBe('https://app.example.test');
     expect(env.SESSION_COOKIE_DOMAIN).toBe('.example.test');
     expect(env.SMTP_HOST).toBe('mail.example.com');
+    expect(env.NOTIFICATION_SMTP_HOST).toBe('alerts.example.com');
+    expect(env.NOTIFICATION_SMTP_USERNAME).toBe('alerts@example.com');
   });
 
   it.each([
@@ -161,6 +167,10 @@ describe('validateEnv', () => {
     'SMTP_PASSWORD',
     'SMTP_FROM_EMAIL',
     'NOTIFICATION_ADMINISTRATOR_MAIL',
+    'NOTIFICATION_SMTP_HOST',
+    'NOTIFICATION_SMTP_USERNAME',
+    'NOTIFICATION_SMTP_PASSWORD',
+    'NOTIFICATION_SMTP_FROM_EMAIL',
     'SUPPORT_EMAIL',
   ])('requires %s in PROD', (key) => {
     expect(() => validateEnv({ ...prodEnv, [key]: '' })).toThrow(
@@ -222,14 +232,54 @@ describe('validateEnv', () => {
     ).toThrow(/SMTP_USERNAME/);
   });
 
-  it('treats an empty NOTIFICATION_SMTP_HOST as no separate transporter', () => {
+  it('treats an empty NOTIFICATION_SMTP_HOST as no separate transporter in DEV', () => {
     const env = validateEnv({
-      ...prodEnv,
+      ...devEnv,
       NOTIFICATION_SMTP_HOST: '',
       NOTIFICATION_SMTP_USERNAME: 'leftover',
     });
     expect(env.NOTIFICATION_SMTP_HOST).toBeUndefined();
     expect(env.NOTIFICATION_SMTP_USERNAME).toBeUndefined();
+  });
+
+  it('requires a separate operator transporter in PROD', () => {
+    expect(() =>
+      validateEnv({ ...prodEnv, NOTIFICATION_SMTP_HOST: undefined }),
+    ).toThrow(/Missing required environment variable NOTIFICATION_SMTP_HOST/);
+  });
+
+  it('requires the operator SMTP password once its host is set in PROD', () => {
+    expect(() =>
+      validateEnv({ ...prodEnv, NOTIFICATION_SMTP_PASSWORD: undefined }),
+    ).toThrow(
+      /Missing required environment variable NOTIFICATION_SMTP_PASSWORD/,
+    );
+  });
+
+  it.each([['noreply@example.com'], [' NoReply@Example.COM ']])(
+    'rejects NOTIFICATION_SMTP_USERNAME "%s", the SMTP_USERNAME mailbox, in PROD',
+    (username) => {
+      expect(() =>
+        validateEnv({ ...prodEnv, NOTIFICATION_SMTP_USERNAME: username }),
+      ).toThrow(
+        'NOTIFICATION_SMTP_USERNAME must name a separate mailbox from SMTP_USERNAME in PROD',
+      );
+    },
+  );
+
+  it('allows the SMTP_USERNAME mailbox for operator mail in DEV', () => {
+    const env = validateEnv({
+      ...devEnv,
+      SMTP_HOST: 'mail.example.com',
+      SMTP_USERNAME: 'noreply@example.com',
+      SMTP_PASSWORD: 'smtp-secret',
+      SMTP_FROM_EMAIL: 'noreply@example.com',
+      NOTIFICATION_SMTP_HOST: 'mail.example.com',
+      NOTIFICATION_SMTP_USERNAME: 'noreply@example.com',
+      NOTIFICATION_SMTP_PASSWORD: 'smtp-secret',
+      NOTIFICATION_SMTP_FROM_EMAIL: 'noreply@example.com',
+    });
+    expect(env.NOTIFICATION_SMTP_USERNAME).toBe('noreply@example.com');
   });
 
   it.each([

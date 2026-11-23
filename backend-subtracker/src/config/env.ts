@@ -167,10 +167,29 @@ export function validateEnv(raw: RawEnv): EnvConfig {
   const readSmtpField = (key: string): string | undefined =>
     smtpHost !== undefined ? requireString(raw, key) : undefined;
 
-  // An empty NOTIFICATION_SMTP_HOST means operator mail uses the SMTP_* transporter.
-  const notificationHost = readString(raw, 'NOTIFICATION_SMTP_HOST');
+  // Operator alerts need a mailbox of their own in PROD, so a blocked or failing SMTP_* account
+  // cannot also silence the alert about it. An empty NOTIFICATION_SMTP_HOST, which sends operator
+  // mail through the SMTP_* transporter, is allowed only in DEV. A set host requires credentials.
+  const notificationHost =
+    mode === 'PROD'
+      ? requireString(raw, 'NOTIFICATION_SMTP_HOST')
+      : readString(raw, 'NOTIFICATION_SMTP_HOST');
   const readNotificationField = (key: string): string | undefined =>
     notificationHost !== undefined ? requireString(raw, key) : undefined;
+
+  const smtpUsername = readSmtpField('SMTP_USERNAME');
+  const notificationUsername = readNotificationField(
+    'NOTIFICATION_SMTP_USERNAME',
+  );
+  // readString has trimmed both already; mailbox logins are case-insensitive.
+  if (
+    mode === 'PROD' &&
+    notificationUsername?.toLowerCase() === smtpUsername?.toLowerCase()
+  ) {
+    throw new Error(
+      'NOTIFICATION_SMTP_USERNAME must name a separate mailbox from SMTP_USERNAME in PROD',
+    );
+  }
 
   const corsOrigins = parseCorsOrigins(
     requireString(raw, 'CORS_ORIGINS'),
@@ -201,7 +220,7 @@ export function validateEnv(raw: RawEnv): EnvConfig {
     SMTP_HOST: smtpHost,
     SMTP_PORT: readPositiveInt(raw, 'SMTP_PORT', 587),
     SMTP_SECURE: readBoolean(raw, 'SMTP_SECURE', false),
-    SMTP_USERNAME: readSmtpField('SMTP_USERNAME'),
+    SMTP_USERNAME: smtpUsername,
     SMTP_PASSWORD: readSmtpField('SMTP_PASSWORD'),
     SMTP_FROM_EMAIL: readSmtpField('SMTP_FROM_EMAIL'),
     SMTP_FROM_NAME: readString(raw, 'SMTP_FROM_NAME') ?? 'SubTracker',
@@ -216,9 +235,7 @@ export function validateEnv(raw: RawEnv): EnvConfig {
       'NOTIFICATION_SMTP_SECURE',
       false,
     ),
-    NOTIFICATION_SMTP_USERNAME: readNotificationField(
-      'NOTIFICATION_SMTP_USERNAME',
-    ),
+    NOTIFICATION_SMTP_USERNAME: notificationUsername,
     NOTIFICATION_SMTP_PASSWORD: readNotificationField(
       'NOTIFICATION_SMTP_PASSWORD',
     ),
