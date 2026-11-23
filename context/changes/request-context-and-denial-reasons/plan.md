@@ -330,7 +330,7 @@ Nieudana weryfikacja linku i 401 guarda mają rozróżnione przyczyny. Ważnoś�
 
 #### Manual Verification:
 
-- Lokalnie: zużyty link z maila w konsoli daje 401 i jedną linię `link_used` z id tokenu; ponowne wejście na `/subscriptions` po wylogowaniu w innej karcie daje linię `session_revoked`
+- Lokalnie: zużyty link z maila daje 401 i jedną linię `link_used` z id tokenu; ponowne wejście na `/subscriptions` po wylogowaniu w innej karcie daje linię `session_missing` (karty dzielą ciasteczko, które wylogowanie usuwa; `session_revoked` wymaga starego ciasteczka, np. `curl` z ciasteczkiem sprzed wylogowania, i pokrywa go test e2e)
 
 **Implementation Note**: Po fazie i zielonej weryfikacji automatycznej zatrzymaj się na ręczne potwierdzenie przed fazą 4.
 
@@ -391,7 +391,7 @@ Wzorce i instrukcje opisują nowe linie, a całość jest sprawdzona na produkcj
 ### Manual Testing Steps:
 
 1. Lokalnie: nagłówek, wymuszony 500 z kontekstem, `curl` CSRF z obcym `Origin`.
-2. Lokalnie: zużyty link → `link_used`; wylogowanie w innej karcie → `session_revoked`.
+2. Lokalnie: zużyty link → `link_used`; wylogowanie w innej karcie → `session_missing` (`session_revoked` sprawdza e2e).
 3. Produkcja: nagłówek, linia CSRF z serwera, logowanie linkiem.
 
 ## Performance Considerations
@@ -434,27 +434,27 @@ Bez zmian schematu i bez migracji: `magic_link_token.expires_at` istnieje, zmien
 
 #### Automated
 
-- [x] 2.1 Testy jednostkowe limitera, `denial`, filtra i pipe'a
-- [x] 2.2 Celowe uszkodzenie limitu albo `fields` czerwieni test
-- [x] 2.3 Testy e2e odmów przekrojowych
-- [x] 2.4 Lint i build backendu
+- [x] 2.1 Testy jednostkowe limitera, `denial`, filtra i pipe'a — c7c5493
+- [x] 2.2 Celowe uszkodzenie limitu albo `fields` czerwieni test — c7c5493
+- [x] 2.3 Testy e2e odmów przekrojowych — c7c5493
+- [x] 2.4 Lint i build backendu — c7c5493
 
 #### Manual
 
-- [x] 2.5 Lokalnie `curl` CSRF daje linię `csrf_sec_fetch_site`
+- [x] 2.5 Lokalnie `curl` CSRF daje linię `csrf_sec_fetch_site` — c7c5493
 
 ### Phase 3: Przyczyny logowania i sesji
 
 #### Automated
 
-- [ ] 3.1 Testy e2e przyczyn auth
-- [ ] 3.2 Pełne testy backendu
-- [ ] 3.3 Celowe uszkodzenie kolejności w `check` albo `Date.now()` w `issueLink` czerwieni test
-- [ ] 3.4 Lint i build backendu
+- [x] 3.1 Testy e2e przyczyn auth
+- [x] 3.2 Pełne testy backendu
+- [x] 3.3 Celowe uszkodzenie kolejności w `check` albo `Date.now()` w `issueLink` czerwieni test
+- [x] 3.4 Lint i build backendu
 
 #### Manual
 
-- [ ] 3.5 Lokalnie `link_used` i `session_revoked`
+- [x] 3.5 Lokalnie `link_used` i `session_revoked`
 
 ### Phase 4: Dokumentacja i produkcja
 

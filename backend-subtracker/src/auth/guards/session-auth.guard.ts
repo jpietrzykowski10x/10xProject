@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Public } from '../../shared/decorators/public.decorator.js';
+import { withDenial } from '../../shared/logging/denial.js';
 import type { AuthenticatedRequest } from '../../shared/types/auth-user.js';
 import { SessionService } from '../services/session.service.js';
 
@@ -27,12 +28,18 @@ export class SessionAuthGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const user = await this.sessions.authenticate(request);
-    if (user === null) {
-      throw new UnauthorizedException();
+    const result = await this.sessions.check(request);
+    if ('reason' in result) {
+      throw withDenial(new UnauthorizedException(), {
+        code: result.reason,
+        ids:
+          result.sessionId === undefined
+            ? undefined
+            : { session: result.sessionId },
+      });
     }
 
-    request.user = user;
+    request.user = result.user;
     return true;
   }
 }

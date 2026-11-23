@@ -5,6 +5,7 @@ import { type EnvConfig, validateEnv } from '../../config/env.js';
 import { Mail } from '../../mail/entities/mail.entity.js';
 import { type MailContent, MailType } from '../../mail/mail.types.js';
 import type { MailService } from '../../mail/services/mail.service.js';
+import { denialOf } from '../../shared/logging/denial.js';
 import { RoleCode } from '../../shared/types/role-code.js';
 import { Role } from '../../users/entities/role.entity.js';
 import { UserRole } from '../../users/entities/user-role.entity.js';
@@ -59,13 +60,26 @@ interface SetupOptions {
   tokenOwner?: string | null;
   // Rows the query builder's update reports, i.e. whether verify used the token up.
   affected?: number;
+  // The row verify finds by the hash alone after a refusal, or undefined when there is none.
+  refused?: RefusedRow;
 }
+
+interface RefusedRow {
+  id: string;
+  usedAt: Date | null;
+  live: boolean;
+}
+
+const TOKEN_ID = 'token-1';
+
+type RefusedQuery = ReturnType<typeof setup>['refusedQuery'];
 
 function setup({
   found = null,
   returned = [],
   tokenOwner = null,
   affected = 1,
+  refused,
 }: SetupOptions = {}) {
   const calls: string[] = [];
   const users = {
@@ -77,10 +91,19 @@ function setup({
     findOneBy: vi.fn(() => Promise.resolve({ id: USER_ROLE_ID })),
   };
   const userRoles = { insert: vi.fn(() => Promise.resolve()) };
+  const refusedQuery = {
+    select: () => refusedQuery,
+    addSelect: vi.fn((_selection: string, _alias: string) => refusedQuery),
+    where: vi.fn((_condition: string, _params: object) => refusedQuery),
+    getRawOne: vi.fn(() => Promise.resolve(refused)),
+  };
   const tokens = {
     findOne: vi.fn((_options: object) =>
-      Promise.resolve(tokenOwner === null ? null : { userId: tokenOwner }),
+      Promise.resolve(
+        tokenOwner === null ? null : { id: TOKEN_ID, userId: tokenOwner },
+      ),
     ),
+    createQueryBuilder: vi.fn(() => refusedQuery),
     delete: vi.fn(() => {
       calls.push('delete');
       return Promise.resolve();
@@ -138,6 +161,7 @@ function setup({
     users,
     userRoles,
     tokens,
+    refusedQuery,
     query,
     manager,
     sendToUser,
@@ -245,6 +269,20 @@ describe('AuthService', () => {
         `${FRONTEND_URL}/auth/verify#token=${token}`,
       );
       expect(tokens.insert.mock.calls[0][0].tokenHash).toBe(hashToken(token));
+    });
+
+    it('sets the expiry by the database clock, MAGIC_LINK_TTL from now()', async () => {
+      const { service, tokens } = setup({ found: userWith() });
+
+      await service.requestLink(ADDRESS);
+
+      const { expiresAt } = tokens.insert.mock.calls[0][0] as {
+        expiresAt: unknown;
+      };
+      expect(typeof expiresAt).toBe('function');
+      expect((expiresAt as () => string)()).toBe(
+        "now() + interval '900 seconds'",
+      );
     });
 
     it('tells an unconfirmed account that the link confirms the consents', async () => {
@@ -363,6 +401,107 @@ describe('AuthService', () => {
       );
       expect(users.findOne).not.toHaveBeenCalled();
       expect(create).not.toHaveBeenCalled();
+    });
+
+    describe('reason of a refused link', () => {
+      async function refusalOf(
+        options: SetupOptions,
+      ): Promise<{ error: unknown; refusedQuery: RefusedQuery }> {
+        const { service, refusedQuery } = setup(options);
+        const error = await service
+          .verify('token', null)
+          .catch((caught: unknown) => caught);
+        return { error, refusedQuery };
+      }
+
+      it('is link_unknown without a row of this hash, without ids', async () => {
+        const { error, refusedQuery } = await refusalOf({ refused: undefined });
+
+        expect(error).toBeInstanceOf(UnauthorizedException);
+        expect(denialOf(error)).toEqual({ code: 'link_unknown' });
+        expect(refusedQuery.where).toHaveBeenCalledWith(expect.any(String), {
+          tokenHash: hashToken('token'),
+        });
+      });
+
+      it('is link_used for a used token, with the token id', async () => {
+        const { error } = await refusalOf({
+          refused: { id: TOKEN_ID, usedAt: new Date(), live: true },
+        });
+
+        expect(error).toBeInstanceOf(UnauthorizedException);
+        expect(denialOf(error)).toEqual({
+          code: 'link_used',
+          ids: { token: TOKEN_ID },
+        });
+      });
+
+      it('is link_used for a token both used and expired', async () => {
+        const { error } = await refusalOf({
+          refused: { id: TOKEN_ID, usedAt: new Date(), live: false },
+        });
+
+        expect(denialOf(error)).toEqual({
+          code: 'link_used',
+          ids: { token: TOKEN_ID },
+        });
+      });
+
+      it('is link_expired for an unused token the database sees as expired', async () => {
+        const { error, refusedQuery } = await refusalOf({
+          refused: { id: TOKEN_ID, usedAt: null, live: false },
+        });
+
+        expect(error).toBeInstanceOf(UnauthorizedException);
+        expect(denialOf(error)).toEqual({
+          code: 'link_expired',
+          ids: { token: TOKEN_ID },
+        });
+        expect(refusedQuery.addSelect).toHaveBeenCalledWith(
+          'token.expires_at > now()',
+          'live',
+        );
+      });
+
+      it('is link_user_missing when the owner is gone by the lock', async () => {
+        const { error } = await refusalOf({
+          tokenOwner: 'user-1',
+          found: null,
+        });
+
+        expect(error).toBeInstanceOf(UnauthorizedException);
+        expect(denialOf(error)).toEqual({
+          code: 'link_user_missing',
+          ids: { token: TOKEN_ID, account: 'user-1' },
+        });
+      });
+
+      it('is link_account_blocked on the same 403 for a blocked account', async () => {
+        const { error } = await refusalOf({
+          tokenOwner: 'user-1',
+          found: userWith({ isActive: false }),
+        });
+
+        expect(error).toBeInstanceOf(AccountBlockedException);
+        expect(denialOf(error)).toEqual({
+          code: 'link_account_blocked',
+          ids: { token: TOKEN_ID, account: 'user-1' },
+        });
+      });
+
+      it('is link_race when a parallel request used the token up first', async () => {
+        const { error } = await refusalOf({
+          tokenOwner: 'user-1',
+          found: userWith(),
+          affected: 0,
+        });
+
+        expect(error).toBeInstanceOf(UnauthorizedException);
+        expect(denialOf(error)).toEqual({
+          code: 'link_race',
+          ids: { token: TOKEN_ID, account: 'user-1' },
+        });
+      });
     });
 
     it('locks the owner row before using the token up', async () => {

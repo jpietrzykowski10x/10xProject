@@ -8,6 +8,7 @@ import { type EntityManager, IsNull, Repository } from 'typeorm';
 import { type EnvConfig, envFromConfig } from '../../config/env.js';
 import type { AuthUser } from '../../shared/types/auth-user.js';
 import type { User } from '../../users/entities/user.entity.js';
+import type { SessionRejection } from '../auth-denials.js';
 import { SESSION_COOKIE_NAME, SESSION_TTL } from '../auth.constants.js';
 import {
   Session,
@@ -32,12 +33,22 @@ export function toAuthUser(user: User): AuthUser {
   };
 }
 
-function isValid(session: Session): boolean {
-  return (
-    session.revokedAt === null &&
-    session.expiresAt.getTime() > Date.now() &&
-    session.user.isActive
-  );
+export type SessionCheck =
+  { user: AuthUser } | { reason: SessionRejection; sessionId?: string };
+
+// Revoked before expired before an inactive account: a session signed out of stays signed out
+// whatever happened later.
+function rejectionOf(session: Session): SessionRejection | null {
+  if (session.revokedAt !== null) {
+    return 'session_revoked';
+  }
+  if (session.expiresAt.getTime() <= Date.now()) {
+    return 'session_expired';
+  }
+  if (!session.user.isActive) {
+    return 'session_inactive';
+  }
+  return null;
 }
 
 @Injectable()
@@ -82,19 +93,30 @@ export class SessionService {
       : parseCookie(header)[SESSION_COOKIE_NAME];
   }
 
-  // The user behind the request's cookie, or null without a valid session.
-  async authenticate(request: Request): Promise<AuthUser | null> {
+  // The user behind the request's cookie, or why there is none, with the session's id when the
+  // session exists (never its token).
+  async check(request: Request): Promise<SessionCheck> {
     const token = this.readToken(request);
     if (token === undefined) {
-      return null;
+      return { reason: 'session_missing' };
     }
     const session = await this.sessions.findOne({
       where: { tokenHash: hashToken(token) },
       relations: { user: { userRoles: { role: true } } },
     });
-    return session !== null && isValid(session)
-      ? toAuthUser(session.user)
-      : null;
+    if (session === null) {
+      return { reason: 'session_unknown' };
+    }
+    const reason = rejectionOf(session);
+    return reason === null
+      ? { user: toAuthUser(session.user) }
+      : { reason, sessionId: session.id };
+  }
+
+  // The user behind the request's cookie, or null without a valid session.
+  async authenticate(request: Request): Promise<AuthUser | null> {
+    const result = await this.check(request);
+    return 'user' in result ? result.user : null;
   }
 
   async revoke(token: string): Promise<void> {

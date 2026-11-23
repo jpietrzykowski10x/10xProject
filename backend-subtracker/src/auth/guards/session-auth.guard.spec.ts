@@ -4,6 +4,7 @@ import { Reflector } from '@nestjs/core';
 import type { Repository } from 'typeorm';
 import { type EnvConfig, validateEnv } from '../../config/env.js';
 import { Public } from '../../shared/decorators/public.decorator.js';
+import { denialOf } from '../../shared/logging/denial.js';
 import type { AuthenticatedRequest } from '../../shared/types/auth-user.js';
 import { RoleCode } from '../../shared/types/role-code.js';
 import type { Role } from '../../users/entities/role.entity.js';
@@ -17,6 +18,7 @@ import { SessionAuthGuard } from './session-auth.guard.js';
 const TOKEN = 'token-z-ciasteczka';
 const SESSION_COOKIE = `${SESSION_COOKIE_NAME}=${TOKEN}`;
 const HOUR_MS = 60 * 60 * 1000;
+const SESSION_ID = 'session-1';
 
 class Routes {
   guarded(): void {}
@@ -49,6 +51,7 @@ function sessionWith(
   user: Partial<User> = {},
 ): Session {
   return {
+    id: SESSION_ID,
     revokedAt: null,
     expiresAt: new Date(Date.now() + HOUR_MS),
     user: {
@@ -69,7 +72,7 @@ function setup(session: Session | null = null) {
     configStub(),
   );
   const guard = new SessionAuthGuard(new Reflector(), service);
-  return { guard, findOne };
+  return { guard, service, findOne };
 }
 
 function requestWith(cookie?: string): AuthenticatedRequest {
@@ -97,56 +100,98 @@ describe('SessionAuthGuard', () => {
     expect(findOne).not.toHaveBeenCalled();
   });
 
-  it('answers 401 without a Cookie header, without querying the database', async () => {
+  // The refusal the guard throws: always 401, with the reason for the log line.
+  async function refusalOf(
+    session: Session | null,
+    cookie: string | undefined = SESSION_COOKIE,
+  ): Promise<unknown> {
+    const { guard } = setup(session);
+    const error = await guard
+      .canActivate(contextFor(requestWith(cookie)))
+      .catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(UnauthorizedException);
+    return error;
+  }
+
+  it('answers 401 session_missing without a Cookie header, without querying the database', async () => {
     const { guard, findOne } = setup();
 
-    await expect(
-      guard.canActivate(contextFor(requestWith())),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    const error = await guard
+      .canActivate(contextFor(requestWith()))
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(UnauthorizedException);
+    expect(denialOf(error)).toEqual({
+      code: 'session_missing',
+      ids: undefined,
+    });
     expect(findOne).not.toHaveBeenCalled();
   });
 
-  it('answers 401 when the header has no session cookie', async () => {
+  it('answers 401 session_missing when the header has no session cookie', async () => {
     const { guard, findOne } = setup();
 
-    await expect(
-      guard.canActivate(contextFor(requestWith('other=value'))),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    const error = await guard
+      .canActivate(contextFor(requestWith('other=value')))
+      .catch((caught: unknown) => caught);
+
+    expect(denialOf(error)).toEqual({
+      code: 'session_missing',
+      ids: undefined,
+    });
     expect(findOne).not.toHaveBeenCalled();
   });
 
-  it('answers 401 for an unknown token', async () => {
-    const { guard } = setup(null);
+  it('answers 401 session_unknown for an unknown token, without ids', async () => {
+    const error = await refusalOf(null);
 
-    await expect(
-      guard.canActivate(contextFor(requestWith(SESSION_COOKIE))),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(denialOf(error)).toEqual({
+      code: 'session_unknown',
+      ids: undefined,
+    });
   });
 
-  it('answers 401 for an expired session', async () => {
-    const { guard } = setup(
+  it('answers 401 session_expired for an expired session, with its id', async () => {
+    const error = await refusalOf(
       sessionWith({ expiresAt: new Date(Date.now() - 1) }),
     );
 
-    await expect(
-      guard.canActivate(contextFor(requestWith(SESSION_COOKIE))),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(denialOf(error)).toEqual({
+      code: 'session_expired',
+      ids: { session: SESSION_ID },
+    });
   });
 
-  it('answers 401 for a revoked session', async () => {
-    const { guard } = setup(sessionWith({ revokedAt: new Date() }));
+  it('answers 401 session_revoked for a revoked session, with its id', async () => {
+    const error = await refusalOf(sessionWith({ revokedAt: new Date() }));
 
-    await expect(
-      guard.canActivate(contextFor(requestWith(SESSION_COOKIE))),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(denialOf(error)).toEqual({
+      code: 'session_revoked',
+      ids: { session: SESSION_ID },
+    });
   });
 
-  it('answers 401 for an inactive user', async () => {
-    const { guard } = setup(sessionWith({}, { isActive: false }));
+  it('answers 401 session_inactive for an inactive user, with the session id', async () => {
+    const error = await refusalOf(sessionWith({}, { isActive: false }));
 
-    await expect(
-      guard.canActivate(contextFor(requestWith(SESSION_COOKIE))),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(denialOf(error)).toEqual({
+      code: 'session_inactive',
+      ids: { session: SESSION_ID },
+    });
+  });
+
+  it('checks revoked before expired before an inactive account', async () => {
+    const past = new Date(Date.now() - 1);
+
+    const all = await refusalOf(
+      sessionWith({ revokedAt: past, expiresAt: past }, { isActive: false }),
+    );
+    const expiredAndInactive = await refusalOf(
+      sessionWith({ expiresAt: past }, { isActive: false }),
+    );
+
+    expect(denialOf(all)?.code).toBe('session_revoked');
+    expect(denialOf(expiredAndInactive)?.code).toBe('session_expired');
   });
 
   it('looks the session up by the token hash and attaches request.user', async () => {
@@ -177,5 +222,27 @@ describe('SessionAuthGuard', () => {
     await guard.canActivate(contextFor(request));
 
     expect(request.user?.roles).toEqual([RoleCode.USER]);
+  });
+
+  // What GET /auth/session relies on: a refused session is null, not an error.
+  it('authenticate gives the user of a valid session and null for any refusal', async () => {
+    const valid = setup(sessionWith()).service;
+    const revoked = setup(sessionWith({ revokedAt: new Date() })).service;
+    const unknown = setup(null).service;
+
+    await expect(
+      valid.authenticate(requestWith(SESSION_COOKIE)),
+    ).resolves.toEqual({
+      id: 'user-1',
+      email: 'jan@example.com',
+      roles: [RoleCode.USER],
+    });
+    await expect(
+      revoked.authenticate(requestWith(SESSION_COOKIE)),
+    ).resolves.toBeNull();
+    await expect(
+      unknown.authenticate(requestWith(SESSION_COOKIE)),
+    ).resolves.toBeNull();
+    await expect(unknown.authenticate(requestWith())).resolves.toBeNull();
   });
 });
