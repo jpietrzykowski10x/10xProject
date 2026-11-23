@@ -43,7 +43,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | ---- | ---------------------------------- | ------------------------------------------------------------------------------------ | ------------- | ----------------------- | -------- |
 | S-11 | operator-liveness-alerts           | operator dostaje mail, gdy API nie odpowiada albo job padł lub nie ruszył przez 26 h | —             | FR-019                  | done        |
 | S-12 | independent-alert-channel          | alarm operatora dochodzi także przy awarii SMTP dla użytkowników                     | S-11          | FR-020                  | proposed |
-| S-13 | request-context-and-denial-reasons | operator widzi w logu trasę, użytkownika i id żądania błędu oraz przyczyny odmów 4xx  | —             | FR-021                  | in-progress |
+| S-13 | request-context-and-denial-reasons | operator widzi w logu trasę, użytkownika i id żądania błędu oraz przyczyny odmów 4xx  | —             | FR-021                  | done |
 | S-14 | log-format-version-and-access-log  | operator czyta logi w jednym formacie, z wersją i access logiem obu procesów         | S-13          | FR-022                  | proposed |
 | S-15 | client-and-ssr-error-visibility    | błędy przeglądarki i SSR zostawiają ślad, a nieaktualny plik po deployu przeładowuje stronę | S-14     | FR-023                  | proposed |
 | S-16 | failure-causes-and-audit-trail     | operator widzi przyczynę porażki joba i maila, a usunięcia i odmowy admina mają ślad | S-11          | FR-024                  | proposed |
@@ -116,7 +116,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **Unknowns:**
   - Limit linii odmów 4xx: per proces i okno czasowe czy per kod przyczyny? — Owner: agent (`/10x-plan`). Block: no.
 - **Risk:** Zamyka L1 (krytyczne); ryzyko w odwróceniu świadomej decyzji „4xx nie logujemy” — powód (dane osobowe, rozrost logu przez obcy ruch) musi zostać spełniony testem, że linia nie zawiera adresu, tokenu ani query.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-14: Format logu, wersja i access log
 
@@ -241,3 +241,4 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **S-10: użytkownik usuwa swoje konto z poziomu aplikacji. Przed usunięciem widzi potwierdzenie z informacją, że dane (subskrypcje, własne kategorie) przepadną bezpowrotnie. Po usunięciu jest wylogowany, a jego sesje, tokeny logowania i dane domenowe znikają.** — Archived 2026-11-21 → `context/archive/2026-11-20-account-deletion/`. Lesson: —.
 - **S-09: administrator (rola nadana ręcznie poza aplikacją) blokuje i odblokowuje konto lub resetuje dostęp użytkownika i ma wgląd w jego dane, w tym subskrypcje i kwoty.** — Archived 2026-11-21 → `context/archive/2026-11-21-admin-account-management/`. Lesson: widok listy w trzech szerokościach; przyciski i pola z tokenów motywu.
 - **S-11: operator dostaje mail, gdy API przestaje odpowiadać albo pada w pętli restartów (sprawdzenie spoza procesu API), oraz gdy zadanie cykliczne zakończy się błędem albo nie zakończy się w ciągu 26 godzin; każdy przebieg zadania zostawia trwały ślad.** — Archived 2026-11-23 → `context/archive/2026-11-22-operator-liveness-alerts/`. Lesson: —.
+- **S-13: każdy błąd serwera w logu API ma metodę, szablon trasy, id użytkownika i id żądania; wybrane odmowy 4xx (weryfikacja linku, sesja, CSRF/Origin, ranga administratora, walidacja) zostawiają linię z kodem przyczyny i nazwami pól, bez wartości i danych osobowych, z limitem.** — Archived 2026-11-23 → `context/archive/2026-11-23-request-context-and-denial-reasons/`. Lesson: —.
