@@ -10,7 +10,9 @@ export const LinkDenial = {
   // The token's account disappeared between the lookup and the lock.
   USER_MISSING: 'link_user_missing',
   ACCOUNT_BLOCKED: 'link_account_blocked',
-  // A parallel request used the token up after the lookup.
+  // Raised in two places: a parallel request used the token up after the lookup (consumed.affected
+  // !== 1, with `token` and `account`), or the second read in refusedLink finds it unused and live
+  // again (it changed between the reads; `token` only, the owner is not read there).
   RACE: 'link_race',
 } as const;
 

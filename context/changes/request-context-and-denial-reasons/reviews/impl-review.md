@@ -79,7 +79,7 @@ Uwaga dla właściciela: w kopii roboczej runnera `CLAUDE.md` znowu miał niezac
   Plan nie określał limitu, więc to nie jest odstępstwo, tylko luka w niezawodności (dysk na MyDevil jest ograniczony).
 
 - **Fix**: Ograniczyć `fields` w `validationDenial` do pierwszych 20 po posortowaniu, a resztę zgłaszać licznikiem (np. `ids.more=<n>`). Opcjonalnie dodać też ogólny limit długości linii w `formatDenial` dla przyszłych odmów.
-- **Decision**: PENDING
+- **Decision**: FIXED (`MAX_LOGGED_FIELDS` = 20, reszta jako `ids.more`; test w `validation-pipe.spec.ts`, zasada w `backend-patterns.md`)
 
 ### F2 — `SessionService.check` testowane tylko przez guarda
 
@@ -89,7 +89,7 @@ Uwaga dla właściciela: w kopii roboczej runnera `CLAUDE.md` znowu miał niezac
 - **Location**: backend-subtracker/src/auth/services/session.service.ts:98
 - **Detail**: Testy sprawdzają pięć przyczyn i ich kolejność, ale tylko w `session-auth.guard.spec.ts:116-195`. Osobnego `session.service.spec.ts` nie ma. Pokrycie jest dziś pełne. Gdyby jednak guard przestał wołać `check`, albo `/auth/session` zaczęło używać innej ścieżki, kolejności nie pilnowałby żaden test.
 - **Fix**: Zostawić. Ewentualnie przenieść testy kolejności do `session.service.spec.ts` przy najbliższej zmianie sesji.
-- **Decision**: PENDING
+- **Decision**: ACCEPTED (zostaje; testy kolejności przenieść do `session.service.spec.ts` przy najbliższej zmianie sesji)
 
 ### F3 — `link_race` powstaje w dwóch miejscach z różnym zestawem `ids`
 
@@ -104,6 +104,6 @@ Uwaga dla właściciela: w kopii roboczej runnera `CLAUDE.md` znowu miał niezac
   Znaczenie jest opisane w `change.md` i działa poprawnie: w jednej transakcji `now()` jest stałe, a `token_hash` jest unikalny. Przy czytaniu logu nie widać jednak, z którego miejsca pochodzi linia, poza obecnością `account=`.
 
 - **Fix**: Dopisać w komentarzu `LinkDenial.RACE` (`src/auth/auth-denials.ts:14`), że kod powstaje w obu miejscach i różni się kluczem `account`.
-- **Decision**: PENDING
+- **Decision**: FIXED (komentarz przy `LinkDenial.RACE` w `auth-denials.ts`)
 
 <!-- End of report -->
