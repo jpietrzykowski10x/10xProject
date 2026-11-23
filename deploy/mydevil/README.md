@@ -251,11 +251,13 @@ command="/usr/home/<login>/apps/subtracker/bin/ci-gate.sh",no-pty,no-port-forwar
 crontab:
 
 ```
-@reboot /usr/home/<login>/apps/subtracker/bin/start-all.sh
+@reboot /usr/home/<login>/apps/subtracker/bin/start-all.sh >> /usr/home/<login>/apps/subtracker/api/logs/start-all.log 2>&1
 0 4 * * 0 find /usr/home/<login>/apps/subtracker/*/logs -name '*.log' -size +20M -exec truncate -s 0 {} \;
 30 4 * * * /usr/home/<login>/apps/subtracker/bin/prune-backups.sh >> /usr/home/<login>/apps/subtracker/api/logs/prune-backups.log 2>&1
 */5 * * * * /usr/home/<login>/apps/subtracker/bin/watchdog.sh >> /usr/home/<login>/apps/subtracker/api/logs/watchdog.log 2>&1
 ```
+
+Przed wklejeniem zamień każde `<login>` na nazwę konta. Cron uruchamia linię przez `/bin/sh`, który czyta `<login>` jako przekierowanie z pliku `login`: linia kończy się błędem `cannot open login: No such file or directory` jeszcze przed startem skryptu, a błąd trafia tylko do lokalnej skrzynki `/var/mail/<login>`. Po zapisaniu sprawdź `crontab -l | grep '<login>'` (nie powinno nic wypisać).
 
 Linia `prune-backups.sh` codziennie usuwa kopie bazy starsze niż 180 dni, także bez deployów (zob. [Kopie bazy i usunięte konta](#kopie-bazy-i-usunięte-konta)). Po dodaniu uruchom ją raz ręcznie; powinna skończyć się linią `done: <n> dump(s) deleted`. Linia `watchdog.sh` co 5 minut sprawdza api i frontend (zob. [Watchdog: alarmy dla operatora](#watchdog-alarmy-dla-operatora)); przed dodaniem uruchom go raz ręcznie.
 
@@ -510,11 +512,13 @@ command="/usr/home/<login>/apps/subtracker/bin/ci-gate.sh",no-pty,no-port-forwar
 crontab:
 
 ```
-@reboot /usr/home/<login>/apps/subtracker/bin/start-all.sh
+@reboot /usr/home/<login>/apps/subtracker/bin/start-all.sh >> /usr/home/<login>/apps/subtracker/api/logs/start-all.log 2>&1
 0 4 * * 0 find /usr/home/<login>/apps/subtracker/*/logs -name '*.log' -size +20M -exec truncate -s 0 {} \;
 30 4 * * * /usr/home/<login>/apps/subtracker/bin/prune-backups.sh >> /usr/home/<login>/apps/subtracker/api/logs/prune-backups.log 2>&1
 */5 * * * * /usr/home/<login>/apps/subtracker/bin/watchdog.sh >> /usr/home/<login>/apps/subtracker/api/logs/watchdog.log 2>&1
 ```
+
+Replace every `<login>` with the account name before pasting. cron runs each line through `/bin/sh`, which reads `<login>` as a redirect from a file named `login`: the line fails with `cannot open login: No such file or directory` before the script starts, and the error lands only in the local mailbox `/var/mail/<login>`. After saving, check `crontab -l | grep '<login>'` (it should print nothing).
 
 The `prune-backups.sh` line deletes database dumps older than 180 days every day, also without deploys (see [Backups and deleted accounts](#backups-and-deleted-accounts)). Run it once by hand after adding it; it should end with `done: <n> dump(s) deleted`. The `watchdog.sh` line checks the api and the frontend every 5 minutes (see [Watchdog: operator alerts](#watchdog-operator-alerts)); run it once by hand before adding it.
 
