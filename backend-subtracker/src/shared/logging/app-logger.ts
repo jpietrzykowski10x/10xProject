@@ -1,4 +1,6 @@
-import { ConsoleLogger } from '@nestjs/common';
+import { ConsoleLogger, type LogLevel } from '@nestjs/common';
+import { QueryFailedError } from 'typeorm';
+import { failureCodeOf } from '../database/failure-code.js';
 import { APP_TIME_ZONE } from '../date/calendar-day.js';
 import { colorsEnabled, isoTimestampIn, safeStack } from './log-format.js';
 
@@ -19,5 +21,27 @@ export class AppLogger extends ConsoleLogger {
   protected override printStackTrace(stack: string): void {
     // Nest passes undefined when a line has no stack; the parent skips it.
     super.printStackTrace(typeof stack === 'string' ? safeStack(stack) : stack);
+  }
+
+  // A QueryFailedError given as the message itself (Nest does this for a bootstrap failure and
+  // for a cron handler that throws) would otherwise be written by util.inspect: its message and
+  // its fields `query`, `parameters` and `driverError`, which can quote an address. Only its code
+  // and the frames of its stack are written.
+  protected override stringifyMessage(
+    message: unknown,
+    logLevel: LogLevel,
+  ): string {
+    if (message instanceof QueryFailedError) {
+      const frames = safeStack(message.stack ?? '')
+        .split('\n')
+        .slice(1);
+      return super.stringifyMessage(
+        [`QueryFailedError (code: ${failureCodeOf(message)})`, ...frames].join(
+          '\n',
+        ),
+        logLevel,
+      );
+    }
+    return super.stringifyMessage(message, logLevel);
   }
 }

@@ -29,7 +29,8 @@ export function accessLog(
       );
     };
     res.once('finish', () => write(res.statusCode));
-    // `close` follows `finish` on every completed response; only without it was the request cut off.
+    // `close` follows `finish` on every completed response; without it the connection closed before
+    // the response was done: the client gave up, or a handler never answered (requestTimeout).
     res.once('close', () => write('aborted'));
     next();
   };

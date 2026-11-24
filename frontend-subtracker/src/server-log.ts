@@ -32,19 +32,32 @@ function twoDigits(value: number): string {
   return String(value).padStart(2, '0');
 }
 
+// One formatter per time zone: building an Intl.DateTimeFormat costs far more than using it, and
+// every access-log line needs one.
+const wallClockFormats = new Map<string, Intl.DateTimeFormat>();
+
+function wallClockFormatIn(timeZone: string): Intl.DateTimeFormat {
+  let format = wallClockFormats.get(timeZone);
+  if (format === undefined) {
+    format = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    });
+    wallClockFormats.set(timeZone, format);
+  }
+  return format;
+}
+
 // `YYYY-MM-DDTHH:mm:ss.SSS±HH:MM`: the wall time in the time zone and its offset from UTC at that
 // moment, so the two 02:30 of the autumn clock change stay apart (+02:00, then +01:00).
 export function isoTimestampIn(timeZone: string, at: Date): string {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(at);
+  const parts = wallClockFormatIn(timeZone).formatToParts(at);
   const part = (type: Intl.DateTimeFormatPartTypes): number => {
     const value = parts.find((entry) => entry.type === type)?.value;
     if (value === undefined) {

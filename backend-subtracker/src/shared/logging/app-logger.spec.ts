@@ -102,4 +102,24 @@ describe('AppLogger', () => {
     expect(written).toContain('    at ');
     expect(written).not.toContain('jan@example.com');
   });
+
+  it('writes a failed query given as the message only by its code and frames', () => {
+    const failure = new QueryFailedError(
+      'SELECT * FROM "user" WHERE email = $1',
+      ['jan@example.com'],
+      Object.assign(new Error('no user jan@example.com'), {
+        code: '57014',
+        detail: 'Key (email)=(jan@example.com)',
+      }),
+    );
+
+    // As Nest's ExceptionHandler and the schedule explorer call it: the error as the message.
+    new AppLogger('subtracker-api').error(failure);
+
+    const written = err.join('');
+    expect(written).toContain('QueryFailedError (code: 57014)');
+    expect(written).toContain('    at ');
+    expect(written).not.toContain('jan@example.com');
+    expect(written).not.toContain('SELECT');
+  });
 });
