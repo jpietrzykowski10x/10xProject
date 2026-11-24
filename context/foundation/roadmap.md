@@ -3,7 +3,7 @@ project: SubTracker
 version: 2
 status: draft
 created: 2026-10-16
-updated: 2026-11-23
+updated: 2026-11-24
 prd_version: 2
 main_goal: quality
 top_blocker: time
@@ -42,7 +42,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | ID   | Change ID                          | Outcome (user can …)                                                                 | Prerequisites | PRD refs                | Status   |
 | ---- | ---------------------------------- | ------------------------------------------------------------------------------------ | ------------- | ----------------------- | -------- |
 | S-11 | operator-liveness-alerts           | operator dostaje mail, gdy API nie odpowiada albo job padł lub nie ruszył przez 26 h | —             | FR-019                  | done        |
-| S-12 | independent-alert-channel          | alarm operatora dochodzi także przy awarii SMTP dla użytkowników                     | S-11          | FR-020                  | in-progress |
+| S-12 | independent-alert-channel          | alarm operatora dochodzi także przy awarii SMTP dla użytkowników                     | S-11          | FR-020                  | done        |
 | S-13 | request-context-and-denial-reasons | operator widzi w logu trasę, użytkownika i id żądania błędu oraz przyczyny odmów 4xx  | —             | FR-021                  | done |
 | S-14 | log-format-version-and-access-log  | operator czyta logi w jednym formacie, z wersją i access logiem obu procesów         | S-13          | FR-022                  | proposed |
 | S-15 | client-and-ssr-error-visibility    | błędy przeglądarki i SSR zostawiają ślad, a nieaktualny plik po deployu przeładowuje stronę | S-14     | FR-023                  | proposed |
@@ -103,7 +103,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **Unknowns:**
   - ~~Drugi kanał na MyDevil czy zewnętrzny SMTP?~~ Rozstrzygnięte 2026-11-22: osobna skrzynka na MyDevil, bez zewnętrznych dostawców. Świadomie akceptowane ograniczenie: awaria całej poczty MyDevil wyłącza też alarmy (watchdog z S-11 nadal zapisuje porażki w logu).
 - **Risk:** Po S-11, bo S-11 dodaje nowe wywołania alarmu, a S-12 utwardza ich drogę; ryzyko w deployu — nowy wymagany klucz w `shared/.env` przed merge'em.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-13: Kontekst żądania i przyczyny odmów w logu API
 
@@ -189,7 +189,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 | Roadmap ID | Change ID                          | Suggested issue title                                   | Ready for `/10x-plan` | Notes |
 | ---------- | ---------------------------------- | ------------------------------------------------------- | --------------------- | ----- |
 | S-11       | operator-liveness-alerts           | Watchdog API i rejestr przebiegów jobów z alarmem       | done                   | Zarchiwizowane 2026-11-22 |
-| S-12       | independent-alert-channel          | Osobny kanał alarmów operatora                          | no                    | Po S-11; osobna skrzynka alarmowa na MyDevil (zakłada użytkownik) |
+| S-12       | independent-alert-channel          | Osobny kanał alarmów operatora                          | done                  | Zarchiwizowane 2026-11-24 |
 | S-13       | request-context-and-denial-reasons | Kontekst żądania i przyczyny odmów 4xx w logu API       | done                   | Zarchiwizowane 2026-11-23 |
 | S-14       | log-format-version-and-access-log  | Format logu, wersja i access log                        | no                    | Po S-13; kandydat na `/goal` |
 | S-15       | client-and-ssr-error-visibility    | Widoczność błędów przeglądarki i SSR                    | no                    | Po S-14 |
@@ -242,3 +242,4 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **S-09: administrator (rola nadana ręcznie poza aplikacją) blokuje i odblokowuje konto lub resetuje dostęp użytkownika i ma wgląd w jego dane, w tym subskrypcje i kwoty.** — Archived 2026-11-21 → `context/archive/2026-11-21-admin-account-management/`. Lesson: widok listy w trzech szerokościach; przyciski i pola z tokenów motywu.
 - **S-11: operator dostaje mail, gdy API przestaje odpowiadać albo pada w pętli restartów (sprawdzenie spoza procesu API), oraz gdy zadanie cykliczne zakończy się błędem albo nie zakończy się w ciągu 26 godzin; każdy przebieg zadania zostawia trwały ślad.** — Archived 2026-11-23 → `context/archive/2026-11-22-operator-liveness-alerts/`. Lesson: —.
 - **S-13: każdy błąd serwera w logu API ma metodę, szablon trasy, id użytkownika i id żądania; wybrane odmowy 4xx (weryfikacja linku, sesja, CSRF/Origin, ranga administratora, walidacja) zostawiają linię z kodem przyczyny i nazwami pól, bez wartości i danych osobowych, z limitem.** — Archived 2026-11-23 → `context/archive/2026-11-23-request-context-and-denial-reasons/`. Lesson: —.
+- **S-12: alarm do operatora dochodzi także wtedy, gdy nie działa wysyłka maili do użytkowników: na produkcji wymagany jest osobny kanał alarmowy, blokada powtórzeń zaczyna działać dopiero po przyjęciu alarmu, a odrzucenie adresata przez serwer pocztowy jest odróżnione od literówki.** — Archived 2026-11-24 → `context/archive/2026-11-23-independent-alert-channel/`. Lesson: —.
