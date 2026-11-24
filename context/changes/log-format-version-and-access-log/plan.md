@@ -437,7 +437,7 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Automated
 
-- [x] 5.1 Pełne testy obu aplikacji
+- [x] 5.1 Pełne testy obu aplikacji — 9ab66e1
 - [ ] 5.2 CI zielone na PR
 
 #### Manual
