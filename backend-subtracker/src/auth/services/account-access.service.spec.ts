@@ -1,6 +1,6 @@
 import { ConflictException, Logger, NotFoundException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
-import { type DataSource, IsNull } from 'typeorm';
+import { type DataSource, IsNull, QueryFailedError } from 'typeorm';
 import { type EnvConfig, validateEnv } from '../../config/env.js';
 import {
   type MailContent,
@@ -99,6 +99,32 @@ function setup(found: Partial<User> | null) {
 
 describe('AccountAccessService', () => {
   describe('block', () => {
+    it('logs only the code when the mail about the block rejects, never the address', async () => {
+      const errors = vi
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+      vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+      const { service, sendToUser } = setup({ isActive: true });
+      sendToUser.mockRejectedValueOnce(
+        new QueryFailedError(
+          'SELECT',
+          [ADDRESS],
+          Object.assign(new Error(`no account for ${ADDRESS}`), {
+            code: '57P01',
+          }),
+        ),
+      );
+
+      await service.block('user-1');
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(errors).toHaveBeenCalledExactlyOnceWith(
+        'Mail sending failed (code: 57P01)',
+      );
+      expect(JSON.stringify(errors.mock.calls)).not.toContain(ADDRESS);
+      vi.restoreAllMocks();
+    });
+
     it('blocks the account, ends its links and sessions, and mails it after the commit', async () => {
       const { service, steps, users, tokens, query, sendToUser } = setup({
         isActive: true,

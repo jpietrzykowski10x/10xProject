@@ -1,7 +1,7 @@
 import { HttpStatus, Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Response } from 'express';
-import { DataSource } from 'typeorm';
+import { DataSource, QueryFailedError } from 'typeorm';
 import { JobRunService } from '../jobs/job-run.service.js';
 import type { JobName, LatestJobRun } from '../jobs/job-run.types.js';
 import { HealthController } from './health.controller.js';
@@ -83,7 +83,28 @@ describe('HealthController', () => {
     });
     expect(status).not.toHaveBeenCalled();
     expect(logError).toHaveBeenCalledExactlyOnceWith(
-      'Reading the job runs for the health check failed: relation "job_run" does not exist',
+      'Reading the job runs for the health check failed (code: Error)',
+    );
+  });
+
+  it('logs only the code and a stack without the message of a failed query', async () => {
+    const failure = new QueryFailedError(
+      'SELECT 1',
+      [],
+      Object.assign(new Error('role "jan@example.com" does not exist'), {
+        code: '28000',
+      }),
+    );
+    query.mockRejectedValue(failure);
+
+    await controller.check(res);
+
+    expect(logError).toHaveBeenCalledOnce();
+    const [line, stack] = logError.mock.calls[0] as [string, string];
+    expect(line).toBe('Database health check failed (code: 28000)');
+    expect(stack).toMatch(/^QueryFailedError: <message omitted>\n\s+at /);
+    expect(JSON.stringify(logError.mock.calls)).not.toContain(
+      'jan@example.com',
     );
   });
 });

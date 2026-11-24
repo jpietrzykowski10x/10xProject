@@ -4,7 +4,9 @@ import { DataSource } from 'typeorm';
 import { type JobHealth, jobHealth } from '../jobs/job-health.js';
 import { JobRunService } from '../jobs/job-run.service.js';
 import type { JobName } from '../jobs/job-run.types.js';
+import { failureCodeOf } from '../shared/database/failure-code.js';
 import { Public } from '../shared/decorators/public.decorator.js';
+import { safeStack } from '../shared/logging/log-format.js';
 
 export interface HealthStatus {
   status: 'ok' | 'error';
@@ -34,9 +36,12 @@ export class HealthController {
     try {
       await this.dataSource.query('SELECT 1');
     } catch (error) {
+      // The code and a stack without the text of a failed query, which can quote its data.
       this.logger.error(
-        'Database health check failed',
-        error instanceof Error ? error.stack : String(error),
+        `Database health check failed (code: ${failureCodeOf(error)})`,
+        error instanceof Error && error.stack !== undefined
+          ? safeStack(error.stack)
+          : undefined,
       );
       res.status(HttpStatus.SERVICE_UNAVAILABLE);
       return { status: 'error', db: 'error' };
@@ -46,9 +51,9 @@ export class HealthController {
       const jobs = jobHealth(await this.jobRuns.latestFinished(), new Date());
       return { status: 'ok', db: 'ok', jobs };
     } catch (error) {
-      // The message only, like the job register. The database answers, so still 200.
+      // The code only, like the job register. The database answers, so still 200.
       this.logger.error(
-        `Reading the job runs for the health check failed: ${error instanceof Error ? error.message : 'non-error value thrown'}`,
+        `Reading the job runs for the health check failed (code: ${failureCodeOf(error)})`,
       );
       return { status: 'ok', db: 'ok' };
     }

@@ -7,8 +7,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BaseExceptionFilter } from '@nestjs/core';
+import { QueryFailedError } from 'typeorm';
 import { type EnvConfig, envFromConfig } from '../../config/env.js';
+import { failureCodeOf } from '../database/failure-code.js';
 import { type Denial, denialOf, formatDenial } from '../logging/denial.js';
+import { safeStack } from '../logging/log-format.js';
 import {
   describeRequest,
   type RequestWithContext,
@@ -37,9 +40,14 @@ const CSRF_CODES: Readonly<Record<string, string>> = {
 };
 const MAX_ORIGIN_LENGTH = 100;
 
+// The message and code of a failure; for a failed query only its code, since its message can
+// quote the parameters of the query.
 function describeError(exception: unknown): string {
   if (typeof exception !== 'object' || exception === null) {
     return 'Non-error value thrown';
+  }
+  if (exception instanceof QueryFailedError) {
+    return `QueryFailedError (code: ${failureCodeOf(exception)})`;
   }
   const { message, code } = exception as { message?: unknown; code?: unknown };
   const text =
@@ -85,7 +93,7 @@ function csrfDenial(
 // Nest's default filter logs the whole error object: the parameters of a failed query, which hold
 // e-mail addresses, or the raw body of a refused request. This one logs server errors only (an
 // HttpException with a 5xx status too), as the request's method, route template, user and id plus
-// the message and code, and the stack under LOG_ERROR_STACKS. A client error is logged only when it
+// the message and code (only the code of a failed query), and the stack under LOG_ERROR_STACKS. A client error is logged only when it
 // carries a denial (withDenial) or is a CSRF refusal: one `warn` line in the `Denials` context, at
 // most DENIAL_LOG_LIMIT per code a minute. Responses stay the same as the default's.
 @Catch()
@@ -148,7 +156,7 @@ export class SafeLoggingExceptionFilter extends BaseExceptionFilter {
   ): void {
     const line = `${describeRequest(request)}: ${describeError(exception)}`;
     if (this.logStacks && exception instanceof Error && exception.stack) {
-      this.logger.error(line, exception.stack);
+      this.logger.error(line, safeStack(exception.stack));
     } else {
       this.logger.error(line);
     }

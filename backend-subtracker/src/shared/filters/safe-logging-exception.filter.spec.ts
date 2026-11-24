@@ -7,6 +7,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
+import { QueryFailedError } from 'typeorm';
 import { type EnvConfig, validateEnv } from '../../config/env.js';
 import { withDenial } from '../logging/denial.js';
 import type { RequestWithContext } from '../logging/request-context.js';
@@ -130,6 +131,25 @@ describe('SafeLoggingExceptionFilter', () => {
       { statusCode: 500, message: 'Internal server error' },
       500,
     );
+  });
+
+  it('logs a QueryFailedError by its code, with a stack without its message', () => {
+    const failure = new QueryFailedError(
+      'INSERT INTO "user"',
+      [ADDRESS],
+      Object.assign(new Error(`duplicate key (email)=(${ADDRESS})`), {
+        code: '23505',
+      }),
+    );
+
+    createFilter(true).catch(failure, host);
+
+    expect(logged).toHaveBeenCalledOnce();
+    const [line, stack] = logged.mock.calls[0] as [string, string];
+    expect(line).toBe(`${CONTEXT}: QueryFailedError (code: 23505)`);
+    expect(stack).toMatch(/^QueryFailedError: <message omitted>\n\s+at /);
+    expect(JSON.stringify(logged.mock.calls)).not.toContain(ADDRESS);
+    expect(JSON.stringify(logged.mock.calls)).not.toContain('duplicate key');
   });
 
   it('keeps the URL, the query and the id from the path out of the line', () => {

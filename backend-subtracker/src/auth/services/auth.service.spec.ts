@@ -1,6 +1,6 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { Logger, UnauthorizedException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
-import { type DataSource, In, IsNull } from 'typeorm';
+import { type DataSource, In, IsNull, QueryFailedError } from 'typeorm';
 import { type EnvConfig, validateEnv } from '../../config/env.js';
 import { Mail } from '../../mail/entities/mail.entity.js';
 import {
@@ -180,6 +180,31 @@ function setup({
 
 describe('AuthService', () => {
   describe('requestLink', () => {
+    it('logs only the code when sending the link rejects, never the address', async () => {
+      const errors = vi
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+      const { service, sendToUser } = setup({ found: userWith() });
+      sendToUser.mockRejectedValueOnce(
+        new QueryFailedError(
+          'SELECT',
+          [ADDRESS],
+          Object.assign(new Error(`no account for ${ADDRESS}`), {
+            code: '57P01',
+          }),
+        ),
+      );
+
+      await service.requestLink(ADDRESS);
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(errors).toHaveBeenCalledExactlyOnceWith(
+        'Mail sending failed (code: 57P01)',
+      );
+      expect(JSON.stringify(errors.mock.calls)).not.toContain(ADDRESS);
+      errors.mockRestore();
+    });
+
     it('sends nothing for an unknown address', async () => {
       const { service, tokens, sendToUser } = setup({ found: null });
 

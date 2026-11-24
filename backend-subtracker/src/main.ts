@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
@@ -8,10 +9,19 @@ import {
   isAutoSynchronization,
 } from './config/env.js';
 import { applyHttpSecurity } from './config/http-security.js';
+import { AppLogger } from './shared/logging/app-logger.js';
+import { highlight, plainLine } from './shared/logging/log-format.js';
 import { installFatalHandlers } from './shared/process/fatal-handlers.js';
 
+// Read raw here: the env is validated only by ConfigService, after the logger is needed.
+const appName = process.env.APPLICATION_NAME ?? 'subtracker-api';
+
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // The logger is given here, so the bootstrap lines (InstanceLoader, RouterExplorer, the startup
+  // runs of the jobs) already have the app's format.
+  const app = await NestFactory.create(AppModule, {
+    logger: new AppLogger(appName),
+  });
   const env = envFromConfig(
     app.get<ConfigService<EnvConfig, true>>(ConfigService),
   );
@@ -21,15 +31,19 @@ async function bootstrap() {
 
   await app.listen(env.PORT);
 
-  console.log(`\x1b[44m CORS ORIGINS: ${env.CORS_ORIGINS.join(', ')} \x1b[0m`);
-  console.log(`\x1b[46m APP NAME: ${env.APPLICATION_NAME} \x1b[0m`);
-  console.log(
-    `\x1b[46m APP MODE: ${env.MODE}, CURRENT DATABASE: ${appDatabaseName(env)}, AUTO SYNCHRONIZATION: ${isAutoSynchronization(env) ? 'YES' : 'NO'}, PORT: ${env.PORT} \x1b[0m`,
+  new Logger('Bootstrap').log(
+    highlight(
+      `Started ${env.APPLICATION_NAME} on port ${env.PORT}, mode ${env.MODE}, ` +
+        `database ${appDatabaseName(env)}, auto synchronization ${isAutoSynchronization(env) ? 'YES' : 'NO'}, ` +
+        `CORS origins ${env.CORS_ORIGINS.join(', ')}`,
+      'info',
+    ),
   );
 }
-// Before NestFactory.create, so a crash during startup leaves its line in the log too.
+// Before NestFactory.create, so a crash during startup leaves its line in the log too. Written
+// without the logger (which may not exist yet), in the same format.
 installFatalHandlers(
-  (line) => console.error(line),
+  (line) => console.error(plainLine(appName, 'FATAL', 'Process', line)),
   (code) => process.exit(code),
 );
 await bootstrap();

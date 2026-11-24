@@ -382,11 +382,11 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Automated
 
-- [ ] 1.1 Testy logowania i jobów
-- [ ] 1.2 Celowe uszkodzenie kolorów albo `safeStack` czerwieni test
-- [ ] 1.3 Pełne testy backendu
-- [ ] 1.4 Testy e2e backendu
-- [ ] 1.5 Lint i build backendu
+- [x] 1.1 Testy logowania i jobów
+- [x] 1.2 Celowe uszkodzenie kolorów albo `safeStack` czerwieni test
+- [x] 1.3 Pełne testy backendu
+- [x] 1.4 Testy e2e backendu
+- [x] 1.5 Lint i build backendu
 
 #### Manual
 
