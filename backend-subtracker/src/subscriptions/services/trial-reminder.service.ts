@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, type WhereExpressionBuilder } from 'typeorm';
 import { type EnvConfig, envFromConfig } from '../../config/env.js';
-import { MailType } from '../../mail/mail.types.js';
+import { isDelivered, MailType } from '../../mail/mail.types.js';
 import { MailService } from '../../mail/services/mail.service.js';
 import { OWNER_IS_ACTIVE } from '../active-owner.js';
 import { Subscription } from '../entities/subscription.entity.js';
@@ -118,8 +118,8 @@ export class TrialReminderService {
     return result;
   }
 
-  // The number of trials in the mail that went out, 0 when the mail failed (claim released), or
-  // null when another run or an edit got to the rows first.
+  // The number of trials in the mail that went out, 0 when it did not go out for any reason (claim
+  // released), or null when another run or an edit got to the rows first.
   private async remind(user: DueUser, today: string): Promise<number | null> {
     const claim = await whereDue(
       this.subscriptions
@@ -144,7 +144,7 @@ export class TrialReminderService {
       amount: row.amount,
       billingCycle: row.billing_cycle,
     }));
-    const sent = await this.mail.sendToUser(
+    const outcome = await this.mail.sendToUser(
       MailType.TRIAL_REMINDER,
       user.email,
       trialReminderMail({
@@ -153,7 +153,7 @@ export class TrialReminderService {
         subscriptionsUrl: this.subscriptionsUrl,
       }),
     );
-    if (sent) {
+    if (isDelivered(outcome)) {
       return items.length;
     }
 
