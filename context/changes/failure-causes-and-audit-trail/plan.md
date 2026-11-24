@@ -558,8 +558,8 @@ Schemat referencyjny i produkcyjny dostaje zmiany z faz 2–3. Dokumenty opisuj�
 
 #### Automated
 
-- [x] 4.1 Migracja na bazie referencyjnej i brak różnic schematu
-- [ ] 4.2 CI zielone na PR
+- [x] 4.1 Migracja na bazie referencyjnej i brak różnic schematu — 005c22b
+- [x] 4.2 CI zielone na PR — 005c22b
 
 #### Manual
 

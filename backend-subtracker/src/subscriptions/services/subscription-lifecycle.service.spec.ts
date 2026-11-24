@@ -100,6 +100,25 @@ describe('SubscriptionLifecycleService', () => {
     );
   });
 
+  it('fails the step once, without a line per row, when the connection is lost', async () => {
+    const { service, execute } = setup();
+    const lost = queryFailed('08006');
+    execute
+      .mockResolvedValueOnce({ affected: 0 })
+      .mockResolvedValueOnce({ affected: 0 })
+      .mockRejectedValueOnce(lost)
+      .mockRejectedValue(queryFailed('08006'));
+
+    await expect(service.advance(TODAY)).rejects.toMatchObject({
+      name: 'JobStepError',
+      step: 'roll_billing_dates',
+      cause: lost,
+    });
+    // The first row failed, the other two were not tried.
+    expect(execute).toHaveBeenCalledTimes(3);
+    expect(logError).not.toHaveBeenCalled();
+  });
+
   it('reports no failed rows when every row rolls', async () => {
     const { service, execute } = setup();
     execute.mockResolvedValue({ affected: 1 });

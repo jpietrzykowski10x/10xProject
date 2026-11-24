@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, type WhereExpressionBuilder } from 'typeorm';
 import { type EnvConfig, envFromConfig } from '../../config/env.js';
 import { inStep, JobStepError } from '../../jobs/job-run.types.js';
-import { MailType } from '../../mail/mail.types.js';
+import { type MailOutcome, MailType } from '../../mail/mail.types.js';
 import { MailService } from '../../mail/services/mail.service.js';
 import { failureCodeOf } from '../../shared/database/failure-code.js';
 import { OWNER_IS_ACTIVE } from '../active-owner.js';
@@ -30,8 +30,10 @@ export interface TrialReminderRunResult {
 
 // How the reminder of one user ended (remind returns null when another run or an edit got to the
 // rows first).
+// `trials` of `lost` counts the claimed rows, like `sent`, so remindersSent and remindersLost
+// compare.
 type UserReminder =
-  { kind: 'sent'; trials: number } | { kind: 'skipped' | 'failed' | 'lost' };
+  { kind: 'sent' | 'lost'; trials: number } | { kind: 'skipped' | 'failed' };
 
 interface DueUser {
   userId: string;
@@ -127,16 +129,13 @@ export class TrialReminderService {
             result.usersFailed += 1;
             break;
           case 'lost':
-            result.remindersLost += 1;
+            result.remindersLost += reminder.trials;
             break;
         }
       } catch (error) {
-        // The user's id, the step and the code only: no address and no query parameters.
-        const step = error instanceof JobStepError ? error.step : 'unknown';
-        const cause = error instanceof JobStepError ? error.cause : error;
-        this.logger.error(
-          `Trial reminder for user ${user.userId} failed in step ${step} (code: ${failureCodeOf(cause)})`,
-        );
+        // Only errors before anything was claimed reach this: nothing is reserved, so the next run
+        // tries again.
+        this.logStepFailure(user, error);
         result.usersFailed += 1;
       }
     }
@@ -174,17 +173,26 @@ export class TrialReminderService {
       amount: row.amount,
       billingCycle: row.billing_cycle,
     }));
-    const outcome = await inStep('send', () =>
-      this.mail.sendToUser(
-        MailType.TRIAL_REMINDER,
-        user.email,
-        trialReminderMail({
-          items,
-          today,
-          subscriptionsUrl: this.subscriptionsUrl,
-        }),
-      ),
-    );
+    const lost = { kind: 'lost', trials: rows.length } as const;
+    let outcome: MailOutcome;
+    try {
+      outcome = await inStep('send', () =>
+        this.mail.sendToUser(
+          MailType.TRIAL_REMINDER,
+          user.email,
+          trialReminderMail({
+            items,
+            today,
+            subscriptionsUrl: this.subscriptionsUrl,
+          }),
+        ),
+      );
+    } catch (error) {
+      // sendToUser should never reject; if it does, the rows are claimed, so they are released
+      // like after a failed mail, or the reminder counts as lost.
+      this.logStepFailure(user, error);
+      return (await this.release(user, rows)) ? { kind: 'failed' } : lost;
+    }
     switch (outcome) {
       case 'sent':
         return { kind: 'sent', trials: items.length };
@@ -197,15 +205,20 @@ export class TrialReminderService {
       case 'no_account':
       case 'blocked':
         // Deleted or blocked after the claim: released, so an unblocked account gets it later.
-        return (await this.release(user, rows))
-          ? { kind: 'skipped' }
-          : { kind: 'lost' };
+        return (await this.release(user, rows)) ? { kind: 'skipped' } : lost;
       case 'send_failed':
       case 'lookup_failed':
-        return (await this.release(user, rows))
-          ? { kind: 'failed' }
-          : { kind: 'lost' };
+        return (await this.release(user, rows)) ? { kind: 'failed' } : lost;
     }
+  }
+
+  // The user's id, the step and the code only: no address and no query parameters.
+  private logStepFailure(user: DueUser, error: unknown): void {
+    const step = error instanceof JobStepError ? error.step : 'unknown';
+    const cause = error instanceof JobStepError ? error.cause : error;
+    this.logger.error(
+      `Trial reminder for user ${user.userId} failed in step ${step} (code: ${failureCodeOf(cause)})`,
+    );
   }
 
   // Releases the claim so the next run tries again; false (and an error line) when it could not

@@ -1,4 +1,4 @@
-import { MoreThanOrEqual } from 'typeorm';
+import { MoreThanOrEqual, QueryFailedError, UpdateQueryBuilder } from 'typeorm';
 import { JobRun } from '../../src/jobs/entities/job-run.entity.js';
 import { Mail } from '../../src/mail/entities/mail.entity.js';
 import { MailStatus, MailType } from '../../src/mail/mail.types.js';
@@ -294,5 +294,77 @@ describe('Subscriptions — trial reminder job (e2e)', () => {
     expect(mailTo(late.address, from)).toEqual([]);
     // Released, so the account gets the reminder after an unblock.
     expect((await stored(trial)).trialReminderSentFor).toBeNull();
+  });
+
+  // sendToUser should never reject; if it does after the claim, the claim must not stay behind
+  // while the run promises a retry.
+  it('releases the claim when sending throws, so the next run tries again', async () => {
+    const throwing = await signIn();
+    const trial = await createTrial(
+      throwing.cookie,
+      'Throwing send',
+      addDays(today, 3),
+    );
+    const mail = e2e.app.get(MailService);
+    const sendToUser = mail.sendToUser.bind(mail);
+    const spy = vi
+      .spyOn(MailService.prototype, 'sendToUser')
+      .mockImplementation((type, to, content) =>
+        to === throwing.address
+          ? Promise.reject(new Error('transport crashed'))
+          : sendToUser(type, to, content),
+      );
+
+    let run: TrialReminderRunResult;
+    try {
+      run = await sendDue();
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(run.usersFailed).toBeGreaterThanOrEqual(1);
+    expect((await stored(trial)).trialReminderSentFor).toBeNull();
+  });
+
+  it('counts a reminder lost to a failed release in trials, like the sent ones', async () => {
+    const losing = await signIn();
+    const first = await createTrial(
+      losing.cookie,
+      'Lost one',
+      addDays(today, 2),
+    );
+    const second = await createTrial(
+      losing.cookie,
+      'Lost two',
+      addDays(today, 6),
+    );
+    const mail = e2e.app.get(MailService);
+    const sendToUser = mail.sendToUser.bind(mail);
+    // The next UPDATE after this user's failed send is the release of their claim.
+    const execute = vi.spyOn(UpdateQueryBuilder.prototype, 'execute');
+    const spy = vi
+      .spyOn(MailService.prototype, 'sendToUser')
+      .mockImplementation((type, to, content) => {
+        if (to !== losing.address) {
+          return sendToUser(type, to, content);
+        }
+        execute.mockRejectedValueOnce(
+          new QueryFailedError('UPDATE', [], new Error('connection lost')),
+        );
+        return Promise.resolve('send_failed');
+      });
+
+    let run: TrialReminderRunResult;
+    try {
+      run = await sendDue();
+    } finally {
+      spy.mockRestore();
+      execute.mockRestore();
+    }
+
+    expect(run.remindersLost).toBe(2);
+    // Lost: the claim stays, so no later run mails these end dates.
+    expect((await stored(first)).trialReminderSentFor).toBe(addDays(today, 2));
+    expect((await stored(second)).trialReminderSentFor).toBe(addDays(today, 6));
   });
 });

@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { inStep } from '../../jobs/job-run.types.js';
+import { inStep, JobStepError } from '../../jobs/job-run.types.js';
+import { isConnectionFailure } from '../../shared/database/connection-failure.js';
 import { failureCodeOf } from '../../shared/database/failure-code.js';
 import { OWNER_IS_ACTIVE } from '../active-owner.js';
 import { Subscription } from '../entities/subscription.entity.js';
@@ -115,6 +116,10 @@ export class SubscriptionLifecycleService {
           .execute();
         result.rolled += update.affected ?? 0;
       } catch (error) {
+        // A lost database fails every remaining row the same way: the step fails once instead.
+        if (isConnectionFailure(error)) {
+          throw new JobStepError('roll_billing_dates', error);
+        }
         // The id and the code only: the message can quote the values of the query.
         this.logger.error(
           `Rolling the billing date of subscription ${row.id} failed (code: ${failureCodeOf(error)})`,
