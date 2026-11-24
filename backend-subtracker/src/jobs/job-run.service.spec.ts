@@ -149,6 +149,57 @@ describe('JobRunService', () => {
       expect(mail.text).toContain('zostanie ponowiona');
     });
 
+    it('does not hold up a startup run for its alert, which alertsSent awaits', async () => {
+      const { service, notifyOperator } = setup();
+      let accept: () => void = () => undefined;
+      notifyOperator.mockReturnValueOnce(
+        new Promise<void>((resolve) => {
+          accept = resolve;
+        }),
+      );
+      let tracked = false;
+      let sent = false;
+
+      await service
+        .track('subscription-lifecycle', 'startup', () =>
+          Promise.resolve({
+            counters: { billingRollFailed: 1 },
+            partial: true,
+          }),
+        )
+        .then(() => {
+          tracked = true;
+        });
+      const waiting = service.alertsSent().then(() => {
+        sent = true;
+      });
+      await Promise.resolve();
+
+      // The run ended (row, log line) while the alert is still on the way.
+      expect(tracked).toBe(true);
+      expect(notifyOperator).toHaveBeenCalledOnce();
+      expect(sent).toBe(false);
+
+      accept();
+      await waiting;
+      expect(sent).toBe(true);
+    });
+
+    it('waits for the alert of a cron run', async () => {
+      const { service, notifyOperator } = setup();
+      let accepted = false;
+      notifyOperator.mockImplementationOnce(async () => {
+        await Promise.resolve();
+        accepted = true;
+      });
+
+      await service.track('subscription-lifecycle', 'cron', () =>
+        Promise.resolve({ counters: { billingRollFailed: 1 }, partial: true }),
+      );
+
+      expect(accepted).toBe(true);
+    });
+
     it('tells the operator that part of the work of a partial run was lost', async () => {
       const { service, notifyOperator } = setup();
 

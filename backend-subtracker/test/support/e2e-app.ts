@@ -24,6 +24,7 @@ import { Category } from '../../src/subscriptions/entities/category.entity.js';
 import { Subscription } from '../../src/subscriptions/entities/subscription.entity.js';
 import { BudgetSettings } from '../../src/subscriptions/entities/budget-settings.entity.js';
 import { TrialReminderScheduler } from '../../src/subscriptions/trial-reminder.scheduler.js';
+import { JobRunService } from '../../src/jobs/job-run.service.js';
 import { UserRole } from '../../src/users/entities/user-role.entity.js';
 import { User } from '../../src/users/entities/user.entity.js';
 
@@ -250,6 +251,9 @@ export function createE2eApp({
       // The startup run of the trial reminders goes in the background; it must end before a
       // test adds its rows, or it could mark a file's fresh trial as reminded.
       await app.get(TrialReminderScheduler).idle();
+      // The alerts of startup runs go in the background too (JobRunService.track); a test that
+      // counts operator mail must not see one arrive in the middle.
+      await app.get(JobRunService).alertsSent();
       started = { app, dataSource: app.get(DataSource), env };
       // Leftovers of a run that was killed before its cleanup.
       await removeTestData();

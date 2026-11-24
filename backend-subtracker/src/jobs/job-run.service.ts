@@ -1,4 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  type BeforeApplicationShutdown,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, LessThan, Repository } from 'typeorm';
 import { MailService } from '../mail/services/mail.service.js';
@@ -56,8 +60,10 @@ function countersText(counters: Record<string, number> | null): string {
 // failed or only partly succeeded, a mail to the operator. Neither method rejects: a failed write
 // of the register is only logged and never stops or fails the job itself.
 @Injectable()
-export class JobRunService {
+export class JobRunService implements BeforeApplicationShutdown {
   private readonly logger = new Logger(JobRunService.name);
+  // Alerts of startup runs, sent without holding up the startup.
+  private readonly pendingAlerts = new Set<Promise<boolean>>();
 
   constructor(
     @InjectRepository(JobRun) private readonly runs: Repository<JobRun>,
@@ -118,7 +124,7 @@ export class JobRunService {
 
     if (outcome !== 'success') {
       // notifyOperator never rejects.
-      await this.mail.notifyOperator(
+      const alert = this.mail.notifyOperator(
         jobRunAlert({
           job,
           trigger,
@@ -129,7 +135,27 @@ export class JobRunService {
           lost,
         }),
       );
+      if (trigger === 'startup') {
+        // The startup runs are awaited before the app listens, and SMTP can take up to three
+        // 30 s timeouts: longer than the deploy health-check, whose failure restores the database
+        // from the dump. So the alert of a startup run goes in the background (alertsSent()).
+        this.pendingAlerts.add(alert);
+        void alert.finally(() => this.pendingAlerts.delete(alert));
+      } else {
+        await alert;
+      }
     }
+  }
+
+  // Resolves when the alerts of startup runs still on the way have ended. Awaited before the
+  // database connection closes (e2e app.close()); in production main.ts does not enable shutdown
+  // hooks, so a stopped process loses an alert in flight, like any mail.
+  async alertsSent(): Promise<void> {
+    await Promise.all([...this.pendingAlerts]);
+  }
+
+  async beforeApplicationShutdown(): Promise<void> {
+    await this.alertsSent();
   }
 
   // A run not started because the previous one was still going: a row that starts and ends now.

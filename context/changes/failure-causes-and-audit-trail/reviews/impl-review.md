@@ -89,4 +89,4 @@ Bramki na HEAD (005c22b): moduły 453/453, `npm test` 726/726, `npm run test:e2e
   - Tradeoff: e2e muszą czekać na alarm inaczej (jak `idle()`).
   - Confidence: MED — zachowanie potwierdzone w logu 2.6, czas health-checku z `deploy.sh` wg backend-patterns.
   - Blind spot: Nie mierzono realnego czasu nodemailer na MyDevil przy wiszącym serwerze.
-- **Decision**: ACCEPTED — follow-up w follow-ups/review-fixes.md (nowa pozycja roadmapy albo S-14)
+- **Decision**: FIXED — w tej zmianie (opcja 1): alarm przebiegu `startup` w tle, `JobRunService.alertsSent()` dla zamknięcia i e2e
