@@ -9,6 +9,7 @@ import {
   isAutoSynchronization,
 } from './config/env.js';
 import { applyHttpSecurity } from './config/http-security.js';
+import { DEPLOYED_VERSION } from './shared/deploy/deploy-info.js';
 import { AppLogger } from './shared/logging/app-logger.js';
 import { highlight, plainLine } from './shared/logging/log-format.js';
 import { installFatalHandlers } from './shared/process/fatal-handlers.js';
@@ -30,10 +31,11 @@ async function bootstrap() {
   applyHttpSecurity(app, env.CORS_ORIGINS);
 
   await app.listen(env.PORT);
+  const version = app.get<string>(DEPLOYED_VERSION);
 
   new Logger('Bootstrap').log(
     highlight(
-      `Started ${env.APPLICATION_NAME} on port ${env.PORT}, mode ${env.MODE}, ` +
+      `Started ${env.APPLICATION_NAME} version ${version} on port ${env.PORT}, mode ${env.MODE}, ` +
         `database ${appDatabaseName(env)}, auto synchronization ${isAutoSynchronization(env) ? 'YES' : 'NO'}, ` +
         `CORS origins ${env.CORS_ORIGINS.join(', ')}`,
       'info',

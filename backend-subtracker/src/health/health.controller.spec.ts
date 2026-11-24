@@ -4,9 +4,11 @@ import type { Response } from 'express';
 import { DataSource, QueryFailedError } from 'typeorm';
 import { JobRunService } from '../jobs/job-run.service.js';
 import type { JobName, LatestJobRun } from '../jobs/job-run.types.js';
+import { DEPLOYED_VERSION } from '../shared/deploy/deploy-info.js';
 import { HealthController } from './health.controller.js';
 
 describe('HealthController', () => {
+  const version = '79acd8a0123456789abcdef0123456789abcdef0';
   let controller: HealthController;
   const query = vi.fn<(sql: string) => Promise<unknown>>();
   const latestFinished = vi.fn<() => Promise<Map<JobName, LatestJobRun>>>();
@@ -27,6 +29,8 @@ describe('HealthController', () => {
       providers: [
         { provide: DataSource, useValue: { query } },
         { provide: JobRunService, useValue: { latestFinished } },
+        // The version reaches the constructor through its token, read once at startup.
+        { provide: DEPLOYED_VERSION, useValue: version },
       ],
     }).compile();
 
@@ -50,6 +54,7 @@ describe('HealthController', () => {
     await expect(controller.check(res)).resolves.toEqual({
       status: 'ok',
       db: 'ok',
+      version,
       jobs: {
         'subscription-lifecycle': 'ok',
         'auth-cleanup': 'failed',
@@ -66,6 +71,7 @@ describe('HealthController', () => {
     await expect(controller.check(res)).resolves.toEqual({
       status: 'error',
       db: 'error',
+      version,
     });
     expect(status).toHaveBeenCalledWith(HttpStatus.SERVICE_UNAVAILABLE);
     expect(latestFinished).not.toHaveBeenCalled();
@@ -80,6 +86,7 @@ describe('HealthController', () => {
     await expect(controller.check(res)).resolves.toEqual({
       status: 'ok',
       db: 'ok',
+      version,
     });
     expect(status).not.toHaveBeenCalled();
     expect(logError).toHaveBeenCalledExactlyOnceWith(

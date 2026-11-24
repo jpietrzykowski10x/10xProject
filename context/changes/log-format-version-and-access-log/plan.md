@@ -382,11 +382,11 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Automated
 
-- [x] 1.1 Testy logowania i jobów
-- [x] 1.2 Celowe uszkodzenie kolorów albo `safeStack` czerwieni test
-- [x] 1.3 Pełne testy backendu
-- [x] 1.4 Testy e2e backendu
-- [x] 1.5 Lint i build backendu
+- [x] 1.1 Testy logowania i jobów — 79acd8a
+- [x] 1.2 Celowe uszkodzenie kolorów albo `safeStack` czerwieni test — 79acd8a
+- [x] 1.3 Pełne testy backendu — 79acd8a
+- [x] 1.4 Testy e2e backendu — 79acd8a
+- [x] 1.5 Lint i build backendu — 79acd8a
 
 #### Manual
 
@@ -396,11 +396,11 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Automated
 
-- [ ] 2.1 Testy wersji i `/health`
-- [ ] 2.2 Celowe uszkodzenie `BACKUP` albo fallbacku czerwieni test
-- [ ] 2.3 Pełne testy backendu
-- [ ] 2.4 Testy e2e backendu
-- [ ] 2.5 Lint i build backendu
+- [x] 2.1 Testy wersji i `/health`
+- [x] 2.2 Celowe uszkodzenie `BACKUP` albo fallbacku czerwieni test
+- [x] 2.3 Pełne testy backendu
+- [x] 2.4 Testy e2e backendu
+- [x] 2.5 Lint i build backendu
 
 #### Manual
 
