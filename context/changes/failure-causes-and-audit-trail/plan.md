@@ -543,22 +543,22 @@ Schemat referencyjny i produkcyjny dostaje zmiany z faz 2–3. Dokumenty opisuj�
 
 #### Automated
 
-- [x] 3.1 Testy audytu, admina i ról
-- [x] 3.2 Celowe uszkodzenie zapisu `DENIED` albo `details` czerwieni test
-- [x] 3.3 Pełne testy backendu
-- [x] 3.4 Testy e2e backendu
-- [x] 3.5 Lint i build backendu
+- [x] 3.1 Testy audytu, admina i ról — 44b79e9
+- [x] 3.2 Celowe uszkodzenie zapisu `DENIED` albo `details` czerwieni test — 44b79e9
+- [x] 3.3 Pełne testy backendu — 44b79e9
+- [x] 3.4 Testy e2e backendu — 44b79e9
+- [x] 3.5 Lint i build backendu — 44b79e9
 
 #### Manual
 
-- [x] 3.6 Lokalnie `admin:grant` dwa razy daje „granted”, „already granted” i jeden wiersz `ROLE_GRANTED`
-- [x] 3.7 Lokalnie wyszukiwanie zostawia wiersz `SEARCH` bez wpisanego tekstu
+- [x] 3.6 Lokalnie `admin:grant` dwa razy daje „granted”, „already granted” i jeden wiersz `ROLE_GRANTED` — 44b79e9
+- [x] 3.7 Lokalnie wyszukiwanie zostawia wiersz `SEARCH` bez wpisanego tekstu — 44b79e9
 
 ### Phase 4: Migracja, dokumenty i produkcja
 
 #### Automated
 
-- [ ] 4.1 Migracja na bazie referencyjnej i brak różnic schematu
+- [x] 4.1 Migracja na bazie referencyjnej i brak różnic schematu
 - [ ] 4.2 CI zielone na PR
 
 #### Manual
