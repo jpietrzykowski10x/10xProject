@@ -1,4 +1,8 @@
-import { enhancedStatusOf, isRecipientTypo } from './smtp-error.js';
+import {
+  enhancedStatusOf,
+  isRecipientTypo,
+  smtpFailureDetails,
+} from './smtp-error.js';
 
 function smtpError(command: string, response: unknown) {
   const responseCode =
@@ -42,6 +46,12 @@ describe('isRecipientTypo', () => {
     ['550 mailbox unavailable', false],
     ['452 4.5.3 too many recipients', false],
     ['450 4.1.1 try again later', false],
+    ['550 5.1.2 bad destination system', true],
+    ['501 5.1.3 bad address syntax', true],
+    ['551 5.1.6 user has moved', true],
+    ['550 5.1.0 address rejected', false],
+    ['553 5.1.7 bad sender address syntax', false],
+    ['550 5.1.8 <noreply@example.com>: Sender address rejected', false],
   ])('treats a RCPT TO answered %j as a typo: %s', (response, typo) => {
     expect(isRecipientTypo(smtpError('RCPT TO', response))).toBe(typo);
   });
@@ -73,5 +83,32 @@ describe('isRecipientTypo', () => {
         }),
       ),
     ).toBe(false);
+  });
+});
+
+describe('smtpFailureDetails', () => {
+  it('gives the code and the enhanced status, not the address', () => {
+    const details = smtpFailureDetails(
+      smtpError('RCPT TO', '550 5.7.1 <jan@example.com>: relaying denied'),
+    );
+    expect(details).toBe('code: EENVELOPE, status: 5.7.1');
+  });
+
+  it('gives the code alone when the reply has no enhanced status', () => {
+    expect(
+      smtpFailureDetails(smtpError('RCPT TO', '550 mailbox unavailable')),
+    ).toBe('code: EENVELOPE');
+  });
+
+  it.each([
+    ['a missing code', new Error('x')],
+    ['an empty code', Object.assign(new Error('x'), { code: '' })],
+    [
+      'a code that is not a string',
+      Object.assign(new Error('x'), { code: 42 }),
+    ],
+    ['a value that is not an error', 'boom'],
+  ])('reads %s as unknown', (_label, error) => {
+    expect(smtpFailureDetails(error)).toBe('code: unknown');
   });
 });

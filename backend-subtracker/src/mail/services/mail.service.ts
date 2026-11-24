@@ -19,11 +19,7 @@ import {
   MailType,
   type UserMailType,
 } from '../mail.types.js';
-import {
-  enhancedStatusOf,
-  isRecipientTypo,
-  smtpFieldsOf,
-} from '../smtp-error.js';
+import { isRecipientTypo, smtpFailureDetails } from '../smtp-error.js';
 
 // Quiet time for one mail type after an accepted failure alert.
 export const OPERATOR_ALERT_INTERVAL_MS = 15 * 60 * 1000;
@@ -171,12 +167,7 @@ export class MailService {
     rowId: string | null,
     recipientTypo: boolean,
   ): void {
-    const { code } = smtpFieldsOf(error);
-    const status = enhancedStatusOf(error);
-    const details =
-      `code: ${typeof code === 'string' ? code : 'unknown'}` +
-      (status === undefined ? '' : `, status: ${status}`) +
-      `, audit row: ${rowId ?? 'none'}`;
+    const details = `${smtpFailureDetails(error)}, audit row: ${rowId ?? 'none'}`;
     if (recipientTypo) {
       this.logger.warn(`Recipient of ${type} mail rejected (${details})`);
     } else {

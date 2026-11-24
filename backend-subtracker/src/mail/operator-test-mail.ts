@@ -3,7 +3,7 @@ import { APP_TIME_ZONE } from '../shared/date/calendar-day.js';
 import { escapeHtml } from './escape-html.js';
 import type { MailTransport } from './mail.transport.js';
 import type { MailContent } from './mail.types.js';
-import { enhancedStatusOf, smtpFieldsOf } from './smtp-error.js';
+import { smtpFailureDetails } from './smtp-error.js';
 
 export const OPERATOR_TEST_MAIL_SUBJECT = 'SubTracker: test kanału alarmów';
 
@@ -32,19 +32,9 @@ function testMail(now: Date): MailContent {
   };
 }
 
-// The code and the SMTP enhanced status only: the full error text can quote an address.
-function failureOf(error: unknown): string {
-  const { code } = smtpFieldsOf(error);
-  const name = typeof code === 'string' && code.length > 0 ? code : 'unknown';
-  const status = enhancedStatusOf(error);
-  return status === undefined
-    ? `code: ${name}`
-    : `code: ${name}, status: ${status}`;
-}
-
 // Sends one test mail through the operator channel, the way the alerts go (no MailService, no
 // `mail` row). Resolves to whether the transport accepted it; never rejects. On failure it logs
-// only the error code: SMTP messages can quote the address.
+// the error code and the SMTP enhanced status only: the full message can quote the address.
 export async function sendOperatorTestMail(
   env: EnvConfig,
   transport: MailTransport,
@@ -59,7 +49,7 @@ export async function sendOperatorTestMail(
   try {
     await transport.send({ channel: 'operator', to, ...testMail(new Date()) });
   } catch (error) {
-    log(`test mail failed (${failureOf(error)})`);
+    log(`test mail failed (${smtpFailureDetails(error)})`);
     return false;
   }
   log('test mail accepted by the operator transport');

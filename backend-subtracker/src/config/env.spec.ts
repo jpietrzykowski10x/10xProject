@@ -267,6 +267,15 @@ describe('validateEnv', () => {
     },
   );
 
+  it('allows the SMTP_HOST server for a separate operator mailbox in PROD', () => {
+    const env = validateEnv({
+      ...prodEnv,
+      NOTIFICATION_SMTP_HOST: prodEnv.SMTP_HOST,
+    });
+    expect(env.NOTIFICATION_SMTP_HOST).toBe('mail.example.com');
+    expect(env.NOTIFICATION_SMTP_USERNAME).toBe('alerts@example.com');
+  });
+
   it('allows the SMTP_USERNAME mailbox for operator mail in DEV', () => {
     const env = validateEnv({
       ...devEnv,
