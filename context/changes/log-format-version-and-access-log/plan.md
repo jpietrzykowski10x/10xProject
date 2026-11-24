@@ -396,11 +396,11 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Automated
 
-- [x] 2.1 Testy wersji i `/health`
-- [x] 2.2 Celowe uszkodzenie `BACKUP` albo fallbacku czerwieni test
-- [x] 2.3 Pełne testy backendu
-- [x] 2.4 Testy e2e backendu
-- [x] 2.5 Lint i build backendu
+- [x] 2.1 Testy wersji i `/health` — 7cacfbf
+- [x] 2.2 Celowe uszkodzenie `BACKUP` albo fallbacku czerwieni test — 7cacfbf
+- [x] 2.3 Pełne testy backendu — 7cacfbf
+- [x] 2.4 Testy e2e backendu — 7cacfbf
+- [x] 2.5 Lint i build backendu — 7cacfbf
 
 #### Manual
 
@@ -410,11 +410,11 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Automated
 
-- [ ] 3.1 Testy access logu
-- [ ] 3.2 Celowe uszkodzenie `originalUrl` albo podwójnej linii czerwieni test
-- [ ] 3.3 Pełne testy backendu
-- [ ] 3.4 Testy e2e backendu
-- [ ] 3.5 Lint i build backendu
+- [x] 3.1 Testy access logu
+- [x] 3.2 Celowe uszkodzenie `originalUrl` albo podwójnej linii czerwieni test
+- [x] 3.3 Pełne testy backendu
+- [x] 3.4 Testy e2e backendu
+- [x] 3.5 Lint i build backendu
 
 #### Manual
 

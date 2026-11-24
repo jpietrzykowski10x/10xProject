@@ -22,14 +22,32 @@ export function assignRequestId(
   next();
 }
 
-// `<METHOD> <route template|(unrouted)> user=<uuid|-> req=<uuid|->` for a log line. The route
-// template (e.g. /subscriptions/:id) only: never originalUrl or url, whose query may carry an
-// address or a token. A request refused before routing (CSRF, unknown path) has no template.
+// The pieces of a log line about a request: method, route template, user id and request id (`-`
+// when unknown). The route template (e.g. /subscriptions/:id) only: never originalUrl or url, whose
+// query may carry an address or a token. A request refused before routing (CSRF, unknown path) has
+// no template and gets `(unrouted)`.
+export interface RequestParts {
+  method: string;
+  route: string;
+  user: string;
+  requestId: string;
+}
+
+export function requestParts(req: RequestWithContext): RequestParts {
+  const route = req.route as { path?: unknown } | undefined;
+  return {
+    method: req.method,
+    route: typeof route?.path === 'string' ? route.path : '(unrouted)',
+    user: req.user?.id ?? '-',
+    requestId: req.requestId ?? '-',
+  };
+}
+
+// `<METHOD> <route template|(unrouted)> user=<uuid|-> req=<uuid|->` for a log line.
 export function describeRequest(req: RequestWithContext | undefined): string {
   if (req === undefined) {
     return '(no http request)';
   }
-  const route = req.route as { path?: unknown } | undefined;
-  const template = typeof route?.path === 'string' ? route.path : '(unrouted)';
-  return `${req.method} ${template} user=${req.user?.id ?? '-'} req=${req.requestId ?? '-'}`;
+  const { method, route, user, requestId } = requestParts(req);
+  return `${method} ${route} user=${user} req=${requestId}`;
 }
