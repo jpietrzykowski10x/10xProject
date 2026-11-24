@@ -46,7 +46,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-13 | request-context-and-denial-reasons | operator widzi w logu trasę, użytkownika i id żądania błędu oraz przyczyny odmów 4xx  | —             | FR-021                  | done |
 | S-14 | log-format-version-and-access-log  | operator czyta logi w jednym formacie, z wersją i access logiem obu procesów         | S-13          | FR-022                  | proposed |
 | S-15 | client-and-ssr-error-visibility    | błędy przeglądarki i SSR zostawiają ślad, a nieaktualny plik po deployu przeładowuje stronę | S-14     | FR-023                  | proposed |
-| S-16 | failure-causes-and-audit-trail     | operator widzi przyczynę porażki joba i maila, a usunięcia i odmowy admina mają ślad | S-11          | FR-024                  | in-progress |
+| S-16 | failure-causes-and-audit-trail     | operator widzi przyczynę porażki joba i maila, a usunięcia i odmowy admina mają ślad | S-11          | FR-024                  | done |
 | S-17 | own-category-rename-and-delete     | użytkownik zmienia nazwę własnej kategorii albo usuwa pustą                          | —             | FR-025, FR-009, FR-010  | ready    |
 | S-18 | subscription-list-sort-filter      | użytkownik sortuje i filtruje listę subskrypcji                                      | —             | FR-016                  | ready    |
 
@@ -155,7 +155,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **Unknowns:** —
 - **Risk:** Po S-11, bo przyczyny trafiają do jego rejestru przebiegów; ryzyko w zakresie (wiele drobnych ustaleń) — plan grupuje je w fazy wg modułu, a reszta z §6 pkt 8 raportu wchodzi tylko tam, gdzie slice i tak dotyka kodu.
 - **Notes:** Przeniesione z przeglądu CI S-11 (PR #62, `context/changes/operator-liveness-alerts/reviews/impl-review.md`, F3): ścieżka „poprzedni przebieg trwa” (`recordSkipped` przy podniesionej fladze `running`) w trzech schedulerach nie ma testów; dopisać po jednym teście na scheduler (pierwszy przebieg trzymany otwarty, drugi zostawia wiersz `skipped`; dla przypomnień także: drugie wywołanie rozwiązuje się dopiero po pierwszym, na czym polega `idle()`). Z trzeciego przeglądu (PR #62, F3): testy granicy 12 h w `watchdog-policy.spec.ts` liczą czas ze stałej `REMIND_EVERY_HOURS`, więc zmianę progu łapie tylko test przypinający wartość; dopisać przypadki z dosłownymi czasami (11 h 59 min cicho, 12 h przypomnienie).
-- **Status:** in-progress
+- **Status:** done
 
 ### S-17: Zmiana nazwy i usuwanie własnych kategorii
 
@@ -243,3 +243,4 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **S-11: operator dostaje mail, gdy API przestaje odpowiadać albo pada w pętli restartów (sprawdzenie spoza procesu API), oraz gdy zadanie cykliczne zakończy się błędem albo nie zakończy się w ciągu 26 godzin; każdy przebieg zadania zostawia trwały ślad.** — Archived 2026-11-23 → `context/archive/2026-11-22-operator-liveness-alerts/`. Lesson: —.
 - **S-13: każdy błąd serwera w logu API ma metodę, szablon trasy, id użytkownika i id żądania; wybrane odmowy 4xx (weryfikacja linku, sesja, CSRF/Origin, ranga administratora, walidacja) zostawiają linię z kodem przyczyny i nazwami pól, bez wartości i danych osobowych, z limitem.** — Archived 2026-11-23 → `context/archive/2026-11-23-request-context-and-denial-reasons/`. Lesson: —.
 - **S-12: alarm do operatora dochodzi także wtedy, gdy nie działa wysyłka maili do użytkowników: na produkcji wymagany jest osobny kanał alarmowy, blokada powtórzeń zaczyna działać dopiero po przyjęciu alarmu, a odrzucenie adresata przez serwer pocztowy jest odróżnione od literówki.** — Archived 2026-11-24 → `context/archive/2026-11-23-independent-alert-channel/`. Lesson: —.
+- **S-16: zadania cykliczne i wysyłka maili rozróżniają przyczyny porażki (brak konta, konto zablokowane, błąd bazy, błąd SMTP), a usunięcie konta, odmowy akcji administratora i jego wyszukiwania zostawiają ślad audytowy.** — Archived 2026-11-24 → `context/archive/2026-11-24-failure-causes-and-audit-trail/`. Lesson: —.
