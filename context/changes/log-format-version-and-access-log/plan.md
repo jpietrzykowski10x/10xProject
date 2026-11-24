@@ -410,11 +410,11 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Automated
 
-- [x] 3.1 Testy access logu
-- [x] 3.2 Celowe uszkodzenie `originalUrl` albo podwójnej linii czerwieni test
-- [x] 3.3 Pełne testy backendu
-- [x] 3.4 Testy e2e backendu
-- [x] 3.5 Lint i build backendu
+- [x] 3.1 Testy access logu — b0cf0fb
+- [x] 3.2 Celowe uszkodzenie `originalUrl` albo podwójnej linii czerwieni test — b0cf0fb
+- [x] 3.3 Pełne testy backendu — b0cf0fb
+- [x] 3.4 Testy e2e backendu — b0cf0fb
+- [x] 3.5 Lint i build backendu — b0cf0fb
 
 #### Manual
 
@@ -424,10 +424,10 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Automated
 
-- [ ] 4.1 Testy frontendu
-- [ ] 4.2 Celowe uszkodzenie ścieżki albo przycięcia czerwieni test
-- [ ] 4.3 Build bez linii access logu
-- [ ] 4.4 E2E przeglądarkowe i http
+- [x] 4.1 Testy frontendu
+- [x] 4.2 Celowe uszkodzenie ścieżki albo przycięcia czerwieni test
+- [x] 4.3 Build bez linii access logu
+- [x] 4.4 E2E przeglądarkowe i http
 
 #### Manual
 
