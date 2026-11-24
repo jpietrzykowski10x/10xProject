@@ -5,7 +5,10 @@
 // accepted by the transport.
 import { existsSync } from 'node:fs';
 import { type EnvConfig, validateEnv } from '../config/env.js';
-import { createMailTransport } from '../mail/mail.transport.js';
+import {
+  createMailTransport,
+  type MailTransport,
+} from '../mail/mail.transport.js';
 import { sendOperatorTestMail } from '../mail/operator-test-mail.js';
 
 function errorText(error: unknown): string {
@@ -16,23 +19,30 @@ function log(line: string): void {
   console.log(`[operator-test-mail ${new Date().toISOString()}] ${line}`);
 }
 
-function setup(): EnvConfig | undefined {
+interface Setup {
+  env: EnvConfig;
+  transport: MailTransport;
+}
+
+// Any failure before the mail goes out (env, transport) is one `cannot run` line, not a stack.
+function setup(): Setup | undefined {
   try {
     // Locally, like the watchdog; on the server the exported variables win over a .env file.
     if (existsSync('.env')) {
       process.loadEnvFile('.env');
     }
-    return validateEnv(process.env);
+    const env = validateEnv(process.env);
+    return { env, transport: createMailTransport(env) };
   } catch (error) {
     log(`cannot run: ${errorText(error)}`);
     return undefined;
   }
 }
 
-const env = setup();
-if (env === undefined) {
+const ready = setup();
+if (ready === undefined) {
   process.exitCode = 1;
 } else {
-  const ok = await sendOperatorTestMail(env, createMailTransport(env), log);
+  const ok = await sendOperatorTestMail(ready.env, ready.transport, log);
   process.exitCode = ok ? 0 : 1;
 }

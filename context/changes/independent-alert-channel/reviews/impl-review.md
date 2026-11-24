@@ -1,130 +1,112 @@
 <!-- IMPL-REVIEW-REPORT -->
-
 # Implementation Review: Niezależny kanał alarmów operatora
 
 - **Plan**: `context/changes/independent-alert-channel/plan.md`
-- **Scope**: Full plan (CI review on PR #76)
-- **Date**: 2026-11-23
-- **CI run**: https://github.com/jpietrzykowski10x/10xProject/actions/runs/45273183073
-- **Verdict**: APPROVED
-- **Findings**: 0 critical, 1 warning, 3 observations
+- **Scope**: Full plan (przegląd lokalny po merge'u, stan `main` po PR #76 i #77)
+- **Reviewed phases**: 1, 2, 3
+- **Date**: 2026-11-24
+- **Verdict**: NEEDS ATTENTION
+- **Findings**: 0 critical, 2 warnings, 3 observations
+
+Wcześniejszy przegląd z CI (PR #76, przed poprawkami F1/F2 i epilogiem) leży w `reviews/impl-review-ci.md`.
 
 ## Verdicts
 
-| Dimension           | Verdict |
-| ------------------- | ------- |
-| Plan Adherence      | PASS    |
-| Scope Discipline    | PASS    |
-| Safety & Quality    | WARNING |
-| Architecture        | PASS    |
-| Pattern Consistency | PASS    |
-| Test Coverage       | PASS    |
-| Success Criteria    | PASS    |
+| Dimension | Verdict |
+|-----------|---------|
+| Plan Adherence | PASS |
+| Scope Discipline | PASS |
+| Safety & Quality | WARNING |
+| Architecture | PASS |
+| Pattern Consistency | WARNING |
+| Success Criteria | PASS |
 
-## Podsumowanie
+## Success Criteria
 
-Kod realizuje plan we wszystkich trzech fazach. Każda zaplanowana zmiana ma werdykt MATCH, nic nie jest DRIFT ani MISSING:
-
-- walidacja PROD w `env.ts` (`requireString` dla hosta, porównanie loginów bez wielkości liter, dokładny komunikat błędu);
-- `.env.example`;
-- `sendOperatorTestMail` i cienkie CLI na wzór `watchdog.ts`;
-- skrypt w `package.json`;
-- `enhancedStatusOf` i `isRecipientTypo` z regexem z planu;
-- stan alarmu per typ w kolejności z „Critical Implementation Details”;
-- `notifyOperator` zwracające `Promise<boolean>`;
-- README w obu językach, `backend-patterns.md` i `CLAUDE.md`.
-
-`JobRunService` się nie zmienił. Pliki spoza planu są metadanymi zmiany: `roadmap.md` (status S-12), `change.md`, `plan-brief.md` i `reviews/plan-review.md`.
-
-Kontrole automatyczne, uruchomione w `backend-subtracker/` z `unset MODE`:
-
-| Polecenie                                                       | Wynik                    |
-| --------------------------------------------------------------- | ------------------------ |
-| `npx vitest run src/config src/mail/operator-test-mail.spec.ts` | ✅ 3 pliki, 68 testów    |
-| `npx vitest run src/mail`                                       | ✅ 5 plików, 66 testów   |
-| `npm test`                                                      | ✅ 49 plików, 678 testów |
-| `npm run test:e2e`                                              | ✅ 26 plików, 221 testów |
-| `npm run lint`                                                  | ✅ exit 0                |
-| `npm run build`                                                 | ✅ exit 0                |
-| `npx prettier --check src/mail src/config src/cli`              | ✅                       |
-| `npm run migration:show`                                        | ✅ bez nowych migracji   |
-
-Uwagi do kontroli:
-
-- `npm run lint` zgłasza ostrzeżenia `unbound-method` tylko w plikach sprzed PR.
-- Celowe uszkodzenia z planu (1.2, 2.2) sprawdziłem analizą testów, bez zmieniania kodu:
-  - usunięcie porównania loginów czerwieni `env.spec.ts:259`;
-  - `readString` zamiast `requireString` dla hosta w PROD czerwieni `env.spec.ts:245`;
-  - okno 15 min ustawione przed wysyłką alarmu czerwieni `mail.service.spec.ts:312`;
-  - uznanie każdego 5xx za literówkę czerwieni `mail.service.spec.ts:201`.
-- Browser e2e (`npm run build:e2e && npm run e2e`) tu nie działa. Obejmuje go wymagany check `browser-e2e` w `ci.yml` na tym PR, tak jak punkt 3.1 „CI zielone na PR”.
-- Kontrole ręczne na produkcji czekają na człowieka:
-  - 3.3: po deployu `/health` 200 i `node cli/operator-test-mail.js` z `exit 0`;
-  - 3.4: watchdog bez `cannot run`.
-- Punkt 3.2 (klucze w `shared/.env` przed merge'em) jest odhaczony; tego z CI nie da się sprawdzić.
+- `npx vitest run src/config src/mail`: 7 plików, 128 testów, zielone.
+- `npm test`: 49 plików, 679 testów, zielone.
+- `npm run test:e2e`: 26 plików, 219 testów zielonych, 2 pominięte.
+- `npm run lint`: tylko ostrzeżenia `unbound-method` w `roles.guard.spec.ts`, które istniały już wcześniej, bez błędów; `npm run build`: OK.
+- Wiersze ręczne 1.6, 2.6, 3.2–3.4 są odhaczone z SHA. Na produkcji potwierdzone: `operator-test-mail.js` kończy się `exit 0` kanałem `separate`, a watchdog nie wpisuje `cannot run`.
+- Rozszerzenia z triage CI (`inFlight`, `failureOf`) są spójne z kontraktem. Licznik `skipped` nie spada poniżej zera, flaga jest zdejmowana w `finally`, a porażka z nieudanym alarmem wraca do licznika.
 
 ## Findings
 
-### F1 — Rezerwacja alarmu (60 s) może wygasnąć, zanim alarm zostanie wysłany
+### F1 — Odmowy dotyczące nadawcy (5.1.7, 5.1.8) przy `RCPT TO` uchodzą za literówkę
 
 - **Severity**: ⚠️ WARNING
 - **Impact**: 🔎 MEDIUM — prawdziwy kompromis; warto się zastanowić przed decyzją
 - **Dimension**: Safety & Quality
-- **Location**: backend-subtracker/src/mail/services/mail.service.ts:234
+- **Location**: backend-subtracker/src/mail/smtp-error.ts:26-37
 - **Detail**:
-  - Przed wysyłką alarmu typ dostaje rezerwację tylko na `OPERATOR_ALERT_RETRY_MS` (60 s). Jedna wysyłka transportem operatora może trwać dłużej: `connectionTimeout`, `greetingTimeout` i `socketTimeout` mają po 30 s (`mail.transport.ts:35-37`), a `socketTimeout` liczy się od nowa po każdej porcji danych.
-  - Gdy serwer alarmów odpowiada wolno, kolejna porażka tego samego typu po 60 s uruchamia drugi alarm równolegle z pierwszym. Drugi alarm czyta `reported = state.skipped`, czyli liczbę, którą zgłasza już pierwszy.
-  - Jeśli oba alarmy zostaną przyjęte, `state.skipped -= reported` (`:246`) wykona się dwa razy. Licznik spadnie poniżej zera, a następny alarm pokaże np. „pominięte od poprzedniego alarmu: -2”. Operator dostanie też dwa alarmy naraz.
-  - Plan zakłada, że w trakcie wysyłki działa rezerwacja („Critical Implementation Details”). Ten przypadek graniczny nie ma testu.
-- **Fix A ⭐ Recommended**: Dodać do `OperatorAlertState` flagę `inFlight`. Gdy jest ustawiona, porażka tylko zwiększa `skipped` i nie wysyła alarmu. Flagę zdejmuje się w `finally` po `notifyOperator`. Do tego test, w którym `notifyOperator` kończy się po ponad 60 s.
-  - Strength: rezerwacja nie zależy wtedy od zegara i obejmuje cały czas wysyłki, czyli to, co plan opisuje słowami.
-  - Tradeoff: jedno pole więcej i kilka linii; zawieszony alarm blokuje kolejne do timeoutu transportu (najwyżej ok. 90 s).
-  - Confidence: HIGH — sekwencja wynika wprost z kodu `:221-250` i timeoutów transportu.
-  - Blind spot: nie sprawdzone, jak długo w praktyce trwa wysyłka przez serwer MyDevil przy jego awarii.
-- **Fix B**: Tylko zabezpieczyć licznik: `state.skipped = Math.max(0, state.skipped - reported)`.
-  - Strength: jedna linia, licznik nigdy nie jest ujemny.
-  - Tradeoff: podwójny alarm przy wolnym serwerze nadal może wyjść, a licznik może zaniżać skalę.
-  - Confidence: MEDIUM — usuwa tylko objaw.
-  - Blind spot: None significant.
-- **Decision**: FIXED (Fix A: flaga `inFlight` zdejmowana w `finally`; test „sends no second alert while one outlasts its reservation”)
+  - Problem:
+    - `isRecipientTypo` uznaje każdy status `5.1.x` przy `RCPT TO` za literówkę w adresie odbiorcy.
+    - RFC 3463 zalicza jednak `5.1.7` (zła składnia adresu nadawcy) i `5.1.8` (zła domena nadawcy) do odmów po naszej stronie.
+    - Postfix z domyślnym `smtpd_delay_reject=yes` ocenia reguły nadawcy dopiero przy `RCPT TO`. Przykład: `reject_unknown_sender_domain` zwraca `550 5.1.8 <from>: Sender address rejected`.
+  - Skutek: przy złym `SMTP_FROM_EMAIL` albo DNS domeny nadawcy każdy mail do użytkownika kończy się tylko linią `warn`, bez alarmu. To dokładnie ta cicha awaria, przed którą chroni S-12.
+  - Gdzie leży błąd:
+    - Plan sam zdefiniował literówkę jako „5.1.x”, więc to wada kontraktu, a nie odstępstwo od planu.
+    - Test `5.1.8` istnieje tylko dla `MAIL FROM` (`smtp-error.spec.ts:51`).
+    - Komentarz w :27 obiecuje, że odmowa nadawcy alarmuje.
+- **Fix A ⭐ Recommended**: Lista dozwolonych statusów odbiorcy: literówką jest tylko `5.1.1`, `5.1.2`, `5.1.3`, `5.1.6` i `5.1.10`; reszta `5.1.x`, w tym `5.1.0`, `5.1.7` i `5.1.8`, alarmuje. Do tego testy `RCPT TO` z `5.1.8` i `5.1.0` oraz poprawka komentarza i zdania w `backend-patterns.md`.
+  - Strength: nieznany albo niejednoznaczny status alarmuje, czyli błąd idzie w bezpieczną stronę, jak przy 5xx bez statusu.
+  - Tradeoff: serwer, który zwraca na nieistniejącą skrzynkę ogólne `5.1.0`, da alarm zamiast `warn`; przy pojedynczych literówkach to jeden alarm na 15 min.
+  - Confidence: HIGH — kody z RFC 3463 i RFC 7505, zmiana w jednej funkcji z testami.
+  - Blind spot: nie sprawdzone, jakie statusy zwraca przy nieistniejącej skrzynce serwer MyDevil i Gmail.
+- **Fix B**: Wykluczyć tylko `5.1.7` i `5.1.8`, a resztę `5.1.x` zostawić jako literówkę.
+  - Strength: najmniejsza zmiana, `5.1.0` nadal bez alarmu.
+  - Tradeoff: `5.1.0 Sender address rejected` dalej przechodzi bez alarmu.
+  - Confidence: MED — zależy od tego, jak konkretne serwery używają `5.1.0`.
+  - Blind spot: jak w A.
+- **Decision**: FIXED (Fix A: lista RECIPIENT_TYPO_STATUSES 5.1.1/5.1.2/5.1.3/5.1.6/5.1.10; testy RCPT TO z 5.1.0, 5.1.7, 5.1.8 i celowe uszkodzenie (powrót do 5.1.x) czerwieni 3 testy; komentarz, backend-patterns, README PL/EN i CLAUDE.md zaktualizowane)
 
-### F2 — `errorCodeOf` powiela `smtpFieldsOf` i nie podaje statusu SMTP
+### F2 — Dokumenty i komentarz nieaktualne po poprawkach z przeglądu CI
+
+- **Severity**: ⚠️ WARNING
+- **Impact**: 🏃 LOW — szybka decyzja, wąska poprawka
+- **Dimension**: Pattern Consistency
+- **Location**: deploy/mydevil/README.md:241, :506; context/foundation/backend-patterns.md:86; backend-subtracker/src/mail/operator-test-mail.ts:46-47
+- **Detail**:
+  - Commit de839a2 zmienił kod, ale nie opisy:
+    - README PL :241 i EN :506 mówią, że linia skryptu testowego podaje „tylko kod błędu SMTP”, a teraz podaje kod i status;
+    - komentarz `operator-test-mail.ts:46-47` mówi to samo („logs only the error code”).
+  - `backend-patterns.md` (sekcja „Maile”) nie opisuje dwóch reguł, a kolejny slice (S-16) będzie zmieniał właśnie ten kod:
+    - drugi alarm tego typu nie wychodzi, dopóki trwa wysyłka (`inFlight`), nawet po upływie rezerwacji;
+    - po nieudanym alarmie zgłoszona liczba i bieżąca porażka wracają do licznika.
+- **Fix**: Poprawić dwa zdania README (PL i EN) i komentarz na „kod i status SMTP”; dopisać do `backend-patterns.md` regułę `inFlight` i powrót liczby po nieudanym alarmie.
+- **Decision**: FIXED (README PL/EN „kod i rozszerzony status”, komentarz w operator-test-mail.ts, backend-patterns: reguła inFlight i powrót liczby po nieudanym alarmie)
+
+### F3 — Formatowanie „code: X, status: Y” napisane dwa razy
 
 - **Severity**: 👁 OBSERVATION
 - **Impact**: 🏃 LOW — szybka decyzja, wąska poprawka
 - **Dimension**: Pattern Consistency
-- **Location**: backend-subtracker/src/mail/operator-test-mail.ts:34
-- **Detail**:
-  - Nowy `src/mail/smtp-error.ts` ma już `smtpFieldsOf`, które odczytuje `code` z błędu nodemailera. `operator-test-mail.ts` ma do tego własną funkcję `errorCodeOf`.
-  - Linia `test mail failed (code: …)` nie podaje rozszerzonego statusu, choć `logFailure` w `MailService` go podaje. Skrypt służy właśnie do diagnozy kanału, więc `status: 5.7.1` dałby operatorowi więcej informacji, nadal bez adresu.
-  - Plan wymaga tylko kodu, więc to nie odstępstwo od planu.
-- **Fix**: Użyć `smtpFieldsOf` (z zamianą pustego kodu na `unknown`) i dopisać `status: <enhancedStatusOf(error)>`, gdy jest.
-- **Decision**: FIXED (`failureOf` używa `smtpFieldsOf` i `enhancedStatusOf`; linia podaje kod i status)
+- **Location**: backend-subtracker/src/mail/operator-test-mail.ts:36-43; backend-subtracker/src/mail/services/mail.service.ts:174-179
+- **Detail**: Skrypt testowy i `logFailure` niezależnie składają kod i status SMTP. Różnią się drobiazgiem: skrypt zamienia pusty `code` na `unknown`, serwis nie.
+- **Fix**: Jeden helper `smtpFailureDetails(error)` w `smtp-error.ts` z testem, używany w obu miejscach.
+- **Decision**: FIXED (smtpFailureDetails w smtp-error.ts z testami, używany przez logFailure i skrypt testowy; pusty code w logu serwisu też jako unknown)
 
-### F3 — Wrapper CLI `operator-test-mail` bez testu kodów wyjścia
-
-- **Severity**: 👁 OBSERVATION
-- **Impact**: 🏃 LOW — szybka decyzja, wąska poprawka
-- **Dimension**: Test Coverage
-- **Location**: backend-subtracker/src/cli/operator-test-mail.ts:34
-- **Detail**:
-  - Kontrakt planu obejmuje kod 1 przy błędzie env (`cannot run: …`) i `process.exitCode = ok ? 0 : 1`. Logika `sendOperatorTestMail` ma pełne testy, ale mapowania na kod wyjścia nie sprawdza żaden test.
-  - To sprawdzą tylko ręczne kroki 1.6 i 3.3. Wzorcowy `src/cli/watchdog.ts` też nie ma własnego testu, więc wrapper jest spójny z resztą repo.
-- **Fix**: Zostawić tak, jak jest (wrapper jest cienki), albo wydzielić funkcję zwracającą kod wyjścia i dodać do niej krótki test.
-- **Decision**: ACCEPTED (cienki wrapper jak `cli/watchdog.ts`; kod wyjścia sprawdzony ręcznie w 1.6)
-
-### F4 — Osobność skrzynki sprawdzana tylko po loginie
+### F4 — Porażki z okna 15 min bez domknięcia
 
 - **Severity**: 👁 OBSERVATION
 - **Impact**: 🏃 LOW — szybka decyzja, wąska poprawka
 - **Dimension**: Safety & Quality
-- **Location**: backend-subtracker/src/config/env.ts:184
+- **Location**: backend-subtracker/src/mail/services/mail.service.ts:224-259
 - **Detail**:
-  - Kod realizuje dokładnie kontrakt planu (porównanie samych loginów, ten sam host dozwolony), więc to nie odstępstwo od planu. Skutki tego kontraktu:
-    - start w PROD odrzuci dwa różne konta o tym samym loginie na różnych hostach;
-    - start w PROD przepuści alias o innym loginie, który prowadzi do tej samej skrzynki.
-  - Przy jednym dostawcy (MyDevil) to bezpieczne uproszczenie.
-- **Fix**: Bez zmiany kodu; ewentualnie jedno zdanie w `backend-patterns.md`, że osobność oznacza inny login, a nie gwarancję innego konta.
-- **Decision**: ACCEPTED (osobny login to granica planu; host MyDevil wspólny z założenia)
+  - Porażki policzone w oknie po przyjętym alarmie operator zobaczy dopiero w następnym alarmie, czyli przy kolejnej porażce tego typu.
+  - Jeśli potem nic już nie padnie, ich liczba nie dotrze nigdzie poza log i wiersze audytu.
+  - Plan na to pozwala, bo trwały stan i domknięcie są poza zakresem, ale dokumenty tego nie mówią.
+- **Fix**: Jedno zdanie w `backend-patterns.md` (i w README przy alarmie o nieudanej wysyłce), że liczba pominiętych pojawia się dopiero w następnym alarmie, a pełny obraz dają wiersze `mail` i log.
+- **Decision**: FIXED (zdanie o braku domknięcia w backend-patterns i README PL/EN)
 
-<!-- End of report -->
+### F5 — Drobne luki w testach i obsłudze błędu skryptu
+
+- **Severity**: 👁 OBSERVATION
+- **Impact**: 🏃 LOW — szybka decyzja, wąska poprawka
+- **Dimension**: Success Criteria
+- **Location**: backend-subtracker/src/config/env.spec.ts; backend-subtracker/src/cli/operator-test-mail.ts:36
+- **Detail**:
+  - Desired End State mówi „ten sam host jest dozwolony”, a nie ma testu PROD z tym samym hostem i innym loginem.
+  - `createMailTransport(env)` stoi poza `try`. Dziś niczego nie rzuca, ale gdyby zaczął, skrypt wypisze stos zamiast linii `cannot run: …`.
+- **Fix**: Dopisać test PROD z tym samym hostem; objąć `createMailTransport` tym samym `try` co setup.
+- **Decision**: FIXED (test PROD z tym samym hostem i innym loginem; createMailTransport w setup() pod tym samym try, błąd daje linię cannot run)
