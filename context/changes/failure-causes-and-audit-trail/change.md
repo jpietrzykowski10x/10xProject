@@ -1,7 +1,7 @@
 ---
 change_id: failure-causes-and-audit-trail
 title: Przyczyny porażek jobów i maili oraz ślad audytowy
-status: impl_reviewed
+status: implemented
 created: 2026-11-24
 updated: 2026-11-24
 archived_at: null

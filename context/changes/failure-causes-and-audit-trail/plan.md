@@ -563,6 +563,6 @@ Schemat referencyjny i produkcyjny dostaje zmiany z faz 2–3. Dokumenty opisuj�
 
 #### Manual
 
-- [ ] 4.3 Po deployu `/health` 200 i migracja zastosowana
-- [ ] 4.4 Na produkcji wyszukiwanie zostawia wiersz `SEARCH`
-- [ ] 4.5 Następnego dnia joby `success` z `failure` `null`
+- [x] 4.3 Po deployu `/health` 200 i migracja zastosowana — 1abfd53
+- [x] 4.4 Na produkcji wyszukiwanie zostawia wiersz `SEARCH` — 1abfd53
+- [x] 4.5 Następnego dnia joby `success` z `failure` `null` — 1abfd53
