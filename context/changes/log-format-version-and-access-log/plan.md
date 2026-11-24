@@ -424,10 +424,10 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Automated
 
-- [x] 4.1 Testy frontendu
-- [x] 4.2 Celowe uszkodzenie ścieżki albo przycięcia czerwieni test
-- [x] 4.3 Build bez linii access logu
-- [x] 4.4 E2E przeglądarkowe i http
+- [x] 4.1 Testy frontendu — 24671ba
+- [x] 4.2 Celowe uszkodzenie ścieżki albo przycięcia czerwieni test — 24671ba
+- [x] 4.3 Build bez linii access logu — 24671ba
+- [x] 4.4 E2E przeglądarkowe i http — 24671ba
 
 #### Manual
 
@@ -437,7 +437,7 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Automated
 
-- [ ] 5.1 Pełne testy obu aplikacji
+- [x] 5.1 Pełne testy obu aplikacji
 - [ ] 5.2 CI zielone na PR
 
 #### Manual
