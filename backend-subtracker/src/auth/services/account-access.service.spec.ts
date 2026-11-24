@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, Logger, NotFoundException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import { type DataSource, IsNull } from 'typeorm';
 import { type EnvConfig, validateEnv } from '../../config/env.js';
@@ -232,6 +232,23 @@ describe('AccountAccessService', () => {
         'hook sees isActive true',
         'set isActive false',
       ]);
+    });
+
+    it('ties the log line of the mail to the audit id the hook returns, without the address', async () => {
+      const logged = vi
+        .spyOn(Logger.prototype, 'log')
+        .mockImplementation(() => undefined);
+      const { service } = setup({ isActive: true });
+
+      await service.block('user-1', () => Promise.resolve('audit-7'));
+
+      await vi.waitFor(() => {
+        expect(logged).toHaveBeenCalledWith(
+          `${MailType.ACCOUNT_BLOCKED} mail for admin audit audit-7: sent`,
+        );
+      });
+      expect(JSON.stringify(logged.mock.calls)).not.toContain(ADDRESS);
+      logged.mockRestore();
     });
 
     it('stops the change and the mail when it throws', async () => {

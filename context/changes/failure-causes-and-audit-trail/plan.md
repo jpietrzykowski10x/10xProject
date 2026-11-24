@@ -529,30 +529,30 @@ Schemat referencyjny i produkcyjny dostaje zmiany z faz 2–3. Dokumenty opisuj�
 
 #### Automated
 
-- [x] 2.1 Testy jobów, rejestru i watchdoga
-- [x] 2.2 Celowe uszkodzenie `failure` albo liczenia pominiętych czerwieni test
-- [x] 2.3 Pełne testy backendu
-- [x] 2.4 Testy e2e backendu
-- [x] 2.5 Lint i build backendu
+- [x] 2.1 Testy jobów, rejestru i watchdoga — bbdecf1
+- [x] 2.2 Celowe uszkodzenie `failure` albo liczenia pominiętych czerwieni test — bbdecf1
+- [x] 2.3 Pełne testy backendu — bbdecf1
+- [x] 2.4 Testy e2e backendu — bbdecf1
+- [x] 2.5 Lint i build backendu — bbdecf1
 
 #### Manual
 
-- [x] 2.6 Lokalnie zły wiersz subskrypcji daje przebieg `partial` z `billingRollFailed: 1` i alarm
+- [x] 2.6 Lokalnie zły wiersz subskrypcji daje przebieg `partial` z `billingRollFailed: 1` i alarm — bbdecf1
 
 ### Phase 3: Ślad audytowy
 
 #### Automated
 
-- [ ] 3.1 Testy audytu, admina i ról
-- [ ] 3.2 Celowe uszkodzenie zapisu `DENIED` albo `details` czerwieni test
-- [ ] 3.3 Pełne testy backendu
-- [ ] 3.4 Testy e2e backendu
-- [ ] 3.5 Lint i build backendu
+- [x] 3.1 Testy audytu, admina i ról
+- [x] 3.2 Celowe uszkodzenie zapisu `DENIED` albo `details` czerwieni test
+- [x] 3.3 Pełne testy backendu
+- [x] 3.4 Testy e2e backendu
+- [x] 3.5 Lint i build backendu
 
 #### Manual
 
-- [ ] 3.6 Lokalnie `admin:grant` dwa razy daje „granted”, „already granted” i jeden wiersz `ROLE_GRANTED`
-- [ ] 3.7 Lokalnie wyszukiwanie zostawia wiersz `SEARCH` bez wpisanego tekstu
+- [x] 3.6 Lokalnie `admin:grant` dwa razy daje „granted”, „already granted” i jeden wiersz `ROLE_GRANTED`
+- [x] 3.7 Lokalnie wyszukiwanie zostawia wiersz `SEARCH` bez wpisanego tekstu
 
 ### Phase 4: Migracja, dokumenty i produkcja
 

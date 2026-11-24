@@ -1,3 +1,5 @@
+import { AdminAction } from '../../src/admin/admin-audit.types.js';
+import { AdminAudit } from '../../src/admin/entities/admin-audit.entity.js';
 import { isUniqueViolation } from '../../src/shared/database/unique-violation.js';
 import type { AuthUser } from '../../src/shared/types/auth-user.js';
 import { RoleCode, roleIdOf } from '../../src/shared/types/role-code.js';
@@ -57,17 +59,42 @@ describe('Auth — role scripts (e2e)', () => {
     const { address, cookie } = await signIn();
     expect(await rolesOf(cookie)).toEqual([RoleCode.USER]);
 
-    await grant(address, RoleCode.ADMIN);
-    await grant(address, RoleCode.ADMIN);
+    expect(await grant(address, RoleCode.ADMIN)).toBe('granted');
+    expect(await grant(address, RoleCode.ADMIN)).toBe('already_granted');
 
     expect(await rowsOf(address, RoleCode.ADMIN)).toBe(1);
     expect(await rolesOf(cookie)).toEqual([RoleCode.ADMIN, RoleCode.USER]);
 
-    await revoke(address, RoleCode.ADMIN);
-    await revoke(address, RoleCode.ADMIN);
+    expect(await revoke(address, RoleCode.ADMIN)).toBe('revoked');
+    expect(await revoke(address, RoleCode.ADMIN)).toBe('not_granted');
 
     expect(await rowsOf(address, RoleCode.ADMIN)).toBe(0);
     expect(await rolesOf(cookie)).toEqual([RoleCode.USER]);
+
+    // One audit row per actual change, without an actor (the CLI) and without the address.
+    const audit = await repository(AdminAudit).find({
+      where: { targetId: await userIdOf(address) },
+      order: { createdAt: 'ASC' },
+    });
+    expect(
+      audit.map(({ actorId, action, details }) => ({
+        actorId,
+        action,
+        details,
+      })),
+    ).toEqual([
+      {
+        actorId: null,
+        action: AdminAction.ROLE_GRANTED,
+        details: { role: RoleCode.ADMIN },
+      },
+      {
+        actorId: null,
+        action: AdminAction.ROLE_REVOKED,
+        details: { role: RoleCode.ADMIN },
+      },
+    ]);
+    expect(JSON.stringify(audit)).not.toContain(address);
   });
 
   it('refuses an unknown address and changes nothing', async () => {

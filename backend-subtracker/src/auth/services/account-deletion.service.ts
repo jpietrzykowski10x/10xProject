@@ -1,18 +1,24 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { insertAdminAudit } from '../../admin/admin-audit-insert.js';
+import { AdminAction } from '../../admin/admin-audit.types.js';
 import { Mail } from '../../mail/entities/mail.entity.js';
 import { ANONYMIZED_RECIPIENT } from '../../mail/mail.types.js';
 import { User } from '../../users/entities/user.entity.js';
 import { normalizeEmail } from '../../users/normalize-email.js';
 
 // Hard deletion: removing the user row cascades to everything the account owns. The mail archive
-// has no foreign key to `user`, so its rows stay, but without the address.
+// has no foreign key to `user`, so its rows stay, but without the address. The deletion itself
+// leaves an ACCOUNT_DELETED row in admin_audit (ids only), written in the same transaction.
 @Injectable()
 export class AccountDeletionService {
+  private readonly logger = new Logger(AccountDeletionService.name);
+
   constructor(private readonly dataSource: DataSource) {}
 
   async delete(userId: string, confirmedEmail: string): Promise<void> {
@@ -40,7 +46,14 @@ export class AccountDeletionService {
           { recipient: user.email },
           { recipient: ANONYMIZED_RECIPIENT, errorMessage: null },
         );
+      // Through the plain function: AdminAuditService lives in AdminModule, which imports this one.
+      await insertAdminAudit(manager, {
+        action: AdminAction.ACCOUNT_DELETED,
+        actorId: user.id,
+        targetId: user.id,
+      });
       await manager.getRepository(User).delete({ id: user.id });
     });
+    this.logger.log(`Account ${userId} deleted`);
   }
 }
