@@ -31,7 +31,7 @@ Automated criteria re-run on HEAD `e399997`: backend `npm test` (775), `npm run 
 - **Location**: backend-subtracker/src/shared/logging/app-logger.ts:19
 - **Detail**: `AppLogger` cleans only the `printStackTrace(stack: string)` path. When an Error object is the message (`ExceptionHandler.logger.error(exception)` in `@nestjs/core/errors/exception-handler.js:5` on a bootstrap failure, `this.logger.error(error)` in `@nestjs/schedule/dist/schedule.explorer.js:124` for a cron handler that throws), `ConsoleLogger.stringifyMessage` writes `util.inspect(error)`: the full stack with the `QueryFailedError: <message>` header and the enumerable fields `query`, `parameters`, `driverError`, `detail`, which can hold e-mail addresses. Today's schedulers never reject (`track()` catches), so the risk is low, but the guarantee in the plan ("stos `QueryFailedError` ma pierwszą linię `QueryFailedError: <message omitted>`") is not complete.
 - **Fix**: Override `stringifyMessage` in `AppLogger`: a `QueryFailedError` message becomes `QueryFailedError (code: <failureCodeOf>)` plus the frames of its `safeStack`; add a spec with `logger.error(new QueryFailedError(...))`.
-- **Decision**: PENDING
+- **Decision**: FIXED — `AppLogger.stringifyMessage` writes a QueryFailedError message as `QueryFailedError (code: X)` + safeStack frames; spec in app-logger.spec.ts (red without the override)
 
 ### F2 — SSR access log writes the raw path, also for unknown URLs
 
@@ -50,7 +50,7 @@ Automated criteria re-run on HEAD `e399997`: backend `npm test` (775), `npm run 
   - Tradeoff: A design change beyond the plan; a heuristic (only `@`).
   - Confidence: MED — simple to implement, but the rule is a heuristic.
   - Blind spot: Other personal data in paths (names) is not covered either way.
-- **Decision**: PENDING
+- **Decision**: PENDING — owner decision (Fix A: correct the README wording / Fix B: mask `@` segments)
 
 ### F3 — Other TypeORM errors still put data into the 5xx line
 
@@ -69,7 +69,7 @@ Automated criteria re-run on HEAD `e399997`: backend `npm test` (775), `npm run 
   - Tradeoff: Data in the criteria still reaches the log.
   - Confidence: HIGH
   - Blind spot: None significant.
-- **Decision**: PENDING
+- **Decision**: PENDING — owner decision (Fix A: every TypeORMError code-only / Fix B: collapse whitespace)
 
 ### F4 — backend-patterns.md still gives the old 503 shape of /health
 
@@ -79,7 +79,7 @@ Automated criteria re-run on HEAD `e399997`: backend `npm test` (775), `npm run 
 - **Location**: context/foundation/backend-patterns.md, bullet „`GET /health` a joby (S-11)”
 - **Detail**: It says 503 returns `{ status: 'error', db: 'error' }`; the code returns `{ status, db, version }` (`health.controller.ts`). The new bullet „Format linii (od S-14)” already has the right shape.
 - **Fix**: Add `version` to the 503 shape in that bullet.
-- **Decision**: PENDING
+- **Decision**: FIXED — 503 shape with `version` in backend-patterns.md
 
 ### F5 — A new Intl.DateTimeFormat on every log line
 
@@ -89,7 +89,7 @@ Automated criteria re-run on HEAD `e399997`: backend `npm test` (775), `npm run 
 - **Location**: backend-subtracker/src/shared/logging/log-format.ts:26, frontend-subtracker/src/server-log.ts:38
 - **Detail**: Measured ~86 µs per call, nearly all of it the constructor; with the access log that is at least one call per request in both processes.
 - **Fix**: Cache one formatter per time zone (module-level `Map`) in both files.
-- **Decision**: PENDING
+- **Decision**: FIXED — formatter cached per time zone in log-format.ts and server-log.ts
 
 ### F6 — `aborted` also covers a server that never answered
 
@@ -99,7 +99,7 @@ Automated criteria re-run on HEAD `e399997`: backend `npm test` (775), `npm run 
 - **Location**: backend-subtracker/src/shared/logging/access-log.ts:31-32, frontend-subtracker/src/server.ts (access-log middleware)
 - **Detail**: A handler that hangs gets its line only when the socket closes (client gives up or Node's `requestTimeout`, 300 s), labelled `aborted`, so a server hang looks like a client abort. Behaviour is fine; the comment says only "the request was cut off".
 - **Fix**: Say in the comments (and in backend-patterns.md) that `aborted` = the connection closed before the response finished, whoever closed it.
-- **Decision**: PENDING
+- **Decision**: FIXED — comments in access-log.ts and server.ts and the access-log bullet in backend-patterns.md say what `aborted` covers
 
 ### F7 — Access log grows out.log, which is not rotated
 
@@ -109,7 +109,7 @@ Automated criteria re-run on HEAD `e399997`: backend `npm test` (775), `npm run 
 - **Location**: backend-subtracker/src/config/http-security.ts:15
 - **Detail**: Every request gets a `log` line (no cap, unlike `Denials`), including the watchdog every 5 min. Rotation is explicitly out of scope (plan „What We're NOT Doing”, roadmap Open Question #3); the weekly `truncate` > 20 MB stays.
 - **Fix**: None in S-14; owner question already open in the roadmap.
-- **Decision**: PENDING
+- **Decision**: SKIPPED — rotation is out of S-14 scope (plan „What We're NOT Doing”, roadmap Open Question #3)
 
 ### F8 — SSR request errors are not in the new format
 
@@ -119,4 +119,4 @@ Automated criteria re-run on HEAD `e399997`: backend `npm test` (775), `npm run 
 - **Location**: frontend-subtracker/src/server.ts (`angularApp.handle(...).catch(next)`)
 - **Detail**: Errors go to Express's default handler, which prints `err.stack` with `console.error`, outside the new format. SSR error visibility is S-15 (plan „What We're NOT Doing”).
 - **Fix**: None in S-14; belongs to S-15 (error middleware in `server.ts`).
-- **Decision**: PENDING
+- **Decision**: SKIPPED — SSR error handling belongs to S-15
