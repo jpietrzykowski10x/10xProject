@@ -57,7 +57,8 @@ export class TrialReminderScheduler
   // Never rejects: track() and recordSkipped() catch everything.
   private run(trigger: JobTrigger): Promise<void> {
     if (this.running) {
-      this.logger.warn(
+      // error, so the line goes to err.log (J13).
+      this.logger.error(
         'Skipped: the previous trial reminder run is still going',
       );
       const running = this.currentRun;
@@ -70,8 +71,13 @@ export class TrialReminderScheduler
       .track('trial-reminder', trigger, async () => {
         const today = calendarDayIn(APP_TIME_ZONE, new Date());
         const result = await this.reminders.sendDue(today);
-        // Users whose mail failed stay due for the next run; the operator hears about them.
-        return { counters: { ...result }, partial: result.usersFailed > 0 };
+        // Users whose mail failed stay due for the next run, lost reminders are not retried; the
+        // operator hears about both. Skipped users are no failure.
+        return {
+          counters: { ...result },
+          partial: result.usersFailed > 0 || result.remindersLost > 0,
+          lost: result.remindersLost > 0,
+        };
       })
       .finally(() => {
         this.running = false;

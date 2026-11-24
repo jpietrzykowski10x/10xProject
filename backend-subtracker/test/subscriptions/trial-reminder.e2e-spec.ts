@@ -1,5 +1,8 @@
+import { MoreThanOrEqual } from 'typeorm';
+import { JobRun } from '../../src/jobs/entities/job-run.entity.js';
 import { Mail } from '../../src/mail/entities/mail.entity.js';
 import { MailStatus, MailType } from '../../src/mail/mail.types.js';
+import { MailService } from '../../src/mail/services/mail.service.js';
 import {
   addDays,
   APP_TIME_ZONE,
@@ -11,6 +14,7 @@ import {
   TrialReminderService,
 } from '../../src/subscriptions/services/trial-reminder.service.js';
 import type { SubscriptionResponse } from '../../src/subscriptions/subscription.types.js';
+import { TrialReminderScheduler } from '../../src/subscriptions/trial-reminder.scheduler.js';
 import { User } from '../../src/users/entities/user.entity.js';
 import { createE2eApp, type SignedIn } from '../support/e2e-app.js';
 import { subscriptionBody, subscriptionRequests } from './subscriptions-e2e.js';
@@ -247,5 +251,48 @@ describe('Subscriptions — trial reminder job (e2e)', () => {
     expect(mails).toHaveLength(1);
     expect(mails[0].text).toContain('Failing mail');
     expect((await stored(trial)).trialReminderSentFor).toBe(addDays(today, 4));
+  });
+
+  // A block before the claim leaves the account out of the run (OWNER_IS_ACTIVE); this one comes
+  // between the claim and the send, so the mail service finds a blocked account.
+  it('counts an account blocked between the claim and the send as skipped, and the run as a success', async () => {
+    const late = await signIn();
+    const trial = await createTrial(
+      late.cookie,
+      'Blocked in between',
+      addDays(today, 5),
+    );
+    const lateId = await e2e.userIdOf(late.address);
+    // The real method, bound before the spy replaces it on the prototype.
+    const mail = e2e.app.get(MailService);
+    const sendToUser = mail.sendToUser.bind(mail);
+    const spy = vi
+      .spyOn(MailService.prototype, 'sendToUser')
+      .mockImplementation(async (type, to, content) => {
+        if (to === late.address) {
+          await repository(User).update({ id: lateId }, { isActive: false });
+        }
+        return sendToUser(type, to, content);
+      });
+    const since = new Date();
+    const from = sent.length;
+
+    try {
+      await e2e.app.get(TrialReminderScheduler).daily();
+    } finally {
+      spy.mockRestore();
+    }
+
+    const runs = await repository(JobRun).find({
+      where: { job: 'trial-reminder', startedAt: MoreThanOrEqual(since) },
+    });
+    expect(runs).toHaveLength(1);
+    expect(runs[0].outcome).toBe('success');
+    expect(runs[0].counters?.usersSkipped).toBeGreaterThanOrEqual(1);
+    expect(runs[0].counters?.usersFailed).toBe(0);
+    expect(runs[0].counters?.remindersLost).toBe(0);
+    expect(mailTo(late.address, from)).toEqual([]);
+    // Released, so the account gets the reminder after an unblock.
+    expect((await stored(trial)).trialReminderSentFor).toBeNull();
   });
 });

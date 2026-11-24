@@ -31,4 +31,9 @@ export class JobRun {
   // E.g. { "trialsActivated": 2 }; null for a failed or skipped run.
   @Column({ type: 'jsonb', nullable: true })
   counters: Record<string, number> | null;
+
+  // Why a failed run failed: `<step>: <code>` (e.g. "roll_billing_dates: 57014"), `unknown: <code>`
+  // when the failure named no step. Never the error message, which can quote data. Null otherwise.
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  failure: string | null;
 }

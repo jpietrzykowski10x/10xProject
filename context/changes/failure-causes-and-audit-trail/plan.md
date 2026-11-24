@@ -515,29 +515,29 @@ Schemat referencyjny i produkcyjny dostaje zmiany z faz 2–3. Dokumenty opisuj�
 
 #### Automated
 
-- [x] 1.1 Testy poczty i auth
-- [x] 1.2 Celowe uszkodzenie odczytu konta albo bramki czerwieni test
-- [x] 1.3 Pełne testy backendu
-- [x] 1.4 Testy e2e backendu
-- [x] 1.5 Lint i build backendu
+- [x] 1.1 Testy poczty i auth — 1fbdaff
+- [x] 1.2 Celowe uszkodzenie odczytu konta albo bramki czerwieni test — 1fbdaff
+- [x] 1.3 Pełne testy backendu — 1fbdaff
+- [x] 1.4 Testy e2e backendu — 1fbdaff
+- [x] 1.5 Lint i build backendu — 1fbdaff
 
 #### Manual
 
-- [x] 1.6 Lokalnie dwie prośby o link przy złym SMTP dają jeden wiersz `ACCOUNT_BLOCKED` `FAILED` i jeden alarm
+- [x] 1.6 Lokalnie dwie prośby o link przy złym SMTP dają jeden wiersz `ACCOUNT_BLOCKED` `FAILED` i jeden alarm — 1fbdaff
 
 ### Phase 2: Przyczyny porażek jobów
 
 #### Automated
 
-- [ ] 2.1 Testy jobów, rejestru i watchdoga
-- [ ] 2.2 Celowe uszkodzenie `failure` albo liczenia pominiętych czerwieni test
-- [ ] 2.3 Pełne testy backendu
-- [ ] 2.4 Testy e2e backendu
-- [ ] 2.5 Lint i build backendu
+- [x] 2.1 Testy jobów, rejestru i watchdoga
+- [x] 2.2 Celowe uszkodzenie `failure` albo liczenia pominiętych czerwieni test
+- [x] 2.3 Pełne testy backendu
+- [x] 2.4 Testy e2e backendu
+- [x] 2.5 Lint i build backendu
 
 #### Manual
 
-- [ ] 2.6 Lokalnie zły wiersz subskrypcji daje przebieg `partial` z `billingRollFailed: 1` i alarm
+- [x] 2.6 Lokalnie zły wiersz subskrypcji daje przebieg `partial` z `billingRollFailed: 1` i alarm
 
 ### Phase 3: Ślad audytowy
 

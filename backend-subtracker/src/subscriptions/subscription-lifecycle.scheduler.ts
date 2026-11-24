@@ -36,7 +36,8 @@ export class SubscriptionLifecycleScheduler implements OnApplicationBootstrap {
   // Never rejects: track() and recordSkipped() catch everything.
   private async run(trigger: JobTrigger): Promise<void> {
     if (this.running) {
-      this.logger.warn('Skipped: the previous lifecycle run is still going');
+      // error, so the line goes to err.log (J13).
+      this.logger.error('Skipped: the previous lifecycle run is still going');
       await this.jobRuns.recordSkipped('subscription-lifecycle', trigger);
       return;
     }
@@ -45,7 +46,11 @@ export class SubscriptionLifecycleScheduler implements OnApplicationBootstrap {
       await this.jobRuns.track('subscription-lifecycle', trigger, async () => {
         const today = calendarDayIn(APP_TIME_ZONE, new Date());
         const result = await this.lifecycle.advance(today);
-        return { counters: { ...result } };
+        // Rows whose billing date failed to roll are tried again by the next run.
+        return {
+          counters: { ...result },
+          partial: result.billingRollFailed > 0,
+        };
       });
     } finally {
       this.running = false;

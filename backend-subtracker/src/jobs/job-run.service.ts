@@ -2,12 +2,15 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, LessThan, Repository } from 'typeorm';
 import { MailService } from '../mail/services/mail.service.js';
+import { failureCodeOf } from '../shared/database/failure-code.js';
 import { APP_TIME_ZONE, calendarDayIn } from '../shared/date/calendar-day.js';
 import { JobRun } from './entities/job-run.entity.js';
 import { jobRunAlert } from './job-run-alert.js';
 import {
+  JOB_FAILURE_MAX_LENGTH,
   JOB_NAMES,
   JOB_RUN_RETENTION_DAYS,
+  JobStepError,
   type JobName,
   type JobOutcome,
   type JobRunReport,
@@ -22,6 +25,22 @@ const RAN_OUTCOMES: JobOutcome[] = ['success', 'partial', 'failed'];
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : 'non-error value thrown';
+}
+
+// The cause of a failed run for job_run.failure, the log and the alert: the step and the code of
+// the error, never its message (it can quote the parameters of a failed query).
+function failureOf(error: unknown): string {
+  const failure =
+    error instanceof JobStepError
+      ? `${error.step}: ${failureCodeOf(error.cause)}`
+      : `unknown: ${failureCodeOf(error)}`;
+  return failure.slice(0, JOB_FAILURE_MAX_LENGTH);
+}
+
+// The stack for the log: of the original error when a step failed.
+function stackOf(error: unknown): string | undefined {
+  const original = error instanceof JobStepError ? error.cause : error;
+  return original instanceof Error ? original.stack : undefined;
 }
 
 function countersText(counters: Record<string, number> | null): string {
@@ -55,15 +74,20 @@ export class JobRunService {
 
     let outcome: Exclude<JobOutcome, 'skipped'>;
     let counters: Record<string, number> | null = null;
-    let errorMessage: string | undefined;
+    let lost = false;
+    let failure: string | null = null;
+    let stack: string | undefined;
     try {
       const report = await run();
       counters = report.counters;
       outcome = report.partial === true ? 'partial' : 'success';
+      lost = report.lost === true;
     } catch (error) {
-      // The message only: the parameters of a failed query stay out of the log and the mail.
+      // The step and the code only in the register and the mail: the message can quote the
+      // parameters of a failed query. The log also gets the stack.
       outcome = 'failed';
-      errorMessage = messageOf(error);
+      failure = failureOf(error);
+      stack = stackOf(error);
     }
     const finishedAt = new Date();
 
@@ -74,6 +98,7 @@ export class JobRunService {
       finishedAt,
       outcome,
       counters,
+      failure,
     });
 
     // The day the run worked for (its start in APP_TIME_ZONE): what the jobs compare their dates
@@ -83,9 +108,10 @@ export class JobRunService {
       `Job ${job} (${trigger}) for ${day}: ${outcome} in ${finishedAt.getTime() - startedAt.getTime()} ms` +
       countersText(counters);
     if (outcome === 'failed') {
-      this.logger.error(`${summary}: ${errorMessage ?? ''}`);
+      this.logger.error(`${summary} (${failure ?? ''})`, stack);
     } else if (outcome === 'partial') {
-      this.logger.warn(summary);
+      // error, not warn: a partial run goes to err.log next to the failures (J13).
+      this.logger.error(summary);
     } else {
       this.logger.log(summary);
     }
@@ -99,6 +125,8 @@ export class JobRunService {
           outcome,
           day,
           counters,
+          failure,
+          lost,
         }),
       );
     }
@@ -116,6 +144,7 @@ export class JobRunService {
           finishedAt: now,
           outcome: 'skipped',
           counters: null,
+          failure: null,
         }),
       );
     } catch (error) {
@@ -157,6 +186,7 @@ export class JobRunService {
           finishedAt: null,
           outcome: null,
           counters: null,
+          failure: null,
         }),
       );
       id = row.id;
@@ -193,6 +223,7 @@ export class JobRunService {
             finishedAt: row.finishedAt,
             outcome: row.outcome,
             counters: row.counters,
+            failure: row.failure,
           },
         );
       }
