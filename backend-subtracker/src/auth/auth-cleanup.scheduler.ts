@@ -36,7 +36,8 @@ export class AuthCleanupScheduler implements OnApplicationBootstrap {
   // Never rejects: track() and recordSkipped() catch everything.
   private async run(trigger: JobTrigger): Promise<void> {
     if (this.running) {
-      this.logger.warn('Skipped: the previous cleanup run is still going');
+      // error, so the line goes to err.log (J13).
+      this.logger.error('Skipped: the previous cleanup run is still going');
       await this.jobRuns.recordSkipped('auth-cleanup', trigger);
       return;
     }

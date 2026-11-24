@@ -1,8 +1,12 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, Logger, NotFoundException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import { type DataSource, IsNull } from 'typeorm';
 import { type EnvConfig, validateEnv } from '../../config/env.js';
-import { type MailContent, MailType } from '../../mail/mail.types.js';
+import {
+  type MailContent,
+  type MailOutcome,
+  MailType,
+} from '../../mail/mail.types.js';
 import type { MailService } from '../../mail/services/mail.service.js';
 import { User } from '../../users/entities/user.entity.js';
 import { MagicLinkToken } from '../entities/magic-link-token.entity.js';
@@ -82,7 +86,7 @@ function setup(found: Partial<User> | null) {
   const sendToUser = vi.fn(
     (type: MailType, _to: string, _content: MailContent) => {
       steps.push(`mail ${type}`);
-      return Promise.resolve(true);
+      return Promise.resolve<MailOutcome>('sent');
     },
   );
   const service = new AccountAccessService(
@@ -228,6 +232,23 @@ describe('AccountAccessService', () => {
         'hook sees isActive true',
         'set isActive false',
       ]);
+    });
+
+    it('ties the log line of the mail to the audit id the hook returns, without the address', async () => {
+      const logged = vi
+        .spyOn(Logger.prototype, 'log')
+        .mockImplementation(() => undefined);
+      const { service } = setup({ isActive: true });
+
+      await service.block('user-1', () => Promise.resolve('audit-7'));
+
+      await vi.waitFor(() => {
+        expect(logged).toHaveBeenCalledWith(
+          `${MailType.ACCOUNT_BLOCKED} mail for admin audit audit-7: sent`,
+        );
+      });
+      expect(JSON.stringify(logged.mock.calls)).not.toContain(ADDRESS);
+      logged.mockRestore();
     });
 
     it('stops the change and the mail when it throws', async () => {

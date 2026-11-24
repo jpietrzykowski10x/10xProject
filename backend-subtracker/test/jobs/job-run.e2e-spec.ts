@@ -1,11 +1,22 @@
 import { Logger } from '@nestjs/common';
-import { MoreThanOrEqual } from 'typeorm';
+import { MoreThanOrEqual, QueryFailedError, UpdateQueryBuilder } from 'typeorm';
 import { AuthCleanupScheduler } from '../../src/auth/auth-cleanup.scheduler.js';
+import {
+  type AuthCleanupResult,
+  AuthCleanupService,
+} from '../../src/auth/services/auth-cleanup.service.js';
 import { JobRun } from '../../src/jobs/entities/job-run.entity.js';
 import { JOB_NAMES } from '../../src/jobs/job-run.types.js';
 import { Mail } from '../../src/mail/entities/mail.entity.js';
 import { MailType } from '../../src/mail/mail.types.js';
-import { SubscriptionLifecycleService } from '../../src/subscriptions/services/subscription-lifecycle.service.js';
+import {
+  type LifecycleRunResult,
+  SubscriptionLifecycleService,
+} from '../../src/subscriptions/services/subscription-lifecycle.service.js';
+import {
+  type TrialReminderRunResult,
+  TrialReminderService,
+} from '../../src/subscriptions/services/trial-reminder.service.js';
 import { SubscriptionLifecycleScheduler } from '../../src/subscriptions/subscription-lifecycle.scheduler.js';
 import { TrialReminderScheduler } from '../../src/subscriptions/trial-reminder.scheduler.js';
 import {
@@ -106,13 +117,22 @@ describe('Jobs — run register (e2e)', () => {
     });
   });
 
-  it('records a failed lifecycle run and mails the operator once, without the error text', async () => {
+  it('records a failed lifecycle run with its step and code and mails the operator once, without the error text', async () => {
     const since = new Date();
     const sentBefore = sent.length;
-    vi.spyOn(
-      e2e.app.get(SubscriptionLifecycleService),
-      'advance',
-    ).mockRejectedValueOnce(new Error('forced lifecycle failure'));
+    // The first UPDATE of the run is step 1 (trial_to_active). Failing the query rather than the
+    // whole advance() keeps inStep in the path.
+    const execute = vi
+      .spyOn(UpdateQueryBuilder.prototype, 'execute')
+      .mockRejectedValueOnce(
+        new QueryFailedError(
+          'UPDATE "subscription" …',
+          [],
+          Object.assign(new Error('forced lifecycle failure'), {
+            code: '57014',
+          }),
+        ),
+      );
     const logError = vi
       .spyOn(Logger.prototype, 'error')
       .mockImplementation(() => undefined);
@@ -120,6 +140,7 @@ describe('Jobs — run register (e2e)', () => {
     try {
       await e2e.app.get(SubscriptionLifecycleScheduler).daily();
     } finally {
+      execute.mockRestore();
       logError.mockRestore();
     }
 
@@ -130,6 +151,7 @@ describe('Jobs — run register (e2e)', () => {
       trigger: 'cron',
       outcome: 'failed',
       counters: null,
+      failure: 'trial_to_active: 57014',
     });
     expect(runs[0].finishedAt).toBeInstanceOf(Date);
 
@@ -147,8 +169,146 @@ describe('Jobs — run register (e2e)', () => {
     expect(mails[0].subject).toBe(
       'SubTracker: zadanie subscription-lifecycle — failed',
     );
+    expect(mails[0].text).toContain('przyczyna: trial_to_active: 57014');
     expect(mails[0].text).not.toContain('forced lifecycle failure');
     expect(mails[0].html).not.toContain('forced lifecycle failure');
+  });
+
+  // S-11: a run that starts while the previous one is still going leaves a `skipped` row and an
+  // error line, and the held run still ends as a success.
+  describe('a run while the previous one is still going', () => {
+    let logError: ReturnType<typeof vi.spyOn>;
+
+    // A promise the held run waits on, and the function that lets it finish with the value.
+    function gate<T>(): { promise: Promise<T>; release: (value: T) => void } {
+      let release: (value: T) => void = () => undefined;
+      const promise = new Promise<T>((resolve) => {
+        release = resolve;
+      });
+      return { promise, release };
+    }
+
+    // The outcomes of the runs started since, sorted: the two runs can start in the same
+    // millisecond, and the held run's row is written in parallel with the skipped one.
+    const outcomesSince = async (since: Date) =>
+      (await runsSince(since)).map((run) => run.outcome ?? 'running').sort();
+
+    beforeEach(() => {
+      logError = vi
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+    });
+
+    afterEach(() => {
+      logError.mockRestore();
+    });
+
+    it('records the second lifecycle run as skipped', async () => {
+      const since = new Date();
+      const held = gate<LifecycleRunResult>();
+      const advance = vi
+        .spyOn(e2e.app.get(SubscriptionLifecycleService), 'advance')
+        .mockImplementationOnce(() => held.promise);
+      const scheduler = e2e.app.get(SubscriptionLifecycleScheduler);
+
+      try {
+        const first = scheduler.daily();
+        await scheduler.daily();
+
+        await vi.waitFor(async () => {
+          expect(await outcomesSince(since)).toEqual(['running', 'skipped']);
+        });
+        expect(logError).toHaveBeenCalledWith(
+          'Skipped: the previous lifecycle run is still going',
+        );
+
+        held.release({
+          trialsActivated: 0,
+          cancellationsCompleted: 0,
+          billingDatesRolled: 0,
+          billingRollFailed: 0,
+        });
+        await first;
+      } finally {
+        advance.mockRestore();
+      }
+
+      expect(await outcomesSince(since)).toEqual(['skipped', 'success']);
+    });
+
+    it('records the second cleanup run as skipped', async () => {
+      const since = new Date();
+      const held = gate<AuthCleanupResult>();
+      const purge = vi
+        .spyOn(e2e.app.get(AuthCleanupService), 'purge')
+        .mockImplementationOnce(() => held.promise);
+      const scheduler = e2e.app.get(AuthCleanupScheduler);
+
+      try {
+        const first = scheduler.daily();
+        await scheduler.daily();
+
+        await vi.waitFor(async () => {
+          expect(await outcomesSince(since)).toEqual(['running', 'skipped']);
+        });
+        expect(logError).toHaveBeenCalledWith(
+          'Skipped: the previous cleanup run is still going',
+        );
+
+        held.release({ tokens: 0, sessions: 0 });
+        await first;
+      } finally {
+        purge.mockRestore();
+      }
+
+      expect(await outcomesSince(since)).toEqual(['skipped', 'success']);
+    });
+
+    it('records the second trial reminder run as skipped and lets it and idle() resolve only after the first', async () => {
+      const since = new Date();
+      const held = gate<TrialReminderRunResult>();
+      const sendDue = vi
+        .spyOn(e2e.app.get(TrialReminderService), 'sendDue')
+        .mockImplementationOnce(() => held.promise);
+      const scheduler = e2e.app.get(TrialReminderScheduler);
+      let secondDone = false;
+      let idleDone = false;
+
+      try {
+        const first = scheduler.daily();
+        const second = scheduler.daily().then(() => {
+          secondDone = true;
+        });
+        const idle = scheduler.idle().then(() => {
+          idleDone = true;
+        });
+
+        // The skipped row is written before the second call waits for the first run.
+        await vi.waitFor(async () => {
+          expect(await outcomesSince(since)).toEqual(['running', 'skipped']);
+        });
+        expect(logError).toHaveBeenCalledWith(
+          'Skipped: the previous trial reminder run is still going',
+        );
+        expect(secondDone).toBe(false);
+        expect(idleDone).toBe(false);
+
+        held.release({
+          usersNotified: 0,
+          remindersSent: 0,
+          usersSkipped: 0,
+          usersFailed: 0,
+          remindersLost: 0,
+        });
+        await Promise.all([first, second, idle]);
+      } finally {
+        sendDue.mockRestore();
+      }
+
+      expect(secondDone).toBe(true);
+      expect(idleDone).toBe(true);
+      expect(await outcomesSince(since)).toEqual(['skipped', 'success']);
+    });
   });
 
   // J4: a run in which some users got no reminder must not look like a success.

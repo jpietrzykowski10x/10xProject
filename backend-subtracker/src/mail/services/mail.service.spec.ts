@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
-import type { Repository } from 'typeorm';
+import { QueryFailedError, type Repository } from 'typeorm';
 import { type EnvConfig, validateEnv } from '../../config/env.js';
 import type { User } from '../../users/entities/user.entity.js';
 import type { Mail } from '../entities/mail.entity.js';
@@ -48,9 +48,25 @@ function configFor(operatorMail: string | null) {
   } as unknown as ConfigService<EnvConfig, true>;
 }
 
-interface ExistsOptions {
-  where: { email?: unknown; isActive?: unknown };
+type AccountRow = Pick<User, 'id' | 'isActive'>;
+
+interface FindAccountOptions {
+  select: unknown;
+  where: { email?: unknown };
 }
+
+const activeAccount: AccountRow = { id: 'user-1', isActive: true };
+const blockedAccount: AccountRow = { id: 'user-1', isActive: false };
+
+// Shaped like a lost database connection reported by pg through TypeORM.
+const lookupError = () =>
+  new QueryFailedError(
+    'SELECT',
+    [USER],
+    Object.assign(new Error(`terminating connection for ${USER}`), {
+      code: '57P01',
+    }),
+  );
 
 function setup(operatorMail: string | null = OPERATOR) {
   const rows: Partial<Mail>[] = [];
@@ -67,8 +83,8 @@ function setup(operatorMail: string | null = OPERATOR) {
   const transport: MailTransport = { send };
   // Every user address has an active account unless a test says otherwise.
   const users = {
-    exists: vi.fn<(options: ExistsOptions) => Promise<boolean>>(() =>
-      Promise.resolve(true),
+    findOne: vi.fn<(options: FindAccountOptions) => Promise<AccountRow | null>>(
+      () => Promise.resolve(activeAccount),
     ),
   };
   const service = new MailService(
@@ -83,8 +99,12 @@ function setup(operatorMail: string | null = OPERATOR) {
 describe('MailService', () => {
   let logError: ReturnType<typeof vi.spyOn>;
   let logWarn: ReturnType<typeof vi.spyOn>;
+  let logInfo: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    logInfo = vi
+      .spyOn(Logger.prototype, 'log')
+      .mockImplementation(() => undefined);
     logError = vi
       .spyOn(Logger.prototype, 'error')
       .mockImplementation(() => undefined);
@@ -99,12 +119,12 @@ describe('MailService', () => {
   });
 
   describe('sendToUser', () => {
-    it('sends through the user channel, audits SENT and resolves to true', async () => {
+    it('sends through the user channel, audits SENT and resolves to sent', async () => {
       const { service, send, rows } = setup();
 
       await expect(
         service.sendToUser(MailType.MAGIC_LINK, USER, content),
-      ).resolves.toBe(true);
+      ).resolves.toBe('sent');
 
       expect(send).toHaveBeenCalledExactlyOnceWith({
         channel: 'user',
@@ -122,13 +142,13 @@ describe('MailService', () => {
       ]);
     });
 
-    it('audits FAILED with a truncated error and resolves to false after an SMTP error', async () => {
+    it('audits FAILED with a truncated error and resolves to send_failed after an SMTP error', async () => {
       const { service, send, rows } = setup();
       send.mockRejectedValueOnce(new Error('x'.repeat(600)));
 
       await expect(
         service.sendToUser(MailType.MAGIC_LINK, USER, content),
-      ).resolves.toBe(false);
+      ).resolves.toBe('send_failed');
 
       expect(rows[0]).toMatchObject({
         status: MailStatus.FAILED,
@@ -185,7 +205,7 @@ describe('MailService', () => {
 
         await expect(
           service.sendToUser(MailType.MAGIC_LINK, USER, content),
-        ).resolves.toBe(false);
+        ).resolves.toBe('recipient_typo');
 
         expect(send).toHaveBeenCalledTimes(1);
         expect(rows[0]).toMatchObject({
@@ -433,7 +453,7 @@ describe('MailService', () => {
 
       await expect(
         service.sendToUser(MailType.MAGIC_LINK, USER, content),
-      ).resolves.toBe(false);
+      ).resolves.toBe('send_failed');
 
       expect(send).toHaveBeenCalledTimes(2);
       expect(rows.map((row) => [row.type, row.status])).toEqual([
@@ -442,13 +462,13 @@ describe('MailService', () => {
       ]);
     });
 
-    it('only logs when the audit write fails, and still resolves to true', async () => {
+    it('only logs when the audit write fails, and still resolves to sent', async () => {
       const { service, mails, send } = setup();
       mails.save.mockRejectedValueOnce(new Error('db down'));
 
       await expect(
         service.sendToUser(MailType.MAGIC_LINK, USER, content),
-      ).resolves.toBe(true);
+      ).resolves.toBe('sent');
 
       expect(send).toHaveBeenCalledTimes(1);
       expect(logError).toHaveBeenCalledWith(expect.stringContaining('db down'));
@@ -461,44 +481,44 @@ describe('MailService', () => {
 
       await expect(
         service.sendToUser(MailType.MAGIC_LINK, USER, content),
-      ).resolves.toBe(false);
+      ).resolves.toBe('send_failed');
 
       expect(send.mock.calls[1][0].text).toContain('brak');
     });
 
     describe('only to an address that still has an account', () => {
-      it('checks an active account by the address it mails', async () => {
+      it('reads the account of the address it mails, before sending and before the audit row', async () => {
         const { service, users } = setup();
 
         await service.sendToUser(MailType.MAGIC_LINK, USER, content);
 
-        expect(users.exists).toHaveBeenNthCalledWith(1, {
-          where: { email: USER, isActive: true },
-        });
-        // The second check, before the audit row, only asks whether the account still exists.
-        expect(users.exists).toHaveBeenNthCalledWith(2, {
-          where: { email: USER },
-        });
+        expect(users.findOne).toHaveBeenCalledTimes(2);
+        for (const [options] of users.findOne.mock.calls) {
+          expect(options).toEqual({
+            select: { id: true, isActive: true },
+            where: { email: USER },
+          });
+        }
       });
 
       describe('to a blocked account', () => {
-        // A database with one blocked account at USER.
-        const blockedAccount = ({ where }: ExistsOptions) =>
-          Promise.resolve(where.email === USER && where.isActive === undefined);
-
         it.each<UserMailType>([MailType.MAGIC_LINK, MailType.TRIAL_REMINDER])(
-          'skips %s mail like mail to a missing account',
+          'skips %s mail without a row or an alert, and resolves to blocked',
           async (type) => {
             const { service, users, send, mails } = setup();
-            users.exists.mockImplementation(blockedAccount);
+            users.findOne.mockResolvedValue(blockedAccount);
 
             await expect(service.sendToUser(type, USER, content)).resolves.toBe(
-              false,
+              'blocked',
             );
 
             expect(send).not.toHaveBeenCalled();
             expect(mails.save).not.toHaveBeenCalled();
-            expect(JSON.stringify(logWarn.mock.calls)).not.toContain(USER);
+            expect(logInfo).toHaveBeenCalledExactlyOnceWith(
+              `Skipped ${type} mail: the account is blocked`,
+            );
+            expect(logWarn).not.toHaveBeenCalled();
+            expect(logError).not.toHaveBeenCalled();
           },
         );
 
@@ -506,10 +526,10 @@ describe('MailService', () => {
           'sends and audits %s mail',
           async (type) => {
             const { service, users, send, rows } = setup();
-            users.exists.mockImplementation(blockedAccount);
+            users.findOne.mockResolvedValue(blockedAccount);
 
             await expect(service.sendToUser(type, USER, content)).resolves.toBe(
-              true,
+              'sent',
             );
 
             expect(send).toHaveBeenCalledOnce();
@@ -520,44 +540,125 @@ describe('MailService', () => {
         );
       });
 
-      it('neither sends, audits nor alerts without an account, and resolves to false', async () => {
+      it('neither sends, audits nor alerts without an account, and resolves to no_account', async () => {
         const { service, users, send, mails } = setup();
-        users.exists.mockResolvedValue(false);
+        users.findOne.mockResolvedValue(null);
 
         await expect(
           service.sendToUser(MailType.TRIAL_REMINDER, USER, content),
-        ).resolves.toBe(false);
+        ).resolves.toBe('no_account');
 
         expect(send).not.toHaveBeenCalled();
         expect(mails.save).not.toHaveBeenCalled();
         expect(logWarn).toHaveBeenCalledExactlyOnceWith(
-          expect.stringContaining('no account'),
+          'Skipped TRIAL_REMINDER mail: no account with this address',
         );
-        expect(JSON.stringify(logWarn.mock.calls)).not.toContain(USER);
+        expect(logError).not.toHaveBeenCalled();
       });
 
-      it('treats a failed account lookup as a missing account', async () => {
-        const { service, users, send, mails } = setup();
-        users.exists.mockRejectedValue(new Error('db down'));
+      describe('when the account cannot be checked', () => {
+        it('audits FAILED, alerts the operator and resolves to lookup_failed', async () => {
+          const { service, users, send, rows } = setup();
+          // The check before sending fails; the one before the audit row works again.
+          users.findOne.mockRejectedValueOnce(lookupError());
 
-        await expect(
-          service.sendToUser(MailType.MAGIC_LINK, USER, content),
-        ).resolves.toBe(false);
+          await expect(
+            service.sendToUser(MailType.MAGIC_LINK, USER, content),
+          ).resolves.toBe('lookup_failed');
 
-        expect(send).not.toHaveBeenCalled();
-        expect(mails.save).not.toHaveBeenCalled();
-        expect(logError).toHaveBeenCalledWith(
-          expect.stringContaining('db down'),
-        );
+          expect(rows[0]).toEqual({
+            type: MailType.MAGIC_LINK,
+            recipient: USER,
+            status: MailStatus.FAILED,
+            errorMessage: 'account lookup failed',
+            sentAt: null,
+          });
+          expect(send).toHaveBeenCalledOnce();
+          const alert = send.mock.calls[0][0];
+          expect(alert).toMatchObject({ channel: 'operator', to: OPERATOR });
+          expect(alert.text).toContain('id: row-1');
+          expect(alert.text).toContain(`typ: ${MailType.MAGIC_LINK}`);
+          expect(logError).toHaveBeenCalledExactlyOnceWith(
+            'Checking the recipient of MAGIC_LINK mail failed (code: 57P01)',
+          );
+        });
+
+        it('logs one lookup error and audits the marker when the database stays down', async () => {
+          const { service, users, send, rows } = setup();
+          users.findOne.mockRejectedValue(lookupError());
+
+          await expect(
+            service.sendToUser(MailType.TRIAL_REMINDER, USER, content),
+          ).resolves.toBe('lookup_failed');
+
+          expect(rows[0]).toEqual({
+            type: MailType.TRIAL_REMINDER,
+            recipient: ANONYMIZED_RECIPIENT,
+            status: MailStatus.FAILED,
+            errorMessage: 'account lookup failed',
+            sentAt: null,
+          });
+          expect(send).toHaveBeenCalledOnce();
+          expect(logError).toHaveBeenCalledExactlyOnceWith(
+            'Checking the recipient of TRIAL_REMINDER mail failed (code: 57P01)',
+          );
+          const logged = JSON.stringify([
+            ...logWarn.mock.calls,
+            ...logError.mock.calls,
+          ]);
+          expect(logged).not.toContain(USER);
+        });
+
+        it('still alerts, without a row id, when the audit row cannot be saved either', async () => {
+          const { service, users, mails, send } = setup();
+          users.findOne.mockRejectedValue(lookupError());
+          mails.save.mockRejectedValueOnce(new Error('db down'));
+
+          await expect(
+            service.sendToUser(MailType.MAGIC_LINK, USER, content),
+          ).resolves.toBe('lookup_failed');
+
+          expect(send).toHaveBeenCalledOnce();
+          expect(send.mock.calls[0][0].text).toContain(
+            'id: brak (nie zapisano wiersza audytu)',
+          );
+        });
+
+        it('shares the alert window of its mail type with failed sends', async () => {
+          const { service, users, send } = setup();
+          send.mockRejectedValueOnce(new Error('smtp down'));
+          await service.sendToUser(MailType.MAGIC_LINK, USER, content);
+          users.findOne.mockRejectedValueOnce(lookupError());
+
+          await service.sendToUser(MailType.MAGIC_LINK, USER, content);
+
+          const alerts = send.mock.calls.filter(
+            ([message]) => message.channel === 'operator',
+          );
+          expect(alerts).toHaveLength(1);
+        });
+
+        it('names the class of an error without a database code', async () => {
+          const { service, users } = setup();
+          users.findOne.mockRejectedValueOnce(new TypeError('x is undefined'));
+
+          await service.sendToUser(MailType.MAGIC_LINK, USER, content);
+
+          expect(logError).toHaveBeenCalledExactlyOnceWith(
+            'Checking the recipient of MAGIC_LINK mail failed (code: TypeError)',
+          );
+        });
       });
 
       it('audits the marker instead of the address when the account goes during sending', async () => {
         const { service, users, rows } = setup();
-        users.exists.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+        users.findOne
+          .mockResolvedValueOnce(activeAccount)
+          .mockResolvedValueOnce(null);
 
         await expect(
           service.sendToUser(MailType.MAGIC_LINK, USER, content),
-        ).resolves.toBe(true);
+        ).resolves.toBe('sent');
 
         expect(rows).toEqual([
           {
@@ -570,14 +671,35 @@ describe('MailService', () => {
         ]);
       });
 
+      it('logs a failed re-check of a sent mail and anonymizes its row', async () => {
+        const { service, users, rows } = setup();
+        users.findOne
+          .mockResolvedValueOnce(activeAccount)
+          .mockRejectedValueOnce(lookupError());
+
+        await expect(
+          service.sendToUser(MailType.MAGIC_LINK, USER, content),
+        ).resolves.toBe('sent');
+
+        expect(rows[0]).toMatchObject({
+          recipient: ANONYMIZED_RECIPIENT,
+          status: MailStatus.SENT,
+        });
+        expect(logError).toHaveBeenCalledExactlyOnceWith(
+          'Checking the recipient of the MAGIC_LINK mail audit row failed (code: 57P01); the row is anonymized',
+        );
+      });
+
       it('drops the error message, which can quote the address, from such a failed mail', async () => {
         const { service, users, send, rows } = setup();
-        users.exists.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+        users.findOne
+          .mockResolvedValueOnce(activeAccount)
+          .mockResolvedValueOnce(null);
         send.mockRejectedValueOnce(new Error(`550 refused ${USER}`));
 
         await expect(
           service.sendToUser(MailType.MAGIC_LINK, USER, content),
-        ).resolves.toBe(false);
+        ).resolves.toBe('send_failed');
 
         expect(rows[0]).toEqual({
           type: MailType.MAGIC_LINK,
@@ -594,7 +716,7 @@ describe('MailService', () => {
 
         await service.notifyOperator(content);
 
-        expect(users.exists).not.toHaveBeenCalled();
+        expect(users.findOne).not.toHaveBeenCalled();
         expect(rows[0]).toMatchObject({ recipient: OPERATOR });
       });
     });

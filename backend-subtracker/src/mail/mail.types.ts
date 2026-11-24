@@ -26,6 +26,25 @@ export const ACCOUNT_ACCESS_MAIL_TYPES: readonly UserMailType[] = [
   MailType.SESSIONS_RESET,
 ];
 
+// What became of a user mail. Only `sent` means the transport accepted it:
+// - no_account: no account with the address, nothing sent or audited;
+// - blocked: the account is blocked and the type is not about the access to it, nothing sent;
+// - lookup_failed: the account could not be checked, nothing sent, a FAILED row and an alert;
+// - send_failed: the transport refused it, a FAILED row and an alert;
+// - recipient_typo: the server refused the address itself, a FAILED row without an alert.
+export type MailOutcome =
+  | 'sent'
+  | 'no_account'
+  | 'blocked'
+  | 'lookup_failed'
+  | 'send_failed'
+  | 'recipient_typo';
+
+// For callers that only need to know whether the mail went out.
+export function isDelivered(outcome: MailOutcome): outcome is 'sent' {
+  return outcome === 'sent';
+}
+
 export interface MailContent {
   subject: string;
   text: string;

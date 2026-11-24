@@ -104,6 +104,19 @@ describe('decide', () => {
     expect(decide(decision.next, false, at(12 * 60 + 5)).action).toBe('none');
   });
 
+  // Literal times, so a changed REMIND_EVERY_HOURS shows up here too.
+  it('stays quiet at 11 h 59 min after the last mail and reminds at 12 h', () => {
+    const alerted: TargetState = {
+      failures: 3,
+      alerted: true,
+      lastMailAt: START.toISOString(),
+      firstFailureAt: at(-10).toISOString(),
+    };
+
+    expect(decide(alerted, false, at(11 * 60 + 59)).action).toBe('none');
+    expect(decide(alerted, false, at(12 * 60)).action).toBe('remind-down');
+  });
+
   it('reminds when the time of the last mail is missing or unreadable', () => {
     expect(decide({ failures: 5, alerted: true }, false, START).action).toBe(
       'remind-down',

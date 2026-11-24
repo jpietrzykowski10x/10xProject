@@ -1,8 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { type FindOptionsWhere, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { type EnvConfig, envFromConfig } from '../../config/env.js';
+import { failureCodeOf } from '../../shared/database/failure-code.js';
 import { User } from '../../users/entities/user.entity.js';
 import {
   Mail,
@@ -15,6 +16,7 @@ import {
   ANONYMIZED_RECIPIENT,
   type MailChannel,
   type MailContent,
+  type MailOutcome,
   MailStatus,
   MailType,
   type UserMailType,
@@ -26,6 +28,9 @@ export const OPERATOR_ALERT_INTERVAL_MS = 15 * 60 * 1000;
 // Reserved while an alert is on the way, and kept as the retry delay when it fails.
 export const OPERATOR_ALERT_RETRY_MS = 60 * 1000;
 
+// The error_message of the FAILED row of a mail whose recipient could not be checked.
+export const ACCOUNT_LOOKUP_FAILED_MESSAGE = 'account lookup failed';
+
 interface OperatorAlertState {
   // Until then a failure of this type sends no alert and only counts as skipped.
   blockedUntil: number;
@@ -36,16 +41,29 @@ interface OperatorAlertState {
   inFlight: boolean;
 }
 
+type AccountLookup =
+  | { kind: 'present'; isActive: boolean }
+  | { kind: 'missing' }
+  | { kind: 'lookup_failed'; error: unknown };
+
+// The text of a FAILED row. An SMTP message can quote the address, so it goes together with the
+// address of a deleted account; a fixed text of ours stays.
+interface AuditFailure {
+  message: string;
+  mayQuoteAddress: boolean;
+}
+
 function errorMessageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
 // Neither public method rejects: callers fire mail after their response or transaction, and a
 // mail problem must not change their outcome. Failures end up in the audit row and in the logs.
-// sendToUser resolves to whether the transport accepted the mail (true even when the audit row
-// could not be saved), so a caller that keeps a "sent" marker can release it after a failure.
-// It mails only addresses that still have an account: a deleted account gets nothing, and one
-// deleted while its mail was on the way leaves an audit row without its address.
+// sendToUser resolves to a MailOutcome; only 'sent' means the transport accepted the mail ('sent'
+// even when the audit row could not be saved), so a caller that keeps a "sent" marker can release
+// it after anything else. It mails only addresses that still have an account: a deleted account
+// gets nothing, and one deleted while its mail was on the way leaves an audit row without its
+// address. Each outcome leaves one log line with the type and the reason, never the address.
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
@@ -65,24 +83,38 @@ export class MailService {
     type: UserMailType,
     to: string,
     content: MailContent,
-  ): Promise<boolean> {
-    if (!(await this.mayReceive(type, to))) {
-      // Nothing to audit or alert about, and no address in the log, as everywhere here.
-      this.logger.warn(
-        `Skipped ${type} mail: no account with this address may receive it`,
+  ): Promise<MailOutcome> {
+    const account = await this.lookUpAccount(to);
+    if (account.kind === 'lookup_failed') {
+      // A database problem, not a missing account: a FAILED row (if the database takes it) and
+      // an alert, like a failed send.
+      this.logger.error(
+        `Checking the recipient of ${type} mail failed (code: ${failureCodeOf(account.error)})`,
       );
-      return false;
+      const rowId = await this.saveAudit('user', type, to, MailStatus.FAILED, {
+        message: ACCOUNT_LOOKUP_FAILED_MESSAGE,
+        mayQuoteAddress: false,
+      });
+      await this.alertOperatorAboutFailure(type, rowId);
+      return 'lookup_failed';
     }
-    const { sent, needsAlert, rowId } = await this.deliver(
-      'user',
-      type,
-      to,
-      content,
-    );
-    if (needsAlert) {
+    // Nothing to audit or alert about in the two skips, and no address in the log, as everywhere
+    // here.
+    if (account.kind === 'missing') {
+      this.logger.warn(`Skipped ${type} mail: no account with this address`);
+      return 'no_account';
+    }
+    // A blocked account gets only the mail about the access to it; the rest waits until it is
+    // unblocked (the jobs catch up) or is lost, like a sign-in link it could not use anyway.
+    if (!account.isActive && !ACCOUNT_ACCESS_MAIL_TYPES.includes(type)) {
+      this.logger.log(`Skipped ${type} mail: the account is blocked`);
+      return 'blocked';
+    }
+    const { outcome, rowId } = await this.deliver('user', type, to, content);
+    if (outcome === 'send_failed') {
       await this.alertOperatorAboutFailure(type, rowId);
     }
-    return sent;
+    return outcome;
   }
 
   // Resolves to whether the transport accepted the mail; false without an operator address.
@@ -94,38 +126,38 @@ export class MailService {
       return false;
     }
     // A failed alert is only logged and audited by deliver(), so it cannot trigger another alert.
-    const { sent } = await this.deliver(
+    const { outcome } = await this.deliver(
       'operator',
       MailType.OPERATOR_ALERT,
       this.operatorMail,
       content,
     );
-    return sent;
+    return outcome === 'sent';
   }
 
+  // send_failed needs an alert (sendToUser's job); recipient_typo, a refused address, does not.
   private async deliver(
     channel: MailChannel,
     type: MailType,
     to: string,
     content: MailContent,
-  ): Promise<{ sent: boolean; needsAlert: boolean; rowId: string | null }> {
+  ): Promise<{
+    outcome: 'sent' | 'send_failed' | 'recipient_typo';
+    rowId: string | null;
+  }> {
     try {
       await this.transport.send({ channel, to, ...content });
     } catch (error) {
-      const errorMessage = errorMessageOf(error).slice(
-        0,
-        MAIL_ERROR_MESSAGE_MAX_LENGTH,
-      );
-      const rowId = await this.saveAudit(
-        channel,
-        type,
-        to,
-        MailStatus.FAILED,
-        errorMessage,
-      );
+      const rowId = await this.saveAudit(channel, type, to, MailStatus.FAILED, {
+        message: errorMessageOf(error).slice(0, MAIL_ERROR_MESSAGE_MAX_LENGTH),
+        mayQuoteAddress: true,
+      });
       const recipientTypo = isRecipientTypo(error);
       this.logFailure(type, error, rowId, recipientTypo);
-      return { sent: false, needsAlert: !recipientTypo, rowId };
+      return {
+        outcome: recipientTypo ? 'recipient_typo' : 'send_failed',
+        rowId,
+      };
     }
     const rowId = await this.saveAudit(
       channel,
@@ -134,28 +166,21 @@ export class MailService {
       MailStatus.SENT,
       null,
     );
-    return { sent: true, needsAlert: false, rowId };
+    return { outcome: 'sent', rowId };
   }
 
-  // A blocked account gets only the mail about the access to it; the rest waits until it is
-  // unblocked (the jobs catch up) or is lost, like a sign-in link it could not use anyway.
-  private mayReceive(type: UserMailType, address: string): Promise<boolean> {
-    return this.accountExists(
-      ACCOUNT_ACCESS_MAIL_TYPES.includes(type)
-        ? { email: address }
-        : { email: address, isActive: true },
-    );
-  }
-
-  // A failed lookup counts as a missing account: no mail before sending, no address in the audit.
-  private async accountExists(where: FindOptionsWhere<User>): Promise<boolean> {
+  // Logs nothing itself: sendToUser logs a failed lookup, and saveAudit only anonymizes after one.
+  private async lookUpAccount(address: string): Promise<AccountLookup> {
     try {
-      return await this.users.exists({ where });
+      const user = await this.users.findOne({
+        select: { id: true, isActive: true },
+        where: { email: address },
+      });
+      return user === null
+        ? { kind: 'missing' }
+        : { kind: 'present', isActive: user.isActive };
     } catch (error) {
-      this.logger.error(
-        `Checking the account of a mail recipient failed: ${errorMessageOf(error)}`,
-      );
-      return false;
+      return { kind: 'lookup_failed', error };
     }
   }
 
@@ -177,23 +202,40 @@ export class MailService {
 
   // A user's account is checked again here: if it was deleted while the mail was on the way, its
   // mail rows have already been anonymized, so this row must not bring the address back, nor an
-  // SMTP message quoting it.
+  // SMTP message quoting it. A check that fails counts as a deleted account. It is logged, except
+  // after a failed lookup in sendToUser, which has logged it already (one failed lookup, one error
+  // line).
   private async saveAudit(
     channel: MailChannel,
     type: MailType,
     to: string,
     status: MailStatus,
-    errorMessage: string | null,
+    failure: AuditFailure | null,
   ): Promise<string | null> {
-    const accountGone =
-      channel === 'user' && !(await this.accountExists({ email: to }));
+    let accountGone = false;
+    if (channel === 'user') {
+      const account = await this.lookUpAccount(to);
+      accountGone = account.kind !== 'present';
+      if (
+        account.kind === 'lookup_failed' &&
+        failure?.message !== ACCOUNT_LOOKUP_FAILED_MESSAGE
+      ) {
+        this.logger.error(
+          `Checking the recipient of the ${type} mail audit row failed (code: ${failureCodeOf(account.error)}); the row is anonymized`,
+        );
+      }
+    }
+    const errorMessage =
+      failure === null || (accountGone && failure.mayQuoteAddress)
+        ? null
+        : failure.message;
     try {
       const row = await this.mails.save(
         this.mails.create({
           type,
           recipient: accountGone ? ANONYMIZED_RECIPIENT : to,
           status,
-          errorMessage: accountGone ? null : errorMessage,
+          errorMessage,
           sentAt: status === MailStatus.SENT ? new Date() : null,
         }),
       );

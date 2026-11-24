@@ -46,7 +46,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-13 | request-context-and-denial-reasons | operator widzi w logu trasę, użytkownika i id żądania błędu oraz przyczyny odmów 4xx  | —             | FR-021                  | done |
 | S-14 | log-format-version-and-access-log  | operator czyta logi w jednym formacie, z wersją i access logiem obu procesów         | S-13          | FR-022                  | proposed |
 | S-15 | client-and-ssr-error-visibility    | błędy przeglądarki i SSR zostawiają ślad, a nieaktualny plik po deployu przeładowuje stronę | S-14     | FR-023                  | proposed |
-| S-16 | failure-causes-and-audit-trail     | operator widzi przyczynę porażki joba i maila, a usunięcia i odmowy admina mają ślad | S-11          | FR-024                  | proposed |
+| S-16 | failure-causes-and-audit-trail     | operator widzi przyczynę porażki joba i maila, a usunięcia i odmowy admina mają ślad | S-11          | FR-024                  | in-progress |
 | S-17 | own-category-rename-and-delete     | użytkownik zmienia nazwę własnej kategorii albo usuwa pustą                          | —             | FR-025, FR-009, FR-010  | ready    |
 | S-18 | subscription-list-sort-filter      | użytkownik sortuje i filtruje listę subskrypcji                                      | —             | FR-016                  | ready    |
 
@@ -155,7 +155,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **Unknowns:** —
 - **Risk:** Po S-11, bo przyczyny trafiają do jego rejestru przebiegów; ryzyko w zakresie (wiele drobnych ustaleń) — plan grupuje je w fazy wg modułu, a reszta z §6 pkt 8 raportu wchodzi tylko tam, gdzie slice i tak dotyka kodu.
 - **Notes:** Przeniesione z przeglądu CI S-11 (PR #62, `context/changes/operator-liveness-alerts/reviews/impl-review.md`, F3): ścieżka „poprzedni przebieg trwa” (`recordSkipped` przy podniesionej fladze `running`) w trzech schedulerach nie ma testów; dopisać po jednym teście na scheduler (pierwszy przebieg trzymany otwarty, drugi zostawia wiersz `skipped`; dla przypomnień także: drugie wywołanie rozwiązuje się dopiero po pierwszym, na czym polega `idle()`). Z trzeciego przeglądu (PR #62, F3): testy granicy 12 h w `watchdog-policy.spec.ts` liczą czas ze stałej `REMIND_EVERY_HOURS`, więc zmianę progu łapie tylko test przypinający wartość; dopisać przypadki z dosłownymi czasami (11 h 59 min cicho, 12 h przypomnienie).
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-17: Zmiana nazwy i usuwanie własnych kategorii
 

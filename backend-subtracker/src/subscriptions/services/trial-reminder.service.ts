@@ -3,8 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, type WhereExpressionBuilder } from 'typeorm';
 import { type EnvConfig, envFromConfig } from '../../config/env.js';
-import { MailType } from '../../mail/mail.types.js';
+import { inStep, JobStepError } from '../../jobs/job-run.types.js';
+import { type MailOutcome, MailType } from '../../mail/mail.types.js';
 import { MailService } from '../../mail/services/mail.service.js';
+import { failureCodeOf } from '../../shared/database/failure-code.js';
 import { OWNER_IS_ACTIVE } from '../active-owner.js';
 import { Subscription } from '../entities/subscription.entity.js';
 import { BillingCycle, SubscriptionStatus } from '../subscription.types.js';
@@ -14,13 +16,24 @@ import {
   trialReminderWindow,
 } from '../trial-reminder.js';
 
-// What one run did: users who got a mail, trials listed in those mails, and users whose mail
-// failed (their trials stay due for the next run).
+// What one run did: users who got a mail and the trials listed in those mails; users skipped (the
+// account was deleted or blocked in the meantime, or the server refused the address as
+// nonexistent); users whose mail failed (their trials stay due for the next run); and users whose
+// claim could not be released after a failed or skipped mail (their reminder is lost).
 export interface TrialReminderRunResult {
   usersNotified: number;
   remindersSent: number;
+  usersSkipped: number;
   usersFailed: number;
+  remindersLost: number;
 }
+
+// How the reminder of one user ended (remind returns null when another run or an edit got to the
+// rows first).
+// `trials` of `lost` counts the claimed rows, like `sent`, so remindersSent and remindersLost
+// compare.
+type UserReminder =
+  { kind: 'sent' | 'lost'; trials: number } | { kind: 'skipped' | 'failed' };
 
 interface DueUser {
   userId: string;
@@ -61,8 +74,9 @@ function whereDue<T extends WhereExpressionBuilder>(
 }
 
 // The trial reminder job over every account. Per user: claim the due rows (marker set to the
-// trial end date), send one mail listing them, and release the claim when the mail failed, so the
-// next run tries again. A claim is a conditional UPDATE, so two overlapping runs never mail the
+// trial end date), send one mail listing them, and release the claim when the mail did not go out,
+// so the next run tries again; an address the server refused as nonexistent keeps the claim, so a
+// typo is not mailed every day. A claim is a conditional UPDATE, so two overlapping runs never mail the
 // same row twice; a crash between the claim and the send loses only that user's reminders.
 @Injectable()
 export class TrialReminderService {
@@ -93,46 +107,61 @@ export class TrialReminderService {
     const result: TrialReminderRunResult = {
       usersNotified: 0,
       remindersSent: 0,
+      usersSkipped: 0,
       usersFailed: 0,
+      remindersLost: 0,
     };
     for (const user of users) {
       try {
-        const sent = await this.remind(user, today);
-        if (sent === null) {
+        const reminder = await this.remind(user, today);
+        if (reminder === null) {
           continue;
         }
-        if (sent > 0) {
-          result.usersNotified += 1;
-          result.remindersSent += sent;
-        } else {
-          result.usersFailed += 1;
+        switch (reminder.kind) {
+          case 'sent':
+            result.usersNotified += 1;
+            result.remindersSent += reminder.trials;
+            break;
+          case 'skipped':
+            result.usersSkipped += 1;
+            break;
+          case 'failed':
+            result.usersFailed += 1;
+            break;
+          case 'lost':
+            result.remindersLost += reminder.trials;
+            break;
         }
       } catch (error) {
-        // The message only: no address and no query parameters in the log.
-        this.logger.error(
-          `Trial reminder for one user failed: ${error instanceof Error ? error.message : 'non-error value thrown'}`,
-        );
+        // Only errors before anything was claimed reach this: nothing is reserved, so the next run
+        // tries again.
+        this.logStepFailure(user, error);
         result.usersFailed += 1;
       }
     }
     return result;
   }
 
-  // The number of trials in the mail that went out, 0 when the mail failed (claim released), or
-  // null when another run or an edit got to the rows first.
-  private async remind(user: DueUser, today: string): Promise<number | null> {
-    const claim = await whereDue(
-      this.subscriptions
-        .createQueryBuilder()
-        .update(Subscription)
-        .set({ trialReminderSentFor: () => 'trial_end_date' })
-        .where('"subscription"."user_id" = :userId', { userId: user.userId }),
-      today,
-    )
-      .returning(
-        'id, name, amount, billing_cycle, CAST(trial_end_date AS text) AS trial_end_date',
+  private async remind(
+    user: DueUser,
+    today: string,
+  ): Promise<UserReminder | null> {
+    const claim = await inStep('reserve', () =>
+      whereDue(
+        this.subscriptions
+          .createQueryBuilder()
+          .update(Subscription)
+          .set({ trialReminderSentFor: () => 'trial_end_date' })
+          .where('"subscription"."user_id" = :userId', {
+            userId: user.userId,
+          }),
+        today,
       )
-      .execute();
+        .returning(
+          'id, name, amount, billing_cycle, CAST(trial_end_date AS text) AS trial_end_date',
+        )
+        .execute(),
+    );
     const rows = claim.raw as ClaimedRow[];
     if (rows.length === 0) {
       return null;
@@ -144,28 +173,75 @@ export class TrialReminderService {
       amount: row.amount,
       billingCycle: row.billing_cycle,
     }));
-    const sent = await this.mail.sendToUser(
-      MailType.TRIAL_REMINDER,
-      user.email,
-      trialReminderMail({
-        items,
-        today,
-        subscriptionsUrl: this.subscriptionsUrl,
-      }),
-    );
-    if (sent) {
-      return items.length;
+    const lost = { kind: 'lost', trials: rows.length } as const;
+    let outcome: MailOutcome;
+    try {
+      outcome = await inStep('send', () =>
+        this.mail.sendToUser(
+          MailType.TRIAL_REMINDER,
+          user.email,
+          trialReminderMail({
+            items,
+            today,
+            subscriptionsUrl: this.subscriptionsUrl,
+          }),
+        ),
+      );
+    } catch (error) {
+      // sendToUser should never reject; if it does, the rows are claimed, so they are released
+      // like after a failed mail, or the reminder counts as lost.
+      this.logStepFailure(user, error);
+      return (await this.release(user, rows)) ? { kind: 'failed' } : lost;
     }
+    switch (outcome) {
+      case 'sent':
+        return { kind: 'sent', trials: items.length };
+      case 'recipient_typo':
+        // The claim stays: the address does not exist, so the next run would only fail again.
+        this.logger.warn(
+          `Trial reminder for user ${user.userId} skipped: the server refused the address as nonexistent; the reminder stays marked as sent`,
+        );
+        return { kind: 'skipped' };
+      case 'no_account':
+      case 'blocked':
+        // Deleted or blocked after the claim: released, so an unblocked account gets it later.
+        return (await this.release(user, rows)) ? { kind: 'skipped' } : lost;
+      case 'send_failed':
+      case 'lookup_failed':
+        return (await this.release(user, rows)) ? { kind: 'failed' } : lost;
+    }
+  }
 
-    // Released only while the marker still holds the claimed date: an edit made in between
-    // (a new end date) is not overwritten.
-    await this.subscriptions
-      .createQueryBuilder()
-      .update(Subscription)
-      .set({ trialReminderSentFor: null })
-      .where('id IN (:...ids)', { ids: rows.map((row) => row.id) })
-      .andWhere('trial_reminder_sent_for = trial_end_date')
-      .execute();
-    return 0;
+  // The user's id, the step and the code only: no address and no query parameters.
+  private logStepFailure(user: DueUser, error: unknown): void {
+    const step = error instanceof JobStepError ? error.step : 'unknown';
+    const cause = error instanceof JobStepError ? error.cause : error;
+    this.logger.error(
+      `Trial reminder for user ${user.userId} failed in step ${step} (code: ${failureCodeOf(cause)})`,
+    );
+  }
+
+  // Releases the claim so the next run tries again; false (and an error line) when it could not
+  // be released, so the reminder for these end dates is lost. Released only while the marker
+  // still holds the claimed date: an edit made in between (a new end date) is not overwritten.
+  private async release(user: DueUser, rows: ClaimedRow[]): Promise<boolean> {
+    try {
+      await this.subscriptions
+        .createQueryBuilder()
+        .update(Subscription)
+        .set({ trialReminderSentFor: null })
+        .where('id IN (:...ids)', { ids: rows.map((row) => row.id) })
+        .andWhere('trial_reminder_sent_for = trial_end_date')
+        .execute();
+      return true;
+    } catch (error) {
+      const dates = [...new Set(rows.map((row) => row.trial_end_date))]
+        .sort()
+        .join(', ');
+      this.logger.error(
+        `Releasing the trial reminder of user ${user.userId} failed (code: ${failureCodeOf(error)}); the reminder for ${dates} is lost`,
+      );
+      return false;
+    }
   }
 }

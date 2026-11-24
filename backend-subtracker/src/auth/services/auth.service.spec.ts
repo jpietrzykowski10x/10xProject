@@ -1,9 +1,14 @@
 import { UnauthorizedException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
-import { type DataSource, IsNull } from 'typeorm';
+import { type DataSource, In, IsNull } from 'typeorm';
 import { type EnvConfig, validateEnv } from '../../config/env.js';
 import { Mail } from '../../mail/entities/mail.entity.js';
-import { type MailContent, MailType } from '../../mail/mail.types.js';
+import {
+  type MailContent,
+  type MailOutcome,
+  MailStatus,
+  MailType,
+} from '../../mail/mail.types.js';
 import type { MailService } from '../../mail/services/mail.service.js';
 import { denialOf } from '../../shared/logging/denial.js';
 import { RoleCode } from '../../shared/types/role-code.js';
@@ -137,7 +142,11 @@ function setup({
     createQueryBuilder: () => query,
   };
   // The mail audit, read outside the transaction: was the mail about the block sent recently?
-  const mails = { exists: vi.fn(() => Promise.resolve(false)) };
+  const mails = {
+    exists: vi.fn<
+      (options: { where: Record<string, unknown> }) => Promise<boolean>
+    >(() => Promise.resolve(false)),
+  };
   const dataSource = {
     transaction: <T>(work: (entityManager: typeof manager) => Promise<T>) =>
       work(manager),
@@ -145,8 +154,8 @@ function setup({
   } as unknown as DataSource;
 
   const sendToUser = vi.fn<
-    (type: MailType, to: string, content: MailContent) => Promise<void>
-  >(() => Promise.resolve());
+    (type: MailType, to: string, content: MailContent) => Promise<MailOutcome>
+  >(() => Promise.resolve('sent'));
   const create = vi.fn(() => Promise.resolve('session-token'));
   const service = new AuthService(
     dataSource,
@@ -219,6 +228,23 @@ describe('AuthService', () => {
       expect(sendToUser).not.toHaveBeenCalled();
     });
 
+    it('counts a failed mail about the block as an attempt, like a sent one', async () => {
+      const { service, mails } = setup({
+        found: userWith({ isActive: false }),
+      });
+
+      await expect(service.requestLink(ADDRESS)).rejects.toBeInstanceOf(
+        AccountBlockedException,
+      );
+
+      expect(mails.exists).toHaveBeenCalledOnce();
+      expect(mails.exists.mock.calls[0][0].where).toMatchObject({
+        type: MailType.ACCOUNT_BLOCKED,
+        recipient: ADDRESS,
+        status: In([MailStatus.SENT, MailStatus.FAILED]),
+      });
+    });
+
     it('refuses a blocked account before the mail about the block has gone out', async () => {
       const { service, sendToUser } = setup({
         found: userWith({ isActive: false }),
@@ -228,6 +254,37 @@ describe('AuthService', () => {
       await expect(service.requestLink(ADDRESS)).rejects.toBeInstanceOf(
         AccountBlockedException,
       );
+    });
+
+    it('sends no second mail about the block while the first attempt is still going', async () => {
+      const { service, mails, sendToUser } = setup({
+        found: userWith({ isActive: false }),
+      });
+      let finish: (outcome: MailOutcome) => void = () => undefined;
+      sendToUser.mockReturnValueOnce(
+        new Promise<MailOutcome>((resolve) => {
+          finish = resolve;
+        }),
+      );
+
+      await expect(service.requestLink(ADDRESS)).rejects.toBeInstanceOf(
+        AccountBlockedException,
+      );
+      // The audit row of the first attempt does not exist yet.
+      await expect(service.requestLink(ADDRESS)).rejects.toBeInstanceOf(
+        AccountBlockedException,
+      );
+      expect(sendToUser).toHaveBeenCalledOnce();
+      expect(mails.exists).toHaveBeenCalledOnce();
+
+      // Once it ends, the gate is the audit row again.
+      finish('send_failed');
+      await new Promise((resolve) => setImmediate(resolve));
+      await expect(service.requestLink(ADDRESS)).rejects.toBeInstanceOf(
+        AccountBlockedException,
+      );
+      expect(mails.exists).toHaveBeenCalledTimes(2);
+      expect(sendToUser).toHaveBeenCalledTimes(2);
     });
 
     it('normalizes the address before looking it up, under a row lock', async () => {

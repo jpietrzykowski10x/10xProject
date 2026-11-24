@@ -15,14 +15,14 @@ import {
   LIKE_ESCAPE,
 } from '../../shared/database/like-pattern.js';
 import { POLISH_COLLATION } from '../../shared/database/polish-collation.js';
-import { withDenial } from '../../shared/logging/denial.js';
+import { denialOf, withDenial } from '../../shared/logging/denial.js';
 import type { AuthUser } from '../../shared/types/auth-user.js';
 import type { RoleCode } from '../../shared/types/role-code.js';
 import { BudgetService } from '../../subscriptions/services/budget.service.js';
 import { SubscriptionsService } from '../../subscriptions/services/subscriptions.service.js';
 import { UserRole } from '../../users/entities/user-role.entity.js';
 import { User } from '../../users/entities/user.entity.js';
-import { AdminAction } from '../admin-audit.types.js';
+import { type AccessAction, AdminAction } from '../admin-audit.types.js';
 import { canManage, visibleRole } from '../admin-rank.js';
 import {
   ADMIN_SEARCH_LIMIT,
@@ -95,7 +95,8 @@ export class AdminUsersService {
 
   // Accounts whose address contains the fragment literally (`%`, `_` and `\` match only
   // themselves), optionally only the active or blocked ones, in Polish order, at most ADMIN_SEARCH_LIMIT.
-  // The roles come from a second query, so the limit counts accounts, not joined rows.
+  // The roles come from a second query, so the limit counts accounts, not joined rows. Every
+  // search leaves a SEARCH row with the length of the fragment, never the fragment itself.
   async search(
     actor: AuthUser,
     { q, status }: SearchUsersDto,
@@ -121,6 +122,12 @@ export class AdminUsersService {
       this.users.manager,
       users.map((user) => user.id),
     );
+    await this.audit.recordOutside({
+      action: AdminAction.SEARCH,
+      actorId: actor.id,
+      targetId: null,
+      details: { status, qLength: q?.length ?? 0, results: users.length },
+    });
     return users.map((user) =>
       toSummary(actor, user, roles.get(user.id) ?? []),
     );
@@ -174,11 +181,13 @@ export class AdminUsersService {
   // The answers come in this order: 404 for an unknown id (AccountAccessService), 403 when the
   // actor does not outrank the account, 409 when its state does not allow the action. The rank is
   // checked before the state, so a refused actor learns nothing about the account. The audit row
-  // is written in the action's transaction: a 403 or 409 rolls it back with the change.
+  // is written in the action's transaction: a 403 or 409 rolls it back with the change. A rank
+  // refusal then leaves a DENIED row of its own, written after the rollback; the same exception
+  // goes on, so the answer and the Denials line stay as they were.
   private async change(
     actor: AuthUser,
     id: string,
-    action: AdminAction,
+    action: AccessAction,
     apply: AccessChange,
   ): Promise<AdminUserSummary> {
     let targetRoles: RoleCode[] = [];
@@ -197,8 +206,39 @@ export class AdminUsersService {
           },
         });
       }
-      await this.audit.record(manager, actor.id, locked.id, action);
+      // The id goes to the log line of the mail that reports the change.
+      return this.audit.record(manager, {
+        action,
+        actorId: actor.id,
+        targetId: locked.id,
+      });
+    }).catch(async (error: unknown) => {
+      await this.recordRankRefusal(actor, id, action, error);
+      throw error;
     });
     return toSummary(actor, user, targetRoles);
+  }
+
+  // A DENIED row for a rank refusal, written after its transaction rolled back; any other error
+  // leaves no row. Reads the words of the Denials line, so the row and the line say the same.
+  private async recordRankRefusal(
+    actor: AuthUser,
+    id: string,
+    action: AccessAction,
+    error: unknown,
+  ): Promise<void> {
+    const denial = denialOf(error);
+    if (denial?.code !== CANNOT_MANAGE_DENIAL) {
+      return;
+    }
+    await this.audit.recordOutside({
+      action: AdminAction.DENIED,
+      actorId: actor.id,
+      targetId: denial.ids?.target ?? id,
+      details: {
+        action: denial.ids?.action ?? action.toLowerCase(),
+        why: denial.ids?.why ?? 'rank',
+      },
+    });
   }
 }

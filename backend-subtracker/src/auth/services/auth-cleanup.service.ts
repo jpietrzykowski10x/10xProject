@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
+import { inStep } from '../../jobs/job-run.types.js';
 import { CLEANUP_RETENTION } from '../auth.constants.js';
 import { MagicLinkToken } from '../entities/magic-link-token.entity.js';
 import { Session } from '../entities/session.entity.js';
@@ -24,10 +25,17 @@ export class AuthCleanupService {
 
   async purge(now: Date): Promise<AuthCleanupResult> {
     const limit = new Date(now.getTime() - CLEANUP_RETENTION);
-    const tokens = await this.tokens.delete({ expiresAt: LessThan(limit) });
+    // Each DELETE is a named step, so a failed run records which one failed.
+    const tokens = await inStep('magic_link_tokens', () =>
+      this.tokens.delete({ expiresAt: LessThan(limit) }),
+    );
     // Two queries, so each can use its own index.
-    const expired = await this.sessions.delete({ expiresAt: LessThan(limit) });
-    const revoked = await this.sessions.delete({ revokedAt: LessThan(limit) });
+    const expired = await inStep('expired_sessions', () =>
+      this.sessions.delete({ expiresAt: LessThan(limit) }),
+    );
+    const revoked = await inStep('revoked_sessions', () =>
+      this.sessions.delete({ revokedAt: LessThan(limit) }),
+    );
     return {
       tokens: tokens.affected ?? 0,
       sessions: (expired.affected ?? 0) + (revoked.affected ?? 0),

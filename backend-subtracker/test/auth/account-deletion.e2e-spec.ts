@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { In } from 'typeorm';
 import { AdminAction } from '../../src/admin/admin-audit.types.js';
 import { AdminAudit } from '../../src/admin/entities/admin-audit.entity.js';
@@ -48,6 +49,8 @@ describe('Auth — account deletion (e2e)', () => {
   const anonymizedMailIds: string[] = [];
   // Audit rows of a deleted account outlive it and no longer match the file's addresses either.
   const keptAuditIds: string[] = [];
+  // Deleted accounts, for their ACCOUNT_DELETED rows.
+  const deletedUserIds: string[] = [];
 
   beforeAll(() => e2e.start());
 
@@ -57,6 +60,9 @@ describe('Auth — account deletion (e2e)', () => {
     }
     if (keptAuditIds.length > 0) {
       await repository(AdminAudit).delete({ id: In(keptAuditIds) });
+    }
+    if (deletedUserIds.length > 0) {
+      await repository(AdminAudit).delete({ targetId: In(deletedUserIds) });
     }
     await e2e.close();
   });
@@ -86,6 +92,7 @@ describe('Auth — account deletion (e2e)', () => {
   }
 
   async function deleteAccount({ address, cookie }: SignedIn, email = address) {
+    deletedUserIds.push(await userIdOf(address));
     const mailIds = await mailIdsOf(address);
     const response = await postDeleteAccount(cookie, email).expect(204);
     forgetDeleted(address, mailIds);
@@ -240,6 +247,42 @@ describe('Auth — account deletion (e2e)', () => {
     }
   });
 
+  it('leaves an ACCOUNT_DELETED row and a log line, both without the address', async () => {
+    const logged = vi
+      .spyOn(Logger.prototype, 'log')
+      .mockImplementation(() => undefined);
+    try {
+      const owner = await signIn();
+      const userId = await userIdOf(owner.address);
+
+      await deleteAccount(owner);
+
+      const rows = await repository(AdminAudit).findBy({ targetId: userId });
+      expect(
+        rows.map(({ actorId, targetId, action, details }) => ({
+          actorId,
+          targetId,
+          action,
+          details,
+        })),
+      ).toEqual([
+        {
+          actorId: userId,
+          targetId: userId,
+          action: AdminAction.ACCOUNT_DELETED,
+          details: null,
+        },
+      ]);
+      expect(JSON.stringify(rows)).not.toContain(owner.address);
+
+      const lines = logged.mock.calls.map((call: unknown[]) => String(call[0]));
+      expect(lines).toContain(`Account ${userId} deleted`);
+      expect(JSON.stringify(logged.mock.calls)).not.toContain(owner.address);
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
   it('refuses another address and changes nothing', async () => {
     const owner = await fullAccount();
     const other = await signIn();
@@ -288,6 +331,7 @@ describe('Auth — account deletion (e2e)', () => {
     expect(await repository(User).countBy({ email: owner.address })).toBe(1);
 
     const mailIds = await mailIdsOf(owner.address);
+    deletedUserIds.push(await userIdOf(owner.address));
     await postDeleteAccount(owner.cookie, owner.address)
       .set('Origin', e2e.env.CORS_ORIGINS[0])
       .set('Sec-Fetch-Site', 'same-site')

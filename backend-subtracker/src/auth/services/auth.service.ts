@@ -1,10 +1,21 @@
 import { randomBytes } from 'node:crypto';
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DataSource, type EntityManager, IsNull, MoreThan, Raw } from 'typeorm';
+import {
+  DataSource,
+  type EntityManager,
+  In,
+  IsNull,
+  MoreThan,
+  Raw,
+} from 'typeorm';
 import { type EnvConfig, envFromConfig } from '../../config/env.js';
 import { Mail } from '../../mail/entities/mail.entity.js';
-import { MailStatus, MailType } from '../../mail/mail.types.js';
+import {
+  type MailOutcome,
+  MailStatus,
+  MailType,
+} from '../../mail/mail.types.js';
 import { MailService } from '../../mail/services/mail.service.js';
 import type { AuthUser } from '../../shared/types/auth-user.js';
 import { RoleCode } from '../../shared/types/role-code.js';
@@ -42,7 +53,7 @@ interface RefusedTokenRow {
 // What a link request found under the row lock of the address.
 type LinkRequestOutcome =
   | { kind: 'issued'; link: IssuedLink }
-  | { kind: 'blocked'; address: string }
+  | { kind: 'blocked'; userId: string; address: string }
   | { kind: 'none' };
 
 export interface SignIn {
@@ -61,6 +72,8 @@ export interface SignIn {
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  // Accounts whose mail about the block is being attempted right now (sendBlockedMailOnce).
+  private readonly blockedMailInFlight = new Set<string>();
   private readonly frontendUrl: string;
   private readonly supportEmail: string;
 
@@ -104,7 +117,7 @@ export class AuthService {
   }
 
   // A blocked account gets the mail about the block again, in case the first one went missing, but
-  // at most once per BLOCKED_MAIL_RESEND_INTERVAL.
+  // at most one attempt per BLOCKED_MAIL_RESEND_INTERVAL.
   async requestLink(email: string): Promise<void> {
     const address = normalizeEmail(email);
     const outcome = await this.dataSource.transaction(
@@ -114,15 +127,13 @@ export class AuthService {
           return { kind: 'none' };
         }
         if (!user.isActive) {
-          return { kind: 'blocked', address: user.email };
+          return { kind: 'blocked', userId: user.id, address: user.email };
         }
         return { kind: 'issued', link: await this.issueLink(manager, user) };
       },
     );
     if (outcome.kind === 'blocked') {
-      if (!(await this.blockedMailSentRecently(outcome.address))) {
-        this.sendBlockedMail(outcome.address);
-      }
+      await this.sendBlockedMailOnce(outcome.userId, outcome.address);
       throw new AccountBlockedException(this.supportEmail);
     }
     this.sendLink(outcome.kind === 'issued' ? outcome.link : null);
@@ -324,25 +335,50 @@ export class AuthService {
     );
   }
 
-  // Not awaited, like the link.
-  private sendBlockedMail(address: string): void {
-    this.fireAndForget(
-      this.mail.sendToUser(
-        MailType.ACCOUNT_BLOCKED,
-        address,
-        accountBlockedMail({ contact: this.supportEmail }),
-      ),
-    );
+  // At most one attempt per BLOCKED_MAIL_RESEND_INTERVAL. The audit row appears only when the
+  // attempt ends (seconds with a refused SMTP login, up to three 30 s timeouts with a hanging
+  // server), so an attempt in progress is held in memory, keyed by the account id: a request
+  // arriving meanwhile sends nothing. The id is taken before the database is read, so two
+  // requests in the same moment cannot both pass. One API process (MyDevil) makes this enough.
+  private async sendBlockedMailOnce(
+    userId: string,
+    address: string,
+  ): Promise<void> {
+    if (this.blockedMailInFlight.has(userId)) {
+      return;
+    }
+    this.blockedMailInFlight.add(userId);
+    let sending: Promise<MailOutcome> | undefined;
+    try {
+      if (!(await this.blockedMailAttemptedRecently(address))) {
+        // Not awaited, like the link.
+        sending = this.mail.sendToUser(
+          MailType.ACCOUNT_BLOCKED,
+          address,
+          accountBlockedMail({ contact: this.supportEmail }),
+        );
+      }
+    } finally {
+      if (sending === undefined) {
+        this.blockedMailInFlight.delete(userId);
+      }
+    }
+    if (sending !== undefined) {
+      this.fireAndForget(
+        sending.finally(() => this.blockedMailInFlight.delete(userId)),
+      );
+    }
   }
 
-  // Sent means accepted by the transport (MailStatus.SENT), the same for the mail of the block
-  // itself. Two requests racing within the same moment may both send; that is accepted.
-  private blockedMailSentRecently(address: string): Promise<boolean> {
+  // Attempted means an audit row of the mail of the block, SENT or FAILED: a failed one closes the
+  // gate too, so an SMTP outage does not bring a new try (and a new failure) with every request;
+  // the operator already has the alert.
+  private blockedMailAttemptedRecently(address: string): Promise<boolean> {
     return this.dataSource.getRepository(Mail).exists({
       where: {
         type: MailType.ACCOUNT_BLOCKED,
         recipient: address,
-        status: MailStatus.SENT,
+        status: In([MailStatus.SENT, MailStatus.FAILED]),
         createdAt: MoreThan(
           new Date(Date.now() - BLOCKED_MAIL_RESEND_INTERVAL),
         ),
@@ -352,7 +388,7 @@ export class AuthService {
 
   // sendToUser never rejects today; the catch keeps a future error from becoming an unhandled
   // rejection. Only the message is logged, never the address.
-  private fireAndForget(sending: Promise<boolean>): void {
+  private fireAndForget(sending: Promise<MailOutcome>): void {
     sending.catch((error: unknown) => {
       this.logger.error(
         `Mail sending failed: ${error instanceof Error ? error.message : String(error)}`,

@@ -4,7 +4,7 @@ import { MagicLinkToken } from '../../src/auth/entities/magic-link-token.entity.
 import { Session } from '../../src/auth/entities/session.entity.js';
 import { AccountAccessService } from '../../src/auth/services/account-access.service.js';
 import { Mail } from '../../src/mail/entities/mail.entity.js';
-import { MailType } from '../../src/mail/mail.types.js';
+import { MailStatus, MailType } from '../../src/mail/mail.types.js';
 import { createE2eApp, UNKNOWN_ID } from '../support/e2e-app.js';
 import { authRequests } from './auth-e2e.js';
 
@@ -141,6 +141,41 @@ describe('Auth — blocking, unblocking and signing out everywhere (e2e)', () =>
         MailType.MAGIC_LINK,
       ]);
       expect(await mailsTo(address, 3)).toHaveLength(3);
+    });
+
+    it('is not tried again within the hour after a failed attempt', async () => {
+      const address = newAddress();
+      await signIn(address);
+      e2e.failMailTo(address, true);
+      await access().block(await userIdOf(address));
+      // The registration link and the failed mail of the block itself.
+      await mailTypesOf(address, 2);
+      e2e.failMailTo(address, false);
+
+      await postRequestLink(address).expect(403);
+      await postRequestLink(address).expect(403);
+      // An hour later the next request tries again, and this time the mail goes out.
+      await repository(Mail).update(
+        { recipient: address, type: MailType.ACCOUNT_BLOCKED },
+        { createdAt: new Date(Date.now() - 61 * 60 * 1000) },
+      );
+      await postRequestLink(address).expect(403);
+
+      expect(await mailTypesOf(address, 3)).toEqual([
+        MailType.ACCOUNT_BLOCKED,
+        MailType.ACCOUNT_BLOCKED,
+        MailType.MAGIC_LINK,
+      ]);
+      const blockedStatuses = (
+        await repository(Mail).findBy({
+          recipient: address,
+          type: MailType.ACCOUNT_BLOCKED,
+        })
+      )
+        .map((row) => row.status)
+        .sort();
+      expect(blockedStatuses).toEqual([MailStatus.FAILED, MailStatus.SENT]);
+      expect(e2e.sent.filter((mail) => mail.to === address)).toHaveLength(3);
     });
   });
 

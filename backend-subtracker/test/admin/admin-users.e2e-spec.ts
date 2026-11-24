@@ -1,8 +1,11 @@
+import { Logger } from '@nestjs/common';
+import { In } from 'typeorm';
 import type { TestContext } from 'vitest';
 import { AdminAction } from '../../src/admin/admin-audit.types.js';
-import type {
-  AdminUserDetail,
-  AdminUserSummary,
+import {
+  type AdminUserDetail,
+  type AdminUserSummary,
+  AdminStatusFilter,
 } from '../../src/admin/admin-user.types.js';
 import { AdminAudit } from '../../src/admin/entities/admin-audit.entity.js';
 import { CANNOT_MANAGE_MESSAGE } from '../../src/admin/services/admin-users.service.js';
@@ -69,7 +72,8 @@ describe('Admin — accounts (e2e)', () => {
   }
 
   // What must not change on a target an actor may not manage: still active, its session works and
-  // no change of it is recorded (a VIEW is not a change).
+  // no access change of it is recorded (a VIEW, the DENIED row of a refusal and the role grants
+  // of the setup are not changes).
   async function expectUntouched(target: Account) {
     expect(
       (await repository(User).findOneByOrFail({ id: target.id })).isActive,
@@ -77,10 +81,13 @@ describe('Admin — accounts (e2e)', () => {
     await getMe(target.cookie).expect(200);
     const changes = await repository(AdminAudit).findBy({
       targetId: target.id,
+      action: In([
+        AdminAction.BLOCK,
+        AdminAction.UNBLOCK,
+        AdminAction.RESET_SESSIONS,
+      ]),
     });
-    expect(changes.filter((row) => row.action !== AdminAction.VIEW)).toEqual(
-      [],
-    );
+    expect(changes).toEqual([]);
   }
 
   // Every action on the target answers 403 with the same message, whatever its state allows.
@@ -137,6 +144,71 @@ describe('Admin — accounts (e2e)', () => {
 
       for (const target of [otherUser, admin, otherAdmin, user]) {
         await expectUntouched(target);
+      }
+    });
+
+    it('records a rank refusal as DENIED after the rollback, keeping the 403 and the Denials line', async () => {
+      const warned = vi
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      try {
+        const admin = await account([RoleCode.ADMIN]);
+        const otherAdmin = await account([RoleCode.ADMIN]);
+
+        const response = await postAction(
+          admin.cookie,
+          otherAdmin.id,
+          'block',
+        ).expect(403);
+        expect((response.body as { message: string }).message).toBe(
+          CANNOT_MANAGE_MESSAGE,
+        );
+        await postAction(admin.cookie, admin.id, 'reset-sessions').expect(403);
+
+        const rows = await repository(AdminAudit).findBy({ actorId: admin.id });
+        expect(
+          rows.map(({ targetId, action, details }) => ({
+            targetId,
+            action,
+            details,
+          })),
+        ).toEqual(
+          expect.arrayContaining([
+            {
+              targetId: otherAdmin.id,
+              action: AdminAction.DENIED,
+              details: { action: 'block', why: 'rank' },
+            },
+            {
+              targetId: admin.id,
+              action: AdminAction.DENIED,
+              details: { action: 'reset_sessions', why: 'self' },
+            },
+          ]),
+        );
+        expect(rows).toHaveLength(2);
+        expect(await auditActions(admin.id, otherAdmin.id)).toEqual([
+          AdminAction.DENIED,
+        ]);
+
+        const denials = warned.mock.calls
+          .filter((_call: unknown[], index: number) => {
+            const logger = warned.mock.contexts[index] as { context?: string };
+            return logger.context === 'Denials';
+          })
+          .map((call: unknown[]) => String(call[0]));
+        expect(denials).toEqual([
+          expect.stringMatching(
+            new RegExp(
+              `^admin_cannot_manage 403 POST /admin/users/:id/block .*target=${otherAdmin.id} action=block why=rank$`,
+            ),
+          ),
+          expect.stringMatching(
+            /^admin_cannot_manage 403 POST \/admin\/users\/:id\/reset-sessions .*why=self$/,
+          ),
+        ]);
+      } finally {
+        warned.mockRestore();
       }
     });
 
@@ -237,6 +309,47 @@ describe('Admin — accounts (e2e)', () => {
         canManage: true,
       });
       expect(results.map((result) => result.id)).not.toContain(other.id);
+    });
+
+    it('records every search with the length of the fragment, never the fragment', async () => {
+      const admin = await account([RoleCode.ADMIN]);
+      const found = await account();
+      // The whole address, so exactly one account matches.
+      const fragment = found.address;
+
+      await searchUsers(admin.cookie, { q: `  ${fragment}  ` }).expect(200);
+      await searchUsers(admin.cookie, { status: 'blocked' }).expect(200);
+      // A refused search reads nothing and records nothing.
+      await searchUsers(admin.cookie, { q: 'ab' }).expect(400);
+
+      const rows = await repository(AdminAudit).findBy({
+        actorId: admin.id,
+        action: AdminAction.SEARCH,
+      });
+      expect(
+        rows.map(({ targetId, details }) => ({ targetId, details })),
+      ).toEqual(
+        expect.arrayContaining([
+          {
+            targetId: null,
+            details: {
+              status: AdminStatusFilter.ALL,
+              qLength: fragment.length,
+              results: 1,
+            },
+          },
+          {
+            targetId: null,
+            details: {
+              status: AdminStatusFilter.BLOCKED,
+              qLength: 0,
+              results: expect.any(Number) as number,
+            },
+          },
+        ]),
+      );
+      expect(rows).toHaveLength(2);
+      expect(JSON.stringify(rows)).not.toContain(fragment);
     });
 
     it.each([

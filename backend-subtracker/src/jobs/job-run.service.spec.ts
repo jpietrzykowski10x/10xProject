@@ -1,10 +1,14 @@
 import { Logger } from '@nestjs/common';
-import { type FindOperator, type Repository } from 'typeorm';
+import { type FindOperator, QueryFailedError, type Repository } from 'typeorm';
 import type { MailContent } from '../mail/mail.types.js';
 import type { MailService } from '../mail/services/mail.service.js';
 import type { JobRun } from './entities/job-run.entity.js';
 import { JobRunService } from './job-run.service.js';
-import { JOB_RUN_RETENTION_DAYS } from './job-run.types.js';
+import {
+  inStep,
+  JOB_RUN_RETENTION_DAYS,
+  JobStepError,
+} from './job-run.types.js';
 
 type RunRow = Omit<JobRun, 'id'>;
 
@@ -84,6 +88,7 @@ describe('JobRunService', () => {
             finishedAt: null,
             outcome: null,
             counters: null,
+            failure: null,
           },
         ]);
         return Promise.resolve({ counters: { trialsActivated: 2 } });
@@ -98,6 +103,7 @@ describe('JobRunService', () => {
           finishedAt: NOW,
           outcome: 'success',
           counters: { trialsActivated: 2 },
+          failure: null,
         },
       );
       expect(notifyOperator).not.toHaveBeenCalled();
@@ -117,7 +123,7 @@ describe('JobRunService', () => {
       expect(logError).not.toHaveBeenCalled();
     });
 
-    it('records a partial run, logs it as a warning and mails the operator', async () => {
+    it('records a partial run, logs it as an error and mails the operator', async () => {
       const { service, runs, notifyOperator } = setup();
       const counters = { usersNotified: 1, remindersSent: 1, usersFailed: 2 };
 
@@ -127,45 +133,156 @@ describe('JobRunService', () => {
 
       expect(runs.update).toHaveBeenCalledExactlyOnceWith(
         { id: 'run-1' },
-        { finishedAt: NOW, outcome: 'partial', counters },
+        { finishedAt: NOW, outcome: 'partial', counters, failure: null },
       );
-      expect(logWarn).toHaveBeenCalledExactlyOnceWith(
+      // error, so the line goes to err.log (J13).
+      expect(logError).toHaveBeenCalledExactlyOnceWith(
         'Job trial-reminder (cron) for 2026-11-22: partial in 0 ms, usersNotified=1, remindersSent=1, usersFailed=2',
       );
+      expect(logWarn).not.toHaveBeenCalled();
       expect(notifyOperator).toHaveBeenCalledOnce();
       const mail = notifyOperator.mock.calls[0][0];
       expect(mail.subject).toBe('SubTracker: zadanie trial-reminder — partial');
       // The day of the run in Warsaw.
       expect(mail.text).toContain('dzień: 2026-11-22');
       expect(mail.text).toContain('usersFailed=2');
+      expect(mail.text).toContain('zostanie ponowiona');
     });
 
-    it('records a failed run, logs the message only and mails the operator without it', async () => {
+    it('does not hold up a startup run for its alert, which alertsSent awaits', async () => {
+      const { service, notifyOperator } = setup();
+      let accept: () => void = () => undefined;
+      notifyOperator.mockReturnValueOnce(
+        new Promise<void>((resolve) => {
+          accept = resolve;
+        }),
+      );
+      let tracked = false;
+      let sent = false;
+
+      await service
+        .track('subscription-lifecycle', 'startup', () =>
+          Promise.resolve({
+            counters: { billingRollFailed: 1 },
+            partial: true,
+          }),
+        )
+        .then(() => {
+          tracked = true;
+        });
+      const waiting = service.alertsSent().then(() => {
+        sent = true;
+      });
+      await Promise.resolve();
+
+      // The run ended (row, log line) while the alert is still on the way.
+      expect(tracked).toBe(true);
+      expect(notifyOperator).toHaveBeenCalledOnce();
+      expect(sent).toBe(false);
+
+      accept();
+      await waiting;
+      expect(sent).toBe(true);
+    });
+
+    it('waits for the alert of a cron run', async () => {
+      const { service, notifyOperator } = setup();
+      let accepted = false;
+      notifyOperator.mockImplementationOnce(async () => {
+        await Promise.resolve();
+        accepted = true;
+      });
+
+      await service.track('subscription-lifecycle', 'cron', () =>
+        Promise.resolve({ counters: { billingRollFailed: 1 }, partial: true }),
+      );
+
+      expect(accepted).toBe(true);
+    });
+
+    it('tells the operator that part of the work of a partial run was lost', async () => {
+      const { service, notifyOperator } = setup();
+
+      await service.track('trial-reminder', 'cron', () =>
+        Promise.resolve({
+          counters: { remindersLost: 1 },
+          partial: true,
+          lost: true,
+        }),
+      );
+
+      const mail = notifyOperator.mock.calls[0][0];
+      expect(mail.text).toContain('część pracy przepadła, szczegóły w err.log');
+      expect(mail.text).not.toContain('ponowiona');
+    });
+
+    it('records the step and the code of a failed step, never the message', async () => {
       const { service, runs, notifyOperator } = setup();
+      const cause = new QueryFailedError(
+        'UPDATE subscription SET …',
+        ['jan@example.com'],
+        Object.assign(new Error('value violated by jan@example.com'), {
+          code: '57014',
+        }),
+      );
 
       await expect(
         service.track('subscription-lifecycle', 'cron', () =>
-          Promise.reject(new Error('relation "x" violated by jan@example.com')),
+          inStep('roll_billing_dates', () => Promise.reject(cause)),
         ),
       ).resolves.toBeUndefined();
 
       expect(runs.update).toHaveBeenCalledExactlyOnceWith(
         { id: 'run-1' },
-        { finishedAt: NOW, outcome: 'failed', counters: null },
+        {
+          finishedAt: NOW,
+          outcome: 'failed',
+          counters: null,
+          failure: 'roll_billing_dates: 57014',
+        },
       );
+      // The stack of the original error goes to the log as the second argument.
       expect(logError).toHaveBeenCalledExactlyOnceWith(
-        'Job subscription-lifecycle (cron) for 2026-11-22: failed in 0 ms: relation "x" violated by jan@example.com',
+        'Job subscription-lifecycle (cron) for 2026-11-22: failed in 0 ms (roll_billing_dates: 57014)',
+        cause.stack,
       );
       expect(notifyOperator).toHaveBeenCalledOnce();
       const mail = notifyOperator.mock.calls[0][0];
       expect(mail.subject).toBe(
         'SubTracker: zadanie subscription-lifecycle — failed',
       );
+      expect(mail.text).toContain('przyczyna: roll_billing_dates: 57014');
       // Neither the error text nor the user data it quotes reaches the mail.
       for (const part of [mail.subject, mail.text, mail.html]) {
         expect(part).not.toContain('jan@example.com');
         expect(part).not.toContain('violated');
       }
+    });
+
+    it('records a failure outside a named step as unknown with the error class', async () => {
+      const { service, runs, notifyOperator } = setup();
+      const error = new Error('relation "x" violated by jan@example.com');
+
+      await service.track('subscription-lifecycle', 'cron', () =>
+        Promise.reject(error),
+      );
+
+      expect(runs.update).toHaveBeenCalledExactlyOnceWith(
+        { id: 'run-1' },
+        {
+          finishedAt: NOW,
+          outcome: 'failed',
+          counters: null,
+          failure: 'unknown: Error',
+        },
+      );
+      expect(logError).toHaveBeenCalledExactlyOnceWith(
+        'Job subscription-lifecycle (cron) for 2026-11-22: failed in 0 ms (unknown: Error)',
+        error.stack,
+      );
+      const mail = notifyOperator.mock.calls[0][0];
+      expect(mail.text).toContain('przyczyna: unknown: Error');
+      expect(mail.text).not.toContain('violated');
     });
 
     it('reports the duration of the run in the summary', async () => {
@@ -232,6 +349,7 @@ describe('JobRunService', () => {
           finishedAt: NOW,
           outcome: 'success',
           counters: { tokens: 3 },
+          failure: null,
         },
       ]);
       expect(notifyOperator).not.toHaveBeenCalled();
@@ -273,6 +391,7 @@ describe('JobRunService', () => {
           finishedAt: NOW,
           outcome: 'skipped',
           counters: null,
+          failure: null,
         },
       ]);
     });
@@ -306,6 +425,7 @@ describe('JobRunService', () => {
                 finishedAt,
                 outcome: 'failed',
                 counters: null,
+                failure: 'trial_to_active: 57014',
               } satisfies JobRun)
             : null,
         ),
@@ -336,5 +456,35 @@ describe('JobRunService', () => {
       ]);
       expect(options.order).toEqual({ startedAt: 'DESC' });
     });
+  });
+});
+
+describe('inStep', () => {
+  it('returns the result of the step', async () => {
+    await expect(
+      inStep('expired_sessions', () => Promise.resolve(3)),
+    ).resolves.toBe(3);
+  });
+
+  it('wraps a failure in a JobStepError naming the step, with the original as the cause', async () => {
+    const cause = new Error('boom');
+
+    const error: unknown = await inStep('magic_link_tokens', () =>
+      Promise.reject(cause),
+    ).catch((thrown: unknown) => thrown);
+
+    expect(error).toBeInstanceOf(JobStepError);
+    expect((error as JobStepError).step).toBe('magic_link_tokens');
+    expect((error as JobStepError).cause).toBe(cause);
+    // The message names the step only, not the cause's text.
+    expect((error as JobStepError).message).not.toContain('boom');
+  });
+
+  it('keeps the step of a failure that already names one', async () => {
+    const inner = new JobStepError('trial_to_active', new Error('boom'));
+
+    await expect(inStep('outer', () => Promise.reject(inner))).rejects.toBe(
+      inner,
+    );
   });
 });
