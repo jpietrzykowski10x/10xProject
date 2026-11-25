@@ -1,7 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import type { MockInstance } from 'vitest';
 import { environment } from '../../environments/environment';
+import { ErrorReporter } from '../shared/error-reporter';
 import { CostTotalsStore } from './cost-totals.store';
 import type { CostTotals } from './subscription.types';
 
@@ -22,10 +24,14 @@ const AFTER: CostTotals = {
   categories: [],
 };
 
+// ErrorReporter.report: every failed read is reported under 'CostTotalsStore'.
+let report: MockInstance<ErrorReporter['report']>;
+
 function setUp() {
   TestBed.configureTestingModule({
     providers: [provideHttpClient(), provideHttpClientTesting()],
   });
+  report = vi.spyOn(TestBed.inject(ErrorReporter), 'report').mockImplementation(() => {});
   return {
     httpTesting: TestBed.inject(HttpTestingController),
     store: TestBed.inject(CostTotalsStore),
@@ -56,6 +62,7 @@ describe('CostTotalsStore', () => {
 
     httpTesting.expectOne({ method: 'GET', url: TOTALS_URL }).flush(AFTER);
     expect(store.state()).toEqual({ kind: 'ready', totals: AFTER });
+    expect(report).not.toHaveBeenCalled();
   });
 
   it('keeps the current totals when a refresh fails', () => {
@@ -67,6 +74,8 @@ describe('CostTotalsStore', () => {
     failTotals(httpTesting);
 
     expect(store.state()).toEqual({ kind: 'ready', totals: BEFORE });
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith('CostTotalsStore', expect.anything());
   });
 
   it('is an error when a refresh fails with no totals shown', () => {
@@ -79,6 +88,7 @@ describe('CostTotalsStore', () => {
     failTotals(httpTesting);
 
     expect(store.state()).toEqual({ kind: 'error' });
+    expect(report).toHaveBeenCalledTimes(2);
   });
 
   it('cancels an older request, so its answer never overwrites a newer one', () => {

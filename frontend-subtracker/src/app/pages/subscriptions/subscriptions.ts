@@ -23,6 +23,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { map, type Subscription as RxSubscription } from 'rxjs';
 import { AppShell } from '../../layout/app-shell/app-shell';
 import { PHONE_MEDIA_QUERY, WIDE_MEDIA_QUERY } from '../../shared/breakpoints';
+import { ErrorReporter } from '../../shared/error-reporter';
 import { openCancelSubscriptionDialog } from '../../subscriptions/cancel-subscription-dialog/cancel-subscription-dialog';
 import { CostTotalsStore } from '../../subscriptions/cost-totals.store';
 import { openDeleteSubscriptionDialog } from '../../subscriptions/delete-subscription-dialog/delete-subscription-dialog';
@@ -62,6 +63,7 @@ const CLOSED: PanelMode = { kind: 'closed' };
 export class Subscriptions implements OnInit {
   private readonly subscriptions = inject(SubscriptionsService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly reporter = inject(ErrorReporter);
   private readonly injector = inject(Injector);
   private readonly breakpoints = inject(BreakpointObserver);
   private readonly dialog = inject(MatDialog);
@@ -173,7 +175,8 @@ export class Subscriptions implements OnInit {
           this.state.set({ kind: 'ready', subscriptions });
           this.autoOpen(subscriptions.length === 0);
         },
-        error: () => {
+        error: (error: unknown) => {
+          this.reporter.report('Subscriptions', error);
           if (quiet && this.state().kind === 'ready') {
             this.refreshFailed.set(true);
           } else {
@@ -345,6 +348,7 @@ export class Subscriptions implements OnInit {
           } else if (error.status === 409) {
             this.afterLifecycleAction(subscription, conflictSubscriptionMessage);
           } else {
+            this.reporter.report('Subscriptions', error);
             this.actionError.set(resumeFailedMessage(subscription.name));
           }
         },

@@ -9,7 +9,9 @@ import { MatFormFieldHarness } from '@angular/material/form-field/testing';
 import { MatInputHarness } from '@angular/material/input/testing';
 import { MatTooltipHarness } from '@angular/material/tooltip/testing';
 import { provideRouter } from '@angular/router';
+import type { MockInstance } from 'vitest';
 import { environment } from '../../../environments/environment';
+import { ErrorReporter } from '../../shared/error-reporter';
 import type { BudgetResponse, UpdateBudgetRequest } from '../../budget/budget.types';
 import type { CostTotals } from '../../subscriptions/subscription.types';
 import { Budget } from './budget';
@@ -74,12 +76,17 @@ const NO_TOTALS: CostTotals = {
 
 type Loader = ReturnType<typeof TestbedHarnessEnvironment.loader>;
 
+// ErrorReporter.report: an unknown error is reported under 'Budget', a recognized answer (400 of
+// the save, 409 of a new category) is not.
+let report: MockInstance<ErrorReporter['report']>;
+
 // The page with its shell: the shell reads the cost totals, the page the budget.
 async function createPage(budget: BudgetResponse = BUDGET) {
   TestBed.configureTestingModule({
     imports: [Budget],
     providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
   });
+  report = vi.spyOn(TestBed.inject(ErrorReporter), 'report').mockImplementation(() => {});
   const httpTesting = TestBed.inject(HttpTestingController);
   const fixture = TestBed.createComponent(Budget);
   const loader = TestbedHarnessEnvironment.loader(fixture);
@@ -155,6 +162,27 @@ describe('Budget', () => {
     const { fixture } = await createPage();
 
     expect(fixture.componentInstance).toBeTruthy();
+  });
+
+  it('shows an alert and reports the error when the budget cannot be read', async () => {
+    TestBed.configureTestingModule({
+      imports: [Budget],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+    });
+    report = vi.spyOn(TestBed.inject(ErrorReporter), 'report').mockImplementation(() => {});
+    const httpTesting = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(Budget);
+    await fixture.whenStable();
+    httpTesting.expectOne({ method: 'GET', url: TOTALS_URL }).flush(NO_TOTALS);
+    httpTesting
+      .expectOne({ method: 'GET', url: BUDGET_URL })
+      .flush(null, { status: 503, statusText: 'Service Unavailable' });
+    await fixture.whenStable();
+
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelectorAll('[role="alert"]')).toHaveLength(1);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith('Budget', expect.anything());
   });
 
   it('shows the default threshold and the threshold of every category from GET /budget', async () => {
@@ -486,6 +514,7 @@ describe('Budget', () => {
     expect(host.querySelectorAll('[role="alert"]')).toHaveLength(1);
     expect(host.querySelector(`[data-category="${MUZYKA}"]`)).toBeNull();
     httpTesting.expectNone({ method: 'GET', url: TOTALS_URL });
+    expect(report).not.toHaveBeenCalled();
   });
 
   it('keeps the typed form after another failure, with a message and without reading it again', async () => {
@@ -505,6 +534,8 @@ describe('Budget', () => {
     );
     // The change is still unsaved, so it can be sent again.
     expect(await (await saveButton(loader)).isDisabled()).toBe(false);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith('Budget', expect.anything());
   });
 
   // S-17. The oracle is the plan: only an own category (isDefault false in GET /budget) has the
@@ -765,6 +796,7 @@ describe('Budget', () => {
       expect(await field.getTextErrors()).toEqual([TAKEN_ERROR]);
       expect(await (await addButton(loader)).isDisabled()).toBe(true);
       httpTesting.expectNone({ method: 'GET', url: BUDGET_URL });
+      expect(report).not.toHaveBeenCalled();
     });
 
     it('keeps the name with a message after another failure', async () => {
@@ -784,6 +816,8 @@ describe('Budget', () => {
       expect(await input.getValue()).toBe('Joga');
       expect(await (await addButton(loader)).isDisabled()).toBe(false);
       httpTesting.expectNone({ method: 'GET', url: BUDGET_URL });
+      expect(report).toHaveBeenCalledTimes(1);
+      expect(report).toHaveBeenCalledWith('Budget', expect.anything());
     });
 
     // Enter in a field submits the form around it; here it adds the category and the default is

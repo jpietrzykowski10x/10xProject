@@ -9,7 +9,9 @@ import { MatDialogHarness } from '@angular/material/dialog/testing';
 import { MatFormFieldHarness } from '@angular/material/form-field/testing';
 import { MatInputHarness } from '@angular/material/input/testing';
 import { provideRouter, Router } from '@angular/router';
+import type { MockInstance } from 'vitest';
 import { environment } from '../../../../environments/environment';
+import { ErrorReporter } from '../../../shared/error-reporter';
 import { CostTotalsStore } from '../../../subscriptions/cost-totals.store';
 import { DeleteAccountResult, openDeleteAccountDialog } from './delete-account-dialog';
 
@@ -25,10 +27,14 @@ type Loader = ReturnType<typeof TestbedHarnessEnvironment.documentRootLoader>;
 
 // The dialog is opened the way the page opens it, through the real MatDialog; only the HTTP
 // boundary is replaced. `results` records what afterClosed() emitted.
+// ErrorReporter.report: only an unknown error is reported, under 'DeleteAccountDialog'.
+let report: MockInstance<ErrorReporter['report']>;
+
 async function openDialog() {
   TestBed.configureTestingModule({
     providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
   });
+  report = vi.spyOn(TestBed.inject(ErrorReporter), 'report').mockImplementation(() => {});
   const httpTesting = TestBed.inject(HttpTestingController);
   const fixture = TestBed.createComponent(Host);
   const loader = TestbedHarnessEnvironment.documentRootLoader(fixture);
@@ -130,11 +136,12 @@ describe('DeleteAccountDialog', () => {
     expect(await loader.getAllHarnesses(MatDialogHarness)).toHaveLength(0);
   });
 
+  // A 400 (the address does not match) is a recognized answer; the others are reported.
   it.each([
-    [400, 'Adres nie zgadza się z adresem konta.'],
-    [500, 'Serwis jest chwilowo niedostępny. Konto nie zostało usunięte'],
-    [0, 'Serwis jest chwilowo niedostępny. Konto nie zostało usunięte'],
-  ])('stays open with one alert after a %j', async (status, message) => {
+    [400, 'Adres nie zgadza się z adresem konta.', 0],
+    [500, 'Serwis jest chwilowo niedostępny. Konto nie zostało usunięte', 1],
+    [0, 'Serwis jest chwilowo niedostępny. Konto nie zostało usunięte', 1],
+  ])('stays open with one alert after a %j', async (status, message, reports) => {
     const { httpTesting, fixture, loader, results } = await openDialog();
 
     await typeConfirmation(loader, ACCOUNT_EMAIL);
@@ -150,6 +157,10 @@ describe('DeleteAccountDialog', () => {
     expect(alerts()[0].textContent).toContain(message);
     // The dialog is usable again: another try is possible.
     expect(await (await deleteButton(loader)).isDisabled()).toBe(false);
+    expect(report).toHaveBeenCalledTimes(reports);
+    if (reports > 0) {
+      expect(report).toHaveBeenCalledWith('DeleteAccountDialog', expect.anything());
+    }
   });
 
   // The 401 interceptor skips /auth/, so the dialog itself ends the gone session's state.
@@ -169,6 +180,7 @@ describe('DeleteAccountDialog', () => {
     expect(results).toEqual([false]);
     expect(clear).toHaveBeenCalled();
     expect(navigate).toHaveBeenCalledWith('/sign-in');
+    expect(report).not.toHaveBeenCalled();
   });
 
   it('closes on "Anuluj" without a result and without a request', async () => {

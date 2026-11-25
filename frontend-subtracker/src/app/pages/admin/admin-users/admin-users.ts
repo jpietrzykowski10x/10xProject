@@ -19,6 +19,7 @@ import {
   type AdminUserSummary,
 } from '../../../admin/admin.types';
 import { AppShell } from '../../../layout/app-shell/app-shell';
+import { ErrorReporter } from '../../../shared/error-reporter';
 import { FORM_FIELD_DEFAULTS } from '../../../shared/form-field-defaults';
 
 type SearchState =
@@ -57,6 +58,7 @@ export class AdminUsers implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly reporter = inject(ErrorReporter);
   private request?: RxSubscription;
 
   protected readonly minLength = ADMIN_SEARCH_MIN_LENGTH;
@@ -118,6 +120,7 @@ export class AdminUsers implements OnInit {
           } else if (error.status === 403) {
             this.state.set({ kind: 'forbidden' });
           } else {
+            this.reporter.report('AdminUsers', error);
             this.state.set({ kind: 'error' });
           }
         },

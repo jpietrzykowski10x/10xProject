@@ -2,6 +2,7 @@ import { isPlatformServer } from '@angular/common';
 import { inject, PLATFORM_ID, REQUEST } from '@angular/core';
 import { CanActivateFn, RedirectCommand, Router } from '@angular/router';
 import { catchError, map, of, timeout } from 'rxjs';
+import { ErrorReporter } from '../shared/error-reporter';
 import { AuthService, type AuthUser } from './auth.service';
 import { isAdmin } from './roles';
 
@@ -33,6 +34,7 @@ function sessionCookie(): SessionCookie {
 // visitor still gets the page.
 export const guestGuard: CanActivateFn = () => {
   const router = inject(Router);
+  const reporter = inject(ErrorReporter);
   const session = sessionCookie();
 
   // On the server a visitor without a session cookie is a guest, so the API is not asked. With a
@@ -47,7 +49,11 @@ export const guestGuard: CanActivateFn = () => {
     .pipe(
       timeout(GUEST_CHECK_TIMEOUT_MS),
       map((user) => (user === null ? true : router.parseUrl('/subscriptions'))),
-      catchError(() => of(true)),
+      // The visitor still gets the page, but the cause stays in the console or the SSR log.
+      catchError((error: unknown) => {
+        reporter.report('guestGuard', error);
+        return of(true);
+      }),
     );
 };
 
@@ -55,10 +61,12 @@ export const guestGuard: CanActivateFn = () => {
 // guard runs only after guestGuard redirected a signed-in visitor from /, and it checks the same
 // forwarded cookie. A protected route left out of app.routes.server.ts would be prerendered: there
 // is no request then, so the guard sends the build to /sign-in instead of shipping the page.
-// `allowed` decides about a signed-in user; one it refuses goes to /subscriptions.
-function signedInGuard(allowed: (user: AuthUser) => boolean): CanActivateFn {
+// `allowed` decides about a signed-in user; one it refuses goes to /subscriptions. `name` is the
+// context of a reported error.
+function signedInGuard(name: string, allowed: (user: AuthUser) => boolean): CanActivateFn {
   return () => {
     const router = inject(Router);
+    const reporter = inject(ErrorReporter);
     const session = sessionCookie();
 
     if (session.onServer && session.cookie === null) {
@@ -77,15 +85,18 @@ function signedInGuard(allowed: (user: AuthUser) => boolean): CanActivateFn {
         }),
         // An API outage, e.g. during a deploy, is not a lost session. Keeping the URL means
         // refreshing the page checks the session again.
-        catchError(() =>
-          of(new RedirectCommand(router.parseUrl('/unavailable'), { skipLocationChange: true })),
-        ),
+        catchError((error: unknown) => {
+          reporter.report(name, error);
+          return of(
+            new RedirectCommand(router.parseUrl('/unavailable'), { skipLocationChange: true }),
+          );
+        }),
       );
   };
 }
 
-export const authGuard: CanActivateFn = signedInGuard(() => true);
+export const authGuard: CanActivateFn = signedInGuard('authGuard', () => true);
 
 // S-09: the admin pages. Like authGuard, and only for the ADMIN and SUPER_ADMIN roles; any other
 // signed-in user goes to the list. The API checks the roles again on every /admin call.
-export const adminGuard: CanActivateFn = signedInGuard(isAdmin);
+export const adminGuard: CanActivateFn = signedInGuard('adminGuard', isAdmin);

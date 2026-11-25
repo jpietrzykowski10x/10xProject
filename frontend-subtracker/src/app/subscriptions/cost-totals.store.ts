@@ -1,5 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import type { Subscription as RxSubscription } from 'rxjs';
+import { ErrorReporter } from '../shared/error-reporter';
 import type { CostTotals } from './subscription.types';
 import { SubscriptionsService } from './subscriptions.service';
 
@@ -15,6 +16,7 @@ const LOADING: CostTotalsState = { kind: 'loading' };
 @Injectable({ providedIn: 'root' })
 export class CostTotalsStore {
   private readonly subscriptions = inject(SubscriptionsService);
+  private readonly reporter = inject(ErrorReporter);
   private readonly current = signal<CostTotalsState>(LOADING);
   private request?: RxSubscription;
 
@@ -42,7 +44,9 @@ export class CostTotalsStore {
     this.request?.unsubscribe();
     this.request = this.subscriptions.totals().subscribe({
       next: (totals) => this.current.set({ kind: 'ready', totals }),
-      error: () => {
+      // Every failure is reported, also the one that keeps the totals already shown.
+      error: (error: unknown) => {
+        this.reporter.report('CostTotalsStore', error);
         if (this.current().kind !== 'ready') {
           this.current.set({ kind: 'error' });
         }

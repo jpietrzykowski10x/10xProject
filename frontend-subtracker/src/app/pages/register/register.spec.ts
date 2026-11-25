@@ -8,7 +8,9 @@ import { MatButtonHarness } from '@angular/material/button/testing';
 import { MatCheckboxHarness } from '@angular/material/checkbox/testing';
 import { MatFormFieldHarness } from '@angular/material/form-field/testing';
 import { MatInputHarness } from '@angular/material/input/testing';
+import type { MockInstance } from 'vitest';
 import { environment } from '../../../environments/environment';
+import { ErrorReporter } from '../../shared/error-reporter';
 import type { RegisterRequest } from '../../auth/auth.service';
 import { Register } from './register';
 
@@ -22,6 +24,7 @@ const PRIVACY_POLICY = /polityk/;
 let fixture: ComponentFixture<Register>;
 let loader: HarnessLoader;
 let httpTesting: HttpTestingController;
+let report: MockInstance<ErrorReporter['report']>;
 
 async function createRegister(): Promise<void> {
   TestBed.configureTestingModule({
@@ -29,6 +32,7 @@ async function createRegister(): Promise<void> {
     providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
   });
   httpTesting = TestBed.inject(HttpTestingController);
+  report = vi.spyOn(TestBed.inject(ErrorReporter), 'report').mockImplementation(() => {});
   fixture = TestBed.createComponent(Register);
   loader = TestbedHarnessEnvironment.loader(fixture);
   await fixture.whenStable();
@@ -173,5 +177,27 @@ describe('Register blocked account', () => {
     const alert = host().querySelector('[role="alert"]');
     expect(alert?.textContent).toContain('zablokowane');
     expect(alert?.querySelector('a')?.getAttribute('href')).toBe(`mailto:${contact}`);
+    expect(report).not.toHaveBeenCalled();
+  });
+});
+
+// The oracle is the rule of S-15: an answer the form does not recognize (here a 5xx) shows
+// "unavailable" and its cause is reported (ErrorReporter) under the page's name.
+describe('Register unknown error', () => {
+  it('shows one alert and reports the error', async () => {
+    await createRegister();
+    await typeEmail(EMAIL);
+    await check(ADULT);
+    await check(PRIVACY_POLICY);
+    await save();
+
+    httpTesting
+      .expectOne({ method: 'POST', url: REGISTER_URL })
+      .flush('Internal Server Error', { status: 500, statusText: 'Internal Server Error' });
+    await fixture.whenStable();
+
+    expect(alertCount()).toBe(1);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith('Register', expect.anything());
   });
 });

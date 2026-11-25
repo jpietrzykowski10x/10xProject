@@ -15,6 +15,7 @@ import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../auth/auth.service';
+import { ErrorReporter } from '../../../shared/error-reporter';
 import { FORM_FIELD_DEFAULTS } from '../../../shared/form-field-defaults';
 import { CostTotalsStore } from '../../../subscriptions/cost-totals.store';
 
@@ -82,6 +83,7 @@ export class DeleteAccountDialog {
   private readonly totals = inject(CostTotalsStore);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly reporter = inject(ErrorReporter);
   private readonly dialogRef =
     inject<MatDialogRef<DeleteAccountDialog, DeleteAccountResult>>(MatDialogRef);
   private readonly accountEmail = normalizeEmail(
@@ -127,7 +129,12 @@ export class DeleteAccountDialog {
           }
           this.sending.set(false);
           this.dialogRef.disableClose = false;
-          this.error.set(error.status === 400 ? MISMATCH_MESSAGE : UNAVAILABLE_MESSAGE);
+          if (error.status === 400) {
+            this.error.set(MISMATCH_MESSAGE);
+            return;
+          }
+          this.reporter.report('DeleteAccountDialog', error);
+          this.error.set(UNAVAILABLE_MESSAGE);
         },
       });
   }

@@ -17,7 +17,9 @@ import {
   UrlTree,
 } from '@angular/router';
 import { isObservable } from 'rxjs';
+import type { MockInstance } from 'vitest';
 import { environment } from '../../environments/environment';
+import { ErrorReporter } from '../shared/error-reporter';
 import { adminGuard, authGuard, guestGuard } from './auth.guard';
 
 // The oracle is the access rule for the two kinds of pages, not the guard code:
@@ -30,6 +32,7 @@ import { adminGuard, authGuard, guestGuard } from './auth.guard';
 // - On the server the browser does not send the cookie by itself: the guard forwards only the
 //   subtracker_session pair to GET /auth/session, and without that cookie (or without a request at
 //   all, as in prerendering) it does not ask the API.
+// - An API error or timeout is reported (ErrorReporter) under the guard's name; an answer is not.
 // Only the HTTP boundary is replaced; AuthService and Router are the real ones.
 
 const SESSION_URL = `${environment.apiUrl}/auth/session`;
@@ -49,6 +52,8 @@ interface Decision {
   value: GuardResult | undefined;
 }
 
+let report: MockInstance<ErrorReporter['report']>;
+
 function setup(platform: Platform, cookieHeader?: string | null): void {
   // undefined = no request at all (prerendering at build time); null = a request without cookies.
   const request =
@@ -66,6 +71,7 @@ function setup(platform: Platform, cookieHeader?: string | null): void {
       provideRouter([]),
     ],
   });
+  report = vi.spyOn(TestBed.inject(ErrorReporter), 'report').mockImplementation(() => {});
 }
 
 function run(guard: CanActivateFn): Decision {
@@ -219,6 +225,7 @@ describe.each<Platform>(['server', 'browser'])(
         expectSessionRequest().flush(SIGNED_OUT);
 
         expectAllowed(decision);
+        expect(report).not.toHaveBeenCalled();
       });
 
       it.each([
@@ -231,6 +238,8 @@ describe.each<Platform>(['server', 'browser'])(
         fail(expectSessionRequest());
 
         expectAllowed(decision);
+        expect(report).toHaveBeenCalledTimes(1);
+        expect(report).toHaveBeenCalledWith('guestGuard', expect.anything());
       });
 
       it('lets the visitor in when the API does not answer within 3 s', () => {
@@ -245,6 +254,8 @@ describe.each<Platform>(['server', 'browser'])(
         vi.advanceTimersByTime(1);
         expectAllowed(decision);
         expect(request.cancelled).toBe(true);
+        expect(report).toHaveBeenCalledTimes(1);
+        expect(report).toHaveBeenCalledWith('guestGuard', expect.anything());
       });
     });
 
@@ -265,6 +276,7 @@ describe.each<Platform>(['server', 'browser'])(
         expectSessionRequest().flush(SIGNED_OUT);
 
         expectUrlTree(decision, '/sign-in');
+        expect(report).not.toHaveBeenCalled();
       });
 
       it.each([
@@ -277,6 +289,8 @@ describe.each<Platform>(['server', 'browser'])(
         fail(expectSessionRequest());
 
         expectUnavailable(decision);
+        expect(report).toHaveBeenCalledTimes(1);
+        expect(report).toHaveBeenCalledWith('authGuard', expect.anything());
       });
 
       it('shows /unavailable when the API does not answer within 10 s', () => {
@@ -291,6 +305,8 @@ describe.each<Platform>(['server', 'browser'])(
         vi.advanceTimersByTime(1);
         expectUnavailable(decision);
         expect(request.cancelled).toBe(true);
+        expect(report).toHaveBeenCalledTimes(1);
+        expect(report).toHaveBeenCalledWith('authGuard', expect.anything());
       });
     });
   },
@@ -350,6 +366,8 @@ describe('adminGuard', () => {
       failWithServerError(expectSessionRequest());
 
       expectUnavailable(decision);
+      expect(report).toHaveBeenCalledTimes(1);
+      expect(report).toHaveBeenCalledWith('adminGuard', expect.anything());
     });
   });
 });

@@ -11,6 +11,7 @@ import {
   MatDialogTitle,
 } from '@angular/material/dialog';
 import { DateOnlyPipe } from '../../shared/date-only.pipe';
+import { ErrorReporter } from '../../shared/error-reporter';
 import { referenceDate, STATUS_LABELS } from '../subscription-labels';
 import type { Subscription } from '../subscription.types';
 import { SubscriptionsService } from '../subscriptions.service';
@@ -60,6 +61,7 @@ export function openCancelSubscriptionDialog(
 export class CancelSubscriptionDialog {
   private readonly subscriptions = inject(SubscriptionsService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly reporter = inject(ErrorReporter);
   private readonly dialogRef =
     inject<MatDialogRef<CancelSubscriptionDialog, CancelSubscriptionResult>>(MatDialogRef);
   protected readonly subscription =
@@ -100,6 +102,7 @@ export class CancelSubscriptionDialog {
             this.dialogRef.close('conflict');
             return;
           }
+          this.reporter.report('CancelSubscriptionDialog', error);
           this.sending.set(false);
           this.failed.set(true);
           this.dialogRef.disableClose = false;

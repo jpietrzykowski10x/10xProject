@@ -7,7 +7,9 @@ import { MatButtonHarness } from '@angular/material/button/testing';
 import { MatDialogHarness } from '@angular/material/dialog/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import type { MockInstance } from 'vitest';
 import { environment } from '../../../../environments/environment';
+import { ErrorReporter } from '../../../shared/error-reporter';
 import type { AdminUserDetail, AdminUserSummary } from '../../../admin/admin.types';
 import { AdminUser } from './admin-user';
 
@@ -64,6 +66,8 @@ function detail(user: Partial<AdminUserSummary> = {}): AdminUserDetail {
 let harness: RouterTestingHarness;
 let loader: HarnessLoader;
 let httpTesting: HttpTestingController;
+// ErrorReporter.report: only an unknown error is reported, under 'AdminUser'.
+let report: MockInstance<ErrorReporter['report']>;
 
 async function createPage(query = ''): Promise<void> {
   TestBed.configureTestingModule({
@@ -74,6 +78,7 @@ async function createPage(query = ''): Promise<void> {
     ],
   });
   httpTesting = TestBed.inject(HttpTestingController);
+  report = vi.spyOn(TestBed.inject(ErrorReporter), 'report').mockImplementation(() => {});
   harness = await RouterTestingHarness.create(`/admin/users/${ID}${query}`);
   loader = TestbedHarnessEnvironment.loader(harness.fixture);
 }
@@ -177,6 +182,16 @@ describe('AdminUser', () => {
     const alerts = host().querySelectorAll('[role="alert"]');
     expect(alerts).toHaveLength(1);
     expect(alerts[0].textContent).toContain(message);
+    expect(report).not.toHaveBeenCalled();
+  });
+
+  it('shows one alert and reports the error after a server error', async () => {
+    await createPage();
+    await answer(null, 500);
+
+    expect(host().querySelectorAll('[role="alert"]')).toHaveLength(1);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith('AdminUser', expect.anything());
   });
 
   it('blocks after the confirmation and shows the new state without reading the account again', async () => {

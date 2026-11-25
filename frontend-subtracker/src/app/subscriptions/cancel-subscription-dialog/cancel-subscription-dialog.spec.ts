@@ -7,7 +7,9 @@ import { TestBed } from '@angular/core/testing';
 import { MatButtonHarness } from '@angular/material/button/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatDialogHarness } from '@angular/material/dialog/testing';
+import type { MockInstance } from 'vitest';
 import { environment } from '../../../environments/environment';
+import { ErrorReporter } from '../../shared/error-reporter';
 import type { Subscription } from '../subscription.types';
 import {
   CancelSubscriptionResult,
@@ -55,10 +57,14 @@ class LaidOutInteractivityChecker extends InteractivityChecker {
 
 // The dialog is opened the way the page opens it, through the real MatDialog; only the HTTP
 // boundary is replaced. `results` records what afterClosed() emitted, `results.length` whether it did.
+// ErrorReporter.report: only an unknown error is reported, under 'CancelSubscriptionDialog'.
+let report: MockInstance<ErrorReporter['report']>;
+
 async function openDialog(subscription: Subscription = NETFLIX, providers: Provider[] = []) {
   TestBed.configureTestingModule({
     providers: [provideHttpClient(), provideHttpClientTesting(), ...providers],
   });
+  report = vi.spyOn(TestBed.inject(ErrorReporter), 'report').mockImplementation(() => {});
   const httpTesting = TestBed.inject(HttpTestingController);
   const fixture = TestBed.createComponent(Host);
   const loader = TestbedHarnessEnvironment.documentRootLoader(fixture);
@@ -151,6 +157,7 @@ describe('CancelSubscriptionDialog', () => {
     await confirmAndAnswer(opened, { body: null, status: 404, statusText: 'Not Found' });
 
     expect(opened.results).toEqual(['missing']);
+    expect(report).not.toHaveBeenCalled();
   });
 
   it('closes with "conflict" when the status changed in the meantime (409)', async () => {
@@ -159,6 +166,7 @@ describe('CancelSubscriptionDialog', () => {
     await confirmAndAnswer(opened, { body: null, status: 409, statusText: 'Conflict' });
 
     expect(opened.results).toEqual(['conflict']);
+    expect(report).not.toHaveBeenCalled();
   });
 
   it('stays open with one alert when the cancel fails', async () => {
@@ -173,6 +181,8 @@ describe('CancelSubscriptionDialog', () => {
     expect(opened.results).toEqual([]);
     expect(await opened.loader.getAllHarnesses(MatDialogHarness)).toHaveLength(1);
     expect(document.querySelectorAll('mat-dialog-container [role="alert"]')).toHaveLength(1);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith('CancelSubscriptionDialog', expect.anything());
   });
 
   it('disables both buttons while the POST is in flight', async () => {

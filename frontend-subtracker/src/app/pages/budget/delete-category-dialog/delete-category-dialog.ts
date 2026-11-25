@@ -10,6 +10,7 @@ import {
   MatDialogRef,
   MatDialogTitle,
 } from '@angular/material/dialog';
+import { ErrorReporter } from '../../../shared/error-reporter';
 import type { Category } from '../../../subscriptions/subscription.types';
 import { SubscriptionsService } from '../../../subscriptions/subscriptions.service';
 
@@ -58,6 +59,7 @@ export function openDeleteCategoryDialog(
 export class DeleteCategoryDialog {
   private readonly subscriptions = inject(SubscriptionsService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly reporter = inject(ErrorReporter);
   private readonly dialogRef =
     inject<MatDialogRef<DeleteCategoryDialog, DeleteCategoryResult>>(MatDialogRef);
   protected readonly category = inject<DeleteCategoryDialogData>(MAT_DIALOG_DATA).category;
@@ -95,6 +97,7 @@ export class DeleteCategoryDialog {
           if (error.status === 409) {
             this.hasSubscriptions.set(true);
           } else {
+            this.reporter.report('DeleteCategoryDialog', error);
             this.failed.set(true);
           }
         },

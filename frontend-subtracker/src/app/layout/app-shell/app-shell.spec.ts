@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatMenuHarness } from '@angular/material/menu/testing';
 import { provideRouter } from '@angular/router';
 import { environment } from '../../../environments/environment';
+import { ErrorReporter } from '../../shared/error-reporter';
 import { AuthService } from '../../auth/auth.service';
 import type { CostTotals } from '../../subscriptions/subscription.types';
 import { AppShell } from './app-shell';
@@ -169,6 +170,37 @@ describe('AppShell admin link', () => {
       expect(await (await menuItems[0].host()).getAttribute('href')).toBe('/admin/users');
     },
   );
+});
+
+// The oracle is the rule of S-15: a failed sign-out keeps the visitor signed in with an alert,
+// and its cause is reported (ErrorReporter) under 'AppShell'.
+describe('AppShell sign-out failure', () => {
+  afterEach(() => {
+    TestBed.inject(HttpTestingController).verify();
+  });
+
+  it('shows an alert and reports the error when the sign-out fails', async () => {
+    TestBed.configureTestingModule({
+      imports: [AppShell],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+    });
+    const report = vi.spyOn(TestBed.inject(ErrorReporter), 'report').mockImplementation(() => {});
+    const httpTesting = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(AppShell);
+    fixture.componentRef.setInput('showTotals', false);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+
+    host.querySelector<HTMLButtonElement>('.shell__logout')?.click();
+    httpTesting
+      .expectOne({ method: 'POST', url: `${environment.apiUrl}/auth/logout` })
+      .error(new ProgressEvent('error'));
+    await fixture.whenStable();
+
+    expect(host.querySelectorAll('[role="alert"]')).toHaveLength(1);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith('AppShell', expect.anything());
+  });
 });
 
 // The oracle is the plan of S-09: the admin pages show another account, so the shell neither loads

@@ -6,7 +6,9 @@ import { TestBed } from '@angular/core/testing';
 import { MatButtonHarness } from '@angular/material/button/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatDialogHarness } from '@angular/material/dialog/testing';
+import type { MockInstance } from 'vitest';
 import { environment } from '../../../../environments/environment';
+import { ErrorReporter } from '../../../shared/error-reporter';
 import type { Category } from '../../../subscriptions/subscription.types';
 import { DeleteCategoryResult, openDeleteCategoryDialog } from './delete-category-dialog';
 
@@ -20,10 +22,14 @@ class Host {}
 
 // The dialog is opened the way the page opens it, through the real MatDialog; only the HTTP
 // boundary is replaced. `results` records what afterClosed() emitted.
+// ErrorReporter.report: only an unknown error is reported, under 'DeleteCategoryDialog'.
+let report: MockInstance<ErrorReporter['report']>;
+
 async function openDialog() {
   TestBed.configureTestingModule({
     providers: [provideHttpClient(), provideHttpClientTesting()],
   });
+  report = vi.spyOn(TestBed.inject(ErrorReporter), 'report').mockImplementation(() => {});
   const httpTesting = TestBed.inject(HttpTestingController);
   const fixture = TestBed.createComponent(Host);
   const loader = TestbedHarnessEnvironment.documentRootLoader(fixture);
@@ -90,6 +96,7 @@ describe('DeleteCategoryDialog', () => {
     expect(await (await opened.deleteButton()).isDisabled()).toBe(true);
     await (await opened.deleteButton()).click();
     opened.httpTesting.expectNone({ method: 'DELETE', url: CATEGORY_URL });
+    expect(report).not.toHaveBeenCalled();
   });
 
   it('closes with "missing" when the category is already gone (404)', async () => {
@@ -98,6 +105,7 @@ describe('DeleteCategoryDialog', () => {
     await deleteAndAnswer(opened, 404, 'Not Found');
 
     expect(opened.results).toEqual(['missing']);
+    expect(report).not.toHaveBeenCalled();
   });
 
   it('stays open with one alert when the delete fails', async () => {
@@ -109,6 +117,8 @@ describe('DeleteCategoryDialog', () => {
     expect(await opened.loader.getAllHarnesses(MatDialogHarness)).toHaveLength(1);
     expect(document.querySelectorAll('mat-dialog-container [role="alert"]')).toHaveLength(1);
     expect(await (await opened.deleteButton()).isDisabled()).toBe(false);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith('DeleteCategoryDialog', expect.anything());
   });
 
   // disableClose while the DELETE runs: Escape (and the backdrop) must not drop an answer.

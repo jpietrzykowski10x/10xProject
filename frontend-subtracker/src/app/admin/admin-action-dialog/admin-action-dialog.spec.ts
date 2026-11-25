@@ -6,7 +6,9 @@ import { TestBed } from '@angular/core/testing';
 import { MatButtonHarness } from '@angular/material/button/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatDialogHarness } from '@angular/material/dialog/testing';
+import type { MockInstance } from 'vitest';
 import { environment } from '../../../environments/environment';
+import { ErrorReporter } from '../../shared/error-reporter';
 import { type AdminActionResult, openAdminActionDialog } from './admin-action-dialog';
 
 const ID = '11111111-1111-4111-8111-111111111111';
@@ -17,11 +19,15 @@ class Host {
   readonly dialog = inject(MatDialog);
 }
 
+// ErrorReporter.report: only an unknown error is reported, under 'AdminActionDialog'.
+let report: MockInstance<ErrorReporter['report']>;
+
 async function openBlock() {
   TestBed.configureTestingModule({
     imports: [Host],
     providers: [provideHttpClient(), provideHttpClientTesting()],
   });
+  report = vi.spyOn(TestBed.inject(ErrorReporter), 'report').mockImplementation(() => {});
   const fixture = TestBed.createComponent(Host);
   const results: (AdminActionResult | undefined)[] = [];
   openAdminActionDialog(fixture.componentInstance.dialog, {
@@ -74,6 +80,7 @@ describe('AdminActionDialog', () => {
     await fixture.whenStable();
 
     expect(results).toEqual([expected]);
+    expect(report).not.toHaveBeenCalled();
   });
 
   it('stays open with a message after a server error', async () => {
@@ -87,5 +94,7 @@ describe('AdminActionDialog', () => {
 
     expect(results).toEqual([]);
     expect(await dialog.getText()).toContain('Nie udało się');
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith('AdminActionDialog', expect.anything());
   });
 });

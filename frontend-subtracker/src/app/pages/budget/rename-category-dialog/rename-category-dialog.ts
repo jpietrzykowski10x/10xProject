@@ -13,6 +13,7 @@ import {
 } from '@angular/material/dialog';
 import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
+import { ErrorReporter } from '../../../shared/error-reporter';
 import { FORM_FIELD_DEFAULTS } from '../../../shared/form-field-defaults';
 import { trimmedRequired } from '../../../shared/validation/trimmed-required';
 import { CATEGORY_NAME_MAX_LENGTH, type Category } from '../../../subscriptions/subscription.types';
@@ -67,6 +68,7 @@ export function openRenameCategoryDialog(
 export class RenameCategoryDialog {
   private readonly subscriptions = inject(SubscriptionsService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly reporter = inject(ErrorReporter);
   private readonly dialogRef =
     inject<MatDialogRef<RenameCategoryDialog, RenameCategoryResult>>(MatDialogRef);
   protected readonly category = inject<RenameCategoryDialogData>(MAT_DIALOG_DATA).category;
@@ -124,6 +126,7 @@ export class RenameCategoryDialog {
             this.name.setErrors({ conflict: true });
             this.name.markAsTouched();
           } else {
+            this.reporter.report('RenameCategoryDialog', error);
             this.failed.set(true);
           }
         },
