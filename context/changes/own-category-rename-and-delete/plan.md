@@ -316,9 +316,9 @@ Dokumenty opisują nowe trasy i reguły, zmiana trafia na serwer.
 
 #### Automated
 
-- [x] 3.1 Pełne testy obu aplikacji
-- [ ] 3.2 CI zielone na PR
+- [x] 3.1 Pełne testy obu aplikacji — 1349e06
+- [x] 3.2 CI zielone na PR — 0b198e6
 
 #### Manual
 
-- [ ] 3.3 Na produkcji zmiana nazwy, odmowa usunięcia niepustej, usunięcie pustej
+- [x] 3.3 Na produkcji zmiana nazwy, odmowa usunięcia niepustej, usunięcie pustej — c3e92c8
