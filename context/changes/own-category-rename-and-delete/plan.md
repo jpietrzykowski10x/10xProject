@@ -303,20 +303,20 @@ Dokumenty opisują nowe trasy i reguły, zmiana trafia na serwer.
 
 #### Automated
 
-- [x] 2.1 Testy frontendu
-- [x] 2.2 Celowe uszkodzenie ikon przy predefiniowanej albo blokady czerwieni test
-- [x] 2.3 E2E przeglądarki
+- [x] 2.1 Testy frontendu — fc4cb4b
+- [x] 2.2 Celowe uszkodzenie ikon przy predefiniowanej albo blokady czerwieni test — fc4cb4b
+- [x] 2.3 E2E przeglądarki — fc4cb4b
 
 #### Manual
 
-- [x] 2.4 `/budget` w trzech szerokościach z 50-znakową nazwą
-- [x] 2.5 Dialogi z klawiatury
+- [x] 2.4 `/budget` w trzech szerokościach z 50-znakową nazwą — fc4cb4b
+- [x] 2.5 Dialogi z klawiatury — fc4cb4b
 
 ### Phase 3: Dokumenty i produkcja
 
 #### Automated
 
-- [ ] 3.1 Pełne testy obu aplikacji
+- [x] 3.1 Pełne testy obu aplikacji
 - [ ] 3.2 CI zielone na PR
 
 #### Manual
