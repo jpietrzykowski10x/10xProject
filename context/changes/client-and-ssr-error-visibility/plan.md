@@ -370,13 +370,13 @@ Bez migracji danych. Po wdrożeniu pierwsza zmiana z przeładowaniem działa dop
 
 #### Automated
 
-- [x] 3.1 Testy frontu
-- [x] 3.2 Build produkcyjny i e2e
-- [x] 3.3 Typy e2e
-- [x] 3.4 Playwright
-- [x] 3.5 Kontrola uszkodzenia: shouldReload zawsze true daje czerwony test 2 w stale-chunk
+- [x] 3.1 Testy frontu — a7dc64b
+- [x] 3.2 Build produkcyjny i e2e — a7dc64b
+- [x] 3.3 Typy e2e — a7dc64b
+- [x] 3.4 Playwright — a7dc64b
+- [x] 3.5 Kontrola uszkodzenia: shouldReload zawsze true daje czerwony test 2 w stale-chunk — a7dc64b
 
 #### Manual
 
 - [ ] 3.6 Po wdrożeniu na produkcję: stara karta, klik w inną stronę, jedno przeładowanie i działająca strona
-- [x] 3.7 Brak pętli przeładowań przy wyłączonym serwerze frontu
+- [x] 3.7 Brak pętli przeładowań przy wyłączonym serwerze frontu — a7dc64b
