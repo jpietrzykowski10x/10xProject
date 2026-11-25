@@ -1,10 +1,10 @@
 ---
 change_id: subscription-list-sort-filter
 title: Sortowanie i filtrowanie listy subskrypcji
-status: impl_reviewed
+status: archived
 created: 2026-11-25
 updated: 2026-11-25
-archived_at: null
+archived_at: 2026-11-25T22:33:16Z
 ---
 
 ## Notes

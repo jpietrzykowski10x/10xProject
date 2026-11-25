@@ -379,4 +379,4 @@ Jedno zapytanie z `COUNT` (`getManyAndCount`) na konto. Filtrowanie idzie po `us
 
 - [x] 3.6 Trzy szerokości z najdłuższą treścią: pola i paginator bez zawijania i nachodzenia — c615be6
 - [x] 3.7 Panel i szuflada: pola nieaktywne z listą, fokus wraca jak dziś — c615be6
-- [ ] 3.8 Po wdrożeniu na produkcję: lista z filtrami działa, podgląd admina pokazuje całą listę
+- [x] 3.8 Po wdrożeniu na produkcję: lista z filtrami działa, podgląd admina pokazuje całą listę — c615be6
