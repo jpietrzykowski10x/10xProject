@@ -27,7 +27,7 @@ milestone_status: open
 - **Done when:** każde S-NN poniżej ma status `done`, a powtórny `/10x-observability-audit` pokazuje w „Changes since last audit” zamknięte ustalenia krytyczne P1, J1, J2 i L1.
 - **Scope anchors:** FR-019, FR-020, FR-021, FR-022, FR-023, FR-024, FR-025 (must-have v2); FR-009, FR-010 (spójność przy usuwaniu kategorii). Nice-to-have: FR-016.
 - **Sposób dostarczania (nie slice'y):** przed pierwszym PR-em M-2 osobny `chore/` z `/10x-impl-review-ci` w GitHub Actions, żeby każdy PR M-2 dostał automatyczny przegląd; S-14 i S-18 idą przez `/goal` + `/10x-goal-implement` (wąskie, dobrze sprawdzalne testami), reszta przez `/10x-implement` albo `/10x-tdd`. Zielony przebieg bez nadzoru nie zamyka slice'u: przegląd commitów i ręczna checklista przed merge'em.
-- **Kolejne kamienie milowe (plan, nie zobowiązanie):** M-3 — nice-to-have z v1: FR-012, FR-017, FR-015, FR-003; M-4 — FR-026, FR-027 i NFR o kontach nieaktywnych 12 miesięcy. Szczegóły w `## Parked`. Cel: cały zakres przed `hard_deadline` z PRD (2026-12-06), a jeśli się nie uda, M-3 i M-4 idą po nim.
+- **Kolejne kamienie milowe (plan, nie zobowiązanie):** M-3 — nice-to-have z v1: FR-012, FR-017, FR-015, FR-003; M-4 — FR-026, FR-027, NFR o kontach nieaktywnych 12 miesięcy i (nice-to-have na koniec) wielowybór w filtrach listy subskrypcji. Szczegóły w `## Parked`. Cel: cały zakres przed `hard_deadline` z PRD (2026-12-06), a jeśli się nie uda, M-3 i M-4 idą po nim.
 
 ## Vision recap
 
@@ -48,7 +48,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-15 | client-and-ssr-error-visibility    | błędy przeglądarki i SSR zostawiają ślad, a nieaktualny plik po deployu przeładowuje stronę | S-14     | FR-023                  | done |
 | S-16 | failure-causes-and-audit-trail     | operator widzi przyczynę porażki joba i maila, a usunięcia i odmowy admina mają ślad | S-11          | FR-024                  | done |
 | S-17 | own-category-rename-and-delete     | użytkownik zmienia nazwę własnej kategorii albo usuwa pustą                          | —             | FR-025, FR-009, FR-010  | done |
-| S-18 | subscription-list-sort-filter      | użytkownik sortuje i filtruje listę subskrypcji                                      | —             | FR-016                  | in-progress |
+| S-18 | subscription-list-sort-filter      | użytkownik sortuje i filtruje listę subskrypcji                                      | —             | FR-016                  | done |
 
 ## Streams
 
@@ -182,7 +182,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **Unknowns:**
   - Sortowanie i filtrowanie w przeglądarce czy w API? Przy małej skali (PRD `target_scale: small`) przeglądarka wystarczy. — Owner: agent (`/10x-plan`). Block: no.
 - **Risk:** Nice-to-have na koniec M-2; wąski zakres we froncie, więc pierwszy kandydat na przebieg `/goal` + `/10x-goal-implement`. Widok listy sprawdzany w trzech szerokościach (`lessons.md`).
-- **Status:** in-progress
+- **Status:** done
 
 ## Backlog Handoff
 
@@ -213,6 +213,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **Plan M-4 — FR-026: ikony form płatności na liście** — Why parked: nice-to-have v2 na koniec (PRD v2). Ikona inline SVG z etykietą dla czytnika ekranu; w kompaktowej tabeli (container query poniżej 680 px) zastąpiłaby dopisek „· BLIK” pod nazwą.
 - **Plan M-4 — FR-027: zaufane urządzenia i mail „to nie ja”** — Why parked: nice-to-have v2 na koniec (PRD v2); blokada mechanizmem z S-09.
 - **Plan M-4 — NFR: powiadomienie o koncie nieaktywnym 12 miesięcy** — Why parked: pierwsze takie konta pojawią się najwcześniej rok po starcie (PRD v2).
+- **Plan M-4 — wielowybór w filtrach listy subskrypcji (rozszerzenie FR-016, po S-18)** — Why parked: nice-to-have na koniec; S-18 świadomie dał jedną wartość na filtr. Zakres oszacowany 2026-11-25 (ok. pół dnia z testami, bez migracji): API `category`/`status` jako tablice (`IN`, walidacja `each`, jedna wartość dalej działa, więc zgodnie wstecz), front `mat-select multiple` z własnym tekstem pola („Aktywna, Trial” / „3 statusy”), pusty wybór = wszystkie, lista wczytywana po zamknięciu panelu wyboru; ponowna kontrola trzech szerokości (`lessons.md`).
 - **Scraping promocji od dostawców** — Why parked: PRD §Non-Goals (ryzyko techniczne i prawne).
 - **Współdzielone subskrypcje / split kosztów** — Why parked: PRD §Non-Goals (backlog v2).
 - **Rekomendacja przejścia na plan roczny** — Why parked: PRD §Non-Goals (backlog v2).
@@ -247,3 +248,4 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **S-14: logi obu procesów mają jednolity format bez kodów kolorów, ze znacznikiem czasu ISO ze strefą; linia startowa i `/health` podają wdrożoną wersję; każde żądanie zostawia jedną linię access logu (metoda, trasa, status, czas).** — Archived 2026-11-25 → `context/archive/2026-11-24-log-format-version-and-access-log/`. Lesson: —.
 - **S-17: użytkownik zmienia nazwę własnej kategorii albo usuwa ją, jeśli nie ma w niej subskrypcji; przy niepustej widzi komunikat, że najpierw musi przenieść albo usunąć jej subskrypcje. Kategorie predefiniowane się nie zmieniają, a próg duplikatów i limit budżetu usuwanej kategorii nie zostają osierocone.** — Archived 2026-11-25 → `context/archive/2026-11-24-own-category-rename-and-delete/`. Lesson: —.
 - **S-15: strony i formularze nie zamieniają nieznanego błędu w ogólny komunikat bez zapisu przyczyny, błąd nawigacji przy renderowaniu na serwerze nie wygląda jak 404, a nieaktualny plik aplikacji po wdrożeniu przeładowuje stronę.** — Archived 2026-11-25 → `context/archive/2026-11-25-client-and-ssr-error-visibility/`. Lesson: —.
+- **S-18: użytkownik sortuje listę subskrypcji (np. po nazwie, kwocie, dacie rozliczenia) i filtruje ją (np. po kategorii, statusie).** — Archived 2026-11-25 → `context/archive/2026-11-25-subscription-list-sort-filter/`. Lesson: —.
