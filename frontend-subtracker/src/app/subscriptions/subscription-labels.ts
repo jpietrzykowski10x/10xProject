@@ -17,6 +17,7 @@ import type {
   CostTotals,
   PaymentMethod,
   Subscription,
+  SubscriptionSort,
   SubscriptionStatus,
 } from './subscription.types';
 
@@ -26,6 +27,24 @@ export const STATUS_LABELS: Record<SubscriptionStatus, string> = {
   cancelled_pending: 'W trakcie anulowania',
   cancelled: 'Anulowana',
 };
+
+// S-18: the orders of the "Sortuj" field on /subscriptions; the default first.
+export const SORT_LABELS: Record<SubscriptionSort, string> = {
+  status_then_date: 'Najbliższe najpierw',
+  name_asc: 'Nazwa A–Ż',
+  name_desc: 'Nazwa Ż–A',
+  amount_desc: 'Najdroższe miesięcznie',
+  amount_asc: 'Najtańsze miesięcznie',
+  date_asc: 'Data rosnąco',
+  date_desc: 'Data malejąco',
+};
+
+// The option of the "Kategoria" and "Status" fields that turns the filter off.
+export const ALL_FILTER_LABEL = 'Wszystkie';
+
+// The list of an account without subscriptions, and an empty result of the filters.
+export const noSubscriptionsMessage = 'Nie masz jeszcze żadnych subskrypcji.';
+export const noFilterResultsMessage = 'Brak subskrypcji spełniających filtry.';
 
 // The billing-cycle switch in the form.
 export const BILLING_CYCLE_LABELS: Record<BillingCycle, string> = {

@@ -19,13 +19,17 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButton } from '@angular/material/button';
+import { MatOption } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
-import { MatPaginatorIntl } from '@angular/material/paginator';
+import { MatFormField, MatLabel } from '@angular/material/form-field';
+import { MatPaginator, MatPaginatorIntl, type PageEvent } from '@angular/material/paginator';
+import { MatSelect } from '@angular/material/select';
 import { ActivatedRoute, Router } from '@angular/router';
 import { map, type Subscription as RxSubscription } from 'rxjs';
 import { AppShell } from '../../layout/app-shell/app-shell';
 import { PHONE_MEDIA_QUERY, WIDE_MEDIA_QUERY } from '../../shared/breakpoints';
 import { ErrorReporter } from '../../shared/error-reporter';
+import { FORM_FIELD_DEFAULTS } from '../../shared/form-field-defaults';
 import { PlPaginatorIntl } from '../../shared/pl-paginator-intl';
 import { openCancelSubscriptionDialog } from '../../subscriptions/cancel-subscription-dialog/cancel-subscription-dialog';
 import { CostTotalsStore } from '../../subscriptions/cost-totals.store';
@@ -33,12 +37,17 @@ import { openDeleteSubscriptionDialog } from '../../subscriptions/delete-subscri
 import { SubscriptionForm } from '../../subscriptions/subscription-form/subscription-form';
 import {
   addedSubscriptionMessage,
+  ALL_FILTER_LABEL,
   cancelledSubscriptionMessage,
   conflictSubscriptionMessage,
   deletedSubscriptionMessage,
   missingSubscriptionMessage,
+  noFilterResultsMessage,
+  noSubscriptionsMessage,
   resumedSubscriptionMessage,
   resumeFailedMessage,
+  SORT_LABELS,
+  STATUS_LABELS,
   updatedSubscriptionMessage,
 } from '../../subscriptions/subscription-labels';
 import {
@@ -47,10 +56,14 @@ import {
   queryFromParams,
   sameQuery,
 } from '../../subscriptions/subscription-list-query';
-import type {
-  Category,
-  Subscription,
-  SubscriptionListQuery,
+import {
+  type Category,
+  SUBSCRIPTION_PAGE_SIZE,
+  SUBSCRIPTION_SORTS,
+  type Subscription,
+  type SubscriptionListQuery,
+  type SubscriptionSort,
+  type SubscriptionStatus,
 } from '../../subscriptions/subscription.types';
 import { SubscriptionsService } from '../../subscriptions/subscriptions.service';
 import { SubscriptionTable } from './subscription-table/subscription-table';
@@ -64,16 +77,32 @@ type PanelMode =
 
 const CLOSED: PanelMode = { kind: 'closed' };
 
+// The value of the "Wszystkie" option in the category and status fields. A null option value
+// would make mat-select clear its trigger instead of showing the option.
+const ALL = 'all';
+type FilterValue<T extends string> = T | typeof ALL;
+
 // F2-Lista and F2-Tel-Dodawanie: the list and one panel, for adding ("Nowa subskrypcja") or
 // editing a row ("Edycja subskrypcji"). Only CSS decides how the panel looks: a column beside the
 // table from 1200px, a drawer over it from 840px, the whole content area (list hidden) on the
 // phone. It is one element with one form, so typed data survives a resize.
 // S-18: the order, the filters and the page live in the address (subscription-list-query.ts); the
 // API sorts, filters and cuts the list into pages, and every change of the address reads it again.
+// Layout A: the fields "Sortuj", "Kategoria" and "Status" above the table, the paginator under it.
 @Component({
   selector: 'app-subscriptions',
-  providers: [{ provide: MatPaginatorIntl, useClass: PlPaginatorIntl }],
-  imports: [AppShell, MatButton, SubscriptionForm, SubscriptionTable],
+  providers: [FORM_FIELD_DEFAULTS, { provide: MatPaginatorIntl, useClass: PlPaginatorIntl }],
+  imports: [
+    AppShell,
+    MatButton,
+    MatFormField,
+    MatLabel,
+    MatOption,
+    MatPaginator,
+    MatSelect,
+    SubscriptionForm,
+    SubscriptionTable,
+  ],
   templateUrl: './subscriptions.html',
   styleUrl: './subscriptions.scss',
 })
@@ -94,6 +123,7 @@ export class Subscriptions implements OnInit {
   private readonly panelTitle = viewChild<ElementRef<HTMLElement>>('panelTitle');
   private readonly listArea = viewChild.required<ElementRef<HTMLElement>>('listArea');
   private readonly form = viewChild(SubscriptionForm);
+  private readonly categorySelect = viewChild<MatSelect>('categorySelect');
   private readonly document = inject(DOCUMENT);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
@@ -109,6 +139,24 @@ export class Subscriptions implements OnInit {
   // The account's categories for the category filter, read once on entry. Without them the filter
   // offers only "Wszystkie"; the list works either way.
   protected readonly categories = signal<Category[]>([]);
+  // An empty result of the filters reads "Brak subskrypcji spełniających filtry." instead of the
+  // empty account's message, and never opens the add panel.
+  protected readonly filtered = computed(() => hasFilters(this.query()));
+  protected readonly categoryValue = computed<FilterValue<string>>(
+    () => this.query().category ?? ALL,
+  );
+  protected readonly statusValue = computed<FilterValue<SubscriptionStatus>>(
+    () => this.query().status ?? ALL,
+  );
+  protected readonly all = ALL;
+  protected readonly allLabel = ALL_FILTER_LABEL;
+  protected readonly sorts = SUBSCRIPTION_SORTS;
+  protected readonly sortLabels = SORT_LABELS;
+  protected readonly statuses = Object.keys(STATUS_LABELS) as SubscriptionStatus[];
+  protected readonly statusLabels = STATUS_LABELS;
+  protected readonly pageSize = SUBSCRIPTION_PAGE_SIZE;
+  protected readonly noSubscriptionsMessage = noSubscriptionsMessage;
+  protected readonly noFilterResultsMessage = noFilterResultsMessage;
   protected readonly state = signal<ListState>({ kind: 'loading' });
   private loadRequest?: RxSubscription;
   protected readonly panel = signal<PanelMode>(CLOSED);
@@ -210,6 +258,30 @@ export class Subscriptions implements OnInit {
       queryParams: paramsFromQuery(next),
       replaceUrl: true,
     });
+  }
+
+  protected sortChanged(sort: SubscriptionSort): void {
+    this.setQuery({ sort });
+  }
+
+  protected categoryChanged(value: FilterValue<string>): void {
+    this.setQuery({ category: value === ALL ? null : value });
+  }
+
+  protected statusChanged(value: FilterValue<SubscriptionStatus>): void {
+    this.setQuery({ status: value === ALL ? null : value });
+  }
+
+  // The paginator counts pages from 0, the address from 1.
+  protected pageChanged(event: PageEvent): void {
+    this.setQuery({ page: event.pageIndex + 1 });
+  }
+
+  // "Wyczyść filtry" under an empty result keeps the order. The button goes with the empty result,
+  // so the focus moves to the category field, which stays.
+  protected clearFilters(): void {
+    this.setQuery({ category: null, status: null, page: 1 });
+    this.categorySelect()?.focus();
   }
 
   // The page of the current query. `quiet` keeps the current list on screen while it is read again

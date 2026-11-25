@@ -57,7 +57,11 @@ test('a subscription added in the form stays on its owner list and not on the ne
     .filter({ visible: true })
     .click();
   await page.getByRole('textbox', { name: 'Nazwa', exact: true }).fill(nameA);
-  await page.getByRole('combobox', { name: 'Kategoria' }).click();
+  // In the form: from 1200 px the list's own "Kategoria" filter stays on screen next to the panel.
+  await page
+    .getByRole('region', { name: 'Nowa subskrypcja' })
+    .getByRole('combobox', { name: 'Kategoria' })
+    .click();
   // Waits for the categories from the API; "Dodaj własną…" is there before they arrive.
   await page.getByRole('option').filter({ hasNotText: 'Dodaj własną' }).first().click();
   await page.getByRole('textbox', { name: 'Kwota w PLN' }).fill('12,99');

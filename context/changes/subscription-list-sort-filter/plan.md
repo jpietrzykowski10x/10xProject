@@ -345,26 +345,26 @@ Jedno zapytanie z `COUNT` (`getManyAndCount`) na konto. Filtrowanie idzie po `us
 
 #### Automated
 
-- [x] 2.1 Testy frontu w obu strefach
-- [x] 2.2 Build
-- [x] 2.3 Kontrola uszkodzenia: auto-otwarcie bez hasFilters daje czerwony test
+- [x] 2.1 Testy frontu w obu strefach — 412161b
+- [x] 2.2 Build — 412161b
+- [x] 2.3 Kontrola uszkodzenia: auto-otwarcie bez hasFilters daje czerwony test — 412161b
 
 #### Manual
 
-- [x] 2.4 npm start: sort=name_desc&page=2 pokazuje drugą stronę Ż–A, a odświeżenie zostawia widok
+- [x] 2.4 npm start: sort=name_desc&page=2 pokazuje drugą stronę Ż–A, a odświeżenie zostawia widok — 412161b
 
 ### Phase 3: Front — kontrolki, stany puste, e2e, dokumentacja
 
 #### Automated
 
-- [ ] 3.1 Testy frontu
-- [ ] 3.2 Build produkcyjny i e2e
-- [ ] 3.3 Typy e2e
-- [ ] 3.4 Playwright
-- [ ] 3.5 Kontrola uszkodzenia: paramsFromQuery bez page daje czerwony test e2e
+- [x] 3.1 Testy frontu
+- [x] 3.2 Build produkcyjny i e2e
+- [x] 3.3 Typy e2e
+- [x] 3.4 Playwright
+- [x] 3.5 Kontrola uszkodzenia: paramsFromQuery bez page daje czerwony test e2e
 
 #### Manual
 
-- [ ] 3.6 Trzy szerokości z najdłuższą treścią: pola i paginator bez zawijania i nachodzenia
-- [ ] 3.7 Panel i szuflada: pola nieaktywne z listą, fokus wraca jak dziś
+- [x] 3.6 Trzy szerokości z najdłuższą treścią: pola i paginator bez zawijania i nachodzenia
+- [x] 3.7 Panel i szuflada: pola nieaktywne z listą, fokus wraca jak dziś
 - [ ] 3.8 Po wdrożeniu na produkcję: lista z filtrami działa, podgląd admina pokazuje całą listę

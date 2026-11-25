@@ -19,6 +19,45 @@
         </button>
       </div>
 
+      @let current = state();
+      <!-- S-18, layout A: the order and the filters of the list (the address keeps them). They come
+           with the list and stay while it is read again; an account without subscriptions has
+           nothing to order, so they show only with rows or with a filter set. -->
+      @if (current.kind === 'ready' && (current.total > 0 || filtered())) {
+        <div class="subscriptions__controls">
+          <mat-form-field class="subscriptions__control" subscriptSizing="dynamic">
+            <mat-label>Sortuj</mat-label>
+            <mat-select [value]="query().sort" (selectionChange)="sortChanged($event.value)">
+              @for (sort of sorts; track sort) {
+                <mat-option [value]="sort">{{ sortLabels[sort] }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field class="subscriptions__control" subscriptSizing="dynamic">
+            <mat-label>Kategoria</mat-label>
+            <mat-select
+              #categorySelect
+              [value]="categoryValue()"
+              (selectionChange)="categoryChanged($event.value)"
+            >
+              <mat-option [value]="all">{{ allLabel }}</mat-option>
+              @for (category of categories(); track category.id) {
+                <mat-option [value]="category.id">{{ category.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field class="subscriptions__control" subscriptSizing="dynamic">
+            <mat-label>Status</mat-label>
+            <mat-select [value]="statusValue()" (selectionChange)="statusChanged($event.value)">
+              <mat-option [value]="all">{{ allLabel }}</mat-option>
+              @for (status of statuses; track status) {
+                <mat-option [value]="status">{{ statusLabels[status] }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+      }
+
       <!-- The live region is always there, so a message put into it is announced. -->
       <div role="status">
         @if (statusMessage(); as message) {
@@ -39,7 +78,6 @@
         </div>
       }
 
-      @let current = state();
       @if (current.kind === 'loading') {
         <!-- No role="status": a live region inserted together with its text is often not read. -->
         <p class="subscriptions__panel">Wczytywanie subskrypcji…</p>
@@ -49,7 +87,16 @@
           <button mat-stroked-button type="button" (click)="retry()">Spróbuj ponownie</button>
         </div>
       } @else if (current.items.length === 0) {
-        <p class="subscriptions__panel">Nie masz jeszcze żadnych subskrypcji.</p>
+        @if (filtered()) {
+          <div class="subscriptions__panel subscriptions__no-results">
+            <p>{{ noFilterResultsMessage }}</p>
+            <button mat-stroked-button type="button" (click)="clearFilters()">
+              Wyczyść filtry
+            </button>
+          </div>
+        } @else {
+          <p class="subscriptions__panel">{{ noSubscriptionsMessage }}</p>
+        }
       } @else {
         <!-- One table for desktop and phone; it switches its columns at 840px. -->
         <app-subscription-table
@@ -61,6 +108,19 @@
           (cancel)="confirmCancel($event)"
           (resume)="resume($event)"
         />
+        <!-- Under the table, outside its scroll frame, so it never scrolls away. One page needs no
+             paginator. -->
+        @if (current.total > pageSize) {
+          <mat-paginator
+            class="subscriptions__paginator"
+            [length]="current.total"
+            [pageSize]="pageSize"
+            [pageIndex]="query().page - 1"
+            hidePageSize
+            showFirstLastButtons
+            (page)="pageChanged($event)"
+          />
+        }
       }
 
       <!-- Phone only: the main action stays at the bottom of the screen (F2-Tel-Lista). -->

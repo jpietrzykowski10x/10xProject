@@ -10,11 +10,14 @@ import { MatButtonHarness } from '@angular/material/button/testing';
 import { MatDialogHarness } from '@angular/material/dialog/testing';
 import { MatFormFieldHarness } from '@angular/material/form-field/testing';
 import { MatInputHarness } from '@angular/material/input/testing';
+import { MatPaginatorHarness } from '@angular/material/paginator/testing';
+import { MatSelectHarness } from '@angular/material/select/testing';
 import { provideRouter, Router } from '@angular/router';
 import type { MockInstance } from 'vitest';
 import { environment } from '../../../environments/environment';
 import { ErrorReporter } from '../../shared/error-reporter';
 import type {
+  Category,
   CostTotals,
   CreateSubscriptionRequest,
   Subscription,
@@ -27,6 +30,8 @@ const CATEGORIES_URL = `${environment.apiUrl}/categories`;
 const TOTALS_URL = `${environment.apiUrl}/subscriptions/totals`;
 // A category id in the address must be a UUID, or the page drops it (the API would answer 400).
 const CATEGORY_ID = '3f2b8c1e-9d4a-4f6b-8a2c-1e5d7f9b0c3a';
+// An own category of the account with a UUID, as the category filter needs it.
+const TOOLS: Category = { id: CATEGORY_ID, name: 'Oprogramowanie i narzędzia', isDefault: false };
 
 const NETFLIX: Subscription = {
   id: 'subscription-1',
@@ -119,10 +124,11 @@ async function start(
   fixture: ComponentFixture<Subscriptions>,
   page: SubscriptionPage,
   totals: CostTotals,
+  categories: Category[] = [NETFLIX.category],
 ): Promise<void> {
   await fixture.whenStable();
   flushTotals(httpTesting, totals);
-  httpTesting.expectOne({ method: 'GET', url: CATEGORIES_URL }).flush([NETFLIX.category]);
+  httpTesting.expectOne({ method: 'GET', url: CATEGORIES_URL }).flush(categories);
   listRequest(httpTesting).flush(page);
   await fixture.whenStable();
 }
@@ -716,6 +722,181 @@ describe('Subscriptions', () => {
       ).toHaveLength(1);
       expect(report).toHaveBeenCalledTimes(1);
       expect(report).toHaveBeenCalledWith('Subscriptions', expect.anything());
+    });
+  });
+
+  // S-18, phase 3. The oracle is the plan's layout A: three fields above the table whose choice
+  // goes into the address (and so into the request), the paginator under the table only when the
+  // rows do not fit on one page of 25, and an empty result of a filter told apart from an empty
+  // account.
+  describe('list controls', () => {
+    async function select(
+      loader: Awaited<ReturnType<typeof createPage>>['loader'],
+      label: string,
+    ): Promise<MatSelectHarness> {
+      const field = await loader.getHarness(MatFormFieldHarness.with({ floatingLabelText: label }));
+      const control = await field.getControl(MatSelectHarness);
+      if (control === null) {
+        throw new Error(`No select in the field "${label}"`);
+      }
+      return control;
+    }
+
+    async function optionTexts(control: MatSelectHarness): Promise<string[]> {
+      await control.open();
+      const texts = await Promise.all(
+        (await control.getOptions()).map((option) => option.getText()),
+      );
+      await control.close();
+      return texts;
+    }
+
+    it('shows the sort, category and status fields with their values and options', async () => {
+      const { httpTesting, fixture, loader } = await createPage(
+        `/?sort=amount_desc&category=${CATEGORY_ID}`,
+      );
+      await start(httpTesting, fixture, pageOf([NETFLIX]), NETFLIX_TOTALS, [
+        NETFLIX.category,
+        TOOLS,
+      ]);
+
+      const sort = await select(loader, 'Sortuj');
+      const category = await select(loader, 'Kategoria');
+      const status = await select(loader, 'Status');
+      expect(await sort.getValueText()).toBe('Najdroższe miesięcznie');
+      expect(await category.getValueText()).toBe(TOOLS.name);
+      expect(await status.getValueText()).toBe('Wszystkie');
+
+      expect(await optionTexts(sort)).toStrictEqual([
+        'Najbliższe najpierw',
+        'Nazwa A–Ż',
+        'Nazwa Ż–A',
+        'Najdroższe miesięcznie',
+        'Najtańsze miesięcznie',
+        'Data rosnąco',
+        'Data malejąco',
+      ]);
+      expect(await optionTexts(category)).toStrictEqual(['Wszystkie', 'Rozrywka', TOOLS.name]);
+      expect(await optionTexts(status)).toStrictEqual([
+        'Wszystkie',
+        'Trial',
+        'Aktywna',
+        'W trakcie anulowania',
+        'Anulowana',
+      ]);
+    });
+
+    it('reads page 1 of another order chosen in the sort field', async () => {
+      const { httpTesting, fixture, router, loader } = await createPage('/?status=active&page=2');
+      await start(httpTesting, fixture, pageOf([NETFLIX], 30, 2), NETFLIX_TOTALS);
+
+      await (await select(loader, 'Sortuj')).clickOptions({ text: 'Nazwa A–Ż' });
+      await fixture.whenStable();
+
+      const request = listRequest(httpTesting);
+      expect(paramsOf(request)).toStrictEqual({ sort: ['name_asc'], status: ['active'] });
+      expect(router.url).toBe('/?sort=name_asc&status=active');
+      request.flush(pageOf([NETFLIX], 30, 1));
+      await fixture.whenStable();
+    });
+
+    it('filters by a category and by a status, and "Wszystkie" turns a filter off', async () => {
+      const { httpTesting, fixture, router, loader } = await createPage('/?status=trial');
+      await start(httpTesting, fixture, pageOf([NETFLIX]), NETFLIX_TOTALS, [
+        NETFLIX.category,
+        TOOLS,
+      ]);
+
+      await (await select(loader, 'Kategoria')).clickOptions({ text: TOOLS.name });
+      await fixture.whenStable();
+      let request = listRequest(httpTesting);
+      expect(paramsOf(request)).toStrictEqual({ category: [CATEGORY_ID], status: ['trial'] });
+      request.flush(pageOf([NETFLIX]));
+      await fixture.whenStable();
+
+      await (await select(loader, 'Status')).clickOptions({ text: 'Wszystkie' });
+      await fixture.whenStable();
+      request = listRequest(httpTesting);
+      expect(paramsOf(request)).toStrictEqual({ category: [CATEGORY_ID] });
+      expect(router.url).toBe(`/?category=${CATEGORY_ID}`);
+      request.flush(pageOf([NETFLIX]));
+      await fixture.whenStable();
+    });
+
+    it('moves to the next page with the paginator and keeps the order', async () => {
+      const { httpTesting, fixture, router, loader } = await createPage('/?sort=date_desc');
+      await start(httpTesting, fixture, pageOf([NETFLIX], 60), NETFLIX_TOTALS);
+
+      const paginator = await loader.getHarness(MatPaginatorHarness);
+      expect(await paginator.getRangeLabel()).toBe('1–25 z 60');
+      await paginator.goToNextPage();
+      await fixture.whenStable();
+
+      const request = listRequest(httpTesting);
+      expect(paramsOf(request)).toStrictEqual({ sort: ['date_desc'], page: ['2'] });
+      expect(router.url).toBe('/?sort=date_desc&page=2');
+      request.flush(pageOf([NETFLIX], 60, 2));
+      await fixture.whenStable();
+      expect(await paginator.getRangeLabel()).toBe('26–50 z 60');
+    });
+
+    // 25 rows are exactly one page (backend SUBSCRIPTION_PAGE_SIZE).
+    it('has no paginator when every row fits on one page', async () => {
+      const { httpTesting, fixture, loader } = await createPage();
+      await start(httpTesting, fixture, pageOf([NETFLIX], 25), NETFLIX_TOTALS);
+
+      expect(
+        await loader.getAllHarnesses(
+          MatButtonHarness.with({ selector: '[aria-label="Edytuj Netflix"]' }),
+        ),
+      ).toHaveLength(1);
+      expect(await loader.getAllHarnesses(MatPaginatorHarness)).toHaveLength(0);
+    });
+
+    it('tells an empty result of a filter apart and "Wyczyść filtry" keeps the order', async () => {
+      const { httpTesting, fixture, router, loader } = await createPage(
+        `/?sort=name_asc&category=${CATEGORY_ID}&status=trial`,
+      );
+      await start(httpTesting, fixture, pageOf([]), NETFLIX_TOTALS, [NETFLIX.category, TOOLS]);
+
+      const host = fixture.nativeElement as HTMLElement;
+      expect(host.textContent).toContain('Brak subskrypcji spełniających filtry.');
+      expect(host.textContent).not.toContain('Nie masz jeszcze żadnych subskrypcji.');
+      // The fields stay, so another filter can be chosen.
+      expect(await loader.getAllHarnesses(MatSelectHarness)).toHaveLength(3);
+
+      await (await loader.getHarness(MatButtonHarness.with({ text: 'Wyczyść filtry' }))).click();
+      await fixture.whenStable();
+
+      const request = listRequest(httpTesting);
+      expect(paramsOf(request)).toStrictEqual({ sort: ['name_asc'] });
+      expect(router.url).toBe('/?sort=name_asc');
+      request.flush(pageOf([NETFLIX]));
+      await fixture.whenStable();
+      expect(host.textContent).not.toContain('Brak subskrypcji spełniających filtry.');
+      expect(
+        await loader.getAllHarnesses(
+          MatButtonHarness.with({ selector: '[aria-label="Edytuj Netflix"]' }),
+        ),
+      ).toHaveLength(1);
+    });
+
+    it('keeps the empty account message without fields or "Wyczyść filtry"', async () => {
+      const { httpTesting, fixture, loader } = await createPage('/?sort=name_asc');
+      await start(httpTesting, fixture, pageOf([]), NO_TOTALS);
+      // The add panel opens by itself and its form reads the categories.
+      httpTesting.expectOne({ method: 'GET', url: CATEGORIES_URL }).flush([NETFLIX.category]);
+      await fixture.whenStable();
+
+      const host = fixture.nativeElement as HTMLElement;
+      expect(host.textContent).toContain('Nie masz jeszcze żadnych subskrypcji.');
+      expect(host.textContent).not.toContain('Brak subskrypcji spełniających filtry.');
+      expect(
+        await loader.getAllHarnesses(MatButtonHarness.with({ text: 'Wyczyść filtry' })),
+      ).toHaveLength(0);
+      expect(
+        await loader.getAllHarnesses(MatFormFieldHarness.with({ floatingLabelText: 'Sortuj' })),
+      ).toHaveLength(0);
     });
   });
 });
