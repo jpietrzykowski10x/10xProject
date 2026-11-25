@@ -38,15 +38,20 @@ describe('Access log (e2e)', () => {
     return lines;
   }
 
-  // The line is written at `finish`, which may come a moment after the client has the response.
+  // The line is written at `finish`, which may come a moment after the client has the response;
+  // in the full e2e run (one process, many files) that moment took over Vitest's default 1 s once,
+  // so the wait allows 5 s.
   async function accessLineOf(requestId: string): Promise<string> {
-    return vi.waitFor(() => {
-      const lines = accessLines().filter((line) =>
-        line.endsWith(` req=${requestId}`),
-      );
-      expect(lines).toHaveLength(1);
-      return lines[0];
-    });
+    return vi.waitFor(
+      () => {
+        const lines = accessLines().filter((line) =>
+          line.endsWith(` req=${requestId}`),
+        );
+        expect(lines).toHaveLength(1);
+        return lines[0];
+      },
+      { timeout: 5000, interval: 50 },
+    );
   }
 
   it('logs GET /health with its status, time and request id', async () => {
