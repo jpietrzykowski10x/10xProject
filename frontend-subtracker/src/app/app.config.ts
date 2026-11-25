@@ -2,8 +2,9 @@ import { ApplicationConfig, LOCALE_ID, provideBrowserGlobalErrorListeners } from
 import { registerLocaleData } from '@angular/common';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import localePl from '@angular/common/locales/pl';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withNavigationErrorHandler } from '@angular/router';
 import { routes } from './app.routes';
+import { handleNavigationError } from './navigation-error-handler';
 import { provideClientHydration, withHttpTransferCacheOptions } from '@angular/platform-browser';
 import { credentialsInterceptor } from './auth/credentials.interceptor';
 import { sessionExpiredInterceptor } from './auth/session-expired.interceptor';
@@ -16,7 +17,8 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     { provide: LOCALE_ID, useValue: 'pl-PL' },
-    provideRouter(routes),
+    // A navigation that throws: on the server 500 with /unavailable (navigation-error-handler.ts).
+    provideRouter(routes, withNavigationErrorHandler(handleNavigationError)),
     // The session response is per visitor: it must never be embedded in server-rendered HTML.
     provideClientHydration(
       withHttpTransferCacheOptions({ filter: (request) => !request.url.endsWith('/auth/session') }),

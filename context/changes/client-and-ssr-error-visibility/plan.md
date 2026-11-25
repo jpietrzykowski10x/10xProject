@@ -342,29 +342,29 @@ Bez migracji danych. Po wdrożeniu pierwsza zmiana z przeładowaniem działa dop
 
 #### Automated
 
-- [x] 1.1 Testy frontu w obu strefach
-- [x] 1.2 Build produkcyjny
-- [x] 1.3 Bundel przeglądarki bez kodu logu serwera
-- [x] 1.4 Kontrola uszkodzenia: usunięte wywołanie report w sign-in.ts daje czerwony test SignIn
+- [x] 1.1 Testy frontu w obu strefach — 5c2de6e
+- [x] 1.2 Build produkcyjny — 5c2de6e
+- [x] 1.3 Bundel przeglądarki bez kodu logu serwera — 5c2de6e
+- [x] 1.4 Kontrola uszkodzenia: usunięte wywołanie report w sign-in.ts daje czerwony test SignIn — 5c2de6e
 
 #### Manual
 
-- [x] 1.5 Lokalnie z zatrzymanym API: dotychczasowe komunikaty i po jednej linii w konsoli przeglądarki
+- [x] 1.5 Lokalnie z zatrzymanym API: dotychczasowe komunikaty i po jednej linii w konsoli przeglądarki — 5c2de6e
 
 ### Phase 2: Błąd nawigacji SSR i middleware błędów
 
 #### Automated
 
-- [ ] 2.1 Testy frontu
-- [ ] 2.2 Build produkcyjny i e2e
-- [ ] 2.3 Typy e2e
-- [ ] 2.4 Playwright
-- [ ] 2.5 Kontrola uszkodzenia: bez status = 500 w handlerze test ssr-errors jest czerwony
+- [x] 2.1 Testy frontu
+- [x] 2.2 Build produkcyjny i e2e
+- [x] 2.3 Typy e2e
+- [x] 2.4 Playwright
+- [x] 2.5 Kontrola uszkodzenia: bez status = 500 w handlerze test ssr-errors jest czerwony
 
 #### Manual
 
-- [ ] 2.6 Lokalnie na buildzie e2e: 500, strona „niedostępne” i jedna linia ERROR [Navigation]
-- [ ] 2.7 Na buildzie produkcyjnym /e2e/navigation-error daje dotychczasowe 404
+- [x] 2.6 Lokalnie na buildzie e2e: 500, strona „niedostępne” i jedna linia ERROR [Navigation]
+- [x] 2.7 Na buildzie produkcyjnym /e2e/navigation-error daje dotychczasowe 404
 
 ### Phase 3: Przeładowanie po nieaktualnym pliku i dokumentacja
 

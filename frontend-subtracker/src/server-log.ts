@@ -130,6 +130,39 @@ export function accessMessage(
   return `${req.method} ${safePath(req.path)} ${status} ${ms} ms`;
 }
 
+// The lines of the log for a render that failed (handle() rejected, server.ts error middleware):
+// first `<METHOD> <path without query> <name>: <message on one line>` (the message cut like a
+// path), then the frames of the stack, each a line of its own, without the stack's own heading,
+// which repeats the message. Null for an AbortError: the client closed the connection, and the
+// access log already shows `aborted`.
+export function renderErrorLines(req: AccessLogRequest, error: unknown): string[] | null {
+  if (isAbortError(error)) {
+    return null;
+  }
+  if (!(error instanceof Error)) {
+    return [`${req.method} ${safePath(req.path)} Unknown error (${typeof error})`];
+  }
+  const heading = error.message === '' ? error.name : `${error.name}: ${error.message}`;
+  const first = `${req.method} ${safePath(req.path)} ${safePath(heading)}`;
+  const stack = error.stack ?? '';
+  // V8 starts the stack with the heading (the message possibly over several lines); everything
+  // after it is a frame. A stack that does not start with it is kept whole.
+  const frames = stack.startsWith(heading) ? stack.slice(heading.length) : stack;
+  return [
+    first,
+    ...frames
+      .split(/\r?\n/)
+      .filter((line) => line.trim() !== '')
+      .map((line) => line.replace(CONTROL_CHARACTERS, '?')),
+  ];
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
+  );
+}
+
 // The commit SHA from the text of `.deploy-info` (written by deploy.sh; null when there is no
 // file). Only the SHA= line is read: the file also holds BACKUP=<dump path>, which must never be
 // logged. Anything else (no file, no line, a malformed value) gives `dev`.

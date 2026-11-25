@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
+import { environment } from '../environments/environment';
 import { adminGuard, authGuard, guestGuard } from './auth/auth.guard';
+import { E2E_ROUTES } from './e2e-routes';
 
 export const routes: Routes = [
   {
@@ -63,4 +65,6 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/service-unavailable/service-unavailable').then((m) => m.ServiceUnavailable),
   },
+  // Only in the e2e build (environment.e2e.ts); production builds have e2eRoutes: false.
+  ...(environment.e2eRoutes ? E2E_ROUTES : []),
 ];

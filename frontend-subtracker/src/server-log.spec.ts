@@ -3,6 +3,7 @@ import {
   colorsEnabled,
   deployedVersionFrom,
   isoTimestampIn,
+  renderErrorLines,
   safePath,
   serverLine,
 } from './server-log';
@@ -141,6 +142,62 @@ describe('accessMessage', () => {
 
     expect(message).not.toContain('\n');
     expect(message).toBe(`GET /x?${'b'.repeat(196)}… 404 1 ms`);
+  });
+});
+
+describe('renderErrorLines', () => {
+  const REQ = { method: 'GET', path: '/budget', originalUrl: '/budget?q=anna%40example.com' };
+
+  it('gives the method, the path without its query and the error, then the stack frames', () => {
+    const error = new TypeError('Cannot read properties of undefined');
+    error.stack = [
+      'TypeError: Cannot read properties of undefined',
+      '    at render (file:///app/server/main.server.mjs:1:2)',
+      '    at async handle (file:///app/server/server.mjs:3:4)',
+    ].join('\n');
+
+    expect(renderErrorLines(REQ, error)).toEqual([
+      'GET /budget TypeError: Cannot read properties of undefined',
+      '    at render (file:///app/server/main.server.mjs:1:2)',
+      '    at async handle (file:///app/server/server.mjs:3:4)',
+    ]);
+  });
+
+  it('keeps a message over several lines on the first line, without repeating it in the stack', () => {
+    const error = new Error('first\nsecond');
+    error.stack = 'Error: first\nsecond\n    at frame (x.mjs:1:1)';
+
+    expect(renderErrorLines(REQ, error)).toEqual([
+      'GET /budget Error: first?second',
+      '    at frame (x.mjs:1:1)',
+    ]);
+  });
+
+  it('cuts a long message like a path and gives no frames without a stack', () => {
+    const error = new Error('x'.repeat(500));
+    error.stack = undefined;
+
+    const [first, ...rest] = renderErrorLines(REQ, error) ?? [];
+
+    expect(first?.startsWith('GET /budget Error: x')).toBe(true);
+    expect(first?.endsWith('…')).toBe(true);
+    expect(first?.length).toBe('GET /budget '.length + 200);
+    expect(rest).toEqual([]);
+  });
+
+  it('names the type of a thrown value that is not an Error', () => {
+    expect(renderErrorLines({ method: 'POST', path: '/x' }, 'boom')).toEqual([
+      'POST /x Unknown error (string)',
+    ]);
+  });
+
+  it('gives null for an AbortError: the access log already shows aborted', () => {
+    const domAbort = new DOMException('The operation was aborted.', 'AbortError');
+    const error = new Error('aborted');
+    error.name = 'AbortError';
+
+    expect(renderErrorLines(REQ, domAbort)).toBe(null);
+    expect(renderErrorLines(REQ, error)).toBe(null);
   });
 });
 

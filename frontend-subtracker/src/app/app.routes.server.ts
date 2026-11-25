@@ -1,4 +1,6 @@
 import { RenderMode, ServerRoute } from '@angular/ssr';
+import { environment } from '../environments/environment';
+import { E2E_SERVER_PATHS } from './e2e-routes';
 
 export const serverRoutes: ServerRoute[] = [
   // The start page is the exception to "guestGuard routes are client-rendered": it is rendered on
@@ -49,6 +51,11 @@ export const serverRoutes: ServerRoute[] = [
     path: 'admin/users/:id',
     renderMode: RenderMode.Client,
   },
+  // The e2e build's test routes (e2e-routes.ts) are rendered per request, never prerendered: their
+  // navigation fails on purpose.
+  ...(environment.e2eRoutes
+    ? E2E_SERVER_PATHS.map((path): ServerRoute => ({ path, renderMode: RenderMode.Server }))
+    : []),
   {
     path: '**',
     renderMode: RenderMode.Prerender,

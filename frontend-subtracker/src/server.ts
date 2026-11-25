@@ -4,10 +4,10 @@ import {
   isMainModule,
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
-import express from 'express';
+import express, { type NextFunction, type Request, type Response } from 'express';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { accessMessage, deployedVersionFrom, serverLine } from './server-log';
+import { accessMessage, deployedVersionFrom, renderErrorLines, serverLine } from './server-log';
 
 /**
  * Browser assets live in ../browser in the dist layout, and in ./public in the
@@ -96,6 +96,30 @@ app.use((req, res, next) => {
     .handle(req)
     .then((response) => (response ? writeResponseToNodeResponse(response, res) : next()))
     .catch(next);
+});
+
+/**
+ * A render that failed (handle() rejected): one ERROR line in the log format above, with the
+ * method and the path without its query, and the stack frames on the following lines, instead of
+ * Express's bare stack. The client gets a short 500 without the stack. A client that gave up
+ * (AbortError) leaves no line: the access log already shows `aborted`. Registered last, so the
+ * access log above still writes its line. Four parameters, or Express does not treat it as an
+ * error handler.
+ */
+app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
+  const lines = listening ? renderErrorLines(req, error) : null;
+  if (lines !== null) {
+    const [first, ...frames] = lines;
+    console.error(serverLine('ERROR', 'Render', first ?? ''));
+    for (const frame of frames) {
+      console.error(frame);
+    }
+  }
+  if (res.headersSent) {
+    res.end();
+    return;
+  }
+  res.status(500).type('text/plain').send('Internal server error.');
 });
 
 /**
