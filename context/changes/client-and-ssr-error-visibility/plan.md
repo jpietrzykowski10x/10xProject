@@ -355,28 +355,28 @@ Bez migracji danych. Po wdrożeniu pierwsza zmiana z przeładowaniem działa dop
 
 #### Automated
 
-- [x] 2.1 Testy frontu
-- [x] 2.2 Build produkcyjny i e2e
-- [x] 2.3 Typy e2e
-- [x] 2.4 Playwright
-- [x] 2.5 Kontrola uszkodzenia: bez status = 500 w handlerze test ssr-errors jest czerwony
+- [x] 2.1 Testy frontu — 2d2b96d
+- [x] 2.2 Build produkcyjny i e2e — 2d2b96d
+- [x] 2.3 Typy e2e — 2d2b96d
+- [x] 2.4 Playwright — 2d2b96d
+- [x] 2.5 Kontrola uszkodzenia: bez status = 500 w handlerze test ssr-errors jest czerwony — 2d2b96d
 
 #### Manual
 
-- [x] 2.6 Lokalnie na buildzie e2e: 500, strona „niedostępne” i jedna linia ERROR [Navigation]
-- [x] 2.7 Na buildzie produkcyjnym /e2e/navigation-error daje dotychczasowe 404
+- [x] 2.6 Lokalnie na buildzie e2e: 500, strona „niedostępne” i jedna linia ERROR [Navigation] — 2d2b96d
+- [x] 2.7 Na buildzie produkcyjnym /e2e/navigation-error daje dotychczasowe 404 — 2d2b96d
 
 ### Phase 3: Przeładowanie po nieaktualnym pliku i dokumentacja
 
 #### Automated
 
-- [ ] 3.1 Testy frontu
-- [ ] 3.2 Build produkcyjny i e2e
-- [ ] 3.3 Typy e2e
-- [ ] 3.4 Playwright
-- [ ] 3.5 Kontrola uszkodzenia: shouldReload zawsze true daje czerwony test 2 w stale-chunk
+- [x] 3.1 Testy frontu
+- [x] 3.2 Build produkcyjny i e2e
+- [x] 3.3 Typy e2e
+- [x] 3.4 Playwright
+- [x] 3.5 Kontrola uszkodzenia: shouldReload zawsze true daje czerwony test 2 w stale-chunk
 
 #### Manual
 
 - [ ] 3.6 Po wdrożeniu na produkcję: stara karta, klik w inną stronę, jedno przeładowanie i działająca strona
-- [ ] 3.7 Brak pętli przeładowań przy wyłączonym serwerze frontu
+- [x] 3.7 Brak pętli przeładowań przy wyłączonym serwerze frontu
