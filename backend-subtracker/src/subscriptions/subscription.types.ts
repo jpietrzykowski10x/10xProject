@@ -39,6 +39,9 @@ export enum SubscriptionSort {
 // Rows per page of GET /subscriptions: the default and the most one request may ask for.
 export const SUBSCRIPTION_PAGE_SIZE = 25;
 export const SUBSCRIPTION_PAGE_SIZE_MAX = 100;
+// The highest page one request may ask for, so the offset (page - 1) * pageSize stays far inside
+// Postgres' bigint; a larger page (e.g. 1e20) is a 400, not a 500 from SQL.
+export const SUBSCRIPTION_PAGE_MAX = 1_000_000;
 
 export const SUBSCRIPTION_NAME_MAX_LENGTH = 100;
 export const CATEGORY_NAME_MAX_LENGTH = 50;

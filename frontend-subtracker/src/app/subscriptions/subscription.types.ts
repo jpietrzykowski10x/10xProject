@@ -36,6 +36,8 @@ export const DEFAULT_SUBSCRIPTION_SORT: SubscriptionSort = 'status_then_date';
 
 // Rows per page of GET /subscriptions: the API's default, so the page never sends it.
 export const SUBSCRIPTION_PAGE_SIZE = 25;
+// The highest page the API accepts (a larger one is a 400); the address reads it as page 1.
+export const SUBSCRIPTION_PAGE_MAX = 1_000_000;
 
 export const SUBSCRIPTION_NAME_MAX_LENGTH = 100;
 export const CATEGORY_NAME_MAX_LENGTH = 50;

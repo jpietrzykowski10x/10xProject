@@ -282,6 +282,18 @@ Na telefonie (viewport 390 px) pola stoją jedno pod drugim i są widoczne.
 
 ---
 
+## Odstępstwa od kontraktów
+
+Kontrakty faz powyżej opisują pierwotny projekt. Kod różni się w tych miejscach (decyzje z implementacji i z `reviews/impl-review.md`):
+
+- **Faza 1 §3**: strona przez `offset`/`limit`, nie `skip`/`take`. `skip`/`take` opakowuje zapytanie z joinem w podzapytanie `DISTINCT`, które gubi `ORDER BY` po `CASE`/`COLLATE`; jedyny join (kategoria) jest wiele-do-jednego. `getManyAndCount` liczy `total` bez limitu.
+- **Faza 1 §1**: po kluczu idą terminy domyślne bez tego, który powtarza wyrażenie klucza (nazwa w `name_*`, data w `date_*`), bo `ORDER BY` w TypeORM to mapa po wyrażeniu i powtórzenie nadpisywało kierunek. Kolejność jest ta sama, `id ASC` zawsze na końcu.
+- **Faza 1 §2**: `page` ma też górny limit `SUBSCRIPTION_PAGE_MAX` (1 000 000); wyżej 400 zamiast 500 z bazy (F2). Nieznany parametr daje 400 (`forbidNonWhitelisted`).
+- **Faza 2 §3**: zmiana sortu, filtra albo strony przy widocznej liście wczytuje ją cicho (stare wiersze zostają, `aria-busy` na liście; błąd → „Nie udało się odświeżyć listy.”). Strona poza zakresem przechodzi na ostatnią tylko wtedy, gdy to inna strona.
+- **Faza 3 §1–2**: pola pokazują się tylko przy liście z wierszami albo przy wyniku filtrowanym; o tym, czy wynik był filtrowany, decyduje wczytany stan, nie adres (F1). „Wszystkie” ma w selectach wartość `'all'` (null czyści wybór w `mat-select`), a nieznane id kategorii pokazuje „Wszystkie”. „Wyczyść filtry” przenosi fokus na pole „Kategoria”.
+
+---
+
 ## Testing Strategy
 
 ### Unit Tests:
@@ -357,14 +369,14 @@ Jedno zapytanie z `COUNT` (`getManyAndCount`) na konto. Filtrowanie idzie po `us
 
 #### Automated
 
-- [x] 3.1 Testy frontu
-- [x] 3.2 Build produkcyjny i e2e
-- [x] 3.3 Typy e2e
-- [x] 3.4 Playwright
-- [x] 3.5 Kontrola uszkodzenia: paramsFromQuery bez page daje czerwony test e2e
+- [x] 3.1 Testy frontu — c615be6
+- [x] 3.2 Build produkcyjny i e2e — c615be6
+- [x] 3.3 Typy e2e — c615be6
+- [x] 3.4 Playwright — c615be6
+- [x] 3.5 Kontrola uszkodzenia: paramsFromQuery bez page daje czerwony test e2e — c615be6
 
 #### Manual
 
-- [x] 3.6 Trzy szerokości z najdłuższą treścią: pola i paginator bez zawijania i nachodzenia
-- [x] 3.7 Panel i szuflada: pola nieaktywne z listą, fokus wraca jak dziś
+- [x] 3.6 Trzy szerokości z najdłuższą treścią: pola i paginator bez zawijania i nachodzenia — c615be6
+- [x] 3.7 Panel i szuflada: pola nieaktywne z listą, fokus wraca jak dziś — c615be6
 - [ ] 3.8 Po wdrożeniu na produkcję: lista z filtrami działa, podgląd admina pokazuje całą listę

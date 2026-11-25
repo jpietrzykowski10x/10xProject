@@ -2,6 +2,7 @@ import type { ParamMap } from '@angular/router';
 import { isUuid } from '../shared/uuid';
 import {
   DEFAULT_SUBSCRIPTION_SORT,
+  SUBSCRIPTION_PAGE_MAX,
   SUBSCRIPTION_SORTS,
   type SubscriptionListQuery,
   type SubscriptionSort,
@@ -81,11 +82,11 @@ function toCategory(value: string | null): string | null {
   return value !== null && isUuid(value) ? value : null;
 }
 
-// Digits only (no sign, no fraction, no leading zero), within the safe integers.
+// Digits only (no sign, no fraction, no leading zero), up to the API's highest page.
 function toPage(value: string | null): number {
   if (value === null || !/^[1-9]\d*$/.test(value)) {
     return DEFAULT_SUBSCRIPTION_LIST_QUERY.page;
   }
   const page = Number(value);
-  return Number.isSafeInteger(page) ? page : DEFAULT_SUBSCRIPTION_LIST_QUERY.page;
+  return page <= SUBSCRIPTION_PAGE_MAX ? page : DEFAULT_SUBSCRIPTION_LIST_QUERY.page;
 }

@@ -68,9 +68,13 @@ import {
 import { SubscriptionsService } from '../../subscriptions/subscriptions.service';
 import { SubscriptionTable } from './subscription-table/subscription-table';
 
-// `items` is the page on screen, `total` the number of rows that match the filters on all pages.
+// `items` is the page on screen, `total` the number of rows that match the filters on all pages,
+// `filtered` whether the query that gave them had a filter. The fields and the empty state follow
+// the result on screen, not the address, which is already ahead while the list is read again.
 type ListState =
-  { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; items: Subscription[]; total: number };
+  | { kind: 'loading' }
+  | { kind: 'error' }
+  | { kind: 'ready'; items: Subscription[]; total: number; filtered: boolean };
 
 type PanelMode =
   { kind: 'closed' } | { kind: 'add' } | { kind: 'edit'; subscription: Subscription };
@@ -139,12 +143,18 @@ export class Subscriptions implements OnInit {
   // The account's categories for the category filter, read once on entry. Without them the filter
   // offers only "Wszystkie"; the list works either way.
   protected readonly categories = signal<Category[]>([]);
-  // An empty result of the filters reads "Brak subskrypcji spełniających filtry." instead of the
-  // empty account's message, and never opens the add panel.
-  protected readonly filtered = computed(() => hasFilters(this.query()));
-  protected readonly categoryValue = computed<FilterValue<string>>(
-    () => this.query().category ?? ALL,
-  );
+  private readonly categoriesLoaded = signal(false);
+  // A category of the address that is not among the loaded ones (deleted, or of another account)
+  // shows "Wszystkie"; the address and the request keep it, so the empty result offers
+  // "Wyczyść filtry".
+  protected readonly categoryValue = computed<FilterValue<string>>(() => {
+    const category = this.query().category;
+    if (category === null) {
+      return ALL;
+    }
+    const known = this.categories().some(({ id }) => id === category);
+    return this.categoriesLoaded() && !known ? ALL : category;
+  });
   protected readonly statusValue = computed<FilterValue<SubscriptionStatus>>(
     () => this.query().status ?? ALL,
   );
@@ -158,6 +168,8 @@ export class Subscriptions implements OnInit {
   protected readonly noSubscriptionsMessage = noSubscriptionsMessage;
   protected readonly noFilterResultsMessage = noFilterResultsMessage;
   protected readonly state = signal<ListState>({ kind: 'loading' });
+  // A quiet load is in flight: the list on screen is the previous one (aria-busy on the list).
+  protected readonly reloading = signal(false);
   private loadRequest?: RxSubscription;
   protected readonly panel = signal<PanelMode>(CLOSED);
   // The add form stays in the DOM after a plain close, so reopening continues with the typed
@@ -292,8 +304,10 @@ export class Subscriptions implements OnInit {
     if (!quiet) {
       this.state.set({ kind: 'loading' });
     }
+    this.reloading.set(quiet);
     this.loadRequest?.unsubscribe();
     const query = this.query();
+    const filtered = hasFilters(query);
     // The API returns the page in the query's order; it is not sorted again here.
     this.loadRequest = this.subscriptions
       .list(query)
@@ -302,16 +316,21 @@ export class Subscriptions implements OnInit {
         next: ({ items, total, pageSize }) => {
           this.refreshFailed.set(false);
           // A page past the end (rows removed, or an old link) moves to the last page, which the
-          // changed address then reads; nothing of the empty page is shown meanwhile.
-          if (items.length === 0 && total > 0) {
-            this.setQuery({ page: Math.ceil(total / pageSize) });
+          // changed address then reads; nothing of the empty page is shown meanwhile. When that is
+          // the page already asked for (rows removed meanwhile), the address would not change and
+          // nothing would read it again, so the empty page is shown.
+          const lastPage = Math.ceil(total / pageSize);
+          if (items.length === 0 && total > 0 && lastPage !== query.page) {
+            this.setQuery({ page: lastPage });
             return;
           }
-          this.state.set({ kind: 'ready', items, total });
+          this.reloading.set(false);
+          this.state.set({ kind: 'ready', items, total, filtered });
           // Only an account without subscriptions, not an empty result of a filter.
-          this.autoOpen(total === 0 && !hasFilters(query));
+          this.autoOpen(total === 0 && !filtered);
         },
         error: (error: unknown) => {
+          this.reloading.set(false);
           this.reporter.report('Subscriptions', error);
           if (quiet && this.state().kind === 'ready') {
             this.refreshFailed.set(true);
@@ -329,7 +348,10 @@ export class Subscriptions implements OnInit {
       .categories()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (categories) => this.categories.set(categories),
+        next: (categories) => {
+          this.categories.set(categories);
+          this.categoriesLoaded.set(true);
+        },
         error: (error: unknown) => this.reporter.report('Subscriptions', error),
       });
   }

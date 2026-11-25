@@ -48,6 +48,13 @@ describe('ListSubscriptionsDto', () => {
     });
   });
 
+  it('accepts the highest page', async () => {
+    const { dto, failed } = await parse({ page: '1000000' });
+
+    expect(failed).toEqual([]);
+    expect(dto.page).toBe(1_000_000);
+  });
+
   it.each([
     ['an unknown sort', { sort: 'x' }, 'sort'],
     ['a category that is not a UUID', { category: 'nie-uuid' }, 'category'],
@@ -55,6 +62,12 @@ describe('ListSubscriptionsDto', () => {
     ['page 0', { page: '0' }, 'page'],
     ['a page that is not a whole number', { page: '1.5' }, 'page'],
     ['a page that is not a number', { page: 'abc' }, 'page'],
+    ['a page above 1 000 000', { page: '1000001' }, 'page'],
+    [
+      'a page in exponent notation past the highest page',
+      { page: '1e20' },
+      'page',
+    ],
     ['a page size of 0', { pageSize: '0' }, 'pageSize'],
     ['a page size above 100', { pageSize: '101' }, 'pageSize'],
     ['an unknown parameter', { q: 'netflix' }, 'q'],

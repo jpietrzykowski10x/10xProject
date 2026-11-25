@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
 import {
+  SUBSCRIPTION_PAGE_MAX,
   SUBSCRIPTION_PAGE_SIZE,
   SUBSCRIPTION_PAGE_SIZE_MAX,
   SubscriptionSort,
@@ -27,6 +28,7 @@ export class ListSubscriptionsDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(SUBSCRIPTION_PAGE_MAX)
   page: number = 1;
 
   @Type(() => Number)

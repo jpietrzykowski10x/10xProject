@@ -1,3 +1,8 @@
+import {
+  addDays,
+  APP_TIME_ZONE,
+  calendarDayIn,
+} from '../../src/shared/date/calendar-day.js';
 import { DEFAULT_CATEGORIES } from '../../src/subscriptions/default-categories.js';
 import { Subscription } from '../../src/subscriptions/entities/subscription.entity.js';
 import {
@@ -34,9 +39,18 @@ describe('Subscriptions — sort, filters and pages (e2e)', () => {
 
   afterAll(() => e2e.close());
 
+  // Every date lies ahead of today, so a run of the lifecycle job during the tests (trial ends,
+  // billing dates rolled forward) never changes a row.
+  const today = calendarDayIn(APP_TIME_ZONE, new Date());
+  const BILLING_DATE = addDays(today, 15);
+
   const add = async (cookie: string, overrides: Record<string, unknown>) =>
-    (await postSubscription(cookie, subscriptionBody(overrides)).expect(201))
-      .body as SubscriptionResponse;
+    (
+      await postSubscription(
+        cookie,
+        subscriptionBody({ nextBillingDate: BILLING_DATE, ...overrides }),
+      ).expect(201)
+    ).body as SubscriptionResponse;
 
   const names = async (cookie: string, query: Record<string, string>) =>
     (await getSubscriptionPage(cookie, query)).items.map((row) => row.name);
@@ -45,9 +59,9 @@ describe('Subscriptions — sort, filters and pages (e2e)', () => {
     const { cookie } = await signIn();
     // Code-point order (a C.UTF-8 database) would put "Ślub" after "Zoo"; "żagiel" in lower case
     // still goes after "Zoo". Dates differ so the default order would not give the same answer.
-    await add(cookie, { name: 'żagiel', nextBillingDate: '2026-11-10' });
-    await add(cookie, { name: 'Zoo', nextBillingDate: '2026-11-11' });
-    await add(cookie, { name: 'Ślub', nextBillingDate: '2026-11-12' });
+    await add(cookie, { name: 'żagiel', nextBillingDate: addDays(today, 10) });
+    await add(cookie, { name: 'Zoo', nextBillingDate: addDays(today, 11) });
+    await add(cookie, { name: 'Ślub', nextBillingDate: addDays(today, 12) });
 
     expect(await names(cookie, { sort: 'name_asc' })).toEqual([
       'Ślub',
@@ -85,15 +99,18 @@ describe('Subscriptions — sort, filters and pages (e2e)', () => {
     await add(cookie, {
       name: 'Anulowana',
       status: 'cancelled',
-      nextBillingDate: '2026-11-01',
+      nextBillingDate: addDays(today, 1),
     });
-    await add(cookie, { name: 'Grudzień', nextBillingDate: '2026-12-01' });
+    await add(cookie, {
+      name: 'Grudzień',
+      nextBillingDate: addDays(today, 30),
+    });
     // A trial counts by its end, not by the payment after it.
     await add(cookie, {
       name: 'Próbna',
       status: 'trial',
-      trialEndDate: '2026-11-20',
-      nextBillingDate: '2027-01-01',
+      trialEndDate: addDays(today, 20),
+      nextBillingDate: addDays(today, 60),
     });
 
     expect(await names(cookie, {})).toEqual([
@@ -122,14 +139,14 @@ describe('Subscriptions — sort, filters and pages (e2e)', () => {
       name: 'Praca próbna',
       categoryId: work.id,
       status: 'trial',
-      trialEndDate: '2026-11-20',
-      nextBillingDate: '2026-11-20',
+      trialEndDate: addDays(today, 20),
+      nextBillingDate: addDays(today, 20),
     });
     await add(cookie, {
       name: 'Inne próbna',
       status: 'trial',
-      trialEndDate: '2026-11-21',
-      nextBillingDate: '2026-11-21',
+      trialEndDate: addDays(today, 21),
+      nextBillingDate: addDays(today, 21),
     });
 
     const byCategory = await getSubscriptionPage(cookie, {
@@ -170,7 +187,7 @@ describe('Subscriptions — sort, filters and pages (e2e)', () => {
         billingCycle: BillingCycle.MONTHLY,
         paymentMethod: PaymentMethod.CREDIT_CARD,
         status: SubscriptionStatus.ACTIVE,
-        nextBillingDate: '2026-11-15',
+        nextBillingDate: BILLING_DATE,
       })),
     );
 
@@ -206,7 +223,7 @@ describe('Subscriptions — sort, filters and pages (e2e)', () => {
         billingCycle: BillingCycle.MONTHLY,
         paymentMethod: PaymentMethod.BLIK,
         status: SubscriptionStatus.ACTIVE,
-        nextBillingDate: '2026-11-15',
+        nextBillingDate: BILLING_DATE,
       })),
     );
 
@@ -219,6 +236,9 @@ describe('Subscriptions — sort, filters and pages (e2e)', () => {
   it.each([
     ['an unknown sort', { sort: 'x' }],
     ['page 0', { page: '0' }],
+    ['a page above 1 000 000', { page: '1000001' }],
+    // Past the highest page, so the offset never reaches SQL ("bigint out of range", a 500).
+    ['a page in exponent notation', { page: '1e20' }],
     ['a page size above 100', { pageSize: '101' }],
     ['a category that is not a UUID', { category: 'nie-uuid' }],
     ['an unknown status', { status: 'x' }],

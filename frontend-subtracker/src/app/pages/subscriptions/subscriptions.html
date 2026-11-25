@@ -2,7 +2,12 @@
   <div class="subscriptions" [class.subscriptions--panel-open]="panelOpen()">
     <!-- While the panel covers the list (drawer below 1200px, whole area on the phone) the list is
          inert; on the phone CSS also hides it. -->
-    <div #listArea class="subscriptions__main" [attr.inert]="listCovered() ? '' : null">
+    <div
+      #listArea
+      class="subscriptions__main"
+      [attr.inert]="listCovered() ? '' : null"
+      [attr.aria-busy]="reloading() ? 'true' : null"
+    >
       <div class="subscriptions__header">
         <h1 class="subscriptions__title">Twoje subskrypcje</h1>
         <!-- Desktop only; the phone has the bar at the bottom of the screen. -->
@@ -22,8 +27,8 @@
       @let current = state();
       <!-- S-18, layout A: the order and the filters of the list (the address keeps them). They come
            with the list and stay while it is read again; an account without subscriptions has
-           nothing to order, so they show only with rows or with a filter set. -->
-      @if (current.kind === 'ready' && (current.total > 0 || filtered())) {
+           nothing to order, so they show only with rows or with a result of a filter on screen. -->
+      @if (current.kind === 'ready' && (current.total > 0 || current.filtered)) {
         <div class="subscriptions__controls">
           <mat-form-field class="subscriptions__control" subscriptSizing="dynamic">
             <mat-label>Sortuj</mat-label>
@@ -87,7 +92,7 @@
           <button mat-stroked-button type="button" (click)="retry()">Spróbuj ponownie</button>
         </div>
       } @else if (current.items.length === 0) {
-        @if (filtered()) {
+        @if (current.filtered) {
           <div class="subscriptions__panel subscriptions__no-results">
             <p>{{ noFilterResultsMessage }}</p>
             <button mat-stroked-button type="button" (click)="clearFilters()">

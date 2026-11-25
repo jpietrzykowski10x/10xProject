@@ -43,7 +43,8 @@ describe('queryFromParams', () => {
     ['a page with a space', { page: ' 2' }, DEFAULTS],
     ['a page in words', { page: 'two' }, DEFAULTS],
     ['a page past the safe integers', { page: '9007199254740993' }, DEFAULTS],
-    ['a large page', { page: '9007199254740991' }, { ...DEFAULTS, page: 9007199254740991 }],
+    ['a page above the highest page', { page: '1000001' }, DEFAULTS],
+    ['the highest page', { page: '1000000' }, { ...DEFAULTS, page: 1_000_000 }],
     ['an unknown parameter', { q: 'netflix' }, DEFAULTS],
   ])('reads %s', (_case, params, query) => {
     expect(queryFromParams(convertToParamMap(params))).toStrictEqual(query);

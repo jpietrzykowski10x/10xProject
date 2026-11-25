@@ -657,6 +657,18 @@ describe('Subscriptions', () => {
       expect(host.querySelector('#subscription-panel')).toBeNull();
     });
 
+    // 60 rows end on page 3, yet page 3 came back empty (rows removed meanwhile): the address would
+    // not change, so the empty page is shown instead of staying on "Wczytywanie…".
+    it('shows the empty page when the last page is the page asked for', async () => {
+      const { httpTesting, fixture, router } = await createPage('/?page=3');
+      await start(httpTesting, fixture, pageOf([], 60, 3), NETFLIX_TOTALS);
+
+      const host = fixture.nativeElement as HTMLElement;
+      expect(host.textContent).not.toContain('Wczytywanie subskrypcji…');
+      expect(router.url).toBe('/?page=3');
+      httpTesting.expectNone(isListRequest);
+    });
+
     it('opens the add panel by itself for an account without subscriptions', async () => {
       const { httpTesting, fixture } = await createPage('/');
       await start(httpTesting, fixture, pageOf([]), NO_TOTALS);
@@ -879,6 +891,61 @@ describe('Subscriptions', () => {
           MatButtonHarness.with({ selector: '[aria-label="Edytuj Netflix"]' }),
         ),
       ).toHaveLength(1);
+    });
+
+    // Until the answer the result on screen is still the filtered one, so the fields stay (the
+    // focus moved to "Kategoria" stays there) and the empty account's message never shows.
+    it('keeps the fields and the focus after "Wyczyść filtry" until the list answers', async () => {
+      const { httpTesting, fixture, loader } = await createPage(`/?category=${CATEGORY_ID}`);
+      await start(httpTesting, fixture, pageOf([]), NETFLIX_TOTALS, [NETFLIX.category, TOOLS]);
+
+      await (await loader.getHarness(MatButtonHarness.with({ text: 'Wyczyść filtry' }))).click();
+      await fixture.whenStable();
+
+      const host = fixture.nativeElement as HTMLElement;
+      const request = listRequest(httpTesting);
+      expect(await loader.getAllHarnesses(MatSelectHarness)).toHaveLength(3);
+      const categorySelect = host.querySelectorAll('mat-select')[1];
+      expect(categorySelect?.contains(document.activeElement)).toBe(true);
+      expect(host.textContent).not.toContain('Nie masz jeszcze żadnych subskrypcji.');
+
+      request.flush(pageOf([NETFLIX]));
+      await fixture.whenStable();
+      expect(
+        await loader.getAllHarnesses(
+          MatButtonHarness.with({ selector: '[aria-label="Edytuj Netflix"]' }),
+        ),
+      ).toHaveLength(1);
+    });
+
+    // A UUID that is not one of the account's categories (deleted, or of another account) stays in
+    // the address and the request; the field shows "Wszystkie" instead of an empty text.
+    it('shows "Wszystkie" for a category of the address that the account does not have', async () => {
+      const { httpTesting, fixture, router, loader } = await createPage(
+        `/?category=${CATEGORY_ID}`,
+      );
+      await start(httpTesting, fixture, pageOf([]), NETFLIX_TOTALS, [NETFLIX.category]);
+
+      expect(await (await select(loader, 'Kategoria')).getValueText()).toBe('Wszystkie');
+      expect(router.url).toBe(`/?category=${CATEGORY_ID}`);
+      const host = fixture.nativeElement as HTMLElement;
+      expect(host.textContent).toContain('Brak subskrypcji spełniających filtry.');
+    });
+
+    it('marks the list busy while another order is read', async () => {
+      const { httpTesting, fixture, loader } = await createPage();
+      await start(httpTesting, fixture, pageOf([NETFLIX]), NETFLIX_TOTALS);
+      const listArea = (fixture.nativeElement as HTMLElement).querySelector('.subscriptions__main');
+      expect(listArea?.getAttribute('aria-busy')).toBeNull();
+
+      await (await select(loader, 'Sortuj')).clickOptions({ text: 'Nazwa A–Ż' });
+      await fixture.whenStable();
+      const request = listRequest(httpTesting);
+      expect(listArea?.getAttribute('aria-busy')).toBe('true');
+
+      request.flush(pageOf([NETFLIX]));
+      await fixture.whenStable();
+      expect(listArea?.getAttribute('aria-busy')).toBeNull();
     });
 
     it('keeps the empty account message without fields or "Wyczyść filtry"', async () => {
