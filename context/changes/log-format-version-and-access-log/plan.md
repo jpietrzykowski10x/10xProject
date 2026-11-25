@@ -390,7 +390,7 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Manual
 
-- [ ] 1.6 Lokalnie w terminalu kolory i tła, a z przekierowaniem plik bez ANSI z offsetem
+- [x] 1.6 Lokalnie w terminalu kolory i tła, a z przekierowaniem plik bez ANSI z offsetem
 
 ### Phase 2: Wersja w API
 
@@ -404,7 +404,7 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Manual
 
-- [ ] 2.6 Lokalnie `/health` z `version: dev`
+- [x] 2.6 Lokalnie `/health` z `version: dev`
 
 ### Phase 3: Access log API
 
@@ -418,7 +418,7 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Manual
 
-- [ ] 3.6 Lokalnie linie `Access` z szablonami i `user=`, bez adresów
+- [x] 3.6 Lokalnie linie `Access` z szablonami i `user=`, bez adresów
 
 ### Phase 4: Serwer SSR
 
@@ -431,7 +431,7 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Manual
 
-- [ ] 4.5 Lokalnie linie `Access` SSR bez query i bez plików statycznych
+- [x] 4.5 Lokalnie linie `Access` SSR bez query i bez plików statycznych
 
 ### Phase 5: Dokumenty i produkcja
 
