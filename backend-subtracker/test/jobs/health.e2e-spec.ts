@@ -38,6 +38,8 @@ describe('Health — job state (e2e)', () => {
     expect(response.body).toEqual({
       status: 'ok',
       db: 'ok',
+      // The e2e app runs in backend-subtracker/, which has no .deploy-info.
+      version: 'dev',
       jobs: Object.fromEntries(JOB_NAMES.map((job) => [job, 'ok'])),
     });
   });
@@ -55,6 +57,7 @@ describe('Health — job state (e2e)', () => {
       expect(response.body).toEqual({
         status: 'ok',
         db: 'ok',
+        version: 'dev',
         jobs: Object.fromEntries(JOB_NAMES.map((job) => [job, 'stale'])),
       });
     } finally {

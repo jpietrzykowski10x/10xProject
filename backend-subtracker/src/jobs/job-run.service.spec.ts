@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { type FindOperator, QueryFailedError, type Repository } from 'typeorm';
 import type { MailContent } from '../mail/mail.types.js';
+import { safeStack } from '../shared/logging/log-format.js';
 import type { MailService } from '../mail/services/mail.service.js';
 import type { JobRun } from './entities/job-run.entity.js';
 import { JobRunService } from './job-run.service.js';
@@ -241,10 +242,17 @@ describe('JobRunService', () => {
           failure: 'roll_billing_dates: 57014',
         },
       );
-      // The stack of the original error goes to the log as the second argument.
+      // The stack of the original error goes to the log as the second argument, without the
+      // message of the failed query.
       expect(logError).toHaveBeenCalledExactlyOnceWith(
         'Job subscription-lifecycle (cron) for 2026-11-22: failed in 0 ms (roll_billing_dates: 57014)',
-        cause.stack,
+        safeStack(cause.stack ?? ''),
+      );
+      expect(JSON.stringify(logError.mock.calls)).not.toContain(
+        'jan@example.com',
+      );
+      expect(JSON.stringify(logError.mock.calls)).toContain(
+        'QueryFailedError: <message omitted>',
       );
       expect(notifyOperator).toHaveBeenCalledOnce();
       const mail = notifyOperator.mock.calls[0][0];
@@ -337,7 +345,7 @@ describe('JobRunService', () => {
 
       expect(run).toHaveBeenCalledOnce();
       expect(logError).toHaveBeenCalledWith(
-        'Recording the start of the auth-cleanup run failed: database down',
+        'Recording the start of the auth-cleanup run failed (code: Error)',
       );
       // No id to update, so the whole row is written at the end.
       expect(runs.update).not.toHaveBeenCalled();
@@ -367,14 +375,52 @@ describe('JobRunService', () => {
 
       expect(run).toHaveBeenCalledOnce();
       expect(logError).toHaveBeenCalledWith(
-        'Deleting old subscription-lifecycle run rows failed: delete failed',
+        'Deleting old subscription-lifecycle run rows failed (code: Error)',
       );
       expect(logError).toHaveBeenCalledWith(
-        'Recording the end of the subscription-lifecycle run failed: update failed',
+        'Recording the end of the subscription-lifecycle run failed (code: Error)',
       );
       // The alert still goes out.
       expect(notifyOperator).toHaveBeenCalledOnce();
     });
+  });
+
+  it('logs only the code when writing the register fails on a query quoting an address', async () => {
+    const { service, runs } = setup();
+    const failure = new QueryFailedError(
+      'INSERT INTO "job_run"',
+      ['jan@example.com'],
+      Object.assign(new Error('value violated by jan@example.com'), {
+        code: '23514',
+      }),
+    );
+    runs.save.mockRejectedValue(failure);
+    runs.delete.mockRejectedValue(failure);
+
+    await service.track('auth-cleanup', 'cron', () =>
+      Promise.resolve({ counters: {} }),
+    );
+    await service.recordSkipped('auth-cleanup', 'cron');
+
+    expect(logError).toHaveBeenCalledWith(
+      'Recording the start of the auth-cleanup run failed (code: 23514)',
+    );
+    expect(logError).toHaveBeenCalledWith(
+      'Deleting old auth-cleanup run rows failed (code: 23514)',
+    );
+    expect(logError).toHaveBeenCalledWith(
+      'Recording the end of the auth-cleanup run failed (code: 23514)',
+    );
+    expect(logError).toHaveBeenCalledWith(
+      'Recording the skipped auth-cleanup run failed (code: 23514)',
+    );
+    const logged = JSON.stringify([
+      ...logError.mock.calls,
+      ...logLog.mock.calls,
+      ...logWarn.mock.calls,
+    ]);
+    expect(logged).not.toContain('jan@example.com');
+    expect(logged).not.toContain('violated');
   });
 
   describe('recordSkipped', () => {
@@ -405,7 +451,7 @@ describe('JobRunService', () => {
       ).resolves.toBeUndefined();
 
       expect(logError).toHaveBeenCalledExactlyOnceWith(
-        'Recording the skipped auth-cleanup run failed: database down',
+        'Recording the skipped auth-cleanup run failed (code: Error)',
       );
     });
   });

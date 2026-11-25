@@ -1,14 +1,27 @@
-import { Controller, Get, HttpStatus, Logger, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpStatus,
+  Inject,
+  Logger,
+  Res,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { DataSource } from 'typeorm';
 import { type JobHealth, jobHealth } from '../jobs/job-health.js';
 import { JobRunService } from '../jobs/job-run.service.js';
 import type { JobName } from '../jobs/job-run.types.js';
+import { failureCodeOf } from '../shared/database/failure-code.js';
 import { Public } from '../shared/decorators/public.decorator.js';
+import { DEPLOYED_VERSION } from '../shared/deploy/deploy-info.js';
+import { safeStack } from '../shared/logging/log-format.js';
 
 export interface HealthStatus {
   status: 'ok' | 'error';
   db: 'ok' | 'error';
+  // The deployed commit SHA from .deploy-info, or `dev`; also in the 503 answer. Never the backup
+  // path that file also holds.
+  version: string;
   // Per job only ok/stale/failed, no dates or counters: the endpoint is public. Absent when the
   // database is down or the job register cannot be read.
   jobs?: Record<JobName, JobHealth>;
@@ -24,6 +37,7 @@ export class HealthController {
   constructor(
     private readonly dataSource: DataSource,
     private readonly jobRuns: JobRunService,
+    @Inject(DEPLOYED_VERSION) private readonly version: string,
   ) {}
 
   @Public()
@@ -34,23 +48,26 @@ export class HealthController {
     try {
       await this.dataSource.query('SELECT 1');
     } catch (error) {
+      // The code and a stack without the text of a failed query, which can quote its data.
       this.logger.error(
-        'Database health check failed',
-        error instanceof Error ? error.stack : String(error),
+        `Database health check failed (code: ${failureCodeOf(error)})`,
+        error instanceof Error && error.stack !== undefined
+          ? safeStack(error.stack)
+          : undefined,
       );
       res.status(HttpStatus.SERVICE_UNAVAILABLE);
-      return { status: 'error', db: 'error' };
+      return { status: 'error', db: 'error', version: this.version };
     }
 
     try {
       const jobs = jobHealth(await this.jobRuns.latestFinished(), new Date());
-      return { status: 'ok', db: 'ok', jobs };
+      return { status: 'ok', db: 'ok', version: this.version, jobs };
     } catch (error) {
-      // The message only, like the job register. The database answers, so still 200.
+      // The code only, like the job register. The database answers, so still 200.
       this.logger.error(
-        `Reading the job runs for the health check failed: ${error instanceof Error ? error.message : 'non-error value thrown'}`,
+        `Reading the job runs for the health check failed (code: ${failureCodeOf(error)})`,
       );
-      return { status: 'ok', db: 'ok' };
+      return { status: 'ok', db: 'ok', version: this.version };
     }
   }
 }

@@ -17,6 +17,7 @@ import {
   MailType,
 } from '../../mail/mail.types.js';
 import { MailService } from '../../mail/services/mail.service.js';
+import { failureCodeOf } from '../../shared/database/failure-code.js';
 import type { AuthUser } from '../../shared/types/auth-user.js';
 import { RoleCode } from '../../shared/types/role-code.js';
 import { Role } from '../../users/entities/role.entity.js';
@@ -387,12 +388,10 @@ export class AuthService {
   }
 
   // sendToUser never rejects today; the catch keeps a future error from becoming an unhandled
-  // rejection. Only the message is logged, never the address.
+  // rejection. Only the code is logged, never the address.
   private fireAndForget(sending: Promise<MailOutcome>): void {
     sending.catch((error: unknown) => {
-      this.logger.error(
-        `Mail sending failed: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      this.logger.error(`Mail sending failed (code: ${failureCodeOf(error)})`);
     });
   }
 }

@@ -9,5 +9,8 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.spec.ts'],
+    // Log colours and highlights depend on a terminal (colorsEnabled); off, so exact log texts do
+    // not depend on where the tests run.
+    env: { NO_COLOR: '1' },
   },
 });

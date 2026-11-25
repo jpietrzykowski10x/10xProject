@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import { QueryFailedError } from 'typeorm';
 import { fatalLine, installFatalHandlers } from './fatal-handlers.js';
 
 function setup() {
@@ -61,6 +62,23 @@ describe('fatalLine', () => {
     expect(fatalLine('uncaughtException', { token: 'secret' })).toBe(
       'Fatal uncaughtException: non-Error value (object)',
     );
+  });
+
+  it('gives the code of a failed query instead of its message', () => {
+    const failure = new QueryFailedError(
+      'INSERT INTO "user"',
+      ['jan@example.com'],
+      Object.assign(new Error('duplicate key jan@example.com'), {
+        code: '23505',
+      }),
+    );
+
+    const line = fatalLine('unhandledRejection', failure);
+
+    expect(line).toBe(
+      'Fatal unhandledRejection: QueryFailedError (code: 23505)',
+    );
+    expect(line).not.toContain('jan@example.com');
   });
 
   it('keeps a multi-line message on one line', () => {

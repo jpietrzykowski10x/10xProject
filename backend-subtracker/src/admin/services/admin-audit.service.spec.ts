@@ -90,9 +90,12 @@ describe('AdminAuditService', () => {
     ).resolves.toBeUndefined();
 
     expect(errors).toHaveBeenCalledTimes(1);
-    const [line] = errors.mock.calls[0] as [string];
+    const [line, stack] = errors.mock.calls[0] as [string, string];
     expect(line).toContain(AdminAction.SEARCH);
     expect(line).toContain(ACTOR);
     expect(line).toContain('(code: 57014)');
+    // The stack keeps its frames but not the message of the failed query.
+    expect(stack).toMatch(/^QueryFailedError: <message omitted>\n\s+at /);
+    expect(JSON.stringify(errors.mock.calls)).not.toContain('canceling');
   });
 });

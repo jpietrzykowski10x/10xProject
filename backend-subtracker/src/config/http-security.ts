@@ -1,4 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
+import { accessLog } from '../shared/logging/access-log.js';
 import { assignRequestId } from '../shared/logging/request-context.js';
 import { applyCors } from './cors.js';
 
@@ -10,6 +11,8 @@ export function applyHttpSecurity(
   // First: middleware runs in the order it is registered, the CSRF hook below included, so every
   // response (a preflight and a CSRF refusal too) has X-Request-Id and every error line its id.
   app.use(assignRequestId);
+  // Right after the id and before CORS and CSRF, so their refusals and preflights get a line too.
+  app.use(accessLog());
   applyCors(app, corsOrigins);
   // Rejects state-changing requests a browser sends from a foreign site (403), e.g. a page that
   // auto-posts the attacker's token to /auth/verify. The frontend runs on another subdomain, so

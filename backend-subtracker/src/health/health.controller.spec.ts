@@ -1,12 +1,14 @@
 import { HttpStatus, Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Response } from 'express';
-import { DataSource } from 'typeorm';
+import { DataSource, QueryFailedError } from 'typeorm';
 import { JobRunService } from '../jobs/job-run.service.js';
 import type { JobName, LatestJobRun } from '../jobs/job-run.types.js';
+import { DEPLOYED_VERSION } from '../shared/deploy/deploy-info.js';
 import { HealthController } from './health.controller.js';
 
 describe('HealthController', () => {
+  const version = '79acd8a0123456789abcdef0123456789abcdef0';
   let controller: HealthController;
   const query = vi.fn<(sql: string) => Promise<unknown>>();
   const latestFinished = vi.fn<() => Promise<Map<JobName, LatestJobRun>>>();
@@ -27,6 +29,8 @@ describe('HealthController', () => {
       providers: [
         { provide: DataSource, useValue: { query } },
         { provide: JobRunService, useValue: { latestFinished } },
+        // The version reaches the constructor through its token, read once at startup.
+        { provide: DEPLOYED_VERSION, useValue: version },
       ],
     }).compile();
 
@@ -50,6 +54,7 @@ describe('HealthController', () => {
     await expect(controller.check(res)).resolves.toEqual({
       status: 'ok',
       db: 'ok',
+      version,
       jobs: {
         'subscription-lifecycle': 'ok',
         'auth-cleanup': 'failed',
@@ -66,6 +71,7 @@ describe('HealthController', () => {
     await expect(controller.check(res)).resolves.toEqual({
       status: 'error',
       db: 'error',
+      version,
     });
     expect(status).toHaveBeenCalledWith(HttpStatus.SERVICE_UNAVAILABLE);
     expect(latestFinished).not.toHaveBeenCalled();
@@ -80,10 +86,32 @@ describe('HealthController', () => {
     await expect(controller.check(res)).resolves.toEqual({
       status: 'ok',
       db: 'ok',
+      version,
     });
     expect(status).not.toHaveBeenCalled();
     expect(logError).toHaveBeenCalledExactlyOnceWith(
-      'Reading the job runs for the health check failed: relation "job_run" does not exist',
+      'Reading the job runs for the health check failed (code: Error)',
+    );
+  });
+
+  it('logs only the code and a stack without the message of a failed query', async () => {
+    const failure = new QueryFailedError(
+      'SELECT 1',
+      [],
+      Object.assign(new Error('role "jan@example.com" does not exist'), {
+        code: '28000',
+      }),
+    );
+    query.mockRejectedValue(failure);
+
+    await controller.check(res);
+
+    expect(logError).toHaveBeenCalledOnce();
+    const [line, stack] = logError.mock.calls[0] as [string, string];
+    expect(line).toBe('Database health check failed (code: 28000)');
+    expect(stack).toMatch(/^QueryFailedError: <message omitted>\n\s+at /);
+    expect(JSON.stringify(logError.mock.calls)).not.toContain(
+      'jan@example.com',
     );
   });
 });
