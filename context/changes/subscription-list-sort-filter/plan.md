@@ -331,27 +331,27 @@ Jedno zapytanie z `COUNT` (`getManyAndCount`) na konto. Filtrowanie idzie po `us
 
 #### Automated
 
-- [x] 1.1 Testy jednostkowe API
-- [x] 1.2 Lint
-- [x] 1.3 Build
-- [x] 1.4 E2E API
-- [x] 1.5 Kontrola uszkodzenia: bez COLLATE i bez id na końcu testy są czerwone
+- [x] 1.1 Testy jednostkowe API — 816af07
+- [x] 1.2 Lint — 816af07
+- [x] 1.3 Build — 816af07
+- [x] 1.4 E2E API — 816af07
+- [x] 1.5 Kontrola uszkodzenia: bez COLLATE i bez id na końcu testy są czerwone — 816af07
 
 #### Manual
 
-- [x] 1.6 curl z sesją: sort=amount_desc i pageSize=2 zwraca dwie najdroższe miesięcznie i poprawne total
+- [x] 1.6 curl z sesją: sort=amount_desc i pageSize=2 zwraca dwie najdroższe miesięcznie i poprawne total — 816af07
 
 ### Phase 2: Front — dane, stan w adresie, strony
 
 #### Automated
 
-- [ ] 2.1 Testy frontu w obu strefach
-- [ ] 2.2 Build
-- [ ] 2.3 Kontrola uszkodzenia: auto-otwarcie bez hasFilters daje czerwony test
+- [x] 2.1 Testy frontu w obu strefach
+- [x] 2.2 Build
+- [x] 2.3 Kontrola uszkodzenia: auto-otwarcie bez hasFilters daje czerwony test
 
 #### Manual
 
-- [ ] 2.4 npm start: sort=name_desc&page=2 pokazuje drugą stronę Ż–A, a odświeżenie zostawia widok
+- [x] 2.4 npm start: sort=name_desc&page=2 pokazuje drugą stronę Ż–A, a odświeżenie zostawia widok
 
 ### Phase 3: Front — kontrolki, stany puste, e2e, dokumentacja
 

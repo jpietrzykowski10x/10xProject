@@ -48,12 +48,12 @@
           <p>Nie udało się wczytać subskrypcji. Serwis jest chwilowo niedostępny.</p>
           <button mat-stroked-button type="button" (click)="retry()">Spróbuj ponownie</button>
         </div>
-      } @else if (current.subscriptions.length === 0) {
+      } @else if (current.items.length === 0) {
         <p class="subscriptions__panel">Nie masz jeszcze żadnych subskrypcji.</p>
       } @else {
         <!-- One table for desktop and phone; it switches its columns at 840px. -->
         <app-subscription-table
-          [subscriptions]="current.subscriptions"
+          [subscriptions]="current.items"
           [resumingId]="resumingId()"
           [savingId]="savingId()"
           (edit)="openEdit($event)"

@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
@@ -8,7 +8,10 @@ import type {
   CreateCategoryRequest,
   CreateSubscriptionRequest,
   Subscription,
+  SubscriptionListQuery,
+  SubscriptionPage,
 } from './subscription.types';
+import { paramsFromQuery } from './subscription-list-query';
 
 // credentialsInterceptor attaches the session cookie to every call under environment.apiUrl.
 @Injectable({ providedIn: 'root' })
@@ -16,9 +19,13 @@ export class SubscriptionsService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = environment.apiUrl;
 
-  // Already in display order (status group, then the nearest date, then the name).
-  list(): Observable<Subscription[]> {
-    return this.http.get<Subscription[]>(`${this.apiUrl}/subscriptions`);
+  // One page of the list, already in the requested order (by default the status group, then the
+  // nearest date, then the name) and filtered by the API. Only the values that differ from the
+  // default are sent, as in the address; the page size stays the API's default.
+  list(query: SubscriptionListQuery): Observable<SubscriptionPage> {
+    return this.http.get<SubscriptionPage>(`${this.apiUrl}/subscriptions`, {
+      params: new HttpParams({ fromObject: paramsFromQuery(query) }),
+    });
   }
 
   // The account's cost totals; the categories come already in display order.

@@ -17,6 +17,26 @@ export type DuplicateWarning = 'none' | 'reached' | 'exceeded';
 // `reached` at exactly the limit; `exceeded` above it (with a limit of 0, from the first grosz).
 export type BudgetAlert = 'none' | 'near' | 'reached' | 'exceeded';
 
+// The orders of GET /subscriptions (backend SubscriptionSort, FR-016). The default groups by status
+// and then takes the nearest date; every other one starts with its own key and falls back to the
+// default order.
+export const SUBSCRIPTION_SORTS = [
+  'status_then_date',
+  'name_asc',
+  'name_desc',
+  'amount_desc',
+  'amount_asc',
+  'date_asc',
+  'date_desc',
+] as const;
+
+export type SubscriptionSort = (typeof SUBSCRIPTION_SORTS)[number];
+
+export const DEFAULT_SUBSCRIPTION_SORT: SubscriptionSort = 'status_then_date';
+
+// Rows per page of GET /subscriptions: the API's default, so the page never sends it.
+export const SUBSCRIPTION_PAGE_SIZE = 25;
+
 export const SUBSCRIPTION_NAME_MAX_LENGTH = 100;
 export const CATEGORY_NAME_MAX_LENGTH = 50;
 export const AMOUNT_MAX = 99999.99;
@@ -40,6 +60,25 @@ export interface Subscription {
   trialEndDate: string | null;
   nextBillingDate: string;
   createdAt: string;
+}
+
+// What the list on /subscriptions shows: the order, the filters (null: all) and the page, from 1.
+// The address and the request carry only the values that differ from the default.
+export interface SubscriptionListQuery {
+  sort: SubscriptionSort;
+  category: string | null;
+  status: SubscriptionStatus | null;
+  page: number;
+}
+
+// GET /subscriptions: one page of the account's list, already in the requested order. `total`
+// counts every row that matches the filters, so a page past the end has no items but the real
+// total.
+export interface SubscriptionPage {
+  items: Subscription[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 // POST /subscriptions. `trialEndDate` is required for a trial and must be absent or null otherwise;
