@@ -438,9 +438,9 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 #### Automated
 
 - [x] 5.1 Pełne testy obu aplikacji — 9ab66e1
-- [ ] 5.2 CI zielone na PR
+- [x] 5.2 CI zielone na PR
 
 #### Manual
 
-- [ ] 5.3 Po deployu `/health` z SHA
-- [ ] 5.4 Na serwerze nowe linie bez ANSI, z offsetem, z `[Access]` i wersją
+- [x] 5.3 Po deployu `/health` z SHA
+- [x] 5.4 Na serwerze nowe linie bez ANSI, z offsetem, z `[Access]` i wersją
