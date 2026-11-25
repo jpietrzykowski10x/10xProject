@@ -5,8 +5,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, type QueryDeepPartialEntity } from 'typeorm';
+import {
+  Repository,
+  type QueryDeepPartialEntity,
+  type SelectQueryBuilder,
+} from 'typeorm';
 import type { CreateSubscriptionDto } from '../dtos/create-subscription.dto.js';
+import type { ListSubscriptionsDto } from '../dtos/list-subscriptions.dto.js';
 import { COUNTED_STATUSES, costTotals } from '../cost-totals.js';
 import type { Category } from '../entities/category.entity.js';
 import { isForeignKeyViolation } from '../../shared/database/foreign-key-violation.js';
@@ -23,6 +28,7 @@ import {
 import { subscriptionOrder } from '../subscription-order.js';
 import {
   type CostTotalsResponse,
+  type SubscriptionPageResponse,
   SubscriptionSort,
   type SubscriptionResponse,
   SubscriptionStatus,
@@ -102,10 +108,48 @@ export class SubscriptionsService {
     private readonly budget: BudgetService,
   ) {}
 
+  // The whole list of the account, for the admin's account view.
   async list(
     userId: string,
     sort: SubscriptionSort = SubscriptionSort.STATUS_THEN_DATE,
   ): Promise<SubscriptionResponse[]> {
+    const rows = await this.listQuery(userId, sort).getMany();
+    return rows.map((row) => toSubscriptionResponse(row, row.category));
+  }
+
+  // GET /subscriptions: one page of the account's list with its filters. A category of another
+  // account or an unknown one finds nothing, since the query stays scoped to the account.
+  async page(
+    userId: string,
+    query: ListSubscriptionsDto,
+  ): Promise<SubscriptionPageResponse> {
+    const { sort, category, status, page, pageSize } = query;
+    const builder = this.listQuery(userId, sort);
+    if (category !== undefined) {
+      builder.andWhere('category.id = :category', { category });
+    }
+    if (status !== undefined) {
+      builder.andWhere(`${LIST_ALIAS}.status = :status`, { status });
+    }
+    // offset/limit, not skip/take: the only join is many-to-one, so every row of the result is one
+    // subscription, and skip/take would wrap the query in a DISTINCT subquery that does not keep
+    // ORDER BY terms written as expressions. The count query drops the limit and the order.
+    const [rows, total] = await builder
+      .offset((page - 1) * pageSize)
+      .limit(pageSize)
+      .getManyAndCount();
+    return {
+      items: rows.map((row) => toSubscriptionResponse(row, row.category)),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  private listQuery(
+    userId: string,
+    sort: SubscriptionSort,
+  ): SelectQueryBuilder<Subscription> {
     const query = this.subscriptions
       .createQueryBuilder(LIST_ALIAS)
       .innerJoinAndSelect(`${LIST_ALIAS}.category`, 'category')
@@ -113,8 +157,7 @@ export class SubscriptionsService {
     for (const term of subscriptionOrder(sort, LIST_ALIAS)) {
       query.addOrderBy(term.expression, term.direction);
     }
-    const rows = await query.getMany();
-    return rows.map((row) => toSubscriptionResponse(row, row.category));
+    return query;
   }
 
   // Summed in JS on whole grosze (cost-totals.ts); SQL only picks the counted rows of the account,

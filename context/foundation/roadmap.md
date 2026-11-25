@@ -48,7 +48,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-15 | client-and-ssr-error-visibility    | błędy przeglądarki i SSR zostawiają ślad, a nieaktualny plik po deployu przeładowuje stronę | S-14     | FR-023                  | done |
 | S-16 | failure-causes-and-audit-trail     | operator widzi przyczynę porażki joba i maila, a usunięcia i odmowy admina mają ślad | S-11          | FR-024                  | done |
 | S-17 | own-category-rename-and-delete     | użytkownik zmienia nazwę własnej kategorii albo usuwa pustą                          | —             | FR-025, FR-009, FR-010  | done |
-| S-18 | subscription-list-sort-filter      | użytkownik sortuje i filtruje listę subskrypcji                                      | —             | FR-016                  | ready    |
+| S-18 | subscription-list-sort-filter      | użytkownik sortuje i filtruje listę subskrypcji                                      | —             | FR-016                  | in-progress |
 
 ## Streams
 
@@ -182,7 +182,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **Unknowns:**
   - Sortowanie i filtrowanie w przeglądarce czy w API? Przy małej skali (PRD `target_scale: small`) przeglądarka wystarczy. — Owner: agent (`/10x-plan`). Block: no.
 - **Risk:** Nice-to-have na koniec M-2; wąski zakres we froncie, więc pierwszy kandydat na przebieg `/goal` + `/10x-goal-implement`. Widok listy sprawdzany w trzech szerokościach (`lessons.md`).
-- **Status:** ready
+- **Status:** in-progress
 
 ## Backlog Handoff
 

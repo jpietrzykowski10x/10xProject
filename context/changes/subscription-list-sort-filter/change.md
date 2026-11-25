@@ -1,7 +1,7 @@
 ---
 change_id: subscription-list-sort-filter
 title: Sortowanie i filtrowanie listy subskrypcji
-status: planned
+status: implementing
 created: 2026-11-25
 updated: 2026-11-25
 archived_at: null

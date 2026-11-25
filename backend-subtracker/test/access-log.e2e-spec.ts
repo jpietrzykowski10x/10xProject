@@ -90,14 +90,14 @@ describe('Access log (e2e)', () => {
     const userId = await userIdOf(address);
 
     const response = await http()
-      .get('/subscriptions?email=anna@example.com')
+      .get('/subscriptions/totals?email=anna@example.com')
       .set('Cookie', cookie)
       .expect(200);
     const requestId = response.headers['x-request-id'];
 
     expect(await accessLineOf(requestId)).toMatch(
       new RegExp(
-        `^GET /subscriptions 200 \\d+ ms user=${userId} req=${requestId}$`,
+        `^GET /subscriptions/totals 200 \\d+ ms user=${userId} req=${requestId}$`,
       ),
     );
     expect(userId).toMatch(new RegExp(`^${UUID}$`));

@@ -331,15 +331,15 @@ Jedno zapytanie z `COUNT` (`getManyAndCount`) na konto. Filtrowanie idzie po `us
 
 #### Automated
 
-- [ ] 1.1 Testy jednostkowe API
-- [ ] 1.2 Lint
-- [ ] 1.3 Build
-- [ ] 1.4 E2E API
-- [ ] 1.5 Kontrola uszkodzenia: bez COLLATE i bez id na końcu testy są czerwone
+- [x] 1.1 Testy jednostkowe API
+- [x] 1.2 Lint
+- [x] 1.3 Build
+- [x] 1.4 E2E API
+- [x] 1.5 Kontrola uszkodzenia: bez COLLATE i bez id na końcu testy są czerwone
 
 #### Manual
 
-- [ ] 1.6 curl z sesją: sort=amount_desc i pageSize=2 zwraca dwie najdroższe miesięcznie i poprawne total
+- [x] 1.6 curl z sesją: sort=amount_desc i pageSize=2 zwraca dwie najdroższe miesięcznie i poprawne total
 
 ### Phase 2: Front — dane, stan w adresie, strony
 
