@@ -1,10 +1,10 @@
 ---
 change_id: client-and-ssr-error-visibility
 title: Widoczność błędów przeglądarki i SSR oraz przeładowanie po wdrożeniu
-status: impl_reviewed
+status: archived
 created: 2026-11-25
 updated: 2026-11-25
-archived_at: null
+archived_at: 2026-11-25T20:09:34Z
 ---
 
 ## Notes
