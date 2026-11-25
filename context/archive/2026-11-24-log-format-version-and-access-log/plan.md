@@ -390,7 +390,7 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Manual
 
-- [x] 1.6 Lokalnie w terminalu kolory i tła, a z przekierowaniem plik bez ANSI z offsetem
+- [x] 1.6 Lokalnie w terminalu kolory i tła, a z przekierowaniem plik bez ANSI z offsetem — a1b246c
 
 ### Phase 2: Wersja w API
 
@@ -404,7 +404,7 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Manual
 
-- [x] 2.6 Lokalnie `/health` z `version: dev`
+- [x] 2.6 Lokalnie `/health` z `version: dev` — a1b246c
 
 ### Phase 3: Access log API
 
@@ -418,7 +418,7 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Manual
 
-- [x] 3.6 Lokalnie linie `Access` z szablonami i `user=`, bez adresów
+- [x] 3.6 Lokalnie linie `Access` z szablonami i `user=`, bez adresów — a1b246c
 
 ### Phase 4: Serwer SSR
 
@@ -431,16 +431,16 @@ Dokumenty opisują nowy format, a zmiana jest sprawdzona na serwerze.
 
 #### Manual
 
-- [x] 4.5 Lokalnie linie `Access` SSR bez query i bez plików statycznych
+- [x] 4.5 Lokalnie linie `Access` SSR bez query i bez plików statycznych — a1b246c
 
 ### Phase 5: Dokumenty i produkcja
 
 #### Automated
 
 - [x] 5.1 Pełne testy obu aplikacji — 9ab66e1
-- [ ] 5.2 CI zielone na PR
+- [x] 5.2 CI zielone na PR — a1b246c
 
 #### Manual
 
-- [ ] 5.3 Po deployu `/health` z SHA
-- [ ] 5.4 Na serwerze nowe linie bez ANSI, z offsetem, z `[Access]` i wersją
+- [x] 5.3 Po deployu `/health` z SHA — ac9a730
+- [x] 5.4 Na serwerze nowe linie bez ANSI, z offsetem, z `[Access]` i wersją — ac9a730
