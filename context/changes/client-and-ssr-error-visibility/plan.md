@@ -294,6 +294,17 @@ Jeśli `/privacy-policy` nie ma linku do trasy leniwej, implementujący wybiera 
 
 ---
 
+## Odstępstwa po impl-review
+
+Kontrakty faz 2 i 3 powyżej opisują pierwotny projekt. Po przeglądzie (`reviews/impl-review.md`; pierwszy raport z F1–F7 w historii git tego pliku) kod różni się w tych miejscach, a CLAUDE.md i `test-plan.md` opisują stan obecny:
+
+- **F1 (c8e7687)** — middleware błędów przy wysłanych nagłówkach woła `res.destroy()`, nie `res.end()`: ucięta strona nie wygląda jak kompletna. Access log pokazuje wtedy `aborted`.
+- **F2 (c8e7687)** — linie `ERROR [Render]` są pisane zawsze, także bez `listening`; warunkowy zostaje tylko access log.
+- **F3 (c8e7687 i drugi przegląd)** — `renderErrorLines` zawsze bierze stos od pierwszej ramki `    at `, więc komunikat (także zmieniony po utworzeniu błędu) nie wraca do logu w całości.
+- **F4 (c8e7687 i drugi przegląd)** — `shouldReload` trzyma w kluczu `subtracker.chunk-reload` mapę ścieżka → czas (najwyżej 10 wpisów, starsze niż 60 s usuwane), nie jeden wpis `{ url, at }`: każdy adres ma własne okno, także przy przekierowaniu A → B → A. Kluczem jest sama ścieżka, bez query i fragmentu.
+- **F5–F6 (c8e7687 i drugi przegląd)** — `ssr-errors.e2e-spec.ts` daje procesowi potomnemu tylko potrzebne zmienne środowiska i czeka na linię `Started … on port 4100`, a nie na `/privacy-policy`; linie stdout i stderr sprawdza przez `expect.poll`.
+- **F7 (c8e7687 i drugi przegląd)** — nie ma flagi `e2eRoutes`. Trasa testowa jest w `src/app/e2e-routes.e2e.ts`, a konfiguracja `e2e` w `angular.json` podmienia nim pusty `e2e-routes.ts` (`fileReplacements`); `environment.development.ts` się nie zmienia. `render-modes.e2e-spec.ts` sprawdza, że `e2e-routes.ts` jest pusty i że żadna inna konfiguracja go nie podmienia.
+
 ## Testing Strategy
 
 ### Unit Tests:

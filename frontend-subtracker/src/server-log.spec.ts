@@ -186,6 +186,17 @@ describe('renderErrorLines', () => {
     ]);
   });
 
+  it('does not log the rest of a message shortened to a prefix of the original', () => {
+    const error = new Error('abc secret');
+    error.message = 'abc';
+
+    const lines = renderErrorLines(REQ, error) ?? [];
+
+    expect(lines[0]).toBe('GET /budget Error: abc');
+    expect(lines.join('\n')).not.toContain('secret');
+    expect(lines.slice(1).every((line) => /^\s+at /.test(line))).toBe(true);
+  });
+
   it('cuts a long message like a path and gives no frames without a stack', () => {
     const error = new Error('x'.repeat(500));
     error.stack = undefined;

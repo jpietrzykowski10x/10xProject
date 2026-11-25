@@ -106,12 +106,14 @@ test('a navigation that throws on the server gives 500, the unavailable page and
     .poll(() => lines(stdout).filter((line) => line.includes('[Access] GET /e2e/navigation-error')))
     .toEqual([expect.stringMatching(/ LOG \[Access\] GET \/e2e\/navigation-error 500 \d+ ms$/)]);
 
-  const errors = lines(stderr).filter((line) => line.includes(' ERROR '));
-  expect(errors).toEqual([
-    expect.stringMatching(
-      / ERROR \[Navigation\] GET \/e2e\/navigation-error Error: e2e navigation error$/,
-    ),
-  ]);
+  // stderr is a pipe of its own, read separately from stdout, so it is waited for too.
+  await expect
+    .poll(() => lines(stderr).filter((line) => line.includes(' ERROR ')))
+    .toEqual([
+      expect.stringMatching(
+        / ERROR \[Navigation\] GET \/e2e\/navigation-error Error: e2e navigation error$/,
+      ),
+    ]);
   expect(stdout + stderr).not.toContain('secret');
   expect(stderr).not.toContain('\x1b');
 });

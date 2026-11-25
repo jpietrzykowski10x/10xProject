@@ -28,6 +28,7 @@ const STATIC_PAGES = ['/privacy-policy', '/unavailable'];
 // The test routes of every build but `e2e`, which swaps in e2e-routes.e2e.ts (angular.json).
 // CI builds only the e2e configuration, so the source is the oracle here, not a production dist.
 const PRODUCTION_E2E_ROUTES = resolve(__dirname, '../../src/app/e2e-routes.ts');
+const ANGULAR_JSON = resolve(__dirname, '../../angular.json');
 
 const PRERENDERED_ROUTES = resolve(
   __dirname,
@@ -99,4 +100,22 @@ test('the production build has no e2e test routes', () => {
   expect(source).toMatch(/^export const E2E_ROUTES: Routes = \[\];\r?$/m);
   expect(source).toMatch(/^export const E2E_SERVER_PATHS: readonly string\[\] = \[\];\r?$/m);
   expect(source).not.toContain('navigation-error');
+
+  // CI builds only the e2e bundle, so the swap itself is checked: only the e2e configuration
+  // replaces e2e-routes.ts.
+  const angularJson = JSON.parse(readFileSync(ANGULAR_JSON, 'utf8')) as {
+    projects: Record<
+      string,
+      { architect: { build: { configurations: Record<string, { fileReplacements?: unknown }> } } }
+    >;
+  };
+  for (const project of Object.values(angularJson.projects)) {
+    for (const [name, configuration] of Object.entries(project.architect.build.configurations)) {
+      if (name !== 'e2e') {
+        expect(JSON.stringify(configuration.fileReplacements ?? []), name).not.toContain(
+          'e2e-routes',
+        );
+      }
+    }
+  }
 });

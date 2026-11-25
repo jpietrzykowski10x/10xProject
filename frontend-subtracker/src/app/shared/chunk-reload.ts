@@ -58,17 +58,20 @@ export function shouldReload(
   if (storage === null) {
     return false;
   }
+  // Only the path is remembered: a query can carry a sign-in token or a searched e-mail address,
+  // and the entry stays in the tab's storage until the next write.
+  const path = url.split(/[?#]/, 1)[0];
   try {
     const log = parseLog(storage.getItem(STORAGE_KEY));
-    const last = log.get(url);
+    const last = log.get(path);
     if (last !== undefined && now - last < RELOAD_WINDOW_MS) {
       return false;
     }
     const recent = [...log]
-      .filter(([other, at]) => other !== url && now - at < RELOAD_WINDOW_MS)
+      .filter(([other, at]) => other !== path && now - at < RELOAD_WINDOW_MS)
       .sort(([, a], [, b]) => b - a)
       .slice(0, MAX_ENTRIES - 1);
-    storage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries([[url, now], ...recent])));
+    storage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries([[path, now], ...recent])));
     return true;
   } catch {
     return false;

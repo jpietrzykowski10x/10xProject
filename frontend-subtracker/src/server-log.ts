@@ -145,11 +145,11 @@ export function renderErrorLines(req: AccessLogRequest, error: unknown): string[
   const heading = error.message === '' ? error.name : `${error.name}: ${error.message}`;
   const first = `${req.method} ${safePath(req.path)} ${safePath(heading)}`;
   const stack = error.stack ?? '';
-  // V8 starts the stack with the heading (the message possibly over several lines); everything
-  // after it is a frame. A stack that does not start with it (the message was changed after the
-  // error was made) is kept from its first `    at ` frame on: the message is already on the first
-  // line, cut, and must not come back whole.
-  const frames = stack.startsWith(heading) ? stack.slice(heading.length) : fromFirstFrame(stack);
+  // V8 starts the stack with the message as it was when the error was made (possibly over several
+  // lines, possibly changed since). The stack is always kept from its first `    at ` frame on: the
+  // message is already on the first line, cut, and must not come back whole, not even the rest of
+  // a message later shortened to a prefix of the original.
+  const frames = fromFirstFrame(stack);
   return [
     first,
     ...frames

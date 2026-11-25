@@ -82,6 +82,16 @@ describe('shouldReload', () => {
     expect(stored(storage)).toEqual({ '/a': NOW, '/b': NOW + 1_000 });
   });
 
+  it('remembers the path only, never the query or the fragment', () => {
+    const storage = memoryStorage();
+
+    expect(shouldReload(storage, '/auth/verify?token=secret#top', NOW)).toBe(true);
+    expect(storage.getItem(KEY)).not.toContain('secret');
+    expect(stored(storage)).toEqual({ '/auth/verify': NOW });
+    // Another query of the same path is the same address for the window.
+    expect(shouldReload(storage, '/auth/verify?token=other', NOW + 1_000)).toBe(false);
+  });
+
   it('drops entries older than 60 s and keeps at most the 10 newest', () => {
     const initial: Record<string, number> = { '/old': NOW - 61_000 };
     for (let i = 0; i < 12; i++) {

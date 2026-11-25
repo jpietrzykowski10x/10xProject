@@ -121,8 +121,10 @@ describe('in the browser', () => {
     const storage = memoryStorage();
     const document = fakeDocument(storage);
     document.location.assign.mockImplementation(() => {
-      // The marker is already written when the reload starts.
-      expect(storage.getItem('subtracker.chunk-reload')).toContain('/register?from=home');
+      // The marker is already written when the reload starts, with the path only.
+      const marker = storage.getItem('subtracker.chunk-reload');
+      expect(marker).toContain('/register');
+      expect(marker).not.toContain('from=home');
     });
     const report = vi
       .spyOn(setUp('browser', null, document), 'report')

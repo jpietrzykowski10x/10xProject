@@ -82,7 +82,9 @@ if (listening) {
     };
     res.once('finish', () => write(res.statusCode));
     // `close` follows `finish` on every completed response; without it the connection closed before
-    // the response was done: the client gave up, or a handler never answered (requestTimeout).
+    // the response was done: the client gave up, a handler never answered (requestTimeout), or a
+    // streamed page failed half-way and the error handler below destroyed it (its ERROR [Render]
+    // line gives the cause).
     res.once('close', () => write('aborted'));
     next();
   });
