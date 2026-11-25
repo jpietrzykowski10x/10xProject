@@ -47,7 +47,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-14 | log-format-version-and-access-log  | operator czyta logi w jednym formacie, z wersją i access logiem obu procesów         | S-13          | FR-022                  | done |
 | S-15 | client-and-ssr-error-visibility    | błędy przeglądarki i SSR zostawiają ślad, a nieaktualny plik po deployu przeładowuje stronę | S-14     | FR-023                  | proposed |
 | S-16 | failure-causes-and-audit-trail     | operator widzi przyczynę porażki joba i maila, a usunięcia i odmowy admina mają ślad | S-11          | FR-024                  | done |
-| S-17 | own-category-rename-and-delete     | użytkownik zmienia nazwę własnej kategorii albo usuwa pustą                          | —             | FR-025, FR-009, FR-010  | in-progress |
+| S-17 | own-category-rename-and-delete     | użytkownik zmienia nazwę własnej kategorii albo usuwa pustą                          | —             | FR-025, FR-009, FR-010  | done |
 | S-18 | subscription-list-sort-filter      | użytkownik sortuje i filtruje listę subskrypcji                                      | —             | FR-016                  | ready    |
 
 ## Streams
@@ -169,7 +169,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
   - ~~Co z subskrypcjami usuwanej kategorii?~~ Rozstrzygnięte 2026-11-22 (PRD Open Questions #1): usunąć można tylko pustą.
   - Gdzie w UI: na stronie budżetu, w formularzu subskrypcji czy na osobnej liście kategorii? — Owner: user (makiety ASCII wg `lessons.md`). Block: no.
 - **Risk:** Kolejność wg PRD v2 — zaraz po poprawkach audytu, choć technicznie niezależny. Ryzyko w kluczu obcym `subscription.category_id` (`23503` musi dać 409, nie 500; helper w `shared/database/`), w unikalności nazw (`toNameKey`) przy zmianie nazwy i w sortowaniu z `POLISH_COLLATION`.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-18: Sortowanie i filtrowanie listy subskrypcji
 
@@ -194,7 +194,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 | S-14       | log-format-version-and-access-log  | Format logu, wersja i access log                        | no                    | Po S-13; kandydat na `/goal` |
 | S-15       | client-and-ssr-error-visibility    | Widoczność błędów przeglądarki i SSR                    | no                    | Po S-14 |
 | S-16       | failure-causes-and-audit-trail     | Przyczyny porażek jobów i maili, ślad audytowy          | no                    | Po S-11 |
-| S-17       | own-category-rename-and-delete     | Zmiana nazwy i usuwanie pustej własnej kategorii        | yes                   | Run `/10x-plan own-category-rename-and-delete` |
+| S-17       | own-category-rename-and-delete     | Zmiana nazwy i usuwanie pustej własnej kategorii        | done                  | Zarchiwizowane 2026-11-25 |
 | S-18       | subscription-list-sort-filter      | Sortowanie i filtrowanie listy subskrypcji              | yes                   | Kandydat na `/goal` |
 
 ## Open Roadmap Questions
@@ -245,3 +245,4 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **S-12: alarm do operatora dochodzi także wtedy, gdy nie działa wysyłka maili do użytkowników: na produkcji wymagany jest osobny kanał alarmowy, blokada powtórzeń zaczyna działać dopiero po przyjęciu alarmu, a odrzucenie adresata przez serwer pocztowy jest odróżnione od literówki.** — Archived 2026-11-24 → `context/archive/2026-11-23-independent-alert-channel/`. Lesson: —.
 - **S-16: zadania cykliczne i wysyłka maili rozróżniają przyczyny porażki (brak konta, konto zablokowane, błąd bazy, błąd SMTP), a usunięcie konta, odmowy akcji administratora i jego wyszukiwania zostawiają ślad audytowy.** — Archived 2026-11-24 → `context/archive/2026-11-24-failure-causes-and-audit-trail/`. Lesson: —.
 - **S-14: logi obu procesów mają jednolity format bez kodów kolorów, ze znacznikiem czasu ISO ze strefą; linia startowa i `/health` podają wdrożoną wersję; każde żądanie zostawia jedną linię access logu (metoda, trasa, status, czas).** — Archived 2026-11-25 → `context/archive/2026-11-24-log-format-version-and-access-log/`. Lesson: —.
+- **S-17: użytkownik zmienia nazwę własnej kategorii albo usuwa ją, jeśli nie ma w niej subskrypcji; przy niepustej widzi komunikat, że najpierw musi przenieść albo usunąć jej subskrypcje. Kategorie predefiniowane się nie zmieniają, a próg duplikatów i limit budżetu usuwanej kategorii nie zostają osierocone.** — Archived 2026-11-25 → `context/archive/2026-11-24-own-category-rename-and-delete/`. Lesson: —.

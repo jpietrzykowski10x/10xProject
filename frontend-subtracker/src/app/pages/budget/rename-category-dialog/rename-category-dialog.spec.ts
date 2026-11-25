@@ -149,6 +149,26 @@ describe('RenameCategoryDialog', () => {
     expect(await (await opened.saveButton()).isDisabled()).toBe(false);
   });
 
+  // disableClose while the PATCH runs: Escape (and the backdrop) must not drop an answer.
+  it('ignores Escape while the save runs and takes it again after a failure', async () => {
+    const opened = await openDialog();
+    const dialog = await opened.loader.getHarness(MatDialogHarness);
+
+    await opened.input.setValue('Joga');
+    await (await opened.saveButton()).click();
+    const request = opened.httpTesting.expectOne({ method: 'PATCH', url: CATEGORY_URL });
+    await dialog.close();
+    await opened.fixture.whenStable();
+    expect(await opened.loader.getAllHarnesses(MatDialogHarness)).toHaveLength(1);
+
+    request.flush(null, { status: 500, statusText: 'Internal Server Error' });
+    await opened.fixture.whenStable();
+    await dialog.close();
+    await opened.fixture.whenStable();
+    expect(await opened.loader.getAllHarnesses(MatDialogHarness)).toHaveLength(0);
+    expect(opened.results).toEqual([undefined]);
+  });
+
   it('closes on "Anuluj" without a result and without a request', async () => {
     const { httpTesting, fixture, loader, results, input } = await openDialog();
 

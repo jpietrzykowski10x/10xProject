@@ -731,6 +731,25 @@ describe('Budget', () => {
       httpTesting.expectNone({ method: 'PUT', url: BUDGET_URL });
     });
 
+    // The answer reads the list again and rebuilds the form, so nothing may be typed meanwhile.
+    it('keeps the budget form off while the category is being added', async () => {
+      const { httpTesting, fixture, loader } = await createPage(WITH_OWN);
+      const { input } = await newNameField(loader);
+
+      await input.setValue('Joga');
+      await (await addButton(loader)).click();
+      const create = httpTesting.expectOne({ method: 'POST', url: CATEGORIES_URL });
+
+      const threshold = await categoryField(loader, STREAMING, THRESHOLD_LABEL);
+      expect(await threshold.input.isDisabled()).toBe(true);
+      expect(await (await fieldIn(loader, OVERALL_LIMIT_LABEL)).input.isDisabled()).toBe(true);
+      expect(await (await saveButton(loader)).isDisabled()).toBe(true);
+
+      create.flush(null, { status: 500, statusText: 'Server Error' });
+      await fixture.whenStable();
+      expect(await threshold.input.isDisabled()).toBe(false);
+    });
+
     // A name taken in the meantime (e.g. in another tab) is refused by the API.
     it('shows the error of the field after a 409', async () => {
       const { httpTesting, fixture, loader } = await createPage(WITH_OWN);
