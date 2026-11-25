@@ -39,6 +39,8 @@ export interface SubscriptionRequests {
   cancelSubscription: (cookie: string, id: string) => Test;
   resumeSubscription: (cookie: string, id: string) => Test;
   postCategory: (cookie: string, name: string) => Test;
+  patchCategory: (cookie: string, id: string, name: string) => Test;
+  deleteCategory: (cookie: string, id: string) => Test;
   getSubscriptions: (cookie: string) => Promise<SubscriptionResponse[]>;
   getCategories: (cookie: string) => Promise<CategoryResponse[]>;
   getTotals: (cookie: string) => Promise<CostTotalsResponse>;
@@ -69,6 +71,12 @@ export function subscriptionRequests(e2e: E2eApp): SubscriptionRequests {
 
   const postCategory = (cookie: string, name: string) =>
     http().post('/categories').set('Cookie', cookie).send({ name });
+
+  const patchCategory = (cookie: string, id: string, name: string) =>
+    http().patch(`/categories/${id}`).set('Cookie', cookie).send({ name });
+
+  const deleteCategory = (cookie: string, id: string) =>
+    http().delete(`/categories/${id}`).set('Cookie', cookie);
 
   const getSubscriptions = async (cookie: string) =>
     (
@@ -116,6 +124,8 @@ export function subscriptionRequests(e2e: E2eApp): SubscriptionRequests {
     cancelSubscription,
     resumeSubscription,
     postCategory,
+    patchCategory,
+    deleteCategory,
     getSubscriptions,
     getCategories,
     getTotals,

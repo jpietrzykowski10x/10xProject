@@ -9,7 +9,11 @@ import { Repository, type QueryDeepPartialEntity } from 'typeorm';
 import type { CreateSubscriptionDto } from '../dtos/create-subscription.dto.js';
 import { COUNTED_STATUSES, costTotals } from '../cost-totals.js';
 import type { Category } from '../entities/category.entity.js';
-import { Subscription } from '../entities/subscription.entity.js';
+import { isForeignKeyViolation } from '../../shared/database/foreign-key-violation.js';
+import {
+  Subscription,
+  SUBSCRIPTION_CATEGORY_FK,
+} from '../entities/subscription.entity.js';
 import {
   CANCELLABLE_STATUSES,
   CANCELLED_STATUS,
@@ -30,6 +34,8 @@ const LIST_ALIAS = 'subscription';
 
 // The same for another account's id and for an id no row has.
 const NOT_FOUND_MESSAGE = 'Subscription not found';
+
+const UNUSABLE_CATEGORY_MESSAGE = 'categoryId does not name a usable category';
 
 // An action (cancel, resume) on a subscription whose status does not allow it.
 const WRONG_STATUS_MESSAGE =
@@ -143,11 +149,13 @@ export class SubscriptionsService {
     const category = await this.usableCategory(userId, dto.categoryId);
 
     // save() fills id and createdAt from RETURNING; the rest is what was written.
-    const saved = await this.subscriptions.save(
-      this.subscriptions.create({
-        userId,
-        ...subscriptionFields(dto, category),
-      }),
+    const saved = await refuseDeletedCategory(() =>
+      this.subscriptions.save(
+        this.subscriptions.create({
+          userId,
+          ...subscriptionFields(dto, category),
+        }),
+      ),
     );
     return toSubscriptionResponse(saved, category);
   }
@@ -167,7 +175,9 @@ export class SubscriptionsService {
     // update(), not save(): save() would INSERT the row again if a DELETE (e.g. from another
     // tab) removed it after the read above.
     const fields = subscriptionFields(dto, category);
-    const result = await this.subscriptions.update({ id, userId }, fields);
+    const result = await refuseDeletedCategory(() =>
+      this.subscriptions.update({ id, userId }, fields),
+    );
     if (!result.affected) {
       throw new NotFoundException(NOT_FOUND_MESSAGE);
     }
@@ -240,10 +250,21 @@ export class SubscriptionsService {
   ): Promise<Category> {
     const category = await this.categories.findUsable(userId, categoryId);
     if (category === null) {
-      throw new BadRequestException(
-        'categoryId does not name a usable category',
-      );
+      throw new BadRequestException(UNUSABLE_CATEGORY_MESSAGE);
     }
     return category;
+  }
+}
+
+// The category is checked before the write, outside a transaction; one deleted in between (e.g.
+// from another tab) fails the write on its foreign key and gets the same 400 as an unknown one.
+async function refuseDeletedCategory<T>(write: () => Promise<T>): Promise<T> {
+  try {
+    return await write();
+  } catch (error) {
+    if (isForeignKeyViolation(error, SUBSCRIPTION_CATEGORY_FK)) {
+      throw new BadRequestException(UNUSABLE_CATEGORY_MESSAGE);
+    }
+    throw error;
   }
 }

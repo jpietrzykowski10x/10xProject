@@ -11,6 +11,10 @@ import {
 import { User } from '../../users/entities/user.entity.js';
 import { Category } from './category.entity.js';
 
+// The foreign key category_setting.category_id → category.id (migration CategorySetting). A
+// category deleted between the category check and the write fails on it.
+export const CATEGORY_SETTING_CATEGORY_FK = 'FK_228db5ea674f274f52ee203d326';
+
 // A user's settings for one category, default or their own (S-07: the duplicate threshold; S-08
 // adds the category limit). No row means the defaults, so nothing is seeded per account.
 @Entity('category_setting')

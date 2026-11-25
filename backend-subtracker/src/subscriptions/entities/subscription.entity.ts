@@ -17,6 +17,10 @@ import {
 } from '../subscription.types.js';
 import { Category } from './category.entity.js';
 
+// The foreign key subscription.category_id → category.id (migration SubscriptionsSchema). A
+// category deleted between the category check and the write fails on it.
+export const SUBSCRIPTION_CATEGORY_FK = 'FK_e7ddc1213ce93c60338e6da254d';
+
 // node-pg returns numeric as a string and date as 'YYYY-MM-DD', so both stay strings here: no
 // float rounding of money and no time-zone shift of calendar days.
 @Entity('subscription')
