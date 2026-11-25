@@ -389,5 +389,5 @@ Bez migracji danych. Po wdrożeniu pierwsza zmiana z przeładowaniem działa dop
 
 #### Manual
 
-- [ ] 3.6 Po wdrożeniu na produkcję: stara karta, klik w inną stronę, jedno przeładowanie i działająca strona
+- [x] 3.6 Po wdrożeniu na produkcję: stara karta, klik w inną stronę, jedno przeładowanie i działająca strona — a7dc64b
 - [x] 3.7 Brak pętli przeładowań przy wyłączonym serwerze frontu — a7dc64b

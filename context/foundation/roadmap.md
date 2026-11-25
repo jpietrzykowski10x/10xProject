@@ -45,7 +45,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-12 | independent-alert-channel          | alarm operatora dochodzi także przy awarii SMTP dla użytkowników                     | S-11          | FR-020                  | done        |
 | S-13 | request-context-and-denial-reasons | operator widzi w logu trasę, użytkownika i id żądania błędu oraz przyczyny odmów 4xx  | —             | FR-021                  | done |
 | S-14 | log-format-version-and-access-log  | operator czyta logi w jednym formacie, z wersją i access logiem obu procesów         | S-13          | FR-022                  | done |
-| S-15 | client-and-ssr-error-visibility    | błędy przeglądarki i SSR zostawiają ślad, a nieaktualny plik po deployu przeładowuje stronę | S-14     | FR-023                  | in-progress |
+| S-15 | client-and-ssr-error-visibility    | błędy przeglądarki i SSR zostawiają ślad, a nieaktualny plik po deployu przeładowuje stronę | S-14     | FR-023                  | done |
 | S-16 | failure-causes-and-audit-trail     | operator widzi przyczynę porażki joba i maila, a usunięcia i odmowy admina mają ślad | S-11          | FR-024                  | done |
 | S-17 | own-category-rename-and-delete     | użytkownik zmienia nazwę własnej kategorii albo usuwa pustą                          | —             | FR-025, FR-009, FR-010  | done |
 | S-18 | subscription-list-sort-filter      | użytkownik sortuje i filtruje listę subskrypcji                                      | —             | FR-016                  | ready    |
@@ -142,7 +142,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **Unknowns:**
   - Czy błędy z przeglądarki mają trafiać do API (PRD Open Questions #2)? Do decyzji slice obejmuje tylko konsolę przeglądarki i log serwera SSR. — Owner: user. Block: no.
 - **Risk:** Po S-14, bo oba zmieniają `server.ts` (access log, middleware błędów); ryzyko w zmianie zachowania guardów i formularzy widocznej dla użytkownika — testy e2e komunikatów muszą zostać zielone.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-16: Przyczyny porażek i ślad audytowy
 
@@ -246,3 +246,4 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **S-16: zadania cykliczne i wysyłka maili rozróżniają przyczyny porażki (brak konta, konto zablokowane, błąd bazy, błąd SMTP), a usunięcie konta, odmowy akcji administratora i jego wyszukiwania zostawiają ślad audytowy.** — Archived 2026-11-24 → `context/archive/2026-11-24-failure-causes-and-audit-trail/`. Lesson: —.
 - **S-14: logi obu procesów mają jednolity format bez kodów kolorów, ze znacznikiem czasu ISO ze strefą; linia startowa i `/health` podają wdrożoną wersję; każde żądanie zostawia jedną linię access logu (metoda, trasa, status, czas).** — Archived 2026-11-25 → `context/archive/2026-11-24-log-format-version-and-access-log/`. Lesson: —.
 - **S-17: użytkownik zmienia nazwę własnej kategorii albo usuwa ją, jeśli nie ma w niej subskrypcji; przy niepustej widzi komunikat, że najpierw musi przenieść albo usunąć jej subskrypcje. Kategorie predefiniowane się nie zmieniają, a próg duplikatów i limit budżetu usuwanej kategorii nie zostają osierocone.** — Archived 2026-11-25 → `context/archive/2026-11-24-own-category-rename-and-delete/`. Lesson: —.
+- **S-15: strony i formularze nie zamieniają nieznanego błędu w ogólny komunikat bez zapisu przyczyny, błąd nawigacji przy renderowaniu na serwerze nie wygląda jak 404, a nieaktualny plik aplikacji po wdrożeniu przeładowuje stronę.** — Archived 2026-11-25 → `context/archive/2026-11-25-client-and-ssr-error-visibility/`. Lesson: —.
