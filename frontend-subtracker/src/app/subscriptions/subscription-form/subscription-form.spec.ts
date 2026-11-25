@@ -8,7 +8,9 @@ import { MatDatepickerInputHarness } from '@angular/material/datepicker/testing'
 import { MatFormFieldHarness } from '@angular/material/form-field/testing';
 import { MatInputHarness } from '@angular/material/input/testing';
 import { MatSelectHarness } from '@angular/material/select/testing';
+import type { MockInstance } from 'vitest';
 import { environment } from '../../../environments/environment';
+import { ErrorReporter } from '../../shared/error-reporter';
 import type { Category, CreateSubscriptionRequest, Subscription } from '../subscription.types';
 import { SubscriptionForm } from './subscription-form';
 
@@ -82,6 +84,8 @@ const VALID_INPUT: FormInput = {
 let fixture: ComponentFixture<SubscriptionForm>;
 let loader: HarnessLoader;
 let httpTesting: HttpTestingController;
+// ErrorReporter.report: an unknown error is reported under 'SubscriptionForm', a recognized one is not.
+let report: MockInstance<ErrorReporter['report']>;
 
 // Creates the form (editing `subscription`, if given) and renders it; GET /categories is left open
 // for the test to answer.
@@ -91,6 +95,7 @@ async function createForm(subscription: Subscription | null = null): Promise<voi
     providers: [provideHttpClient(), provideHttpClientTesting()],
   });
   httpTesting = TestBed.inject(HttpTestingController);
+  report = vi.spyOn(TestBed.inject(ErrorReporter), 'report').mockImplementation(() => {});
   fixture = TestBed.createComponent(SubscriptionForm);
   if (subscription !== null) {
     fixture.componentRef.setInput('subscription', subscription);
@@ -329,6 +334,44 @@ describe('SubscriptionForm conditional fields and field errors', () => {
       httpTesting.expectNone({ method: 'GET', url: CATEGORIES_URL });
       expect(await fieldCount(NEW_CATEGORY_NAME)).toBe(1);
       expect(await (await field(NEW_CATEGORY_NAME)).hasErrors()).toBe(true);
+      expect(report).not.toHaveBeenCalled();
+    });
+
+    it('shows an alert and reports the error when the category cannot be created', async () => {
+      await createLoadedForm();
+      await pick(CATEGORY_FIELD, ADD_OWN_CATEGORY);
+      await typeInto(NEW_CATEGORY_NAME, 'Muzyka');
+
+      await clickButton('Dodaj');
+
+      httpTesting
+        .expectOne({ method: 'POST', url: CATEGORIES_URL })
+        .flush('Internal Server Error', { status: 500, statusText: 'Internal Server Error' });
+      await fixture.whenStable();
+
+      expect((fixture.nativeElement as HTMLElement).querySelectorAll('[role="alert"]').length).toBe(
+        1,
+      );
+      expect(report).toHaveBeenCalledTimes(1);
+      expect(report).toHaveBeenCalledWith('SubscriptionForm', expect.anything());
+    });
+
+    it('keeps the created category and reports the error when the list cannot be reloaded', async () => {
+      await createLoadedForm();
+      await pick(CATEGORY_FIELD, ADD_OWN_CATEGORY);
+      await typeInto(NEW_CATEGORY_NAME, 'Muzyka');
+
+      await clickButton('Dodaj');
+
+      httpTesting.expectOne({ method: 'POST', url: CATEGORIES_URL }).flush(OWN_CATEGORY);
+      httpTesting
+        .expectOne({ method: 'GET', url: CATEGORIES_URL })
+        .error(new ProgressEvent('error'));
+      await fixture.whenStable();
+
+      expect(await fieldCount(NEW_CATEGORY_NAME)).toBe(0);
+      expect(report).toHaveBeenCalledTimes(1);
+      expect(report).toHaveBeenCalledWith('SubscriptionForm', expect.anything());
     });
   });
 
@@ -343,6 +386,25 @@ describe('SubscriptionForm conditional fields and field errors', () => {
     await fixture.whenStable();
 
     expect(host.querySelectorAll('[role="alert"]').length).toBe(1);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith('SubscriptionForm', expect.anything());
+  });
+
+  it('shows an alert and reports the error when the save fails', async () => {
+    await createLoadedForm();
+    await fillValidForm();
+    await save();
+
+    httpTesting
+      .expectOne({ method: 'POST', url: SUBSCRIPTIONS_URL })
+      .flush('Internal Server Error', { status: 500, statusText: 'Internal Server Error' });
+    await fixture.whenStable();
+
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('[role="alert"]').length).toBe(
+      1,
+    );
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith('SubscriptionForm', expect.anything());
   });
 
   it('should create with its template rendered', async () => {
@@ -528,6 +590,7 @@ describe('SubscriptionForm editing a subscription', () => {
 
     expect(missing).toHaveBeenCalledTimes(1);
     expect(saved).not.toHaveBeenCalled();
+    expect(report).not.toHaveBeenCalled();
     expect((fixture.nativeElement as HTMLElement).querySelectorAll('[role="alert"]').length).toBe(
       0,
     );

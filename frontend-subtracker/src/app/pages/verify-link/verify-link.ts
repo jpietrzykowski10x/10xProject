@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { PublicLayout } from '../../layout/public-layout/public-layout';
 import { accountBlockedContact } from '../../auth/account-blocked';
 import { AuthService } from '../../auth/auth.service';
+import { ErrorReporter } from '../../shared/error-reporter';
 
 type VerifyState = 'ready' | 'sending' | 'invalid' | 'blocked' | 'unavailable';
 
@@ -15,6 +16,7 @@ type VerifyState = 'ready' | 'sending' | 'invalid' | 'blocked' | 'unavailable';
 })
 export class VerifyLink {
   private readonly auth = inject(AuthService);
+  private readonly reporter = inject(ErrorReporter);
   private readonly router = inject(Router);
   private readonly token = new URLSearchParams(inject(ActivatedRoute).snapshot.fragment ?? '').get(
     'token',
@@ -42,7 +44,12 @@ export class VerifyLink {
           this.state.set('blocked');
           return;
         }
-        this.state.set(error.status === 400 || error.status === 401 ? 'invalid' : 'unavailable');
+        if (error.status === 400 || error.status === 401) {
+          this.state.set('invalid');
+          return;
+        }
+        this.reporter.report('VerifyLink', error);
+        this.state.set('unavailable');
       },
     });
   }

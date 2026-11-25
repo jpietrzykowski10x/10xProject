@@ -130,6 +130,50 @@ export function accessMessage(
   return `${req.method} ${safePath(req.path)} ${status} ${ms} ms`;
 }
 
+// The lines of the log for a render that failed (handle() rejected, server.ts error middleware):
+// first `<METHOD> <path without query> <name>: <message on one line>` (the message cut like a
+// path), then the frames of the stack, each a line of its own, without the stack's own heading,
+// which repeats the message. Null for an AbortError: the client closed the connection, and the
+// access log already shows `aborted`.
+export function renderErrorLines(req: AccessLogRequest, error: unknown): string[] | null {
+  if (isAbortError(error)) {
+    return null;
+  }
+  if (!(error instanceof Error)) {
+    return [`${req.method} ${safePath(req.path)} Unknown error (${typeof error})`];
+  }
+  const heading = error.message === '' ? error.name : `${error.name}: ${error.message}`;
+  const first = `${req.method} ${safePath(req.path)} ${safePath(heading)}`;
+  const stack = error.stack ?? '';
+  // V8 starts the stack with the message as it was when the error was made (possibly over several
+  // lines, possibly changed since). The stack is always kept from its first `    at ` frame on: the
+  // message is already on the first line, cut, and must not come back whole, not even the rest of
+  // a message later shortened to a prefix of the original.
+  const frames = fromFirstFrame(stack);
+  return [
+    first,
+    ...frames
+      .split(/\r?\n/)
+      .filter((line) => line.trim() !== '')
+      .map((line) => line.replace(CONTROL_CHARACTERS, '?')),
+  ];
+}
+
+const FRAME_LINE = /^\s+at /;
+
+// The lines of a stack from its first frame on; empty when it has no frame.
+function fromFirstFrame(stack: string): string {
+  const stackLines = stack.split(/\r?\n/);
+  const first = stackLines.findIndex((line) => FRAME_LINE.test(line));
+  return first === -1 ? '' : stackLines.slice(first).join('\n');
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
+  );
+}
+
 // The commit SHA from the text of `.deploy-info` (written by deploy.sh; null when there is no
 // file). Only the SHA= line is read: the file also holds BACKUP=<dump path>, which must never be
 // logged. Anything else (no file, no line, a malformed value) gives `dev`.

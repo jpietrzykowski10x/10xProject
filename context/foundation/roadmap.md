@@ -45,7 +45,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-12 | independent-alert-channel          | alarm operatora dochodzi także przy awarii SMTP dla użytkowników                     | S-11          | FR-020                  | done        |
 | S-13 | request-context-and-denial-reasons | operator widzi w logu trasę, użytkownika i id żądania błędu oraz przyczyny odmów 4xx  | —             | FR-021                  | done |
 | S-14 | log-format-version-and-access-log  | operator czyta logi w jednym formacie, z wersją i access logiem obu procesów         | S-13          | FR-022                  | done |
-| S-15 | client-and-ssr-error-visibility    | błędy przeglądarki i SSR zostawiają ślad, a nieaktualny plik po deployu przeładowuje stronę | S-14     | FR-023                  | proposed |
+| S-15 | client-and-ssr-error-visibility    | błędy przeglądarki i SSR zostawiają ślad, a nieaktualny plik po deployu przeładowuje stronę | S-14     | FR-023                  | in-progress |
 | S-16 | failure-causes-and-audit-trail     | operator widzi przyczynę porażki joba i maila, a usunięcia i odmowy admina mają ślad | S-11          | FR-024                  | done |
 | S-17 | own-category-rename-and-delete     | użytkownik zmienia nazwę własnej kategorii albo usuwa pustą                          | —             | FR-025, FR-009, FR-010  | done |
 | S-18 | subscription-list-sort-filter      | użytkownik sortuje i filtruje listę subskrypcji                                      | —             | FR-016                  | ready    |
@@ -142,7 +142,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **Unknowns:**
   - Czy błędy z przeglądarki mają trafiać do API (PRD Open Questions #2)? Do decyzji slice obejmuje tylko konsolę przeglądarki i log serwera SSR. — Owner: user. Block: no.
 - **Risk:** Po S-14, bo oba zmieniają `server.ts` (access log, middleware błędów); ryzyko w zmianie zachowania guardów i formularzy widocznej dla użytkownika — testy e2e komunikatów muszą zostać zielone.
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-16: Przyczyny porażek i ślad audytowy
 

@@ -11,6 +11,7 @@ import {
   MatDialogTitle,
 } from '@angular/material/dialog';
 import type { Observable } from 'rxjs';
+import { ErrorReporter } from '../../shared/error-reporter';
 import { AdminService } from '../admin.service';
 import type { AdminUserSummary } from '../admin.types';
 
@@ -98,6 +99,7 @@ export function openAdminActionDialog(
 export class AdminActionDialog {
   private readonly admin = inject(AdminService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly reporter = inject(ErrorReporter);
   private readonly dialogRef =
     inject<MatDialogRef<AdminActionDialog, AdminActionResult>>(MatDialogRef);
   private readonly data = inject<AdminActionDialogData>(MAT_DIALOG_DATA);
@@ -130,6 +132,7 @@ export class AdminActionDialog {
             this.dialogRef.close(result);
             return;
           }
+          this.reporter.report('AdminActionDialog', error);
           this.sending.set(false);
           this.failed.set(true);
           this.dialogRef.disableClose = false;

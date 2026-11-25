@@ -10,6 +10,7 @@ import {
   MatDialogRef,
   MatDialogTitle,
 } from '@angular/material/dialog';
+import { ErrorReporter } from '../../shared/error-reporter';
 import type { Subscription } from '../subscription.types';
 import { SubscriptionsService } from '../subscriptions.service';
 
@@ -56,6 +57,7 @@ export function openDeleteSubscriptionDialog(
 export class DeleteSubscriptionDialog {
   private readonly subscriptions = inject(SubscriptionsService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly reporter = inject(ErrorReporter);
   private readonly dialogRef =
     inject<MatDialogRef<DeleteSubscriptionDialog, DeleteSubscriptionResult>>(MatDialogRef);
   protected readonly subscription =
@@ -87,6 +89,7 @@ export class DeleteSubscriptionDialog {
             this.dialogRef.close('missing');
             return;
           }
+          this.reporter.report('DeleteSubscriptionDialog', error);
           this.sending.set(false);
           this.failed.set(true);
           this.dialogRef.disableClose = false;

@@ -33,6 +33,7 @@ import { MatError, MatFormField, MatLabel, MatSuffix } from '@angular/material/f
 import { MatInput } from '@angular/material/input';
 import { MatSelect } from '@angular/material/select';
 import { catchError, map, merge, of, switchMap } from 'rxjs';
+import { ErrorReporter } from '../../shared/error-reporter';
 import { FORM_FIELD_DEFAULTS } from '../../shared/form-field-defaults';
 import { PL_DATE_FORMATS, PlDateAdapter } from '../../shared/pl-date-adapter';
 import { PlDatepickerIntl } from '../../shared/pl-datepicker-intl';
@@ -113,6 +114,7 @@ export class SubscriptionForm implements OnInit {
 
   private readonly subscriptions = inject(SubscriptionsService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly reporter = inject(ErrorReporter);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly categorySelect = viewChild.required<MatSelect>('categorySelect');
@@ -198,7 +200,10 @@ export class SubscriptionForm implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (categories) => this.categories.set(categories),
-        error: () => this.categoriesFailed.set(true),
+        error: (error: unknown) => {
+          this.reporter.report('SubscriptionForm', error);
+          this.categoriesFailed.set(true);
+        },
       });
   }
 
@@ -222,7 +227,10 @@ export class SubscriptionForm implements OnInit {
         // The list is read again for the API's order; without it the new category goes last.
         switchMap((created) =>
           this.subscriptions.categories().pipe(
-            catchError(() => of([...this.categories(), created])),
+            catchError((error: unknown) => {
+              this.reporter.report('SubscriptionForm', error);
+              return of([...this.categories(), created]);
+            }),
             map((categories) => ({ created, categories })),
           ),
         ),
@@ -247,6 +255,7 @@ export class SubscriptionForm implements OnInit {
           if (error.status === 409) {
             this.categoryName.setErrors({ conflict: true });
           } else {
+            this.reporter.report('SubscriptionForm', error);
             this.categoryFailed.set(true);
           }
         },
@@ -282,7 +291,12 @@ export class SubscriptionForm implements OnInit {
             this.missing.emit();
             return;
           }
-          this.state.set(error.status === 400 ? 'invalid' : 'unavailable');
+          if (error.status === 400) {
+            this.state.set('invalid');
+            return;
+          }
+          this.reporter.report('SubscriptionForm', error);
+          this.state.set('unavailable');
         },
       });
   }

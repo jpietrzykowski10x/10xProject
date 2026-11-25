@@ -6,7 +6,9 @@ import { TestBed } from '@angular/core/testing';
 import { MatButtonHarness } from '@angular/material/button/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatDialogHarness } from '@angular/material/dialog/testing';
+import type { MockInstance } from 'vitest';
 import { environment } from '../../../environments/environment';
+import { ErrorReporter } from '../../shared/error-reporter';
 import type { Subscription } from '../subscription.types';
 import {
   DeleteSubscriptionResult,
@@ -34,10 +36,14 @@ class Host {}
 
 // The dialog is opened the way the page opens it, through the real MatDialog; only the HTTP
 // boundary is replaced. `closed` records what afterClosed() emitted, `results.length` whether it did.
+// ErrorReporter.report: only an unknown error is reported, under 'DeleteSubscriptionDialog'.
+let report: MockInstance<ErrorReporter['report']>;
+
 async function openDialog() {
   TestBed.configureTestingModule({
     providers: [provideHttpClient(), provideHttpClientTesting()],
   });
+  report = vi.spyOn(TestBed.inject(ErrorReporter), 'report').mockImplementation(() => {});
   const httpTesting = TestBed.inject(HttpTestingController);
   const fixture = TestBed.createComponent(Host);
   const loader = TestbedHarnessEnvironment.documentRootLoader(fixture);
@@ -91,6 +97,7 @@ describe('DeleteSubscriptionDialog', () => {
     await fixture.whenStable();
 
     expect(results).toEqual(['missing']);
+    expect(report).not.toHaveBeenCalled();
   });
 
   it('stays open with one alert when the delete fails', async () => {
@@ -105,6 +112,8 @@ describe('DeleteSubscriptionDialog', () => {
     expect(results).toEqual([]);
     expect(await loader.getAllHarnesses(MatDialogHarness)).toHaveLength(1);
     expect(document.querySelectorAll('mat-dialog-container [role="alert"]')).toHaveLength(1);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith('DeleteSubscriptionDialog', expect.anything());
   });
 
   it('closes on "Anuluj" without a result and without a request', async () => {

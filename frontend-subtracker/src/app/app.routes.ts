@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 import { adminGuard, authGuard, guestGuard } from './auth/auth.guard';
+import { E2E_ROUTES } from './e2e-routes';
+import { ServiceUnavailable } from './pages/service-unavailable/service-unavailable';
 
 export const routes: Routes = [
   {
@@ -59,8 +61,11 @@ export const routes: Routes = [
   },
   {
     // authGuard shows this page with skipLocationChange, so the address bar keeps the guarded URL.
+    // Not lazy: it is also the page shown when a lazy chunk is gone after a deploy
+    // (navigation-error-handler.ts), so it must not need a chunk of its own.
     path: 'unavailable',
-    loadComponent: () =>
-      import('./pages/service-unavailable/service-unavailable').then((m) => m.ServiceUnavailable),
+    component: ServiceUnavailable,
   },
+  // Empty except in the e2e build, which swaps in e2e-routes.e2e.ts (angular.json).
+  ...E2E_ROUTES,
 ];

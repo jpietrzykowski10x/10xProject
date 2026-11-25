@@ -16,6 +16,7 @@ import { accountStatusLabel, ADMIN_ROLE_LABELS } from '../../../admin/admin-labe
 import { AdminService } from '../../../admin/admin.service';
 import type { AdminUserDetail } from '../../../admin/admin.types';
 import { AppShell } from '../../../layout/app-shell/app-shell';
+import { ErrorReporter } from '../../../shared/error-reporter';
 import { CostTotals } from '../../../subscriptions/cost-totals/cost-totals';
 import { SubscriptionTable } from '../../subscriptions/subscription-table/subscription-table';
 
@@ -53,6 +54,7 @@ export class AdminUser implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly reporter = inject(ErrorReporter);
   private request?: RxSubscription;
   private id = '';
 
@@ -119,6 +121,7 @@ export class AdminUser implements OnInit {
           } else if (error.status === 404 || error.status === 400) {
             this.state.set({ kind: 'missing' });
           } else {
+            this.reporter.report('AdminUser', error);
             this.state.set({ kind: 'error' });
           }
         },

@@ -3,6 +3,7 @@ import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
 import { isAdmin } from '../../auth/roles';
+import { ErrorReporter } from '../../shared/error-reporter';
 import { CostTotals } from '../../subscriptions/cost-totals/cost-totals';
 import { CostTotalsStore } from '../../subscriptions/cost-totals.store';
 
@@ -30,6 +31,7 @@ export class AppShell implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly totals = inject(CostTotalsStore);
+  private readonly reporter = inject(ErrorReporter);
 
   // S-09: false on the admin pages, which show another account's totals themselves; the shell then
   // neither loads nor shows the signed-in account's totals.
@@ -59,7 +61,8 @@ export class AppShell implements OnInit {
         this.totals.clear();
         void this.router.navigate(['/sign-in']);
       },
-      error: () => {
+      error: (error: unknown) => {
+        this.reporter.report('AppShell', error);
         this.loggingOut.set(false);
         this.logoutFailed.set(true);
       },

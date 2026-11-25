@@ -10,6 +10,7 @@ import { FORM_FIELD_DEFAULTS } from '../../shared/form-field-defaults';
 import { PublicLayout } from '../../layout/public-layout/public-layout';
 import { accountBlockedContact } from '../../auth/account-blocked';
 import { AuthService } from '../../auth/auth.service';
+import { ErrorReporter } from '../../shared/error-reporter';
 import { emailValidators } from '../../auth/email-validators';
 
 type RegisterState = 'idle' | 'sending' | 'sent' | 'invalid' | 'blocked' | 'unavailable';
@@ -32,6 +33,7 @@ type RegisterState = 'idle' | 'sending' | 'sent' | 'invalid' | 'blocked' | 'unav
 })
 export class Register {
   private readonly auth = inject(AuthService);
+  private readonly reporter = inject(ErrorReporter);
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     email: ['', emailValidators],
@@ -59,7 +61,12 @@ export class Register {
           this.state.set('blocked');
           return;
         }
-        this.state.set(error.status === 400 ? 'invalid' : 'unavailable');
+        if (error.status === 400) {
+          this.state.set('invalid');
+          return;
+        }
+        this.reporter.report('Register', error);
+        this.state.set('unavailable');
       },
     });
   }

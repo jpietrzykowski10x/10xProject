@@ -7,7 +7,9 @@ import { MatDialogHarness } from '@angular/material/dialog/testing';
 import { MatFormFieldHarness } from '@angular/material/form-field/testing';
 import { MatInputHarness } from '@angular/material/input/testing';
 import { provideRouter } from '@angular/router';
+import type { MockInstance } from 'vitest';
 import { environment } from '../../../environments/environment';
+import { ErrorReporter } from '../../shared/error-reporter';
 import type {
   CostTotals,
   CreateSubscriptionRequest,
@@ -59,11 +61,16 @@ const NO_TOTALS: CostTotals = {
   categories: [],
 };
 
+// ErrorReporter.report: an unknown error is reported under the reporting class's name, a
+// recognized answer (404, 409) is not.
+let report: MockInstance<ErrorReporter['report']>;
+
 function createPage() {
   TestBed.configureTestingModule({
     imports: [Subscriptions],
     providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
   });
+  report = vi.spyOn(TestBed.inject(ErrorReporter), 'report').mockImplementation(() => {});
   const httpTesting = TestBed.inject(HttpTestingController);
   const fixture = TestBed.createComponent(Subscriptions);
   return { httpTesting, fixture, loader: TestbedHarnessEnvironment.loader(fixture) };
@@ -273,6 +280,9 @@ describe('Subscriptions', () => {
     await fixture.whenStable();
     const host = fixture.nativeElement as HTMLElement;
     expect(host.textContent).toContain('Nie udało się wczytać sum.');
+    expect(report).toHaveBeenCalledTimes(2);
+    expect(report).toHaveBeenCalledWith('Subscriptions', expect.anything());
+    expect(report).toHaveBeenCalledWith('CostTotalsStore', expect.anything());
 
     await (await loader.getHarness(MatButtonHarness.with({ text: 'Spróbuj ponownie' }))).click();
 
@@ -456,6 +466,7 @@ describe('Subscriptions', () => {
 
       const host = fixture.nativeElement as HTMLElement;
       expect(host.querySelector('[role="status"]')?.textContent?.trim()).toBe(message);
+      expect(report).not.toHaveBeenCalled();
     },
   );
 
@@ -485,6 +496,7 @@ describe('Subscriptions', () => {
     expect(host.querySelector('[role="status"]')?.textContent?.trim()).toBe(
       'Stan subskrypcji zmienił się w międzyczasie.',
     );
+    expect(report).not.toHaveBeenCalled();
   });
 
   it('keeps the list with an alert when the resume fails', async () => {
@@ -514,5 +526,7 @@ describe('Subscriptions', () => {
     );
     // The button is enabled again for another try.
     expect(await resume.isDisabled()).toBe(false);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith('Subscriptions', expect.anything());
   });
 });

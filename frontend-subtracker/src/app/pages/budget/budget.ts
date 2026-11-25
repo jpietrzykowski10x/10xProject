@@ -41,6 +41,7 @@ import {
   type UpdateBudgetRequest,
 } from '../../budget/budget.types';
 import { AppShell } from '../../layout/app-shell/app-shell';
+import { ErrorReporter } from '../../shared/error-reporter';
 import { FORM_FIELD_DEFAULTS } from '../../shared/form-field-defaults';
 import { numberToGrosze, toAmountText, toGrosze } from '../../shared/grosze';
 import { CostTotalsStore } from '../../subscriptions/cost-totals.store';
@@ -217,6 +218,7 @@ export class Budget implements OnInit {
   private readonly subscriptions = inject(SubscriptionsService);
   private readonly totals = inject(CostTotalsStore);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly reporter = inject(ErrorReporter);
   private readonly injector = inject(Injector);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly locale = inject(LOCALE_ID);
@@ -348,7 +350,8 @@ export class Budget implements OnInit {
             afterNextRender(() => target()?.nativeElement.focus(), { injector: this.injector });
           }
         },
-        error: () => {
+        error: (error: unknown) => {
+          this.reporter.report('Budget', error);
           this.focusOnLoad = null;
           this.state.set({ kind: 'error' });
         },
@@ -432,6 +435,7 @@ export class Budget implements OnInit {
             this.refusedKeys.update((keys) => new Set([...keys, nameKey(name)]));
             this.newCategoryName.markAsDirty();
           } else {
+            this.reporter.report('Budget', error);
             this.addCategoryFailed.set(true);
           }
         },
@@ -470,6 +474,7 @@ export class Budget implements OnInit {
             this.saveError.set(CHANGED_MESSAGE);
             this.load();
           } else {
+            this.reporter.report('Budget', error);
             this.saveError.set(UNAVAILABLE_MESSAGE);
           }
         },

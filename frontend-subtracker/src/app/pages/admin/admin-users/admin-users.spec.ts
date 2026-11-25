@@ -9,7 +9,9 @@ import { MatInputHarness } from '@angular/material/input/testing';
 import { MatSelectHarness } from '@angular/material/select/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import type { MockInstance } from 'vitest';
 import { environment } from '../../../../environments/environment';
+import { ErrorReporter } from '../../../shared/error-reporter';
 import type { AdminStatusFilter, AdminUserSummary } from '../../../admin/admin.types';
 import { AdminUsers } from './admin-users';
 
@@ -27,6 +29,8 @@ const ANNA: AdminUserSummary = {
 let harness: RouterTestingHarness;
 let loader: HarnessLoader;
 let httpTesting: HttpTestingController;
+// ErrorReporter.report: only an unknown error is reported, under 'AdminUsers'.
+let report: MockInstance<ErrorReporter['report']>;
 
 // The page behind the real router, so the query travels through the address (?q=&status=).
 async function createPage(url = '/admin/users'): Promise<void> {
@@ -38,6 +42,7 @@ async function createPage(url = '/admin/users'): Promise<void> {
     ],
   });
   httpTesting = TestBed.inject(HttpTestingController);
+  report = vi.spyOn(TestBed.inject(ErrorReporter), 'report').mockImplementation(() => {});
   harness = await RouterTestingHarness.create(url);
   loader = TestbedHarnessEnvironment.loader(harness.fixture);
 }
@@ -169,5 +174,19 @@ describe('AdminUsers search', () => {
     const alerts = host().querySelectorAll('[role="alert"]');
     expect(alerts).toHaveLength(1);
     expect(alerts[0].textContent).toContain('Brak uprawnień');
+    expect(report).not.toHaveBeenCalled();
+  });
+
+  it('shows one alert and reports the error after a server error', async () => {
+    await createPage('/admin/users?q=anna');
+
+    httpTesting
+      .expectOne((req) => req.url === SEARCH_URL)
+      .flush('Internal Server Error', { status: 500, statusText: 'Internal Server Error' });
+    await harness.fixture.whenStable();
+
+    expect(host().querySelectorAll('[role="alert"]')).toHaveLength(1);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith('AdminUsers', expect.anything());
   });
 });

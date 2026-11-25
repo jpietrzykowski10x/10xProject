@@ -8,7 +8,9 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatDialogHarness } from '@angular/material/dialog/testing';
 import { MatFormFieldHarness } from '@angular/material/form-field/testing';
 import { MatInputHarness } from '@angular/material/input/testing';
+import type { MockInstance } from 'vitest';
 import { environment } from '../../../../environments/environment';
+import { ErrorReporter } from '../../../shared/error-reporter';
 import type { Category } from '../../../subscriptions/subscription.types';
 import { openRenameCategoryDialog, RenameCategoryResult } from './rename-category-dialog';
 
@@ -22,10 +24,14 @@ class Host {}
 
 // The dialog is opened the way the page opens it, through the real MatDialog; only the HTTP
 // boundary is replaced. `results` records what afterClosed() emitted.
+// ErrorReporter.report: only an unknown error is reported, under 'RenameCategoryDialog'.
+let report: MockInstance<ErrorReporter['report']>;
+
 async function openDialog() {
   TestBed.configureTestingModule({
     providers: [provideHttpClient(), provideHttpClientTesting()],
   });
+  report = vi.spyOn(TestBed.inject(ErrorReporter), 'report').mockImplementation(() => {});
   const httpTesting = TestBed.inject(HttpTestingController);
   const fixture = TestBed.createComponent(Host);
   const loader = TestbedHarnessEnvironment.documentRootLoader(fixture);
@@ -124,6 +130,7 @@ describe('RenameCategoryDialog', () => {
     await opened.input.setValue('Joga');
     expect(await opened.field.hasErrors()).toBe(false);
     expect(await (await opened.saveButton()).isDisabled()).toBe(false);
+    expect(report).not.toHaveBeenCalled();
   });
 
   it('closes with "missing" when the category is already gone (404)', async () => {
@@ -132,6 +139,7 @@ describe('RenameCategoryDialog', () => {
     await saveAndAnswer(opened, 'Joga', { body: null, status: 404, statusText: 'Not Found' });
 
     expect(opened.results).toEqual(['missing']);
+    expect(report).not.toHaveBeenCalled();
   });
 
   it('stays open with one alert when the save fails', async () => {
@@ -147,6 +155,8 @@ describe('RenameCategoryDialog', () => {
     expect(await opened.loader.getAllHarnesses(MatDialogHarness)).toHaveLength(1);
     expect(document.querySelectorAll('mat-dialog-container [role="alert"]')).toHaveLength(1);
     expect(await (await opened.saveButton()).isDisabled()).toBe(false);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith('RenameCategoryDialog', expect.anything());
   });
 
   // disableClose while the PATCH runs: Escape (and the backdrop) must not drop an answer.
