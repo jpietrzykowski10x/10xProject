@@ -3,7 +3,7 @@ project: SubTracker
 version: 2
 status: draft
 created: 2026-10-16
-updated: 2026-11-24
+updated: 2026-11-25
 prd_version: 2
 main_goal: quality
 top_blocker: time
@@ -44,7 +44,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-11 | operator-liveness-alerts           | operator dostaje mail, gdy API nie odpowiada albo job padł lub nie ruszył przez 26 h | —             | FR-019                  | done        |
 | S-12 | independent-alert-channel          | alarm operatora dochodzi także przy awarii SMTP dla użytkowników                     | S-11          | FR-020                  | done        |
 | S-13 | request-context-and-denial-reasons | operator widzi w logu trasę, użytkownika i id żądania błędu oraz przyczyny odmów 4xx  | —             | FR-021                  | done |
-| S-14 | log-format-version-and-access-log  | operator czyta logi w jednym formacie, z wersją i access logiem obu procesów         | S-13          | FR-022                  | proposed |
+| S-14 | log-format-version-and-access-log  | operator czyta logi w jednym formacie, z wersją i access logiem obu procesów         | S-13          | FR-022                  | done |
 | S-15 | client-and-ssr-error-visibility    | błędy przeglądarki i SSR zostawiają ślad, a nieaktualny plik po deployu przeładowuje stronę | S-14     | FR-023                  | proposed |
 | S-16 | failure-causes-and-audit-trail     | operator widzi przyczynę porażki joba i maila, a usunięcia i odmowy admina mają ślad | S-11          | FR-024                  | done |
 | S-17 | own-category-rename-and-delete     | użytkownik zmienia nazwę własnej kategorii albo usuwa pustą                          | —             | FR-025, FR-009, FR-010  | in-progress |
@@ -129,7 +129,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **Unknowns:**
   - Czy MyDevil rotuje i ogranicza logi `forever`? Access log zwiększy ich objętość. — Owner: user. Block: no.
 - **Risk:** Po S-13, bo access log używa jego id żądania; wąski i dobrze sprawdzalny testami, więc kandydat na przebieg `/goal` + `/10x-goal-implement`.
-- **Status:** proposed
+- **Status:** done
 
 ### S-15: Błędy przeglądarki i SSR nie znikają
 
@@ -244,3 +244,4 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
 - **S-13: każdy błąd serwera w logu API ma metodę, szablon trasy, id użytkownika i id żądania; wybrane odmowy 4xx (weryfikacja linku, sesja, CSRF/Origin, ranga administratora, walidacja) zostawiają linię z kodem przyczyny i nazwami pól, bez wartości i danych osobowych, z limitem.** — Archived 2026-11-23 → `context/archive/2026-11-23-request-context-and-denial-reasons/`. Lesson: —.
 - **S-12: alarm do operatora dochodzi także wtedy, gdy nie działa wysyłka maili do użytkowników: na produkcji wymagany jest osobny kanał alarmowy, blokada powtórzeń zaczyna działać dopiero po przyjęciu alarmu, a odrzucenie adresata przez serwer pocztowy jest odróżnione od literówki.** — Archived 2026-11-24 → `context/archive/2026-11-23-independent-alert-channel/`. Lesson: —.
 - **S-16: zadania cykliczne i wysyłka maili rozróżniają przyczyny porażki (brak konta, konto zablokowane, błąd bazy, błąd SMTP), a usunięcie konta, odmowy akcji administratora i jego wyszukiwania zostawiają ślad audytowy.** — Archived 2026-11-24 → `context/archive/2026-11-24-failure-causes-and-audit-trail/`. Lesson: —.
+- **S-14: logi obu procesów mają jednolity format bez kodów kolorów, ze znacznikiem czasu ISO ze strefą; linia startowa i `/health` podają wdrożoną wersję; każde żądanie zostawia jedną linię access logu (metoda, trasa, status, czas).** — Archived 2026-11-25 → `context/archive/2026-11-24-log-format-version-and-access-log/`. Lesson: —.

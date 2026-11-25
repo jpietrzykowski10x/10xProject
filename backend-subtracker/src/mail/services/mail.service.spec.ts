@@ -471,7 +471,31 @@ describe('MailService', () => {
       ).resolves.toBe('sent');
 
       expect(send).toHaveBeenCalledTimes(1);
-      expect(logError).toHaveBeenCalledWith(expect.stringContaining('db down'));
+      expect(logError).toHaveBeenCalledWith(
+        'Saving the MAGIC_LINK mail audit row failed (code: Error)',
+      );
+    });
+
+    it('logs only the code of a failed audit write, never the query text quoting the address', async () => {
+      const { service, mails } = setup();
+      mails.save.mockRejectedValueOnce(
+        new QueryFailedError(
+          'INSERT INTO "mail"',
+          [USER],
+          Object.assign(new Error(`value too long for ${USER}`), {
+            code: '22001',
+          }),
+        ),
+      );
+
+      await expect(
+        service.sendToUser(MailType.MAGIC_LINK, USER, content),
+      ).resolves.toBe('sent');
+
+      expect(logError).toHaveBeenCalledWith(
+        'Saving the MAGIC_LINK mail audit row failed (code: 22001)',
+      );
+      expect(JSON.stringify(logError.mock.calls)).not.toContain(USER);
     });
 
     it('still alerts when both the send and the audit write fail', async () => {

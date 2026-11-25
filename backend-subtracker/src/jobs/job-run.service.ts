@@ -8,6 +8,7 @@ import { In, LessThan, Repository } from 'typeorm';
 import { MailService } from '../mail/services/mail.service.js';
 import { failureCodeOf } from '../shared/database/failure-code.js';
 import { APP_TIME_ZONE, calendarDayIn } from '../shared/date/calendar-day.js';
+import { highlight, safeStack } from '../shared/logging/log-format.js';
 import { JobRun } from './entities/job-run.entity.js';
 import { jobRunAlert } from './job-run-alert.js';
 import {
@@ -27,10 +28,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // The outcomes of a run that actually ran (latestFinished leaves out `skipped`).
 const RAN_OUTCOMES: JobOutcome[] = ['success', 'partial', 'failed'];
 
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : 'non-error value thrown';
-}
-
 // The cause of a failed run for job_run.failure, the log and the alert: the step and the code of
 // the error, never its message (it can quote the parameters of a failed query).
 function failureOf(error: unknown): string {
@@ -44,7 +41,9 @@ function failureOf(error: unknown): string {
 // The stack for the log: of the original error when a step failed.
 function stackOf(error: unknown): string | undefined {
   const original = error instanceof JobStepError ? error.cause : error;
-  return original instanceof Error ? original.stack : undefined;
+  return original instanceof Error && original.stack !== undefined
+    ? safeStack(original.stack)
+    : undefined;
 }
 
 function countersText(counters: Record<string, number> | null): string {
@@ -113,13 +112,17 @@ export class JobRunService implements BeforeApplicationShutdown {
     const summary =
       `Job ${job} (${trigger}) for ${day}: ${outcome} in ${finishedAt.getTime() - startedAt.getTime()} ms` +
       countersText(counters);
+    // On a background in a terminal only (highlight): green for success, red otherwise.
     if (outcome === 'failed') {
-      this.logger.error(`${summary} (${failure ?? ''})`, stack);
+      this.logger.error(
+        highlight(`${summary} (${failure ?? ''})`, 'failure'),
+        stack,
+      );
     } else if (outcome === 'partial') {
       // error, not warn: a partial run goes to err.log next to the failures (J13).
-      this.logger.error(summary);
+      this.logger.error(highlight(summary, 'failure'));
     } else {
-      this.logger.log(summary);
+      this.logger.log(highlight(summary, 'success'));
     }
 
     if (outcome !== 'success') {
@@ -175,7 +178,7 @@ export class JobRunService implements BeforeApplicationShutdown {
       );
     } catch (error) {
       this.logger.error(
-        `Recording the skipped ${job} run failed: ${messageOf(error)}`,
+        `Recording the skipped ${job} run failed (code: ${failureCodeOf(error)})`,
       );
     }
   }
@@ -218,7 +221,7 @@ export class JobRunService implements BeforeApplicationShutdown {
       id = row.id;
     } catch (error) {
       this.logger.error(
-        `Recording the start of the ${job} run failed: ${messageOf(error)}`,
+        `Recording the start of the ${job} run failed (code: ${failureCodeOf(error)})`,
       );
     }
     try {
@@ -229,7 +232,7 @@ export class JobRunService implements BeforeApplicationShutdown {
       await this.runs.delete({ job, startedAt: LessThan(limit) });
     } catch (error) {
       this.logger.error(
-        `Deleting old ${job} run rows failed: ${messageOf(error)}`,
+        `Deleting old ${job} run rows failed (code: ${failureCodeOf(error)})`,
       );
     }
     return id;
@@ -255,7 +258,7 @@ export class JobRunService implements BeforeApplicationShutdown {
       }
     } catch (error) {
       this.logger.error(
-        `Recording the end of the ${row.job} run failed: ${messageOf(error)}`,
+        `Recording the end of the ${row.job} run failed (code: ${failureCodeOf(error)})`,
       );
     }
   }

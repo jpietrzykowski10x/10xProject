@@ -13,6 +13,7 @@ import {
   MailType,
 } from '../../mail/mail.types.js';
 import { MailService } from '../../mail/services/mail.service.js';
+import { failureCodeOf } from '../../shared/database/failure-code.js';
 import { User } from '../../users/entities/user.entity.js';
 import { MagicLinkToken } from '../entities/magic-link-token.entity.js';
 import { Session } from '../entities/session.entity.js';
@@ -191,7 +192,7 @@ export class AccountAccessService {
     auditId: string | undefined,
   ): void {
     // sendToUser never rejects today; the catch keeps a future error from becoming an unhandled
-    // rejection. Only the message is logged, never the address.
+    // rejection. Only the code is logged, never the address.
     this.mail
       .sendToUser(type, address, content)
       .then((outcome: MailOutcome) => {
@@ -201,7 +202,7 @@ export class AccountAccessService {
       })
       .catch((error: unknown) => {
         this.logger.error(
-          `Mail sending failed: ${error instanceof Error ? error.message : String(error)}`,
+          `Mail sending failed (code: ${failureCodeOf(error)})`,
         );
       });
   }

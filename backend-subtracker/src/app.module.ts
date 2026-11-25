@@ -12,6 +12,10 @@ import { buildDatabaseOptions } from './database/database.options.js';
 import { HealthController } from './health/health.controller.js';
 import { JobsModule } from './jobs/jobs.module.js';
 import { MailModule } from './mail/mail.module.js';
+import {
+  DEPLOYED_VERSION,
+  readDeployedVersion,
+} from './shared/deploy/deploy-info.js';
 import { SafeLoggingExceptionFilter } from './shared/filters/safe-logging-exception.filter.js';
 import { LoggingValidationPipe } from './shared/validation/validation-pipe.js';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
@@ -43,6 +47,8 @@ import { UsersModule } from './users/users.module.js';
   controllers: [AppController, HealthController],
   providers: [
     AppService,
+    // Read once at startup, for the start line in main.ts and /health.
+    { provide: DEPLOYED_VERSION, useFactory: () => readDeployedVersion() },
     // Through APP_PIPE and APP_FILTER, not main.ts, so that e2e tests booting AppModule inherit them.
     // The pipe is Nest's ValidationPipe whose 400 also names the refused fields in the log.
     {

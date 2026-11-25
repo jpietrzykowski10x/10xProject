@@ -242,7 +242,7 @@ export class MailService {
       return row.id;
     } catch (error) {
       this.logger.error(
-        `Saving the ${type} mail audit row failed: ${errorMessageOf(error)}`,
+        `Saving the ${type} mail audit row failed (code: ${failureCodeOf(error)})`,
       );
       return null;
     }

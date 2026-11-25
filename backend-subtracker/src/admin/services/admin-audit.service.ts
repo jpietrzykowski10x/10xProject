@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { type EntityManager, Repository } from 'typeorm';
 import { failureCodeOf } from '../../shared/database/failure-code.js';
+import { safeStack } from '../../shared/logging/log-format.js';
 import { insertAdminAudit } from '../admin-audit-insert.js';
 import { AdminAction, type AdminAuditEntry } from '../admin-audit.types.js';
 import { AdminAudit } from '../entities/admin-audit.entity.js';
@@ -24,7 +25,7 @@ export class AdminAuditService {
 
   // A row outside the action's transaction (a search, a refusal rolled back with the action).
   // Never throws: the caller's answer does not depend on the trail, and a failure is logged as an
-  // error with the database code only.
+  // error with the database code only (and a stack without the query's message).
   async recordOutside(entry: AdminAuditEntry): Promise<void> {
     try {
       await insertAdminAudit(this.audit.manager, entry);
@@ -32,7 +33,9 @@ export class AdminAuditService {
       this.logger.error(
         `Admin audit ${entry.action} row not written for actor ${entry.actorId ?? 'cli'}` +
           ` target ${entry.targetId ?? 'none'} (code: ${failureCodeOf(error)})`,
-        error instanceof Error ? error.stack : undefined,
+        error instanceof Error && error.stack !== undefined
+          ? safeStack(error.stack)
+          : undefined,
       );
     }
   }
