@@ -1,10 +1,10 @@
 ---
 change_id: own-category-rename-and-delete
 title: Zmiana nazwy i usuwanie własnych kategorii
-status: impl_reviewed
+status: archived
 created: 2026-11-24
 updated: 2026-11-25
-archived_at: null
+archived_at: 2026-11-25T15:18:12Z
 ---
 
 ## Notes
