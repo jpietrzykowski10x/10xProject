@@ -41,7 +41,8 @@ const CSRF_CODES: Readonly<Record<string, string>> = {
 const MAX_ORIGIN_LENGTH = 100;
 
 // The message and code of a failure; for a failed query only its code, since its message can
-// quote the parameters of the query.
+// quote the parameters of the query. Other messages stay, on one line: some span several (e.g.
+// TypeORM's EntityNotFoundError quotes its criteria as indented JSON).
 function describeError(exception: unknown): string {
   if (typeof exception !== 'object' || exception === null) {
     return 'Non-error value thrown';
@@ -51,7 +52,9 @@ function describeError(exception: unknown): string {
   }
   const { message, code } = exception as { message?: unknown; code?: unknown };
   const text =
-    typeof message === 'string' ? message : 'Error without a message';
+    typeof message === 'string'
+      ? message.replace(/\s+/g, ' ').trim()
+      : 'Error without a message';
   return typeof code === 'string' || typeof code === 'number'
     ? `${text} (code: ${code})`
     : text;

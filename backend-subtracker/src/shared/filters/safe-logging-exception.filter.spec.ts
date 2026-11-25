@@ -7,7 +7,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
-import { QueryFailedError } from 'typeorm';
+import { EntityNotFoundError, QueryFailedError } from 'typeorm';
 import { type EnvConfig, validateEnv } from '../../config/env.js';
 import { withDenial } from '../logging/denial.js';
 import type { RequestWithContext } from '../logging/request-context.js';
@@ -150,6 +150,17 @@ describe('SafeLoggingExceptionFilter', () => {
     expect(stack).toMatch(/^QueryFailedError: <message omitted>\n\s+at /);
     expect(JSON.stringify(logged.mock.calls)).not.toContain(ADDRESS);
     expect(JSON.stringify(logged.mock.calls)).not.toContain('duplicate key');
+  });
+
+  it('keeps the details of another error but writes them on one line', () => {
+    const failure = new EntityNotFoundError('User', { where: { id: 'u-1' } });
+
+    createFilter(false).catch(failure, host);
+
+    const [line] = logged.mock.calls[0] as [string];
+    expect(line).toContain('Could not find any entity of type "User"');
+    expect(line).toContain('"id": "u-1"');
+    expect(line).not.toContain('\n');
   });
 
   it('keeps the URL, the query and the id from the path out of the line', () => {

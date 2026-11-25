@@ -50,7 +50,7 @@ Automated criteria re-run on HEAD `e399997`: backend `npm test` (775), `npm run 
   - Tradeoff: A design change beyond the plan; a heuristic (only `@`).
   - Confidence: MED — simple to implement, but the rule is a heuristic.
   - Blind spot: Other personal data in paths (names) is not covered either way.
-- **Decision**: PENDING — owner decision (Fix A: correct the README wording / Fix B: mask `@` segments)
+- **Decision**: FIXED via Fix A — README (PL and EN) says the SSR path is logged as the client sent it, so an address typed into the path reaches out.log
 
 ### F3 — Other TypeORM errors still put data into the 5xx line
 
@@ -69,7 +69,7 @@ Automated criteria re-run on HEAD `e399997`: backend `npm test` (775), `npm run 
   - Tradeoff: Data in the criteria still reaches the log.
   - Confidence: HIGH
   - Blind spot: None significant.
-- **Decision**: PENDING — owner decision (Fix A: every TypeORMError code-only / Fix B: collapse whitespace)
+- **Decision**: FIXED via Fix B — `describeError` keeps the message of other errors but collapses whitespace to one line; spec with EntityNotFoundError (red without it)
 
 ### F4 — backend-patterns.md still gives the old 503 shape of /health
 
