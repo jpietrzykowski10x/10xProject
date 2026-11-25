@@ -9,10 +9,7 @@ import { isForeignKeyViolation } from '../../shared/database/foreign-key-violati
 import { isUniqueViolation } from '../../shared/database/unique-violation.js';
 import { toNameKey } from '../../shared/text/name-key.js';
 import { DEFAULT_CATEGORIES } from '../default-categories.js';
-import {
-  CATEGORY_SETTING_CATEGORY_FK,
-  CategorySetting,
-} from '../entities/category-setting.entity.js';
+import { CategorySetting } from '../entities/category-setting.entity.js';
 import {
   Category,
   CATEGORY_OWNER_NAME_INDEX,
@@ -105,13 +102,19 @@ export class CategoriesService {
   }
 
   // Only the name and its key change; the category keeps its id, so its threshold and limit stay.
-  // The lookup skips the category itself, so changing only the case of its name passes. A default
-  // category has user_id NULL, so the update finds no row and answers 404 like an unknown id.
+  // Ownership is checked before the name: a default category (user_id NULL), another account's and
+  // an unknown id answer 404 whatever the name. The name lookup covers only the defaults and the
+  // user's own categories, skipping the category itself, so changing only the case of its name
+  // passes and a name another account uses is free. A delete between the check and the update
+  // leaves no row, which gives the same 404.
   async rename(
     userId: string,
     id: string,
     name: string,
   ): Promise<CategoryResponse> {
+    if (!(await this.categories.exists({ where: { id, userId } }))) {
+      throw new NotFoundException(NOT_FOUND_MESSAGE);
+    }
     const nameKey = toNameKey(name);
     if (await this.nameTaken(userId, nameKey, id)) {
       throw new ConflictException();
@@ -151,14 +154,13 @@ export class CategoriesService {
         if (await manager.exists(Subscription, { where: { categoryId: id } })) {
           throw new ConflictException(HAS_SUBSCRIPTIONS_MESSAGE);
         }
-        await manager.delete(CategorySetting, { userId, categoryId: id });
+        // By the category alone: it is already the user's own under the lock, so no settings row
+        // of any account can keep it.
+        await manager.delete(CategorySetting, { categoryId: id });
         await manager.delete(Category, { id, userId });
       });
     } catch (error) {
-      if (
-        isForeignKeyViolation(error, SUBSCRIPTION_CATEGORY_FK) ||
-        isForeignKeyViolation(error, CATEGORY_SETTING_CATEGORY_FK)
-      ) {
+      if (isForeignKeyViolation(error, SUBSCRIPTION_CATEGORY_FK)) {
         throw new ConflictException(HAS_SUBSCRIPTIONS_MESSAGE);
       }
       throw error;

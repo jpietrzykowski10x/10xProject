@@ -1,9 +1,6 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { QueryFailedError, type Repository } from 'typeorm';
-import {
-  CATEGORY_SETTING_CATEGORY_FK,
-  CategorySetting,
-} from '../entities/category-setting.entity.js';
+import { CategorySetting } from '../entities/category-setting.entity.js';
 import {
   Category,
   CATEGORY_OWNER_NAME_INDEX,
@@ -145,7 +142,7 @@ const foreignKeyViolation = (constraint: string) =>
     }),
   );
 
-function setupRename(taken = false, affected = 1) {
+function setupRename(taken = false, affected = 1, own = true) {
   const lookup = {
     where: vi.fn(() => lookup),
     andWhere: vi.fn(() => lookup),
@@ -153,6 +150,7 @@ function setupRename(taken = false, affected = 1) {
   };
   const categories = {
     createQueryBuilder: vi.fn(() => lookup),
+    exists: vi.fn(() => Promise.resolve(own)),
     update: vi.fn(() => Promise.resolve({ affected })),
   };
   const service = new CategoriesService(
@@ -191,7 +189,20 @@ describe('CategoriesService.rename', () => {
     expect(categories.update).not.toHaveBeenCalled();
   });
 
-  it('answers 404 when no own category has the id', async () => {
+  it('answers 404 before looking the name up when no own category has the id', async () => {
+    const { service, categories, lookup } = setupRename(true, 0, false);
+
+    await expect(
+      service.rename(USER_ID, CATEGORY_ID, 'Praca'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(categories.exists).toHaveBeenCalledWith({
+      where: { id: CATEGORY_ID, userId: USER_ID },
+    });
+    expect(lookup.getExists).not.toHaveBeenCalled();
+    expect(categories.update).not.toHaveBeenCalled();
+  });
+
+  it('answers 404 when the category goes between the check and the update', async () => {
     const { service } = setupRename(false, 0);
 
     await expect(
@@ -244,7 +255,7 @@ describe('CategoriesService.remove', () => {
       where: { categoryId: CATEGORY_ID },
     });
     expect(manager.delete.mock.calls).toEqual([
-      [CategorySetting, { userId: USER_ID, categoryId: CATEGORY_ID }],
+      [CategorySetting, { categoryId: CATEGORY_ID }],
       [Category, { id: CATEGORY_ID, userId: USER_ID }],
     ]);
   });
@@ -267,17 +278,16 @@ describe('CategoriesService.remove', () => {
     expect(manager.delete).not.toHaveBeenCalled();
   });
 
-  it.each([SUBSCRIPTION_CATEGORY_FK, CATEGORY_SETTING_CATEGORY_FK])(
-    'answers the same 409 when the delete fails on %s',
-    async (constraint) => {
-      const { service, manager } = setupRemove();
-      manager.delete.mockRejectedValueOnce(foreignKeyViolation(constraint));
+  it('answers the same 409 when the delete fails on the subscription foreign key', async () => {
+    const { service, manager } = setupRemove();
+    manager.delete.mockRejectedValueOnce(
+      foreignKeyViolation(SUBSCRIPTION_CATEGORY_FK),
+    );
 
-      await expect(service.remove(USER_ID, CATEGORY_ID)).rejects.toThrow(
-        new ConflictException('The category has subscriptions'),
-      );
-    },
-  );
+    await expect(service.remove(USER_ID, CATEGORY_ID)).rejects.toThrow(
+      new ConflictException('The category has subscriptions'),
+    );
+  });
 
   it('rethrows a foreign key violation on another constraint', async () => {
     const { service, manager } = setupRemove();

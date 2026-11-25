@@ -151,7 +151,7 @@
             mat-flat-button
             type="submit"
             class="budget__save"
-            [disabled]="sending() || changes() === null"
+            [disabled]="sending() || addingCategory() || changes() === null"
           >
             Zapisz
           </button>

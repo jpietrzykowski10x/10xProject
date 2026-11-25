@@ -303,8 +303,8 @@ export class Budget implements OnInit {
       .pipe(takeUntilDestroyed())
       .subscribe((value) => this.newCategoryValue.set(value));
     // The name is off while the budget form has unsaved changes (a reactive control is disabled
-    // through its API, not the template's [disabled]); a newly loaded list may take or free the
-    // typed name, so it is validated again.
+    // through its API, not the template's [disabled]). A newly loaded list may take or free the
+    // typed name, so it is validated again explicitly.
     effect(() => {
       const unsaved = this.changes() !== null;
       this.categoryKeys();
@@ -312,6 +312,16 @@ export class Budget implements OnInit {
         this.newCategoryName.disable({ emitEvent: false });
       } else {
         this.newCategoryName.enable({ emitEvent: false });
+      }
+      this.newCategoryName.updateValueAndValidity({ emitEvent: false });
+    });
+    // While a category is being added the budget form is off: the answer reads the list again and
+    // rebuilds the form, which would silently drop anything typed meanwhile.
+    effect(() => {
+      if (this.addingCategory()) {
+        this.form.disable({ emitEvent: false });
+      } else {
+        this.form.enable({ emitEvent: false });
       }
     });
   }

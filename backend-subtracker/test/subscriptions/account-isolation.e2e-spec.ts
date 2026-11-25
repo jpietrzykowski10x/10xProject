@@ -176,6 +176,33 @@ describe('Subscriptions — account isolation (e2e)', () => {
       expect(await getCategories(owner.cookie)).toContainEqual(category);
     });
 
+    it('answers 404 for a default or foreign category even with a taken name, and leaves other names free', async () => {
+      const { owner, other } = await twoAccounts();
+      const ownerCategory = (
+        await postCategory(owner.cookie, 'Praca').expect(201)
+      ).body as CategoryResponse;
+      const otherCategory = (
+        await postCategory(other.cookie, 'Hobby').expect(201)
+      ).body as CategoryResponse;
+
+      // Ownership comes before the name: a name the caller already uses changes nothing.
+      await patchCategory(other.cookie, ownerCategory.id, 'Hobby').expect(404);
+      await patchCategory(other.cookie, OTHER_CATEGORY_ID, 'Hobby').expect(404);
+
+      // A name another account uses is free for a rename too.
+      const renamed = await patchCategory(
+        other.cookie,
+        otherCategory.id,
+        'Praca',
+      ).expect(200);
+      expect(renamed.body).toEqual({
+        id: otherCategory.id,
+        name: 'Praca',
+        isDefault: false,
+      });
+      expect(await getCategories(owner.cookie)).toContainEqual(ownerCategory);
+    });
+
     it("refuses an edit that moves a subscription into another account's category", async () => {
       const { owner, other } = await twoAccounts();
       const created = (
