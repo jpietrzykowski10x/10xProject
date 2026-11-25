@@ -19,44 +19,94 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButton } from '@angular/material/button';
+import { MatOption } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
+import { MatFormField, MatLabel } from '@angular/material/form-field';
+import { MatPaginator, MatPaginatorIntl, type PageEvent } from '@angular/material/paginator';
+import { MatSelect } from '@angular/material/select';
+import { ActivatedRoute, Router } from '@angular/router';
 import { map, type Subscription as RxSubscription } from 'rxjs';
 import { AppShell } from '../../layout/app-shell/app-shell';
 import { PHONE_MEDIA_QUERY, WIDE_MEDIA_QUERY } from '../../shared/breakpoints';
 import { ErrorReporter } from '../../shared/error-reporter';
+import { FORM_FIELD_DEFAULTS } from '../../shared/form-field-defaults';
+import { PlPaginatorIntl } from '../../shared/pl-paginator-intl';
 import { openCancelSubscriptionDialog } from '../../subscriptions/cancel-subscription-dialog/cancel-subscription-dialog';
 import { CostTotalsStore } from '../../subscriptions/cost-totals.store';
 import { openDeleteSubscriptionDialog } from '../../subscriptions/delete-subscription-dialog/delete-subscription-dialog';
 import { SubscriptionForm } from '../../subscriptions/subscription-form/subscription-form';
 import {
   addedSubscriptionMessage,
+  ALL_FILTER_LABEL,
   cancelledSubscriptionMessage,
   conflictSubscriptionMessage,
   deletedSubscriptionMessage,
   missingSubscriptionMessage,
+  noFilterResultsMessage,
+  noSubscriptionsMessage,
   resumedSubscriptionMessage,
   resumeFailedMessage,
+  SORT_LABELS,
+  STATUS_LABELS,
   updatedSubscriptionMessage,
 } from '../../subscriptions/subscription-labels';
-import type { Subscription } from '../../subscriptions/subscription.types';
+import {
+  hasFilters,
+  paramsFromQuery,
+  queryFromParams,
+  sameQuery,
+} from '../../subscriptions/subscription-list-query';
+import {
+  type Category,
+  SUBSCRIPTION_PAGE_SIZE,
+  SUBSCRIPTION_SORTS,
+  type Subscription,
+  type SubscriptionListQuery,
+  type SubscriptionSort,
+  type SubscriptionStatus,
+} from '../../subscriptions/subscription.types';
 import { SubscriptionsService } from '../../subscriptions/subscriptions.service';
 import { SubscriptionTable } from './subscription-table/subscription-table';
 
+// `items` is the page on screen, `total` the number of rows that match the filters on all pages,
+// `filtered` whether the query that gave them had a filter. The fields and the empty state follow
+// the result on screen, not the address, which is already ahead while the list is read again.
 type ListState =
-  { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; subscriptions: Subscription[] };
+  | { kind: 'loading' }
+  | { kind: 'error' }
+  | { kind: 'ready'; items: Subscription[]; total: number; filtered: boolean };
 
 type PanelMode =
   { kind: 'closed' } | { kind: 'add' } | { kind: 'edit'; subscription: Subscription };
 
 const CLOSED: PanelMode = { kind: 'closed' };
 
+// The value of the "Wszystkie" option in the category and status fields. A null option value
+// would make mat-select clear its trigger instead of showing the option.
+const ALL = 'all';
+type FilterValue<T extends string> = T | typeof ALL;
+
 // F2-Lista and F2-Tel-Dodawanie: the list and one panel, for adding ("Nowa subskrypcja") or
 // editing a row ("Edycja subskrypcji"). Only CSS decides how the panel looks: a column beside the
 // table from 1200px, a drawer over it from 840px, the whole content area (list hidden) on the
 // phone. It is one element with one form, so typed data survives a resize.
+// S-18: the order, the filters and the page live in the address (subscription-list-query.ts); the
+// API sorts, filters and cuts the list into pages, and every change of the address reads it again.
+// Layout A: the fields "Sortuj", "Kategoria" and "Status" above the table, the paginator under it.
 @Component({
   selector: 'app-subscriptions',
-  imports: [AppShell, MatButton, SubscriptionForm, SubscriptionTable],
+  providers: [FORM_FIELD_DEFAULTS, { provide: MatPaginatorIntl, useClass: PlPaginatorIntl }],
+  imports: [
+    AppShell,
+    MatButton,
+    MatFormField,
+    MatLabel,
+    MatOption,
+    MatPaginator,
+    MatSelect,
+    SubscriptionForm,
+    SubscriptionTable,
+  ],
   templateUrl: './subscriptions.html',
   styleUrl: './subscriptions.scss',
 })
@@ -68,6 +118,8 @@ export class Subscriptions implements OnInit {
   private readonly breakpoints = inject(BreakpointObserver);
   private readonly dialog = inject(MatDialog);
   private readonly totals = inject(CostTotalsStore);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   // On a mat-flat-button host the template ref is the MatButton instance (no nativeElement);
   // MatButton has its own focus().
   private readonly addButton = viewChild.required<MatButton>('addButton');
@@ -75,13 +127,49 @@ export class Subscriptions implements OnInit {
   private readonly panelTitle = viewChild<ElementRef<HTMLElement>>('panelTitle');
   private readonly listArea = viewChild.required<ElementRef<HTMLElement>>('listArea');
   private readonly form = viewChild(SubscriptionForm);
+  private readonly categorySelect = viewChild<MatSelect>('categorySelect');
   private readonly document = inject(DOCUMENT);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   // The empty list opens the panel by itself once per visit, and never after the first answer.
   private autoOpenDecided = false;
 
+  // What the list shows, read from the address; an equal query (e.g. an unknown parameter added)
+  // is not a change, so it does not read the list again.
+  readonly query = toSignal(this.route.queryParamMap.pipe(map(queryFromParams)), {
+    requireSync: true,
+    equal: sameQuery,
+  });
+  // The account's categories for the category filter, read once on entry. Without them the filter
+  // offers only "Wszystkie"; the list works either way.
+  protected readonly categories = signal<Category[]>([]);
+  private readonly categoriesLoaded = signal(false);
+  // A category of the address that is not among the loaded ones (deleted, or of another account)
+  // shows "Wszystkie"; the address and the request keep it, so the empty result offers
+  // "Wyczyść filtry".
+  protected readonly categoryValue = computed<FilterValue<string>>(() => {
+    const category = this.query().category;
+    if (category === null) {
+      return ALL;
+    }
+    const known = this.categories().some(({ id }) => id === category);
+    return this.categoriesLoaded() && !known ? ALL : category;
+  });
+  protected readonly statusValue = computed<FilterValue<SubscriptionStatus>>(
+    () => this.query().status ?? ALL,
+  );
+  protected readonly all = ALL;
+  protected readonly allLabel = ALL_FILTER_LABEL;
+  protected readonly sorts = SUBSCRIPTION_SORTS;
+  protected readonly sortLabels = SORT_LABELS;
+  protected readonly statuses = Object.keys(STATUS_LABELS) as SubscriptionStatus[];
+  protected readonly statusLabels = STATUS_LABELS;
+  protected readonly pageSize = SUBSCRIPTION_PAGE_SIZE;
+  protected readonly noSubscriptionsMessage = noSubscriptionsMessage;
+  protected readonly noFilterResultsMessage = noFilterResultsMessage;
   protected readonly state = signal<ListState>({ kind: 'loading' });
+  // A quiet load is in flight: the list on screen is the previous one (aria-busy on the list).
+  protected readonly reloading = signal(false);
   private loadRequest?: RxSubscription;
   protected readonly panel = signal<PanelMode>(CLOSED);
   // The add form stays in the DOM after a plain close, so reopening continues with the typed
@@ -151,31 +239,98 @@ export class Subscriptions implements OnInit {
         injector: this.injector,
       });
     });
+
+    // The first query reads the list on entry; every later one (another order, filter or page)
+    // reads it again, quietly once a list is on screen, so the table does not blink away.
+    effect(() => {
+      this.query();
+      untracked(() => this.load(this.state().kind === 'ready'));
+    });
   }
 
   ngOnInit(): void {
-    this.load();
+    this.loadCategories();
   }
 
-  // `quiet` keeps the current list on screen while it is read again (after a save).
+  // Another order, filter or page: the address changes and the list is read again (the effect in
+  // the constructor). Another order or filter starts from page 1, unless the patch names a page.
+  // The address is replaced, not pushed, so "back" leaves the list instead of stepping through it.
+  setQuery(patch: Partial<SubscriptionListQuery>): void {
+    const current = this.query();
+    const next: SubscriptionListQuery = { ...current, ...patch };
+    const reordered =
+      next.sort !== current.sort ||
+      next.category !== current.category ||
+      next.status !== current.status;
+    if (reordered && patch.page === undefined) {
+      next.page = 1;
+    }
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: paramsFromQuery(next),
+      replaceUrl: true,
+    });
+  }
+
+  protected sortChanged(sort: SubscriptionSort): void {
+    this.setQuery({ sort });
+  }
+
+  protected categoryChanged(value: FilterValue<string>): void {
+    this.setQuery({ category: value === ALL ? null : value });
+  }
+
+  protected statusChanged(value: FilterValue<SubscriptionStatus>): void {
+    this.setQuery({ status: value === ALL ? null : value });
+  }
+
+  // The paginator counts pages from 0, the address from 1.
+  protected pageChanged(event: PageEvent): void {
+    this.setQuery({ page: event.pageIndex + 1 });
+  }
+
+  // "Wyczyść filtry" under an empty result keeps the order. The button goes with the empty result,
+  // so the focus moves to the category field, which stays.
+  protected clearFilters(): void {
+    this.setQuery({ category: null, status: null, page: 1 });
+    this.categorySelect()?.focus();
+  }
+
+  // The page of the current query. `quiet` keeps the current list on screen while it is read again
+  // (after a save, or another order, filter or page).
   // A newer load cancels the older request, so an older response can never overwrite a newer one.
   // A failed quiet load keeps the list already on screen and shows the refreshFailed notice.
   protected load(quiet = false): void {
     if (!quiet) {
       this.state.set({ kind: 'loading' });
     }
+    this.reloading.set(quiet);
     this.loadRequest?.unsubscribe();
-    // The API returns the list in display order; it is not sorted again here.
+    const query = this.query();
+    const filtered = hasFilters(query);
+    // The API returns the page in the query's order; it is not sorted again here.
     this.loadRequest = this.subscriptions
-      .list()
+      .list(query)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (subscriptions) => {
+        next: ({ items, total, pageSize }) => {
           this.refreshFailed.set(false);
-          this.state.set({ kind: 'ready', subscriptions });
-          this.autoOpen(subscriptions.length === 0);
+          // A page past the end (rows removed, or an old link) moves to the last page, which the
+          // changed address then reads; nothing of the empty page is shown meanwhile. When that is
+          // the page already asked for (rows removed meanwhile), the address would not change and
+          // nothing would read it again, so the empty page is shown.
+          const lastPage = Math.ceil(total / pageSize);
+          if (items.length === 0 && total > 0 && lastPage !== query.page) {
+            this.setQuery({ page: lastPage });
+            return;
+          }
+          this.reloading.set(false);
+          this.state.set({ kind: 'ready', items, total, filtered });
+          // Only an account without subscriptions, not an empty result of a filter.
+          this.autoOpen(total === 0 && !filtered);
         },
         error: (error: unknown) => {
+          this.reloading.set(false);
           this.reporter.report('Subscriptions', error);
           if (quiet && this.state().kind === 'ready') {
             this.refreshFailed.set(true);
@@ -184,6 +339,20 @@ export class Subscriptions implements OnInit {
             this.state.set({ kind: 'error' });
           }
         },
+      });
+  }
+
+  // A failure is reported and leaves the categories empty, so the filter offers only "Wszystkie".
+  private loadCategories(): void {
+    this.subscriptions
+      .categories()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (categories) => {
+          this.categories.set(categories);
+          this.categoriesLoaded.set(true);
+        },
+        error: (error: unknown) => this.reporter.report('Subscriptions', error),
       });
   }
 

@@ -24,10 +24,24 @@ export enum PaymentMethod {
   OTHER = 'other',
 }
 
-// One value for now; user-chosen sorting (FR-016) adds more.
+// The orders of GET /subscriptions (FR-016). The default groups by status; every other one starts
+// with its own key and then falls back to the default order (subscription-order.ts).
 export enum SubscriptionSort {
   STATUS_THEN_DATE = 'status_then_date',
+  NAME_ASC = 'name_asc',
+  NAME_DESC = 'name_desc',
+  AMOUNT_DESC = 'amount_desc',
+  AMOUNT_ASC = 'amount_asc',
+  DATE_ASC = 'date_asc',
+  DATE_DESC = 'date_desc',
 }
+
+// Rows per page of GET /subscriptions: the default and the most one request may ask for.
+export const SUBSCRIPTION_PAGE_SIZE = 25;
+export const SUBSCRIPTION_PAGE_SIZE_MAX = 100;
+// The highest page one request may ask for, so the offset (page - 1) * pageSize stays far inside
+// Postgres' bigint; a larger page (e.g. 1e20) is a 400, not a 500 from SQL.
+export const SUBSCRIPTION_PAGE_MAX = 1_000_000;
 
 export const SUBSCRIPTION_NAME_MAX_LENGTH = 100;
 export const CATEGORY_NAME_MAX_LENGTH = 50;
@@ -53,6 +67,15 @@ export interface SubscriptionResponse {
   trialEndDate: string | null;
   nextBillingDate: string;
   createdAt: Date;
+}
+
+// GET /subscriptions: one page of the account's list in the requested order. `total` counts every
+// row that matches the filters, so a page past the end has no items but the real total.
+export interface SubscriptionPageResponse {
+  items: SubscriptionResponse[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 // The cost of the counted subscriptions of one category (amounts as in SubscriptionResponse).

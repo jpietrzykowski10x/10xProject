@@ -3,6 +3,10 @@
 // 1200px it slides over the table instead of squeezing it; on the phone it replaces the list.
 // The page fills the shell's content area and the window never scrolls: the header stays, the
 // table scrolls in its own frame (subscription-table.scss) and the panel scrolls by itself.
+// S-18: the fields above the table and the paginator under it sit outside that frame, so neither
+// scrolls away with the rows.
+@use '@angular/material' as mat;
+
 .subscriptions {
   display: flex;
   flex: 1 1 0;
@@ -32,6 +36,37 @@
   font-weight: 700;
 }
 
+// Layout A: "Sortuj", "Kategoria", "Status" in one row from 840px up. The fields narrow instead of
+// wrapping (min-width: 0, the select cuts its text with an ellipsis), so no width puts one of them
+// on a second line; below 840px they stack at full width. Each field is 48px high at the theme
+// density -2 (_theme.scss) and has no hints (subscriptSizing="dynamic" reserves no line under it),
+// so the row is 48px and the 16px under it is the gap to the table.
+.subscriptions__controls {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+}
+
+// 260px holds the longest sort label ("Najdroższe miesięcznie") and a long category name
+// ("Oprogramowanie i narzędzia") with the arrow; a narrower row shrinks all three alike.
+.subscriptions__control {
+  flex: 0 1 260px;
+  min-width: 0;
+}
+
+// Under the table, on the page's background rather than as a white strip.
+.subscriptions__paginator {
+  flex: none;
+
+  @include mat.paginator-overrides(
+    (
+      container-background-color: transparent,
+    )
+  );
+}
+
 // Loading and empty states: a white panel in the content area, where the table appears.
 .subscriptions__panel {
   margin: 0;
@@ -41,6 +76,17 @@
   background: var(--mat-sys-surface);
   color: var(--st-muted);
   text-align: center;
+}
+
+.subscriptions__no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+
+  p {
+    margin: 0;
+  }
 }
 
 .subscriptions__error {
@@ -173,6 +219,16 @@
   .subscriptions__title {
     font: var(--mat-sys-title-large);
     font-weight: 600;
+  }
+
+  .subscriptions__controls {
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: 12px;
+  }
+
+  .subscriptions__control {
+    flex: none;
   }
 
   .subscriptions__add {

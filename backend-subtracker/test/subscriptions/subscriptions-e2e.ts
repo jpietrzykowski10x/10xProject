@@ -4,6 +4,7 @@ import type {
   BudgetResponse,
   CategoryResponse,
   CostTotalsResponse,
+  SubscriptionPageResponse,
   SubscriptionResponse,
 } from '../../src/subscriptions/subscription.types.js';
 import type { E2eApp } from '../support/e2e-app.js';
@@ -41,6 +42,12 @@ export interface SubscriptionRequests {
   postCategory: (cookie: string, name: string) => Test;
   patchCategory: (cookie: string, id: string, name: string) => Test;
   deleteCategory: (cookie: string, id: string) => Test;
+  listSubscriptions: (cookie: string, query?: Record<string, string>) => Test;
+  getSubscriptionPage: (
+    cookie: string,
+    query?: Record<string, string>,
+  ) => Promise<SubscriptionPageResponse>;
+  // The rows of the first page in the default order (up to 25).
   getSubscriptions: (cookie: string) => Promise<SubscriptionResponse[]>;
   getCategories: (cookie: string) => Promise<CategoryResponse[]>;
   getTotals: (cookie: string) => Promise<CostTotalsResponse>;
@@ -78,14 +85,23 @@ export function subscriptionRequests(e2e: E2eApp): SubscriptionRequests {
   const deleteCategory = (cookie: string, id: string) =>
     http().delete(`/categories/${id}`).set('Cookie', cookie);
 
-  const getSubscriptions = async (cookie: string) =>
+  const listSubscriptions = (
+    cookie: string,
+    query: Record<string, string> = {},
+  ) => http().get('/subscriptions').query(query).set('Cookie', cookie);
+
+  const getSubscriptionPage = async (
+    cookie: string,
+    query: Record<string, string> = {},
+  ) =>
     (
-      await http()
-        .get('/subscriptions')
-        .set('Cookie', cookie)
+      await listSubscriptions(cookie, query)
         .expect(200)
         .expect('Cache-Control', 'no-store')
-    ).body as SubscriptionResponse[];
+    ).body as SubscriptionPageResponse;
+
+  const getSubscriptions = async (cookie: string) =>
+    (await getSubscriptionPage(cookie)).items;
 
   const getCategories = async (cookie: string) =>
     (
@@ -126,6 +142,8 @@ export function subscriptionRequests(e2e: E2eApp): SubscriptionRequests {
     postCategory,
     patchCategory,
     deleteCategory,
+    listSubscriptions,
+    getSubscriptionPage,
     getSubscriptions,
     getCategories,
     getTotals,

@@ -29,6 +29,7 @@ describe('Subscriptions — account isolation (e2e)', () => {
     patchCategory,
     deleteCategory,
     getSubscriptions,
+    getSubscriptionPage,
     getCategories,
     getTotals,
   } = subscriptionRequests(e2e);
@@ -58,6 +59,33 @@ describe('Subscriptions — account isolation (e2e)', () => {
       ).expect(400);
       // The same name is free for another account.
       await postCategory(other.cookie, 'Praca').expect(201);
+    });
+
+    it("finds nothing by another account's category and counts only the account's own rows", async () => {
+      const { owner, other } = await twoAccounts();
+      const category = (await postCategory(owner.cookie, 'Praca').expect(201))
+        .body as CategoryResponse;
+      await postSubscription(
+        owner.cookie,
+        subscriptionBody({ categoryId: category.id }),
+      ).expect(201);
+      await postSubscription(
+        owner.cookie,
+        subscriptionBody({ name: 'Spotify' }),
+      ).expect(201);
+      await postSubscription(
+        other.cookie,
+        subscriptionBody({ name: 'Tidal' }),
+      ).expect(201);
+
+      expect(
+        await getSubscriptionPage(other.cookie, { category: category.id }),
+      ).toEqual({ items: [], total: 0, page: 1, pageSize: 25 });
+      const otherPage = await getSubscriptionPage(other.cookie, {
+        status: 'active',
+      });
+      expect(otherPage.total).toBe(1);
+      expect(otherPage.items.map((row) => row.name)).toEqual(['Tidal']);
     });
 
     it('sums the costs of each account from its own subscriptions only', async () => {

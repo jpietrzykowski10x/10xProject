@@ -9,11 +9,23 @@ interface CategoryResponse {
   id: string;
 }
 
-// A day 30 days ahead in local time, as the API ("YYYY-MM-DD") and the form ("dd.mm.rrrr") take
-// it. Never a past day: the lifecycle job on the API's start would move it on.
-export function futureDay(): { iso: string; polish: string } {
+// What a test may set on a subscription made through the API; the rest stays as the defaults of
+// createSubscriptionThroughApi.
+export interface SubscriptionOptions {
+  // An own category's id (createCategoryThroughApi); else the account's first category.
+  categoryId?: string;
+  // In PLN per billing cycle, e.g. 25 or 12.5.
+  amount?: number;
+  billingCycle?: 'monthly' | 'yearly';
+  // A trial ends in 14 days and is billed in 30; every status gets its billing date in 30 days.
+  status?: 'trial' | 'active' | 'cancelled_pending' | 'cancelled';
+}
+
+// A day `days` ahead (30 by default) in local time, as the API ("YYYY-MM-DD") and the form
+// ("dd.mm.rrrr") take it. Never a past day: the lifecycle job on the API's start would move it on.
+export function futureDay(days = 30): { iso: string; polish: string } {
   const day = new Date();
-  day.setDate(day.getDate() + 30);
+  day.setDate(day.getDate() + days);
   const yyyy = String(day.getFullYear());
   const mm = String(day.getMonth() + 1).padStart(2, '0');
   const dd = String(day.getDate()).padStart(2, '0');
@@ -34,14 +46,19 @@ export async function createCategoryThroughApi(
   return ((await created.json()) as CategoryResponse).id;
 }
 
-// An active monthly subscription of 25 zł in the given category, or else in the account's first
-// category, through the API with the account's cookie. A client without browser headers passes
-// the CSRF check, so no Origin header is needed.
+// A subscription through the API with the account's cookie: by default active, monthly, 25 zł, in
+// the account's first category; `options` change any of these. A client without browser headers
+// passes the CSRF check, so no Origin header is needed.
 export async function createSubscriptionThroughApi(
   request: APIRequestContext,
   token: string,
   name: string,
-  categoryId?: string,
+  {
+    categoryId,
+    amount = 25,
+    billingCycle = 'monthly',
+    status = 'active',
+  }: SubscriptionOptions = {},
 ): Promise<void> {
   const headers = { Cookie: `${SESSION_COOKIE}=${token}` };
   const created = await request.post(`${API_ORIGIN}/subscriptions`, {
@@ -49,10 +66,11 @@ export async function createSubscriptionThroughApi(
     data: {
       name,
       categoryId: categoryId ?? (await firstCategoryId(request, headers)),
-      amount: 25,
-      billingCycle: 'monthly',
+      amount,
+      billingCycle,
       paymentMethod: 'blik',
-      status: 'active',
+      status,
+      ...(status === 'trial' ? { trialEndDate: futureDay(14).iso } : {}),
       nextBillingDate: futureDay().iso,
     },
   });

@@ -46,7 +46,9 @@ test('an own category is renamed, a category with a subscription is refused, an 
   const token = await accounts.sessionFor(account);
   await createCategoryThroughApi(request, token, empty);
   const usedId = await createCategoryThroughApi(request, token, used);
-  await createSubscriptionThroughApi(request, token, `E2E subskrypcja ${stamp}`, usedId);
+  await createSubscriptionThroughApi(request, token, `E2E subskrypcja ${stamp}`, {
+    categoryId: usedId,
+  });
 
   await context.addCookies([sessionCookie(token)]);
   await page.goto('/budget');

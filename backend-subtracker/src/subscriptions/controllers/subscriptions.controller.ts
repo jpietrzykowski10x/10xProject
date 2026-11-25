@@ -10,13 +10,16 @@ import {
   ParseUUIDPipe,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator.js';
 import type { AuthUser } from '../../shared/types/auth-user.js';
 import { CreateSubscriptionDto } from '../dtos/create-subscription.dto.js';
+import { ListSubscriptionsDto } from '../dtos/list-subscriptions.dto.js';
 import { SubscriptionsService } from '../services/subscriptions.service.js';
 import type {
   CostTotalsResponse,
+  SubscriptionPageResponse,
   SubscriptionResponse,
 } from '../subscription.types.js';
 
@@ -24,10 +27,15 @@ import type {
 export class SubscriptionsController {
   constructor(private readonly subscriptions: SubscriptionsService) {}
 
+  // 400 for an unknown sort or status, a category that is not a UUID, a page below 1, a page size
+  // outside 1–100 and any other parameter.
   @Get()
   @Header('Cache-Control', 'no-store')
-  list(@CurrentUser() user: AuthUser): Promise<SubscriptionResponse[]> {
-    return this.subscriptions.list(user.id);
+  list(
+    @CurrentUser() user: AuthUser,
+    @Query() query: ListSubscriptionsDto,
+  ): Promise<SubscriptionPageResponse> {
+    return this.subscriptions.page(user.id, query);
   }
 
   // A static path, declared before the routes with :id.
