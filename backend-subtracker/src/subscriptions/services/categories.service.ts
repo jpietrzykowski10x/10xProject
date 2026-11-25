@@ -1,16 +1,33 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
+import { isForeignKeyViolation } from '../../shared/database/foreign-key-violation.js';
 import { isUniqueViolation } from '../../shared/database/unique-violation.js';
 import { toNameKey } from '../../shared/text/name-key.js';
 import { DEFAULT_CATEGORIES } from '../default-categories.js';
-import { CategorySetting } from '../entities/category-setting.entity.js';
+import {
+  CATEGORY_SETTING_CATEGORY_FK,
+  CategorySetting,
+} from '../entities/category-setting.entity.js';
 import {
   Category,
   CATEGORY_OWNER_NAME_INDEX,
 } from '../entities/category.entity.js';
 import { defaultDuplicateThresholdOf } from '../entities/budget-settings.entity.js';
+import {
+  Subscription,
+  SUBSCRIPTION_CATEGORY_FK,
+} from '../entities/subscription.entity.js';
 import type { CategoryResponse } from '../subscription.types.js';
+
+// The same for a default category, another account's and an id no row has.
+const NOT_FOUND_MESSAGE = 'Category not found';
+
+const HAS_SUBSCRIPTIONS_MESSAGE = 'The category has subscriptions';
 
 const DEFAULT_ORDER = new Map<string, number>(
   DEFAULT_CATEGORIES.map((category, index) => [category.id, index]),
@@ -54,14 +71,7 @@ export class CategoriesService {
   // The index only covers names within one owner, so the lookup alone guards against a default.
   async create(userId: string, name: string): Promise<CategoryResponse> {
     const nameKey = toNameKey(name);
-    const taken = await this.categories
-      .createQueryBuilder('category')
-      .where('(category.userId IS NULL OR category.userId = :userId)', {
-        userId,
-      })
-      .andWhere('category.nameKey = :nameKey', { nameKey })
-      .getExists();
-    if (taken) {
+    if (await this.nameTaken(userId, nameKey)) {
       throw new ConflictException();
     }
 
@@ -92,6 +102,85 @@ export class CategoriesService {
       }
       throw error;
     }
+  }
+
+  // Only the name and its key change; the category keeps its id, so its threshold and limit stay.
+  // The lookup skips the category itself, so changing only the case of its name passes. A default
+  // category has user_id NULL, so the update finds no row and answers 404 like an unknown id.
+  async rename(
+    userId: string,
+    id: string,
+    name: string,
+  ): Promise<CategoryResponse> {
+    const nameKey = toNameKey(name);
+    if (await this.nameTaken(userId, nameKey, id)) {
+      throw new ConflictException();
+    }
+    let affected: number | undefined;
+    try {
+      ({ affected } = await this.categories.update(
+        { id, userId },
+        { name, nameKey },
+      ));
+    } catch (error) {
+      if (isUniqueViolation(error, CATEGORY_OWNER_NAME_INDEX)) {
+        throw new ConflictException();
+      }
+      throw error;
+    }
+    if (!affected) {
+      throw new NotFoundException(NOT_FOUND_MESSAGE);
+    }
+    return { id, name, isDefault: false };
+  }
+
+  // Only an own category without subscriptions, together with its settings row, in one
+  // transaction. The category row is locked first, so a parallel rename or delete waits. A
+  // subscription written past the check fails this delete on its foreign key, which gives the
+  // same 409.
+  async remove(userId: string, id: string): Promise<void> {
+    try {
+      await this.categories.manager.transaction(async (manager) => {
+        const category = await manager.findOne(Category, {
+          where: { id, userId },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (category === null) {
+          throw new NotFoundException(NOT_FOUND_MESSAGE);
+        }
+        if (await manager.exists(Subscription, { where: { categoryId: id } })) {
+          throw new ConflictException(HAS_SUBSCRIPTIONS_MESSAGE);
+        }
+        await manager.delete(CategorySetting, { userId, categoryId: id });
+        await manager.delete(Category, { id, userId });
+      });
+    } catch (error) {
+      if (
+        isForeignKeyViolation(error, SUBSCRIPTION_CATEGORY_FK) ||
+        isForeignKeyViolation(error, CATEGORY_SETTING_CATEGORY_FK)
+      ) {
+        throw new ConflictException(HAS_SUBSCRIPTIONS_MESSAGE);
+      }
+      throw error;
+    }
+  }
+
+  // Whether a default category or one of the user's own, other than `exceptId`, has the key.
+  private nameTaken(
+    userId: string,
+    nameKey: string,
+    exceptId?: string,
+  ): Promise<boolean> {
+    const query = this.categories
+      .createQueryBuilder('category')
+      .where('(category.userId IS NULL OR category.userId = :userId)', {
+        userId,
+      })
+      .andWhere('category.nameKey = :nameKey', { nameKey });
+    if (exceptId !== undefined) {
+      query.andWhere('category.id <> :exceptId', { exceptId });
+    }
+    return query.getExists();
   }
 
   // Whether every id names a default category or one of the user's own, in one query. The ids must

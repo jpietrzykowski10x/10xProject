@@ -1,4 +1,6 @@
 import { DEFAULT_CATEGORIES } from '../../src/subscriptions/default-categories.js';
+import { CategorySetting } from '../../src/subscriptions/entities/category-setting.entity.js';
+import { Category } from '../../src/subscriptions/entities/category.entity.js';
 import { Subscription } from '../../src/subscriptions/entities/subscription.entity.js';
 import type {
   CategoryResponse,
@@ -24,6 +26,8 @@ describe('Subscriptions — account isolation (e2e)', () => {
     putSubscription,
     deleteSubscription,
     postCategory,
+    patchCategory,
+    deleteCategory,
     getSubscriptions,
     getCategories,
     getTotals,
@@ -141,6 +145,35 @@ describe('Subscriptions — account isolation (e2e)', () => {
       expect(
         await repository(Subscription).findOneByOrFail({ id: created.id }),
       ).toEqual(stored);
+    });
+
+    it("lets no account rename or delete another account's category", async () => {
+      const { owner, other } = await twoAccounts();
+      const category = (await postCategory(owner.cookie, 'Praca').expect(201))
+        .body as CategoryResponse;
+      const stored = await repository(Category).findOneByOrFail({
+        id: category.id,
+      });
+
+      const renamed = await patchCategory(
+        other.cookie,
+        category.id,
+        'Biuro',
+      ).expect(404);
+      const deleted = await deleteCategory(other.cookie, category.id).expect(
+        404,
+      );
+
+      // The same answer as for an id no row has.
+      expect(renamed.body).toMatchObject({ message: 'Category not found' });
+      expect(deleted.body).toMatchObject({ message: 'Category not found' });
+      expect(
+        await repository(Category).findOneByOrFail({ id: category.id }),
+      ).toEqual(stored);
+      expect(
+        await repository(CategorySetting).countBy({ categoryId: category.id }),
+      ).toBe(1);
+      expect(await getCategories(owner.cookie)).toContainEqual(category);
     });
 
     it("refuses an edit that moves a subscription into another account's category", async () => {

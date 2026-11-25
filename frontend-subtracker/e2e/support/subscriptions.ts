@@ -20,24 +20,35 @@ export function futureDay(): { iso: string; polish: string } {
   return { iso: `${yyyy}-${mm}-${dd}`, polish: `${dd}.${mm}.${yyyy}` };
 }
 
-// An active monthly subscription of 25 zł in the account's first category, through the API with
-// the account's cookie. A client without browser headers passes the CSRF check, so no Origin
-// header is needed.
+// An own category of the account, through the API with its cookie; returns the category's id.
+export async function createCategoryThroughApi(
+  request: APIRequestContext,
+  token: string,
+  name: string,
+): Promise<string> {
+  const created = await request.post(`${API_ORIGIN}/categories`, {
+    headers: { Cookie: `${SESSION_COOKIE}=${token}` },
+    data: { name },
+  });
+  expect(created.status()).toBe(201);
+  return ((await created.json()) as CategoryResponse).id;
+}
+
+// An active monthly subscription of 25 zł in the given category, or else in the account's first
+// category, through the API with the account's cookie. A client without browser headers passes
+// the CSRF check, so no Origin header is needed.
 export async function createSubscriptionThroughApi(
   request: APIRequestContext,
   token: string,
   name: string,
+  categoryId?: string,
 ): Promise<void> {
   const headers = { Cookie: `${SESSION_COOKIE}=${token}` };
-  const categories = await request.get(`${API_ORIGIN}/categories`, { headers });
-  expect(categories.status()).toBe(200);
-  const [category] = (await categories.json()) as CategoryResponse[];
-  expect(category, 'no default categories (were the migrations run?)').toBeDefined();
   const created = await request.post(`${API_ORIGIN}/subscriptions`, {
     headers,
     data: {
       name,
-      categoryId: category.id,
+      categoryId: categoryId ?? (await firstCategoryId(request, headers)),
       amount: 25,
       billingCycle: 'monthly',
       paymentMethod: 'blik',
@@ -46,4 +57,15 @@ export async function createSubscriptionThroughApi(
     },
   });
   expect(created.status()).toBe(201);
+}
+
+async function firstCategoryId(
+  request: APIRequestContext,
+  headers: Record<string, string>,
+): Promise<string> {
+  const categories = await request.get(`${API_ORIGIN}/categories`, { headers });
+  expect(categories.status()).toBe(200);
+  const [category] = (await categories.json()) as CategoryResponse[];
+  expect(category, 'no default categories (were the migrations run?)').toBeDefined();
+  return category.id;
 }

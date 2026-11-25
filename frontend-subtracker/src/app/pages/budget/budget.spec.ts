@@ -2,9 +2,12 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { TestBed } from '@angular/core/testing';
+import type { ComponentFixture } from '@angular/core/testing';
 import { MatButtonHarness } from '@angular/material/button/testing';
+import { MatDialogHarness } from '@angular/material/dialog/testing';
 import { MatFormFieldHarness } from '@angular/material/form-field/testing';
 import { MatInputHarness } from '@angular/material/input/testing';
+import { MatTooltipHarness } from '@angular/material/tooltip/testing';
 import { provideRouter } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import type { BudgetResponse, UpdateBudgetRequest } from '../../budget/budget.types';
@@ -13,6 +16,7 @@ import { Budget } from './budget';
 
 const BUDGET_URL = `${environment.apiUrl}/budget`;
 const TOTALS_URL = `${environment.apiUrl}/subscriptions/totals`;
+const CATEGORIES_URL = `${environment.apiUrl}/categories`;
 
 const DEFAULT_LABEL = 'Domyślny próg ilościowy dla kategorii';
 const OVERALL_LIMIT_LABEL = 'Miesięczny limit całościowy (zł)';
@@ -42,6 +46,24 @@ const BUDGET: BudgetResponse = {
     },
   ],
 };
+// S-17: the same budget with an own category after the defaults (GET /budget lists every category
+// in the order of GET /categories, each with its isDefault).
+const GYM = 'category-gym';
+const WITH_OWN: BudgetResponse = {
+  ...BUDGET,
+  categories: [
+    ...BUDGET.categories,
+    {
+      category: { id: GYM, name: 'Siłownia', isDefault: false },
+      duplicateThreshold: 3,
+      monthlyLimit: null,
+    },
+  ],
+};
+const RENAME_GYM = 'Zmień nazwę kategorii Siłownia';
+const DELETE_GYM = 'Usuń kategorię Siłownia';
+const UNSAVED_TOOLTIP = 'Najpierw zapisz albo cofnij zmiany progów i limitów.';
+
 const NO_TOTALS: CostTotals = {
   monthly: '0.00',
   yearly: '0.00',
@@ -87,6 +109,35 @@ const saveButton = (loader: Loader) => loader.getHarness(MatButtonHarness.with({
 
 function text(element: Element | null | undefined): string {
   return (element?.textContent ?? '').replace(/\s+/g, ' ').trim();
+}
+
+// S-17: an icon of an own category, found by its accessible name ("Usuń kategorię Siłownia").
+const iconButton = (loader: Loader, label: string) =>
+  loader.getHarness(MatButtonHarness.with({ selector: `[aria-label="${label}"]` }));
+
+// The dialogs open in the overlay, outside the page's element.
+const dialogLoader = (fixture: ComponentFixture<Budget>) =>
+  TestbedHarnessEnvironment.documentRootLoader(fixture);
+
+const dialogButton = (fixture: ComponentFixture<Budget>, label: string) =>
+  dialogLoader(fixture).getHarness(
+    MatButtonHarness.with({ text: label, ancestor: 'mat-dialog-container' }),
+  );
+
+// After a dialog's answer the page reads the budget again like on its first load and the shell
+// its cost totals, says what happened in the status region and moves the focus to the heading of
+// the categories.
+async function expectReloaded(
+  page: Awaited<ReturnType<typeof createPage>>,
+  budget: BudgetResponse,
+  message: string,
+) {
+  const { httpTesting, fixture, host } = page;
+  httpTesting.expectOne({ method: 'GET', url: TOTALS_URL }).flush(NO_TOTALS);
+  httpTesting.expectOne({ method: 'GET', url: BUDGET_URL }).flush(budget);
+  await fixture.whenStable();
+  expect(text(host.querySelector('[role="status"]'))).toBe(message);
+  expect(document.activeElement).toBe(host.querySelector('.budget__legend'));
 }
 
 describe('Budget', () => {
@@ -454,5 +505,287 @@ describe('Budget', () => {
     );
     // The change is still unsaved, so it can be sent again.
     expect(await (await saveButton(loader)).isDisabled()).toBe(false);
+  });
+
+  // S-17. The oracle is the plan: only an own category (isDefault false in GET /budget) has the
+  // two icons; the API renames and deletes no default one.
+  it('shows "Zmień nazwę" and "Usuń" only by an own category', async () => {
+    const { host } = await createPage(WITH_OWN);
+
+    const labels = [...host.querySelectorAll('.budget__category button[aria-label]')].map(
+      (button) => button.getAttribute('aria-label'),
+    );
+    expect(labels).toEqual([RENAME_GYM, DELETE_GYM]);
+    expect(host.querySelector(`[data-category="${GYM}"] button`)).not.toBeNull();
+    expect(host.querySelector(`[data-category="${STREAMING}"] button`)).toBeNull();
+    expect(host.querySelector(`[data-category="${MUZYKA}"] button`)).toBeNull();
+  });
+
+  // A rename or a delete reads the list again, which would drop typed changes, so the icons are
+  // off (still focusable, with a tooltip saying why) until the form holds the loaded values again.
+  it('turns the icons off with a tooltip while the form has unsaved changes', async () => {
+    const { httpTesting, fixture, loader } = await createPage(WITH_OWN);
+    const threshold = await categoryField(loader, STREAMING, THRESHOLD_LABEL);
+
+    expect(await (await iconButton(loader, RENAME_GYM)).isDisabled()).toBe(false);
+
+    await threshold.input.setValue('1');
+    for (const label of [RENAME_GYM, DELETE_GYM]) {
+      const button = await iconButton(loader, label);
+      expect(await button.isDisabled()).toBe(true);
+      const tooltip = await loader.getHarness(
+        MatTooltipHarness.with({ selector: `[aria-label="${label}"]` }),
+      );
+      await tooltip.show();
+      expect(await tooltip.getTooltipText()).toBe(UNSAVED_TOOLTIP);
+      await tooltip.hide();
+      // disabledInteractive: a click still arrives and must open nothing.
+      await button.click();
+    }
+    await fixture.whenStable();
+    expect(await dialogLoader(fixture).getAllHarnesses(MatDialogHarness)).toHaveLength(0);
+
+    await threshold.input.setValue('3');
+    expect(await (await iconButton(loader, DELETE_GYM)).isDisabled()).toBe(false);
+    httpTesting.expectNone({ method: 'GET', url: BUDGET_URL });
+  });
+
+  it('reads the budget and the totals again after a rename', async () => {
+    const page = await createPage(WITH_OWN);
+    const { httpTesting, fixture, loader, host } = page;
+
+    await (await iconButton(loader, RENAME_GYM)).click();
+    await fixture.whenStable();
+    const field = await dialogLoader(fixture).getHarness(
+      MatFormFieldHarness.with({ floatingLabelText: 'Nazwa kategorii' }),
+    );
+    await (await field.getControl(MatInputHarness))?.setValue('Joga');
+    await (await dialogButton(fixture, 'Zapisz')).click();
+    httpTesting
+      .expectOne({ method: 'PATCH', url: `${CATEGORIES_URL}/${GYM}` })
+      .flush({ id: GYM, name: 'Joga', isDefault: false });
+    await fixture.whenStable();
+
+    await expectReloaded(
+      page,
+      {
+        ...WITH_OWN,
+        categories: [
+          ...BUDGET.categories,
+          { ...WITH_OWN.categories[2], category: { id: GYM, name: 'Joga', isDefault: false } },
+        ],
+      },
+      'Zmieniono nazwę kategorii.',
+    );
+    expect(text(host.querySelector(`[data-category="${GYM}"] .budget__category-name`))).toBe(
+      'Joga',
+    );
+  });
+
+  it('reads the budget and the totals again after a delete', async () => {
+    const page = await createPage(WITH_OWN);
+    const { httpTesting, fixture, loader, host } = page;
+
+    await (await iconButton(loader, DELETE_GYM)).click();
+    await fixture.whenStable();
+    await (await dialogButton(fixture, 'Usuń')).click();
+    httpTesting
+      .expectOne({ method: 'DELETE', url: `${CATEGORIES_URL}/${GYM}` })
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+
+    await expectReloaded(page, BUDGET, 'Usunięto kategorię.');
+    expect(host.querySelector(`[data-category="${GYM}"]`)).toBeNull();
+  });
+
+  it('reads the budget and the totals again when the category is already gone (404)', async () => {
+    const page = await createPage(WITH_OWN);
+    const { httpTesting, fixture, loader } = page;
+
+    await (await iconButton(loader, RENAME_GYM)).click();
+    await fixture.whenStable();
+    const field = await dialogLoader(fixture).getHarness(
+      MatFormFieldHarness.with({ floatingLabelText: 'Nazwa kategorii' }),
+    );
+    await (await field.getControl(MatInputHarness))?.setValue('Joga');
+    await (await dialogButton(fixture, 'Zapisz')).click();
+    httpTesting
+      .expectOne({ method: 'PATCH', url: `${CATEGORIES_URL}/${GYM}` })
+      .flush({ message: 'Category not found' }, { status: 404, statusText: 'Not Found' });
+    await fixture.whenStable();
+
+    await expectReloaded(page, BUDGET, 'Kategoria już nie istnieje.');
+  });
+
+  it('changes nothing when a category dialog is closed without a result', async () => {
+    const { httpTesting, fixture, loader, host } = await createPage(WITH_OWN);
+
+    await (await iconButton(loader, DELETE_GYM)).click();
+    await fixture.whenStable();
+    await (await dialogButton(fixture, 'Anuluj')).click();
+    await fixture.whenStable();
+
+    httpTesting.expectNone({ method: 'GET', url: BUDGET_URL });
+    httpTesting.expectNone({ method: 'GET', url: TOTALS_URL });
+    expect(text(host.querySelector('[role="status"]'))).toBe('');
+  });
+
+  // S-17: "Nowa kategoria" below the list, outside the budget form.
+  describe('a new category', () => {
+    const NEW_NAME_LABEL = 'Nazwa nowej kategorii';
+    const TAKEN_ERROR = 'Taka kategoria już istnieje.';
+    const addButton = (loader: Loader) =>
+      loader.getHarness(MatButtonHarness.with({ text: 'Dodaj' }));
+    const newNameField = (loader: Loader) => fieldIn(loader, NEW_NAME_LABEL);
+    const newNameInput = (host: HTMLElement) =>
+      host.querySelector<HTMLInputElement>('.budget__new-category input');
+
+    // The oracle is the plan: off without a name and for a name a loaded category already has, in
+    // any letter case, a default one too (the API would answer 409).
+    it.each([
+      ['', 'empty'],
+      ['   ', 'only spaces'],
+      ['siłownia', 'an own category in lower case'],
+      ['SIŁOWNIA', 'an own category in upper case'],
+      ['  Streaming ', 'a default category with spaces around'],
+      ['MUZYKA', 'a default category in upper case'],
+    ])('keeps "Dodaj" off for %j (%s)', async (value) => {
+      const { loader } = await createPage(WITH_OWN);
+      const { input } = await newNameField(loader);
+
+      await input.setValue(value);
+
+      expect(await (await addButton(loader)).isDisabled()).toBe(true);
+    });
+
+    it('turns "Dodaj" on for a new name and shows the error for a taken one', async () => {
+      const { loader } = await createPage(WITH_OWN);
+      const { field, input } = await newNameField(loader);
+
+      await input.setValue('Joga');
+      expect(await (await addButton(loader)).isDisabled()).toBe(false);
+      expect(await field.hasErrors()).toBe(false);
+
+      await input.setValue('siŁownia');
+      expect(await field.getTextErrors()).toEqual([TAKEN_ERROR]);
+    });
+
+    // Adding reads the list again, which would drop the typed thresholds and limits.
+    it('is off while the budget form has unsaved changes', async () => {
+      const { httpTesting, loader } = await createPage(WITH_OWN);
+      const { input } = await newNameField(loader);
+      await input.setValue('Joga');
+      const threshold = await categoryField(loader, STREAMING, THRESHOLD_LABEL);
+
+      await threshold.input.setValue('1');
+      const button = await addButton(loader);
+      expect(await button.isDisabled()).toBe(true);
+      expect(await input.isDisabled()).toBe(true);
+      const tooltip = await loader.getHarness(
+        MatTooltipHarness.with({ selector: '.budget__new-category-button' }),
+      );
+      await tooltip.show();
+      expect(await tooltip.getTooltipText()).toBe(UNSAVED_TOOLTIP);
+      await tooltip.hide();
+      // disabledInteractive: a click still arrives and must send nothing.
+      await button.click();
+      httpTesting.expectNone({ method: 'POST', url: CATEGORIES_URL });
+
+      await threshold.input.setValue('3');
+      expect(await input.isDisabled()).toBe(false);
+      expect(await (await addButton(loader)).isDisabled()).toBe(false);
+    });
+
+    it('adds the category, empties the field and reads the budget and the totals again', async () => {
+      const { httpTesting, fixture, loader, host } = await createPage(WITH_OWN);
+      const { input } = await newNameField(loader);
+
+      await input.setValue('  Joga ');
+      await (await addButton(loader)).click();
+      const create = httpTesting.expectOne({ method: 'POST', url: CATEGORIES_URL });
+      expect(create.request.body).toStrictEqual({ name: 'Joga' });
+      create.flush({ id: 'category-joga', name: 'Joga', isDefault: false });
+      await fixture.whenStable();
+
+      httpTesting.expectOne({ method: 'GET', url: TOTALS_URL }).flush(NO_TOTALS);
+      httpTesting.expectOne({ method: 'GET', url: BUDGET_URL }).flush({
+        ...WITH_OWN,
+        categories: [
+          ...WITH_OWN.categories,
+          {
+            category: { id: 'category-joga', name: 'Joga', isDefault: false },
+            duplicateThreshold: 3,
+            monthlyLimit: null,
+          },
+        ],
+      } satisfies BudgetResponse);
+      await fixture.whenStable();
+
+      expect(text(host.querySelector('[role="status"]'))).toBe('Dodano kategorię.');
+      expect(host.querySelector('[data-category="category-joga"]')).not.toBeNull();
+      const field = await newNameField(loader);
+      expect(await field.input.getValue()).toBe('');
+      expect(await field.field.hasErrors()).toBe(false);
+      expect(await (await addButton(loader)).isDisabled()).toBe(true);
+      expect(document.activeElement).toBe(newNameInput(host));
+      httpTesting.expectNone({ method: 'PUT', url: BUDGET_URL });
+    });
+
+    // A name taken in the meantime (e.g. in another tab) is refused by the API.
+    it('shows the error of the field after a 409', async () => {
+      const { httpTesting, fixture, loader } = await createPage(WITH_OWN);
+      const { field, input } = await newNameField(loader);
+
+      await input.setValue('Joga');
+      await (await addButton(loader)).click();
+      httpTesting
+        .expectOne({ method: 'POST', url: CATEGORIES_URL })
+        .flush({ message: 'Category already exists' }, { status: 409, statusText: 'Conflict' });
+      await fixture.whenStable();
+
+      expect(await field.getTextErrors()).toEqual([TAKEN_ERROR]);
+      expect(await (await addButton(loader)).isDisabled()).toBe(true);
+      httpTesting.expectNone({ method: 'GET', url: BUDGET_URL });
+    });
+
+    it('keeps the name with a message after another failure', async () => {
+      const { httpTesting, fixture, loader, host } = await createPage(WITH_OWN);
+      const { input } = await newNameField(loader);
+
+      await input.setValue('Joga');
+      await (await addButton(loader)).click();
+      httpTesting
+        .expectOne({ method: 'POST', url: CATEGORIES_URL })
+        .flush(null, { status: 500, statusText: 'Server Error' });
+      await fixture.whenStable();
+
+      expect(text(host.querySelector('.budget__new-category [role="alert"]'))).toBe(
+        'Nie udało się dodać kategorii. Spróbuj ponownie.',
+      );
+      expect(await input.getValue()).toBe('Joga');
+      expect(await (await addButton(loader)).isDisabled()).toBe(false);
+      httpTesting.expectNone({ method: 'GET', url: BUDGET_URL });
+    });
+
+    // Enter in a field submits the form around it; here it adds the category and the default is
+    // prevented, so the budget form is never saved.
+    it('adds the category with Enter and never saves the budget form', async () => {
+      const { httpTesting, fixture, loader, host } = await createPage(WITH_OWN);
+      await (await newNameField(loader)).input.setValue('Joga');
+
+      const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+      newNameInput(host)?.dispatchEvent(enter);
+      await fixture.whenStable();
+
+      expect(enter.defaultPrevented).toBe(true);
+      httpTesting
+        .expectOne({ method: 'POST', url: CATEGORIES_URL })
+        .flush({ id: 'category-joga', name: 'Joga', isDefault: false });
+      await fixture.whenStable();
+      httpTesting.expectOne({ method: 'GET', url: TOTALS_URL }).flush(NO_TOTALS);
+      httpTesting.expectOne({ method: 'GET', url: BUDGET_URL }).flush(WITH_OWN);
+      await fixture.whenStable();
+      httpTesting.expectNone({ method: 'PUT', url: BUDGET_URL });
+    });
   });
 });

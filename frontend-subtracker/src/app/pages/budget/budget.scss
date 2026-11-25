@@ -1,3 +1,5 @@
+@use '@angular/material' as mat;
+
 // S-07/S-08: the default threshold and the overall limit, then one row per category with its
 // threshold and limit; the categories in rows on desktop, everything in one column on the phone.
 .budget {
@@ -38,22 +40,28 @@
   }
 }
 
+// The panels of the page: the defaults, the categories (one form) and "Nowa kategoria".
 .budget__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.budget__box {
   padding: 16px 24px 24px;
   border: 1px solid var(--st-line);
   border-radius: 4px;
   background: var(--mat-sys-surface);
 }
 
-// The user's default threshold and overall limit side by side, above the categories; their hints
-// may take two lines.
+// The user's default threshold and overall limit side by side, in a panel of their own above the
+// categories; their hints may take two lines.
 .budget__defaults {
   display: flex;
   flex-wrap: wrap;
   // Not stretched: a field next to a longer hint keeps its own height.
   align-items: flex-start;
   gap: 8px 24px;
-  margin-bottom: 16px;
 }
 
 .budget__default {
@@ -72,7 +80,10 @@
   font: var(--mat-sys-body-medium);
 }
 
+// The rows of the categories follow the width of the list, not of the window (the navy column
+// takes a share of it on the desktop).
 .budget__fieldset {
+  container-type: inline-size;
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -86,8 +97,7 @@
   font-weight: 600;
 }
 
-// One row per category: its name, then the threshold and the limit. The name sits at the height of
-// the fields' text (an outline field is 56px high).
+// One row per category: its name, then the threshold and the limit.
 .budget__category {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 140px 200px;
@@ -100,18 +110,111 @@
   }
 }
 
+// S-17: the name and, for an own category, its two icons; the name wraps (also a 50-character name
+// without spaces), the icons never go below it.
+.budget__category-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+// At the height of the fields' text: an outline field is 48px high at the theme density -2
+// (_theme.scss), a line 24px, so (48 - 24) / 2.
 .budget__category-name {
-  padding-top: 16px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-top: 12px;
   font-weight: 600;
   overflow-wrap: anywhere;
+}
+
+// From 840px up compact 32px icon buttons (Material's density -2, without the 48px touch target
+// that would overlap the neighbour), centred on the 48px field: (48 - 32) / 2.
+.budget__category-actions {
+  display: flex;
+  flex: none;
+  margin-top: 8px;
+
+  @include mat.icon-button-overrides(
+    (
+      state-layer-size: 32px,
+      touch-target-display: none,
+    )
+  );
+}
+
+// The heading takes the focus after a rename or a delete (tabindex="-1"), from a script only.
+.budget__legend:focus {
+  outline: none;
 }
 
 .budget__field {
   width: 100%;
 }
 
+// S-17: "Nowa kategoria" in a white panel of its own below the budget form, so "Zapisz" stays
+// right under the list of the categories it saves.
+.budget__new-category {
+  margin-top: 16px;
+}
+
+.budget__new-category-title {
+  margin: 0 0 12px;
+  font: var(--mat-sys-title-small);
+  font-weight: 600;
+}
+
+// From 840px the name and "Dodaj" in one line that never wraps: the field narrows, the button
+// keeps its width; aligned to the top of the field, so a hint under it changes nothing.
+.budget__new-category-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.budget__new-category-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+// Centred on the field: an outline field is 48px high at the theme density -2 and a button 40px
+// (_theme.scss), so (48 - 40) / 2.
+.budget__new-category-button {
+  flex: none;
+  margin-top: 4px;
+}
+
+.budget__new-category-error {
+  margin: 4px 0 0;
+}
+
 .budget__save {
   margin-top: 8px;
+}
+
+// Narrow desktop (the list under about 600px, a window of about 840 to 935px beside the navy
+// column): the name column would be narrower than its icons, so the name and the icons take a line
+// of their own above the two fields, which share the whole width of the list between them (fixed
+// widths would leave a third of the row empty).
+@container (max-width: 599.98px) {
+  .budget__category {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .budget__category-head {
+    grid-column: 1 / -1;
+    align-items: center;
+    padding-bottom: 8px;
+  }
+
+  .budget__category-name {
+    padding-top: 0;
+  }
+
+  .budget__category-actions {
+    margin-top: 0;
+  }
 }
 
 @media (max-width: 839.98px) {
@@ -120,7 +223,7 @@
     font-weight: 600;
   }
 
-  .budget__form {
+  .budget__box {
     padding: 16px;
   }
 
@@ -133,9 +236,42 @@
     grid-template-columns: 1fr;
   }
 
+  // The name and its icons in one line above the fields; the icons at Material's 40px (a touch
+  // target), centred on the name.
+  .budget__category-head {
+    align-items: center;
+    padding-bottom: 8px;
+  }
+
   .budget__category-name {
     padding-top: 0;
-    padding-bottom: 8px;
+  }
+
+  .budget__category-actions {
+    margin-top: 0;
+
+    @include mat.icon-button-overrides(
+      (
+        state-layer-size: 40px,
+        touch-target-display: block,
+      )
+    );
+  }
+
+  // The name above "Dodaj", both the full width.
+  .budget__new-category-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .budget__new-category-field {
+    flex: none;
+    width: 100%;
+  }
+
+  .budget__new-category-button {
+    margin-top: 0;
   }
 
   .budget__save {

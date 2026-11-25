@@ -88,7 +88,7 @@ Od v2 drugą personą jest **operator** — właściciel i jedyna osoba utrzymuj
 - FR-026: Forma płatności na liście subskrypcji jest pokazana ikoną z etykietą tekstową dla czytników ekranu zamiast samego tekstu. Priority: nice-to-have (koniec v2 albo v3)
 
 ### Wykrywanie duplikatów
-- FR-009: Użytkownik może ustawić konfigurowalny próg liczby aktywnych subskrypcji w danej kategorii (domyślnie: 2), po przekroczeniu którego system oznacza flagą/ostrzeżeniem na dashboardzie. Priority: must-have
+- FR-009: Użytkownik może ustawić konfigurowalny próg liczby aktywnych subskrypcji w danej kategorii (domyślnie: 3; zmienione z 2 w S-07 — przy 2 ostrzeżenie zapalało się zbyt wcześnie i traciło sens), po przekroczeniu którego system oznacza flagą/ostrzeżeniem na dashboardzie. Priority: must-have
   > Socrates: Counter-argument considered: "sztywna reguła 2+ generuje dużo fałszywych pozytywów — np. 2 subskrypcje AI to realny problem, ale 4 streamingowe mogą być świadomym wyborem." Resolution: przyjęty — próg staje się konfigurowalny per kategoria, zamiast jednej sztywnej wartości dla wszystkich.
 
 ### Budżet i alerty

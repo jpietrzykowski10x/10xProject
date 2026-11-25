@@ -7,13 +7,20 @@ import type {
   CategoryBudgetDto,
   UpdateBudgetDto,
 } from '../dtos/update-budget.dto.js';
-import { CategorySetting } from '../entities/category-setting.entity.js';
+import { isForeignKeyViolation } from '../../shared/database/foreign-key-violation.js';
+import {
+  CATEGORY_SETTING_CATEGORY_FK,
+  CategorySetting,
+} from '../entities/category-setting.entity.js';
 import {
   BudgetSettings,
   defaultThresholdOf,
 } from '../entities/budget-settings.entity.js';
 import type { BudgetResponse } from '../subscription.types.js';
 import { CategoriesService } from './categories.service.js';
+
+const UNUSABLE_CATEGORIES_MESSAGE =
+  'categories must name only usable categories';
 
 // A limit from the request as the numeric(10,2) column stores it; null removes the limit.
 const toLimit = (limit: number | null): string | null =>
@@ -104,11 +111,28 @@ export class BudgetService {
     const categories = dto.categories ?? [];
     const categoryIds = categories.map((row) => row.categoryId);
     if (!(await this.categories.allUsable(userId, categoryIds))) {
-      throw new BadRequestException(
-        'categories must name only usable categories',
-      );
+      throw new BadRequestException(UNUSABLE_CATEGORIES_MESSAGE);
     }
 
+    // The check runs before the transaction; a category deleted in between (e.g. from another
+    // tab) fails the upsert on its foreign key and gets the same 400, with nothing written.
+    try {
+      await this.write(userId, dto, categories);
+    } catch (error) {
+      if (isForeignKeyViolation(error, CATEGORY_SETTING_CATEGORY_FK)) {
+        throw new BadRequestException(UNUSABLE_CATEGORIES_MESSAGE);
+      }
+      throw error;
+    }
+    return this.get(userId);
+  }
+
+  // The user's settings and the listed category rows, in one transaction.
+  private async write(
+    userId: string,
+    dto: UpdateBudgetDto,
+    categories: readonly CategoryBudgetDto[],
+  ): Promise<void> {
     await this.settings.manager.transaction(async (manager) => {
       const userFields = {
         ...(dto.defaultDuplicateThreshold !== undefined && {
@@ -132,7 +156,6 @@ export class BudgetService {
         })),
       );
     });
-    return this.get(userId);
   }
 }
 

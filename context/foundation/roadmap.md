@@ -47,7 +47,7 @@ Osoby korzystające z wielu subskrypcji i wielu kart tracą kontrolę nad cyklic
 | S-14 | log-format-version-and-access-log  | operator czyta logi w jednym formacie, z wersją i access logiem obu procesów         | S-13          | FR-022                  | done |
 | S-15 | client-and-ssr-error-visibility    | błędy przeglądarki i SSR zostawiają ślad, a nieaktualny plik po deployu przeładowuje stronę | S-14     | FR-023                  | proposed |
 | S-16 | failure-causes-and-audit-trail     | operator widzi przyczynę porażki joba i maila, a usunięcia i odmowy admina mają ślad | S-11          | FR-024                  | done |
-| S-17 | own-category-rename-and-delete     | użytkownik zmienia nazwę własnej kategorii albo usuwa pustą                          | —             | FR-025, FR-009, FR-010  | ready    |
+| S-17 | own-category-rename-and-delete     | użytkownik zmienia nazwę własnej kategorii albo usuwa pustą                          | —             | FR-025, FR-009, FR-010  | in-progress |
 | S-18 | subscription-list-sort-filter      | użytkownik sortuje i filtruje listę subskrypcji                                      | —             | FR-016                  | ready    |
 
 ## Streams
@@ -169,7 +169,7 @@ Brak w M-2. Każda warstwa jest `present`, a brakujące elementy obserwowalnośc
   - ~~Co z subskrypcjami usuwanej kategorii?~~ Rozstrzygnięte 2026-11-22 (PRD Open Questions #1): usunąć można tylko pustą.
   - Gdzie w UI: na stronie budżetu, w formularzu subskrypcji czy na osobnej liście kategorii? — Owner: user (makiety ASCII wg `lessons.md`). Block: no.
 - **Risk:** Kolejność wg PRD v2 — zaraz po poprawkach audytu, choć technicznie niezależny. Ryzyko w kluczu obcym `subscription.category_id` (`23503` musi dać 409, nie 500; helper w `shared/database/`), w unikalności nazw (`toNameKey`) przy zmianie nazwy i w sortowaniu z `POLISH_COLLATION`.
-- **Status:** ready
+- **Status:** in-progress
 
 ### S-18: Sortowanie i filtrowanie listy subskrypcji
 

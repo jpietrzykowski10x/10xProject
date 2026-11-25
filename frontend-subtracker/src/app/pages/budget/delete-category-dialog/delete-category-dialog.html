@@ -1,0 +1,31 @@
+<h2 mat-dialog-title>Usunąć kategorię {{ category.name }}?</h2>
+<mat-dialog-content>
+  <!-- The dialog's description (ariaDescribedBy in openDeleteCategoryDialog). -->
+  <p id="delete-category-description" class="dialog__text">
+    Razem z kategorią znikną jej próg i limit miesięczny. Usunięcia nie da się cofnąć.
+  </p>
+  @if (hasSubscriptions()) {
+    <p class="st-notice st-notice--error dialog__error" role="alert">
+      Ta kategoria ma subskrypcje. Przenieś je do innej kategorii albo usuń, a potem usuń kategorię.
+    </p>
+  } @else if (failed()) {
+    <p class="st-notice st-notice--error dialog__error" role="alert">
+      Nie udało się usunąć kategorii. Spróbuj ponownie.
+    </p>
+  }
+</mat-dialog-content>
+<!-- "Anuluj" comes first, so it gets the focus when the dialog opens. While the DELETE is in
+     flight both buttons are disabled, and "Usuń" stays off after the API refused a category with
+     subscriptions; it keeps the focus (disabledInteractive). -->
+<mat-dialog-actions align="end" class="dialog__actions">
+  <button mat-stroked-button type="button" [disabled]="sending()" (click)="cancel()">Anuluj</button>
+  <button
+    mat-flat-button
+    type="button"
+    disabledInteractive
+    [disabled]="sending() || hasSubscriptions()"
+    (click)="confirm()"
+  >
+    Usuń
+  </button>
+</mat-dialog-actions>

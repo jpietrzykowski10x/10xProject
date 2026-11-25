@@ -88,6 +88,20 @@ const EXPECTED_ROUTES: ExpectedRoute[] = [
   { method: 'PUT', path: '/budget', access: 'session' },
   { method: 'GET', path: '/categories', access: 'session' },
   { method: 'POST', path: '/categories', access: 'session' },
+  {
+    method: 'PATCH',
+    path: '/categories/:id',
+    access: 'session',
+    twoAccountTest:
+      "lets no account rename or delete another account's category",
+  },
+  {
+    method: 'DELETE',
+    path: '/categories/:id',
+    access: 'session',
+    twoAccountTest:
+      "lets no account rename or delete another account's category",
+  },
   { method: 'GET', path: '/subscriptions', access: 'session' },
   { method: 'POST', path: '/subscriptions', access: 'session' },
   { method: 'GET', path: '/subscriptions/totals', access: 'session' },

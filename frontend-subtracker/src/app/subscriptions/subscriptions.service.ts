@@ -59,4 +59,16 @@ export class SubscriptionsService {
   createCategory(request: CreateCategoryRequest): Observable<Category> {
     return this.http.post<Category>(`${this.apiUrl}/categories`, request);
   }
+
+  // Only an own category, the name trimmed: 409 when it is taken (case-insensitively) by another
+  // own or a default category; 404 when the category is gone, a default or another account's.
+  renameCategory(id: string, name: string): Observable<Category> {
+    return this.http.patch<Category>(`${this.apiUrl}/categories/${id}`, { name });
+  }
+
+  // 204 when deleted together with its threshold and limit; 409 while it has subscriptions, 404
+  // like renameCategory.
+  deleteCategory(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/categories/${id}`);
+  }
 }
