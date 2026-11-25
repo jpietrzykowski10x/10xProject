@@ -1,10 +1,10 @@
 ---
 change_id: log-format-version-and-access-log
 title: Jednolity format logów, wdrożona wersja i access log
-status: impl_reviewed
+status: archived
 created: 2026-11-24
 updated: 2026-11-25
-archived_at: null
+archived_at: 2026-11-25T11:03:15Z
 ---
 
 ## Notes
