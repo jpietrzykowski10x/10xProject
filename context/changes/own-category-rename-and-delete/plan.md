@@ -288,29 +288,29 @@ Dokumenty opisują nowe trasy i reguły, zmiana trafia na serwer.
 
 #### Automated
 
-- [x] 1.1 Testy jednostkowe kategorii i helpera
-- [x] 1.2 E2E kategorii
-- [x] 1.3 Celowe uszkodzenie `category_setting` albo pominięcia własnego id czerwieni test
-- [x] 1.4 Pełne testy backendu
-- [x] 1.5 Testy e2e backendu
-- [x] 1.6 Lint i build backendu
+- [x] 1.1 Testy jednostkowe kategorii i helpera — 1ed1ba7
+- [x] 1.2 E2E kategorii — 1ed1ba7
+- [x] 1.3 Celowe uszkodzenie `category_setting` albo pominięcia własnego id czerwieni test — 1ed1ba7
+- [x] 1.4 Pełne testy backendu — 1ed1ba7
+- [x] 1.5 Testy e2e backendu — 1ed1ba7
+- [x] 1.6 Lint i build backendu — 1ed1ba7
 
 #### Manual
 
-- [x] 1.7 Lokalnie `curl` na `PATCH`/`DELETE` i 409 dla niepustej
+- [x] 1.7 Lokalnie `curl` na `PATCH`/`DELETE` i 409 dla niepustej — 1ed1ba7
 
 ### Phase 2: UI na `/budget`
 
 #### Automated
 
-- [ ] 2.1 Testy frontendu
-- [ ] 2.2 Celowe uszkodzenie ikon przy predefiniowanej albo blokady czerwieni test
-- [ ] 2.3 E2E przeglądarki
+- [x] 2.1 Testy frontendu
+- [x] 2.2 Celowe uszkodzenie ikon przy predefiniowanej albo blokady czerwieni test
+- [x] 2.3 E2E przeglądarki
 
 #### Manual
 
-- [ ] 2.4 `/budget` w trzech szerokościach z 50-znakową nazwą
-- [ ] 2.5 Dialogi z klawiatury
+- [x] 2.4 `/budget` w trzech szerokościach z 50-znakową nazwą
+- [x] 2.5 Dialogi z klawiatury
 
 ### Phase 3: Dokumenty i produkcja
 

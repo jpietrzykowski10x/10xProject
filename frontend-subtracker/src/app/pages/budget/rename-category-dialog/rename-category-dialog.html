@@ -1,0 +1,30 @@
+<h2 mat-dialog-title>Zmień nazwę kategorii</h2>
+<!-- Enter in the field submits the form, like "Zapisz". -->
+<form [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <mat-dialog-content>
+    <mat-form-field class="dialog__field">
+      <mat-label>Nazwa kategorii</mat-label>
+      <input matInput autocomplete="off" [formControl]="name" [maxlength]="maxLength" />
+      @if (name.hasError('conflict')) {
+        <mat-error>Taka kategoria już istnieje.</mat-error>
+      } @else {
+        <mat-error>Podaj nazwę kategorii.</mat-error>
+      }
+    </mat-form-field>
+    @if (failed()) {
+      <p class="st-notice st-notice--error dialog__error" role="alert">
+        Nie udało się zmienić nazwy kategorii. Spróbuj ponownie.
+      </p>
+    }
+  </mat-dialog-content>
+  <!-- "Anuluj" comes first. "Zapisz" is off for an empty or unchanged name and while the PATCH is in
+       flight; it keeps the focus then (disabledInteractive). -->
+  <mat-dialog-actions align="end" class="dialog__actions">
+    <button mat-stroked-button type="button" [disabled]="sending()" (click)="cancel()">
+      Anuluj
+    </button>
+    <button mat-flat-button type="submit" disabledInteractive [disabled]="sending() || !canSave()">
+      Zapisz
+    </button>
+  </mat-dialog-actions>
+</form>

@@ -29,8 +29,10 @@
     } @else {
       <!-- mat-error shows after a field is left or the form is submitted, and Material links it to
            the field through aria-describedby. -->
+      <!-- Two white panels of one form, the defaults and the categories; "Zapisz" under the list
+           saves every change of both. -->
       <form class="budget__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <div class="budget__defaults">
+        <div class="budget__box budget__defaults">
           <mat-form-field class="budget__default" subscriptSizing="dynamic">
             <mat-label>Domyślny próg ilościowy dla kategorii</mat-label>
             <input
@@ -58,65 +60,170 @@
           </mat-form-field>
         </div>
 
-        <!-- S-08: a hint, not an error; the save is not blocked. Always there, so the hint is
-             announced when it appears. -->
-        <div aria-live="polite">
-          @if (limitsHint(); as hint) {
-            <p class="budget__hint">{{ hint }}</p>
-          }
-        </div>
-
-        <fieldset class="budget__fieldset">
-          <legend class="budget__legend">
-            Próg aktywnych subskrypcji i limit miesięczny kategorii
-          </legend>
-          <div class="budget__list">
-            @for (item of current.categories; track item.category.id; let index = $index) {
-              <!-- The category name labels the group, so "Próg" and "Limit miesięczny" are read
-                   with it. -->
-              <div
-                class="budget__category"
-                role="group"
-                [attr.aria-labelledby]="'budget-category-' + index"
-                [attr.data-category]="item.category.id"
-              >
-                <span class="budget__category-name" [id]="'budget-category-' + index">
-                  {{ item.category.name }}
-                </span>
-                <mat-form-field class="budget__field">
-                  <mat-label>Próg</mat-label>
-                  <input
-                    matInput
-                    inputmode="numeric"
-                    autocomplete="off"
-                    [formControl]="form.controls.thresholds.at(index)"
-                  />
-                  <mat-error>Podaj liczbę całkowitą od {{ min }} do {{ max }}.</mat-error>
-                </mat-form-field>
-                <mat-form-field class="budget__field">
-                  <mat-label>Limit miesięczny (zł)</mat-label>
-                  <input
-                    matInput
-                    inputmode="decimal"
-                    autocomplete="off"
-                    [formControl]="form.controls.limits.at(index)"
-                  />
-                  <mat-error>Podaj kwotę od 0 do 99 999,99 zł albo zostaw pole puste.</mat-error>
-                </mat-form-field>
-              </div>
+        <!-- S-17: the icons of an own category and "Nowa kategoria" are off while the form has
+             unsaved changes; a rename, a delete or an added category reads the list again, which
+             would drop them. -->
+        @let unsaved = changes() !== null;
+        <div class="budget__box">
+          <!-- S-08: a hint, not an error; the save is not blocked. Always there, so the hint is
+               announced when it appears; at the top of the categories, whose limits it sums. -->
+          <div aria-live="polite">
+            @if (limitsHint(); as hint) {
+              <p class="budget__hint">{{ hint }}</p>
             }
           </div>
-        </fieldset>
-        <!-- Off until the form differs from the last loaded or saved values. -->
-        <button
-          mat-flat-button
-          type="submit"
-          class="budget__save"
-          [disabled]="sending() || changes() === null"
-        >
-          Zapisz
-        </button>
+          <fieldset class="budget__fieldset">
+            <!-- Takes the focus after a category was renamed or deleted (S-17). -->
+            <legend #categoriesLegend class="budget__legend" tabindex="-1">
+              Próg aktywnych subskrypcji i limit miesięczny kategorii
+            </legend>
+            <div class="budget__list">
+              @for (item of current.categories; track item.category.id; let index = $index) {
+                <!-- The category name labels the group, so "Próg" and "Limit miesięczny" are read
+                   with it. -->
+                <div
+                  class="budget__category"
+                  role="group"
+                  [attr.aria-labelledby]="'budget-category-' + index"
+                  [attr.data-category]="item.category.id"
+                >
+                  <!-- The name, and for an own category its two icons, which never wrap below it. -->
+                  <div class="budget__category-head">
+                    <span class="budget__category-name" [id]="'budget-category-' + index">
+                      {{ item.category.name }}
+                    </span>
+                    @if (!item.category.isDefault) {
+                      @let renameLabel = 'Zmień nazwę kategorii ' + item.category.name;
+                      @let removeLabel = 'Usuń kategorię ' + item.category.name;
+                      <span class="budget__category-actions">
+                        <button
+                          mat-icon-button
+                          type="button"
+                          disabledInteractive
+                          [disabled]="unsaved"
+                          [attr.aria-label]="renameLabel"
+                          [matTooltip]="unsaved ? unsavedChangesTooltip : renameLabel"
+                          (click)="rename(item.category)"
+                        >
+                          <ng-container [ngTemplateOutlet]="renameIcon" />
+                        </button>
+                        <button
+                          mat-icon-button
+                          type="button"
+                          disabledInteractive
+                          [disabled]="unsaved"
+                          [attr.aria-label]="removeLabel"
+                          [matTooltip]="unsaved ? unsavedChangesTooltip : removeLabel"
+                          (click)="remove(item.category)"
+                        >
+                          <ng-container [ngTemplateOutlet]="removeIcon" />
+                        </button>
+                      </span>
+                    }
+                  </div>
+                  <mat-form-field class="budget__field">
+                    <mat-label>Próg</mat-label>
+                    <input
+                      matInput
+                      inputmode="numeric"
+                      autocomplete="off"
+                      [formControl]="form.controls.thresholds.at(index)"
+                    />
+                    <mat-error>Podaj liczbę całkowitą od {{ min }} do {{ max }}.</mat-error>
+                  </mat-form-field>
+                  <mat-form-field class="budget__field">
+                    <mat-label>Limit miesięczny (zł)</mat-label>
+                    <input
+                      matInput
+                      inputmode="decimal"
+                      autocomplete="off"
+                      [formControl]="form.controls.limits.at(index)"
+                    />
+                    <mat-error>Podaj kwotę od 0 do 99 999,99 zł albo zostaw pole puste.</mat-error>
+                  </mat-form-field>
+                </div>
+              }
+            </div>
+          </fieldset>
+
+          <!-- Off until the form differs from the last loaded or saved values. -->
+          <button
+            mat-flat-button
+            type="submit"
+            class="budget__save"
+            [disabled]="sending() || changes() === null"
+          >
+            Zapisz
+          </button>
+        </div>
       </form>
+
+      <!-- S-17: an own category, in a panel of its own below the budget form: its own control (not
+           in changes()), a button that does not submit, and Enter in the name adds the category. -->
+      <section class="budget__box budget__new-category" aria-labelledby="budget-new-category-title">
+        <h2 id="budget-new-category-title" class="budget__new-category-title">Nowa kategoria</h2>
+        <div class="budget__new-category-row">
+          <mat-form-field class="budget__new-category-field">
+            <mat-label>Nazwa nowej kategorii</mat-label>
+            <input
+              #newCategoryInput
+              matInput
+              autocomplete="off"
+              [formControl]="newCategoryName"
+              [maxlength]="categoryNameMaxLength"
+              [errorStateMatcher]="newCategoryErrorState"
+              (keydown.enter)="onNewCategoryEnter($event)"
+            />
+            @if (unsaved) {
+              <mat-hint>{{ unsavedChangesTooltip }}</mat-hint>
+            }
+            <mat-error>Taka kategoria już istnieje.</mat-error>
+          </mat-form-field>
+          <button
+            mat-stroked-button
+            type="button"
+            class="budget__new-category-button"
+            disabledInteractive
+            [disabled]="!canAddCategory()"
+            [matTooltip]="unsaved ? unsavedChangesTooltip : ''"
+            (click)="addCategory()"
+          >
+            Dodaj
+          </button>
+        </div>
+        @if (addCategoryFailed()) {
+          <p class="st-notice st-notice--error budget__new-category-error" role="alert">
+            Nie udało się dodać kategorii. Spróbuj ponownie.
+          </p>
+        }
+      </section>
     }
   </div>
 </app-shell>
+
+<!-- The icons of an own category, the same as the row actions of the subscription list. -->
+<ng-template #renameIcon>
+  <!-- A pencil -->
+  <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 20 20">
+    <path
+      d="M3.5 13.5V16.5H6.5L15.5 7.5L12.5 4.5ZM11 6L14 9"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linejoin="round"
+    />
+  </svg>
+</ng-template>
+<ng-template #removeIcon>
+  <!-- A trash can -->
+  <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 20 20">
+    <path
+      d="M3.5 5.5H16.5M8 5.5V3.5H12V5.5M5.5 5.5L6.5 16.5H13.5L14.5 5.5M8.5 8.5V13.5M11.5 8.5V13.5"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+</ng-template>

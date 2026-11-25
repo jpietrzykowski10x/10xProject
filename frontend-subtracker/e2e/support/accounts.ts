@@ -161,7 +161,8 @@ export function createE2eAccounts({ addressPrefix }: E2eAccountsOptions): E2eAcc
   }
 
   // Every table with a user_id goes with the user (ON DELETE CASCADE); the rows are still removed
-  // explicitly, subscriptions before the categories they point to (ON DELETE NO ACTION).
+  // explicitly, subscriptions and category settings before the categories they point to (ON DELETE
+  // NO ACTION; every own category has a category_setting row).
   // admin_audit has no foreign key: its rows with one of these accounts as actor or target go by
   // id. Same order as e2e-app.ts.
   async function removeTestData(): Promise<void> {
@@ -173,7 +174,15 @@ export function createE2eAccounts({ addressPrefix }: E2eAccountsOptions): E2eAcc
     if (ids.length === 0) {
       return;
     }
-    for (const table of ['subscription', 'category', 'session', 'magic_link_token', 'user_role']) {
+    for (const table of [
+      'subscription',
+      'category_setting',
+      'budget_settings',
+      'category',
+      'session',
+      'magic_link_token',
+      'user_role',
+    ]) {
       await client.query(`DELETE FROM ${table} WHERE user_id = ANY($1::uuid[])`, [ids]);
     }
     await client.query(
