@@ -103,11 +103,14 @@ app.use((req, res, next) => {
  * method and the path without its query, and the stack frames on the following lines, instead of
  * Express's bare stack. The client gets a short 500 without the stack. A client that gave up
  * (AbortError) leaves no line: the access log already shows `aborted`. Registered last, so the
- * access log above still writes its line. Four parameters, or Express does not treat it as an
- * error handler.
+ * access log above still writes its line. Written also without `listening` (`ng serve`, the build's
+ * prerender): unlike the access log, a failed render is never noise. When the headers are already
+ * out (a streamed page failed half-way), the response is destroyed instead of ended, so the client
+ * and any proxy see a broken response rather than a complete, truncated page. Four parameters, or
+ * Express does not treat it as an error handler.
  */
 app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
-  const lines = listening ? renderErrorLines(req, error) : null;
+  const lines = renderErrorLines(req, error);
   if (lines !== null) {
     const [first, ...frames] = lines;
     console.error(serverLine('ERROR', 'Render', first ?? ''));
@@ -116,7 +119,7 @@ app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
     }
   }
   if (res.headersSent) {
-    res.end();
+    res.destroy();
     return;
   }
   res.status(500).type('text/plain').send('Internal server error.');

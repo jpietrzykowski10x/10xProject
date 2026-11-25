@@ -146,8 +146,10 @@ export function renderErrorLines(req: AccessLogRequest, error: unknown): string[
   const first = `${req.method} ${safePath(req.path)} ${safePath(heading)}`;
   const stack = error.stack ?? '';
   // V8 starts the stack with the heading (the message possibly over several lines); everything
-  // after it is a frame. A stack that does not start with it is kept whole.
-  const frames = stack.startsWith(heading) ? stack.slice(heading.length) : stack;
+  // after it is a frame. A stack that does not start with it (the message was changed after the
+  // error was made) is kept from its first `    at ` frame on: the message is already on the first
+  // line, cut, and must not come back whole.
+  const frames = stack.startsWith(heading) ? stack.slice(heading.length) : fromFirstFrame(stack);
   return [
     first,
     ...frames
@@ -155,6 +157,15 @@ export function renderErrorLines(req: AccessLogRequest, error: unknown): string[
       .filter((line) => line.trim() !== '')
       .map((line) => line.replace(CONTROL_CHARACTERS, '?')),
   ];
+}
+
+const FRAME_LINE = /^\s+at /;
+
+// The lines of a stack from its first frame on; empty when it has no frame.
+function fromFirstFrame(stack: string): string {
+  const stackLines = stack.split(/\r?\n/);
+  const first = stackLines.findIndex((line) => FRAME_LINE.test(line));
+  return first === -1 ? '' : stackLines.slice(first).join('\n');
 }
 
 function isAbortError(error: unknown): boolean {

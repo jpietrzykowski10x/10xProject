@@ -1,6 +1,6 @@
 import { isChunkLoadError, shouldReload } from './chunk-reload';
 
-// The oracle is the plan's loop protection: the same address is reloaded at most once per 60 s,
+// The oracle is the plan's loop protection: each address is reloaded at most once per 60 s,
 // the reload is remembered before it happens, and without a working storage there is no reload.
 
 const KEY = 'subtracker.chunk-reload';
@@ -17,7 +17,11 @@ function memoryStorage(initial: Record<string, string> = {}): Pick<Storage, 'get
 }
 
 function entry(url: string, at: number): Record<string, string> {
-  return { [KEY]: JSON.stringify({ url, at }) };
+  return { [KEY]: JSON.stringify({ [url]: at }) };
+}
+
+function stored(storage: Pick<Storage, 'getItem'>): unknown {
+  return JSON.parse(storage.getItem(KEY) ?? 'null');
 }
 
 describe('shouldReload', () => {
@@ -49,7 +53,13 @@ describe('shouldReload', () => {
     },
     {
       name: 'an entry of the wrong shape',
-      initial: { [KEY]: JSON.stringify({ url: 1, at: 'x' }) },
+      initial: { [KEY]: JSON.stringify({ '/register': 'x' }) },
+      url: '/register',
+      expected: true,
+    },
+    {
+      name: 'an array in the key',
+      initial: { [KEY]: JSON.stringify(['/register', NOW]) },
       url: '/register',
       expected: true,
     },
@@ -59,8 +69,32 @@ describe('shouldReload', () => {
     expect(shouldReload(storage, url, NOW)).toBe(expected);
     if (expected) {
       // Remembered before the reload, so the next failure within 60 s does not reload again.
-      expect(JSON.parse(storage.getItem(KEY) ?? 'null')).toEqual({ url, at: NOW });
+      expect(stored(storage)).toEqual(expect.objectContaining({ [url]: NOW }));
     }
+  });
+
+  it('gives each address its own window, so A → B → A within 60 s does not loop', () => {
+    const storage = memoryStorage();
+
+    expect(shouldReload(storage, '/a', NOW)).toBe(true);
+    expect(shouldReload(storage, '/b', NOW + 1_000)).toBe(true);
+    expect(shouldReload(storage, '/a', NOW + 2_000)).toBe(false);
+    expect(stored(storage)).toEqual({ '/a': NOW, '/b': NOW + 1_000 });
+  });
+
+  it('drops entries older than 60 s and keeps at most the 10 newest', () => {
+    const initial: Record<string, number> = { '/old': NOW - 61_000 };
+    for (let i = 0; i < 12; i++) {
+      initial[`/p${i}`] = NOW - 30_000 + i;
+    }
+    const storage = memoryStorage({ [KEY]: JSON.stringify(initial) });
+
+    expect(shouldReload(storage, '/new', NOW)).toBe(true);
+
+    const log = stored(storage) as Record<string, number>;
+    expect(Object.keys(log).sort()).toEqual(
+      ['/new', ...[3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => `/p${i}`)].sort(),
+    );
   });
 
   it('does not reload without a storage', () => {

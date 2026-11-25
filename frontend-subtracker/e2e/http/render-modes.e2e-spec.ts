@@ -25,9 +25,9 @@ const GUARDED_ROUTES = [
 // is a deliberate addition to this list; a guarded route showing up here was caught by '**'.
 const STATIC_PAGES = ['/privacy-policy', '/unavailable'];
 
-// The production build's environment: the routes of e2e-routes.ts are added only when it says so.
+// The test routes of every build but `e2e`, which swaps in e2e-routes.e2e.ts (angular.json).
 // CI builds only the e2e configuration, so the source is the oracle here, not a production dist.
-const PRODUCTION_ENVIRONMENT = resolve(__dirname, '../../src/environments/environment.ts');
+const PRODUCTION_E2E_ROUTES = resolve(__dirname, '../../src/app/e2e-routes.ts');
 
 const PRERENDERED_ROUTES = resolve(
   __dirname,
@@ -94,8 +94,9 @@ test('the build prerenders only the static pages', () => {
 });
 
 test('the production build has no e2e test routes', () => {
-  const source = readFileSync(PRODUCTION_ENVIRONMENT, 'utf8');
+  const source = readFileSync(PRODUCTION_E2E_ROUTES, 'utf8');
 
-  expect(source).toMatch(/^\s*e2eRoutes: false,\r?$/m);
-  expect(source).not.toMatch(/e2eRoutes: true/);
+  expect(source).toMatch(/^export const E2E_ROUTES: Routes = \[\];\r?$/m);
+  expect(source).toMatch(/^export const E2E_SERVER_PATHS: readonly string\[\] = \[\];\r?$/m);
+  expect(source).not.toContain('navigation-error');
 });

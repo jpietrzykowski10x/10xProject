@@ -18,36 +18,38 @@ export function isChunkLoadError(error: unknown): boolean {
   );
 }
 
-interface ReloadEntry {
-  url: string;
-  at: number;
-}
+// The last reloads, address → time, under one key. A map rather than one entry, so each address
+// has its own window: with a single entry a redirect A → B → A overwrote it on every reload.
+// Stored as a JSON object, read into a Map (an address such as `__proto__` stays a plain key).
+type ReloadLog = Map<string, number>;
 
-function parseEntry(raw: string | null): ReloadEntry | null {
+const MAX_ENTRIES = 10;
+
+function parseLog(raw: string | null): ReloadLog {
+  const log: ReloadLog = new Map();
   if (raw === null) {
-    return null;
+    return log;
   }
   try {
     const value: unknown = JSON.parse(raw);
-    if (
-      typeof value === 'object' &&
-      value !== null &&
-      'url' in value &&
-      'at' in value &&
-      typeof value.url === 'string' &&
-      typeof value.at === 'number'
-    ) {
-      return { url: value.url, at: value.at };
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      for (const [url, at] of Object.entries(value)) {
+        if (typeof at === 'number') {
+          log.set(url, at);
+        }
+      }
     }
   } catch {
     // A damaged entry counts as no entry; it is overwritten below.
   }
-  return null;
+  return log;
 }
 
-// Whether to reload the page for `url`, remembering the reload before it happens: the same address
-// is reloaded at most once per 60 s, so a file that is still missing after the reload cannot loop.
-// Without a working storage there is no reload at all, since nothing would stop a loop.
+// Whether to reload the page for `url`, remembering the reload before it happens: each address is
+// reloaded at most once per 60 s, so a file that is still missing after the reload cannot loop,
+// nor can two addresses redirecting to each other. Entries older than 60 s are dropped and at most
+// the 10 newest kept. Without a working storage there is no reload at all, since nothing would
+// stop a loop.
 export function shouldReload(
   storage: Pick<Storage, 'getItem' | 'setItem'> | null,
   url: string,
@@ -57,11 +59,16 @@ export function shouldReload(
     return false;
   }
   try {
-    const last = parseEntry(storage.getItem(STORAGE_KEY));
-    if (last !== null && last.url === url && now - last.at < RELOAD_WINDOW_MS) {
+    const log = parseLog(storage.getItem(STORAGE_KEY));
+    const last = log.get(url);
+    if (last !== undefined && now - last < RELOAD_WINDOW_MS) {
       return false;
     }
-    storage.setItem(STORAGE_KEY, JSON.stringify({ url, at: now }));
+    const recent = [...log]
+      .filter(([other, at]) => other !== url && now - at < RELOAD_WINDOW_MS)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, MAX_ENTRIES - 1);
+    storage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries([[url, now], ...recent])));
     return true;
   } catch {
     return false;

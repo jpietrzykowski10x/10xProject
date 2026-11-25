@@ -1,30 +1,10 @@
-import { Component } from '@angular/core';
 import { Routes } from '@angular/router';
 
-// Routes that exist only in the `e2e` build (environment.e2e.ts, e2eRoutes: true): app.routes.ts
-// adds them and app.routes.server.ts renders them on the server per request. Never in production.
+// Routes that exist only for the e2e tests: none here. The `e2e` configuration in angular.json
+// (npm run build:e2e) swaps this file for e2e-routes.e2e.ts, so no test code reaches any other
+// build. app.routes.ts adds E2E_ROUTES and app.routes.server.ts renders E2E_SERVER_PATHS per
+// request; render-modes.e2e-spec.ts checks that this file stays empty.
 
-// Never shown: the guard of its only route throws first.
-@Component({
-  selector: 'app-e2e-never-shown',
-  template: '',
-})
-class E2eNeverShown {}
+export const E2E_ROUTES: Routes = [];
 
-export const E2E_ROUTES: Routes = [
-  {
-    // A navigation that throws on the server (e2e/http/ssr-errors.e2e-spec.ts): 500 with the
-    // /unavailable page and one ERROR [Navigation] line (navigation-error-handler.ts).
-    path: 'e2e/navigation-error',
-    canActivate: [
-      () => {
-        throw new Error('e2e navigation error');
-      },
-    ],
-    component: E2eNeverShown,
-  },
-];
-
-export const E2E_SERVER_PATHS: readonly string[] = E2E_ROUTES.flatMap((route) =>
-  route.path === undefined ? [] : [route.path],
-);
+export const E2E_SERVER_PATHS: readonly string[] = [];

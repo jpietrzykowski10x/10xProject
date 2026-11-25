@@ -173,6 +173,19 @@ describe('renderErrorLines', () => {
     ]);
   });
 
+  it('keeps only the frames of a stack that does not start with the current message', () => {
+    const error = new Error('short');
+    // The message was changed after the error was made: the stack still carries the old one.
+    error.stack = [`Error: ${'y'.repeat(500)}`, 'more of it', '    at frame (x.mjs:1:1)'].join(
+      '\n',
+    );
+
+    expect(renderErrorLines(REQ, error)).toEqual([
+      'GET /budget Error: short',
+      '    at frame (x.mjs:1:1)',
+    ]);
+  });
+
   it('cuts a long message like a path and gives no frames without a stack', () => {
     const error = new Error('x'.repeat(500));
     error.stack = undefined;

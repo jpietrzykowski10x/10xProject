@@ -1,5 +1,4 @@
 import { Routes } from '@angular/router';
-import { environment } from '../environments/environment';
 import { adminGuard, authGuard, guestGuard } from './auth/auth.guard';
 import { E2E_ROUTES } from './e2e-routes';
 import { ServiceUnavailable } from './pages/service-unavailable/service-unavailable';
@@ -67,6 +66,6 @@ export const routes: Routes = [
     path: 'unavailable',
     component: ServiceUnavailable,
   },
-  // Only in the e2e build (environment.e2e.ts); production builds have e2eRoutes: false.
-  ...(environment.e2eRoutes ? E2E_ROUTES : []),
+  // Empty except in the e2e build, which swaps in e2e-routes.e2e.ts (angular.json).
+  ...E2E_ROUTES,
 ];

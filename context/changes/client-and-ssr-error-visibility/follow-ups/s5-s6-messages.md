@@ -16,5 +16,4 @@ S-15 zapisuje przyczynę tych błędów (`ErrorReporter`), ale nie zmienia tego,
 
 ## Inne z S-15
 
-- Kod trasy testowej (`src/app/e2e-routes.ts`, tekst `e2e navigation error`) zostaje w bundlu produkcyjnym: esbuild nie usuwa gałęzi `environment.e2eRoutes ? E2E_ROUTES : []`. Trasa nie jest zarejestrowana, więc to tylko martwy kod. Opcjonalnie: `fileReplacements` w konfiguracji `e2e`, które podmienia pusty `e2e-routes.ts` na wersję z trasą.
 - Middleware `Render` w `server.ts` (odrzucenie `handle()`) ma tylko testy jednostkowe `renderErrorLines`; żaden e2e nie sprawia, że `handle()` odrzuca.
